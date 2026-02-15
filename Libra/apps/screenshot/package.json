@@ -1,0 +1,45 @@
+{
+  "name": "@libra/screenshot",
+  "version": "1.0.9",
+  "description": "Queue-based screenshot service for Libra platform",
+  "scripts": {
+    "dev": "wrangler dev --port 3009 --persist-to=../web/.wrangler/state",
+    "deploy": "wrangler deploy --minify",
+    "deploy:dev": "wrangler deploy --env development --minify",
+    "deploy:prod": "wrangler deploy --env production --minify",
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings",
+    "typecheck": "tsc --noEmit",
+    "update": "bun update",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage"
+  },
+  "dependencies": {
+    "@libra/auth": "*",
+    "@libra/common": "*",
+    "@libra/db": "*",
+    "@libra/middleware": "*",
+    "@libra/sandbox": "*",
+    "@libra/templates": "*",
+    "@libra/typescript-config": "*",
+    "hono": "^4.9.8",
+    "@scalar/hono-api-reference": "^0.9.19",
+    "@hono/zod-openapi": "^0.19.10",
+    "zod": "^4.1.11",
+    "drizzle-orm": "^0.44.5"
+  },
+  "devDependencies": {
+    "wrangler": "4.27.0",
+    "@types/node": "^24.5.2",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4",
+    "@vitest/coverage-v8": "^3.2.4"
+  },
+  "keywords": [
+    "cloudflare-workers",
+    "screenshot",
+    "queue",
+    "libra",
+    "hono"
+  ],
+  "license": "AGPL-3.0-only"
+}

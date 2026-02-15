@@ -1,0 +1,197 @@
+/*
+ * SPDX-License-Identifier: AGPL-3.0-only
+ * global.css
+ * Copyright (C) 2025 Nextify Limited
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
+ */
+
+@import "tailwindcss";
+@import "fumadocs-ui/css/preset.css";
+@import 'fumadocs-ui/css/neutral.css';
+/* theme */
+@import "fumadocs-ui/css/black.css";
+
+@source '../node_modules/fumadocs-ui/dist/**/*.js';
+
+button {
+    cursor: pointer;
+}
+
+body {
+    --color-fd-primary: var(--brand);
+    background-color: oklch(0.9871 0.0068 67.75);
+}
+
+:root {
+    --brand: oklch(66.5% 0.1804 47.04);
+    --brand-foreground: oklch(75.77% 0.159 55.91);
+    --color-fd-foreground: hsl(0, 0%, 3.9%);
+    --color-fd-headings: hsl(0, 0%, 3.9%);
+    --color-fd-popover-foreground: hsl(0, 0%, 3.9%);
+    --color-fd-muted: hsl(0, 0%, 89%);
+    --color-fd-background: oklch(0.9871 0.0068 67.75);
+}
+.dark {
+    --brand: oklch(83.6% 0.1177 66.87);
+    --brand-foreground: oklch(75.77% 0.159 55.91);
+    --color-fd-foreground: hsl(0, 0%, 80%);
+    --color-fd-headings: hsl(0, 0%, 94%);
+    --color-fd-popover-foreground: hsl(0, 0%, 70%);
+    --color-fd-muted: hsl(0, 0%, 15%);
+    --color-fd-background: oklch(0.141 0.005 285.823);
+}
+
+.dark body {
+    background-color: oklch(0.141 0.005 285.823);
+}
+
+/* Text selection styling */
+::selection {
+    background-color: var(--brand);
+    color: white;
+}
+
+::-moz-selection {
+    background-color: var(--brand);
+    color: white;
+}
+
+.dark ::selection {
+    background-color: var(--brand);
+    color: hsl(0, 0%, 3.9%);
+}
+
+.dark ::-moz-selection {
+    background-color: var(--brand);
+    color: hsl(0, 0%, 3.9%);
+}
+
+aside {
+    button[data-search-full] {
+        font-weight: 200;
+    }
+}
+
+#nd-toc .prose {
+    code {
+        padding: 2px 5px;
+    }
+    a {
+        line-height: 24px;
+    }
+}
+
+h1 {
+    @apply border-b py-3;
+    border-color: var(--color-fd-border);
+    color: var(--color-fd-headings);
+}
+
+html .prose {
+    @apply font-normal;
+
+    h2 {
+        border-color: var(--color-fd-border);
+        color: var(--color-fd-headings);
+        @apply border-b py-3 mt-12;
+    }
+    & > h3 {
+        @apply mt-8;
+    }
+
+    code {
+        @apply font-light;
+        @apply border-none px-1.5;
+        /* margin-top: -4px; */
+    }
+
+    button[role="tab"] {
+        @apply font-medium;
+        @apply font-mono text-xs;
+    }
+
+    td > p:first-child {
+        margin-top: 0;
+    }
+
+    td > p:last-child {
+        margin-bottom: 0;
+    }
+
+    ul ul li {
+        @apply mt-0;
+    }
+}
+
+h3.not-prose button {
+    /* color: red; */
+    color: var(--color-fd-popover-foreground);
+    @apply font-light;
+}
+
+/* Remove underlines from all button elements and button-like components */
+button,
+[role="button"],
+.fd-button,
+button[data-fumadocs-button],
+button[data-fumadocs-nav-button],
+button[data-fumadocs-search-button],
+a[role="button"] {
+    text-decoration: none !important;
+}
+
+button:hover,
+button:focus,
+button:active,
+[role="button"]:hover,
+[role="button"]:focus,
+[role="button"]:active,
+.fd-button:hover,
+.fd-button:focus,
+.fd-button:active,
+button[data-fumadocs-button]:hover,
+button[data-fumadocs-button]:focus,
+button[data-fumadocs-button]:active,
+button[data-fumadocs-nav-button]:hover,
+button[data-fumadocs-nav-button]:focus,
+button[data-fumadocs-nav-button]:active,
+button[data-fumadocs-search-button]:hover,
+button[data-fumadocs-search-button]:focus,
+button[data-fumadocs-search-button]:active,
+a[role="button"]:hover,
+a[role="button"]:focus,
+a[role="button"]:active {
+    text-decoration: none !important;
+}
+
+/* Ensure fumadocs-ui buttons don't have underlines */
+[data-fumadocs-button],
+[data-fumadocs-nav-button],
+[data-fumadocs-search-button] {
+    text-decoration: none !important;
+}
+
+[data-fumadocs-button]:hover,
+[data-fumadocs-button]:focus,
+[data-fumadocs-button]:active,
+[data-fumadocs-nav-button]:hover,
+[data-fumadocs-nav-button]:focus,
+[data-fumadocs-nav-button]:active,
+[data-fumadocs-search-button]:hover,
+[data-fumadocs-search-button]:focus,
+[data-fumadocs-search-button]:active {
+    text-decoration: none !important;
+}

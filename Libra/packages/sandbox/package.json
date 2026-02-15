@@ -1,0 +1,34 @@
+{
+  "name": "@libra/sandbox",
+  "version": "1.0.2",
+  "private": true,
+  "description": "Sandbox utilities and types for Libra",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "src/*"
+      ]
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "clean": "rm -rf dist .turbo node_modules",
+    "format-and-lint": "biome check .",
+    "format-and-lint:fix": "biome check . --write",
+    "typecheck": "tsc --noEmit",
+    "update": "bun update"
+  },
+  "dependencies": {
+    "e2b": "1.2.0-beta.5",
+    "@daytonaio/sdk": "^0.25.6",
+    "@libra/common": "*"
+  },
+  "devDependencies": {
+    "@libra/typescript-config": "*",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.2"
+  }
+}

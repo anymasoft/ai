@@ -1,0 +1,2377 @@
+{
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "nav": {
+    "features": "功能特性",
+    "pricing": "价格方案",
+    "price": "价格",
+    "contact": "联系我们",
+    "login": "登录",
+    "signup": "注册",
+    "dashboard": "控制台",
+    "documentation": "文档",
+    "templates": "模板",
+    "playground": "演练场",
+    "start_coding": "开始编码",
+    "brand": "Libra AI",
+    "toggleNavigation": "切换导航菜单",
+    "logo_description": "使用 React、Shadcn/ui 和 Tailwind 构建的着陆页模板，您可以复制/粘贴到您的项目中。"
+  },
+  "hero": {
+    "badge": "基于开发者喜爱的工具",
+    "title": "从灵感到应用，只需",
+    "subtitle": "使用AI让您的应用想法变为现实，并将其部署到您的域名上。",
+    "cta_primary": "免费开始",
+    "cta_secondary": "在 GitHub 上查看",
+    "form": {
+      "typewriter_base": "让 Libra 创建 ",
+      "placeholder": "一个舒适的阅读追踪器，让书虫们记录他们的阅读冒险...",
+      "add_attachment": "添加图片",
+      "send": "发送",
+      "footer_text": "永久免费开源。代码属于您，可下载或同步到 GitHub。",
+      "clear": "清空",
+      "clearInput": "清空输入"
+    },
+    "examples": {
+      "title": "应用创意示例",
+      "subtitle": "点击任何示例来应用",
+      "buttons": {
+        "discord": "Discord",
+        "github": "Github",
+        "forum": "社区"
+      },
+      "productivity": "生产力",
+      "social": "社交媒体",
+      "health": "健康",
+      "task_manager": "任务管理器",
+      "task_manager_desc": "一个跟踪日常任务的应用，支持自定义分类和截止日期。",
+      "task_manager_preview": "高效跟踪任务进度",
+      "note_taking": "笔记应用",
+      "note_taking_desc": "一个云同步的笔记应用，支持富文本编辑和标签分类。",
+      "note_taking_preview": "随时随地记录想法",
+      "interest_community": "兴趣社区",
+      "interest_community_desc": "一个专注于连接有相似兴趣的专业人士的社交媒体平台。",
+      "interest_community_preview": "与志同道合的人联系",
+      "local_events": "本地活动",
+      "local_events_desc": "一个发现和组织本地社区活动的平台。",
+      "local_events_preview": "探索周围的活动",
+      "diet_tracker": "饮食追踪器",
+      "diet_tracker_desc": "一个健康饮食追踪器，提供营养分析和个性化食谱推荐。",
+      "diet_tracker_preview": "科学管理您的饮食",
+      "fitness_plan": "健身计划",
+      "fitness_plan_desc": "一个创建和跟踪个人健身计划的应用，提供详细的训练视频指导。",
+      "fitness_plan_preview": "定制您的健身例程"
+    },
+    "fileUpload": {
+      "deleteFailed": "文件删除失败",
+      "unknownError": "未知错误",
+      "uploadFailed": "上传失败",
+      "fileTooLarge": "文件过大（最大5MB）。所选文件：{size}MB",
+      "invalidFileType": "无效的文件类型。请选择图片文件。所选类型：{type}"
+    },
+    "projectCreate": {
+      "success": "项目 {name} 创建成功！",
+      "limitExceeded": "创建项目失败，可能已超过限制"
+    },
+    "title_minutes": "短短几分钟"
+  },
+  "features": {
+    "title": "开发者喜爱的强大功能",
+    "subtitle": "基于现代工具构建，提供卓越的开发体验和用户界面输出。",
+    "auth_title": "自动安装软件包",
+    "auth_description": "智能检测并自动安装项目所需的依赖包，无需手动配置。",
+    "payments_title": "图像上传功能",
+    "payments_description": "完全可用的图像上传功能，支持多种格式和云存储集成。",
+    "database_title": "GitHub 自动提交",
+    "database_description": "自动将代码同步到 GitHub 仓库，支持版本控制和协作开发。",
+    "ui_title": "可视化编辑器",
+    "ui_description": "精确的可视化编辑器，支持实时预览和代码同步。",
+    "api_title": "免费自动修复",
+    "api_description": "AI 驱动的自动错误检测和修复功能，提升开发效率。",
+    "deployment_title": "自定义域名部署",
+    "deployment_description": "支持部署到自定义域名，完全控制您的应用访问地址。"
+  },
+  "pricing": {
+    "title": "简单透明的定价",
+    "subtitle": "选择适合您业务的方案",
+    "title_default": "价格方案",
+    "description_default": "选择适合您需求的方案，提供量身定制的功能和支持。",
+    "free_plan": "免费版",
+    "free_price": "$0",
+    "free_period": "永久免费",
+    "free_description": "适合入门使用",
+    "pro_plan": "专业版",
+    "pro_price": "$199",
+    "pro_period": "每月",
+    "pro_description": "适合成长中的企业",
+    "enterprise_plan": "企业版",
+    "enterprise_price": "定制",
+    "enterprise_period": "联系我们",
+    "enterprise_description": "适合大型组织",
+    "get_started": "开始使用",
+    "contact_sales": "联系销售",
+    "feature_users": "最多 {count} 个用户",
+    "feature_projects": "最多 {count} 个项目",
+    "feature_storage": "{amount} 存储空间",
+    "feature_support": "邮件支持",
+    "feature_priority_support": "优先支持",
+    "feature_custom": "定制集成",
+    "feature_sla": "SLA 保证",
+    "loading": "加载价格方案中...",
+    "error": "加载方案数据时出错。",
+    "forever_free": "永久免费",
+    "yearly": "年付",
+    "monthly": "月付",
+    "save_up_to": "节省高达 {discount}%"
+  },
+  "testimonials": {
+    "title": "用户评价",
+    "subtitle": "听听使用我们平台构建出色产品的开发者们的声音。",
+    "description": "Libra 不仅仅是一个工具——它是一个完整的开发生态系统，专为每个人设计——从初学者到专业人士。",
+    "user1": {
+      "name": "张小雅",
+      "role": "加密货币投资者",
+      "quote": "这个平台彻底改变了我管理加密货币投资的方式。工具直观且功能强大。"
+    },
+    "user2": {
+      "name": "陈志明",
+      "role": "日内交易员",
+      "quote": "实时分析和投资组合跟踪功能让我在交易决策中占据优势。"
+    },
+    "user3": {
+      "name": "李小美",
+      "role": "投资新手",
+      "quote": "作为加密货币新手，这个平台让我轻松入门并掌握要领。"
+    }
+  },
+  "faq": {
+    "title": "常见问题",
+    "subtitle": "关于 Libra AI 平台的一切信息",
+    "q1": "Libra 是开源的吗？",
+    "a1": "是的，这是与其他 AI 构建工具最大的不同。Libra 核心代码开源，代码透明，社区驱动，没有供应商锁定。",
+    "q2": "什么是 Libra？",
+    "a2": "Libra 是一个 AI 驱动的平台，将文本描述转换为功能完整的 Web 应用程序。基于 React + shadcn/ui 构建，支持自动化开发流程。",
+    "q3": "与其他 AI 构建工具的差异是什么？",
+    "a3": "Libra 基于开发者喜爱的工具构建，支持自动安装软件包、使用 React + shadcn/ui、拥抱开源、支持自定义域名部署、图像上传功能完全可用、GitHub 自动提交、可视化编辑器精确编辑、免费自动修复功能、优秀的 UI/UX 输出、产品输出实际可用。",
+    "q4": "定价方式是什么？",
+    "a4": "Libra 提供免费开始的灵活定价计划。核心功能永久免费，高级功能提供合理的付费选项。",
+    "q5": "代码所有权归谁？",
+    "a5": "用户完全拥有生成的代码。您可以下载所有文件或同步到 GitHub，没有任何限制。",
+    "q6": "是否需要编程经验？",
+    "a6": "不是必需的。Libra 对开发者和非开发者都友好，提供直观的界面和 AI 辅助开发。"
+  },
+  "bento": {
+    "title": "基于开发者喜爱的工具构建",
+    "description": "为拒绝妥协的开发者而生：拥抱开源、现代技术栈、自动化工作流程、真正可用的输出。您的代码，您的控制，您的自由——本该如此。",
+    "ai_coding": {
+      "title": "AI 智能编码",
+      "description": "多模型 AI 集成：Claude、Azure OpenAI、Gemini。自然语言驱动的生产级代码生成，智能上下文感知与最佳实践遵循。"
+    },
+    "lightning_fast": {
+      "title": "React + shadcn/ui 构建",
+      "description": "使用开发者最喜爱的现代技术栈。基于 React 19、TypeScript、Tailwind CSS 和 shadcn/ui 组件库，确保代码质量和可维护性。"
+    },
+    "complete_ownership": {
+      "title": "核心开源",
+      "description": "与闭源工具不同，Libra 核心开源。您可以查看、修改、扩展每一行代码。没有黑盒，没有供应商锁定，真正的开发自由。"
+    },
+    "performance_optimized": {
+      "title": "自定义域名部署",
+      "description": "支持部署到您自己的域名，完全控制应用的访问地址。不依赖第三方平台，真正拥有您的产品。"
+    },
+    "tech_stack_freedom": {
+      "title": "图像上传 & GitHub 自动提交",
+      "description_1": "完全可用的图像上传功能，支持多种格式和云存储。自动将代码同步到 GitHub 仓库，支持版本控制。",
+      "description_2": "可视化编辑器支持精确编辑，免费的 AI 自动修复功能提升开发效率。"
+    },
+    "community_driven": {
+      "title": "优秀的用户体验输出",
+      "description_1": "产品输出实际可用，不是简单的演示。生成的应用具有完整功能、优秀的 UI/UX 设计和生产级别的代码质量。",
+      "description_2": "开源社区驱动，持续改进和创新。"
+    }
+  },
+  "cta": {
+    "title": "准备开始免费构建了吗？",
+    "subtitle": "加入开源开发者社区，使用 Libra 将创意转化为真正可用的产品。永久免费，代码完全属于您。",
+    "button": "免费开始构建",
+    "secondary": "查看开源代码"
+  },
+  "footer": {
+    "description": "现代 Web 应用程序的完整 SaaS 启动套件。",
+    "product": "产品",
+    "features": "功能特性",
+    "pricing": "价格方案",
+    "changelog": "更新日志",
+    "company": "公司",
+    "about": "关于我们",
+    "contact": "联系我们",
+    "blog": "博客",
+    "careers": "招聘",
+    "resources": "资源",
+    "documentation": "文档",
+    "support": "支持",
+    "community": "社区",
+    "discord": "Discord",
+    "twitter": "Twitter",
+    "github": "Github",
+    "legal": "法律",
+    "privacy": "隐私政策",
+    "terms": "服务条款",
+    "cookies": "Cookie 政策",
+    "copyright": "© 2024 Libra. 保留所有权利。",
+    "copyright_nextify": "© 2025 Nextify Limited. 保留所有权利",
+    "all_rights_reserved": "保留所有权利。",
+    "made_with_love": "由梦想家为梦想家精心打造 ❤️",
+    "status": "状态"
+  },
+  "contact": {
+    "page_title": "联系我们",
+    "page_description": "我们期待听到您的建议和需求。请填写下面的表单，我们的团队将尽快与您联系。",
+    "form_name_label": "姓名",
+    "form_name_placeholder": "请输入您的姓名",
+    "form_company_label": "公司",
+    "form_company_placeholder": "请输入您的公司名称",
+    "form_email_label": "邮箱",
+    "form_email_placeholder": "your.email@company.com",
+    "form_requirements_label": "需求",
+    "form_requirements_placeholder": "请告诉我们您的需求，例如：定制功能、SSO 集成、部署需求等",
+    "submit_button": "提交",
+    "privacy_notice": "提交即表示您同意我们的",
+    "privacy_policy": "隐私政策",
+    "enterprise_title": "企业定制服务",
+    "enterprise_support": "专属客户支持",
+    "enterprise_deployment": "定制化部署方案",
+    "enterprise_sso": "单点登录 (SSO) 集成",
+    "enterprise_security": "数据安全与合规支持",
+    "enterprise_training": "专业培训与咨询服务",
+    "other_contact_title": "其他联系方式",
+    "customer_support": "客户支持",
+    "customer_support_email": "support@yourcompany.com",
+    "business_cooperation": "商务合作",
+    "business_cooperation_email": "sales@yourcompany.com",
+    "media_inquiry": "媒体咨询",
+    "media_inquiry_email": "press@yourcompany.com"
+  },
+  "dashboard": {
+    "my_projects": "我的项目",
+    "create_project": "新建项目",
+    "creating": "创建中...",
+    "empty_state_title": "开始您的第一个项目",
+    "empty_state_description": "创建项目后，您可以开始管理工作并与团队协作",
+    "empty_state_button": "新建项目",
+    "project_name_dialog_title": "创建新项目",
+    "project_name_dialog_description": "创建新项目开始您的工作。您可以随时修改项目设置。",
+    "project_name_label": "项目名称",
+    "project_name_placeholder": "输入项目名称",
+    "project_name_help": "为您的项目选择一个描述性名称，以便于识别。",
+    "project_name_length": "{current}/32",
+    "project_create_button": "创建项目",
+    "project_create_cancel": "取消",
+    "project_name_required": "请输入有效的项目名称",
+    "project_create_success": "项目创建成功！",
+    "login_required": "请先登录后再创建项目",
+    "create_failed": "创建项目失败，请重试",
+    "quota_exhausted": "项目配额已用完，请升级计划或等待配额重置",
+    "siteHeader": {
+      "projectManagement": "项目管理"
+    },
+    "sidebar": {
+      "navigation": {
+        "admin": "管理员",
+        "dashboard": "控制台",
+        "teams": "团队",
+        "billing": "账单",
+        "session": "会话",
+        "integrations": "集成",
+        "docs": "文档",
+        "github": "Github",
+        "support": "支持",
+        "help": "帮助"
+      }
+    },
+    "navUser": {
+      "profile": "个人信息",
+      "session": "会话",
+      "billing": "账单管理",
+      "settings": "系统设置",
+      "logout": "退出登录",
+      "loggingOut": "退出中...",
+      "switchToLight": "切换到浅色模式",
+      "switchToDark": "切换到深色模式",
+      "logoutFailed": "退出登录失败，请重试"
+    },
+    "teams": {
+      "title": "团队管理",
+      "subtitle": "管理团队成员和邀请",
+      "refreshData": "刷新数据",
+      "refreshing": "正在刷新数据...",
+      "refreshSuccess": "数据刷新成功",
+      "currentOrganization": "当前组织",
+      "unnamedOrganization": "未命名组织",
+      "loadingOrganizationData": "正在加载组织数据...",
+      "inviteForm": {
+        "title": "邀请团队成员",
+        "description": "发送邀请让同事加入您的团队",
+        "emailLabel": "邮箱地址",
+        "emailPlaceholder": "colleague@example.com",
+        "roleLabel": "角色",
+        "selectRole": "选择角色",
+        "roleOwner": "所有者",
+        "roleAdmin": "管理员",
+        "roleMember": "成员",
+        "sendInvitation": "发送邀请",
+        "sending": "发送中...",
+        "invitationSent": "已成功邀请 {email}",
+        "sendFailed": "发送邀请失败，请稍后重试",
+        "noOrganization": "未选择组织",
+        "emailInvalid": "请输入有效的邮箱地址",
+        "roleRequired": "请选择角色",
+        "rolePlaceholder": "选择角色"
+      },
+      "memberTable": {
+        "title": "团队成员",
+        "noMembers": "还没有团队成员",
+        "inviteFirst": "邀请您的第一个团队成员开始协作",
+        "unnamedUser": "未命名用户",
+        "columns": {
+          "name": "姓名",
+          "email": "邮箱",
+          "role": "角色",
+          "joinedAt": "加入时间",
+          "actions": "操作"
+        },
+        "status": {
+          "active": "活跃",
+          "inactive": "离线",
+          "pending": "待激活",
+          "blocked": "已禁用",
+          "unknown": "未知"
+        },
+        "actions": {
+          "updateRole": "更新角色",
+          "remove": "移除",
+          "confirmRemove": "移除成员？",
+          "confirmRemoveDesc": "确定要将 {name} 从团队中移除吗？",
+          "cancel": "取消",
+          "confirm": "移除",
+          "removing": "移除中...",
+          "removed": "已移除成员 {name}",
+          "removeFailed": "移除成员失败，请稍后重试",
+          "roleUpdated": "已更新成员角色",
+          "roleUpdateFailed": "更新角色失败，请稍后重试"
+        }
+      },
+      "invitationTable": {
+        "title": "待处理邀请",
+        "noInvitations": "没有待处理的邀请",
+        "noInvitationsDesc": "邀请都已处理或尚未发出",
+        "currentStatus": "当前状态",
+        "columns": {
+          "email": "邮箱",
+          "role": "角色",
+          "status": "状态",
+          "expiresAt": "过期时间",
+          "actions": "操作"
+        },
+        "status": {
+          "pending": "待处理",
+          "expired": "已过期",
+          "accepted": "已接受",
+          "canceled": "已取消",
+          "rejected": "已拒绝",
+          "unknown": "未知"
+        },
+        "actions": {
+          "cancel": "取消",
+          "confirmCancel": "取消邀请？",
+          "confirmCancelDesc": "确定要取消对 {email} 的邀请吗？",
+          "cancelButton": "取消邀请",
+          "canceling": "取消中...",
+          "canceled": "已取消对 {email} 的邀请",
+          "cancelFailed": "取消邀请失败，请稍后重试"
+        }
+      },
+      "tabs": {
+        "members": "团队成员",
+        "invitations": "邀请中"
+      },
+      "errors": {
+        "fetchFailed": "获取团队数据失败",
+        "noOrganization": "未选择组织"
+      }
+    },
+    "billing": {
+      "title": "订阅管理",
+      "subtitle": "管理您的订阅计划和使用情况",
+      "upgradePlan": "升级计划",
+      "quickStats": {
+        "aiRemaining": "AI 剩余次数",
+        "teamMembers": "团队成员",
+        "activeProjects": "活跃项目",
+        "currentPlan": "当前计划"
+      },
+      "currentPlan": {
+        "title": "当前计划",
+        "plan": "{plan} 计划",
+        "billingPeriodEnd": "计费周期截止：{date}"
+      },
+      "usage": {
+        "title": "使用情况概览",
+        "insufficient": "不足",
+        "aiMessages": {
+          "title": "AI 消息",
+          "titleWithPlan": "AI 消息 ({plan})",
+          "description": "本月AI聊天和生成使用量",
+          "paidDescription": "付费计划AI聊天和生成使用量",
+          "freeDescription": "免费计划AI聊天和生成使用量",
+          "hybridDescription": "AI消息配额 (付费 {paid} + 免费 {free})",
+          "used": "已使用",
+          "remaining": "剩余",
+          "total": "总计",
+          "upgradeForMore": "升级以获取更多额度"
+        },
+        "teamSeats": {
+          "title": "团队席位",
+          "description": "当前团队成员数量",
+          "used": "已使用",
+          "remaining": "剩余",
+          "total": "总计",
+          "expandSeats": "扩展团队席位"
+        },
+        "projects": {
+          "title": "项目数量",
+          "titleWithPlan": "项目数量 ({plan})",
+          "description": "当前创建的项目总数",
+          "paidDescription": "付费计划下创建的项目总数",
+          "freeDescription": "免费计划下创建的项目总数",
+          "hybridDescription": "项目配额 (付费 {paid} + 免费 {free})",
+          "used": "已使用",
+          "remaining": "剩余",
+          "total": "总计",
+          "createMore": "创建更多项目"
+        }
+      },
+      "upgrade": {
+        "title": "升级您的计划",
+        "description": "解锁更多功能，获得更高的使用限制和优先支持",
+        "features": {
+          "moreAI": "更多AI消息额度",
+          "expandTeam": "扩展团队协作",
+          "unlimitedProjects": "无限项目创建"
+        },
+        "viewPlans": "查看所有计划",
+        "resourcesRunningOut": "某些资源即将用尽，升级计划以获得更多额度",
+        "button": "升级"
+      },
+      "manage": {
+        "title": "管理计划",
+        "button": "管理计划",
+        "processing": "处理中..."
+      },
+      "loadError": {
+        "title": "加载失败",
+        "description": "无法加载订阅信息，请稍后重试或联系客服支持",
+        "backToDashboard": "返回仪表板"
+      }
+    },
+    "session": {
+      "title": "会话管理",
+      "subtitle": "查看您的账户登录会话记录，保障账户安全",
+      "refresh": "刷新会话数据",
+      "securityTip": {
+        "title": "账户安全提示",
+        "description": "定期检查您的登录会话，如发现可疑活动，请及时终止会话并与我们联系。"
+      },
+      "table": {
+        "columns": {
+          "device": "设备",
+          "ipAddress": "IP地址",
+          "location": "位置",
+          "loginTime": "登录时间",
+          "status": "状态"
+        },
+        "deviceTypes": {
+          "iPhone": "iPhone 设备",
+          "iPad": "iPad 设备",
+          "androidPhone": "Android 手机",
+          "androidTablet": "Android 平板",
+          "windows": "Windows 设备",
+          "mac": "Mac 设备",
+          "linux": "Linux 设备",
+          "other": "其他设备",
+          "unknown": "未知设备"
+        },
+        "unknownLocation": "未知位置",
+        "unknownIP": "未知",
+        "expiresAt": "过期时间: {time}",
+        "noSessions": "暂无会话记录",
+        "terminateTooltip": "终止此会话"
+      },
+      "status": {
+        "current": "当前会话",
+        "expired": "已过期",
+        "active": "活跃"
+      },
+      "actions": {
+        "terminate": "终止",
+        "terminateFailed": "终止会话失败: {error}"
+      }
+    },
+    "integrations": {
+      "title": "集成",
+      "subtitle": "连接外部服务以增强您的开发工作流程",
+      "github": {
+        "title": "GitHub 集成",
+        "description": "连接您的 GitHub 账户以创建仓库和管理代码",
+        "connected": "已连接",
+        "not_connected": "未连接",
+        "connect_button": "连接 GitHub 账户",
+        "connecting": "连接中...",
+        "connect_description": "连接您的 GitHub 账户以启用仓库创建和管理功能。",
+        "authenticating": "正在验证...",
+        "checking_connection": "正在检查连接...",
+        "connection_failed": "无法检查 GitHub 连接",
+        "repositories": "仓库",
+        "followers": "关注者",
+        "following": "正在关注",
+        "view_profile": "查看个人资料",
+        "connect_account_title": "连接您的 GitHub 账户",
+        "connect_account_description": "添加您的 GitHub 账户以管理连接的组织并同步您的项目。",
+        "connect_github": "连接 GitHub",
+        "install": {
+          "title": "安装 GitHub 应用",
+          "subtitle": "启用代码导出到您的仓库",
+          "description": "安装 Libra GitHub 应用以启用仓库访问和代码导出",
+          "button": "安装 GitHub 应用",
+          "installing": "安装中...",
+          "required_title": "需要安装",
+          "required_description": "安装 Libra GitHub 应用以启用仓库访问和代码导出。",
+          "error_popup_blocked": "弹窗被阻止。请允许此网站的弹窗并重试。",
+          "error_installation_failed": "无法打开 GitHub 应用安装页面"
+        },
+        "oauth": {
+          "title": "完成身份验证",
+          "description": "授权访问您的 GitHub 仓库",
+          "connected_personal": "已连接到 {account}（个人账户）",
+          "connected_organization": "已连接到 {account}（组织）",
+          "connected_generic": "已连接到 {account}",
+          "app_connected": "GitHub 应用已连接",
+          "access_required": "需要仓库访问权限",
+          "access_description": "授权访问您的仓库以进行代码导出。",
+          "authorize_button": "授权仓库访问"
+        },
+        "repository": {
+          "title": "选择仓库",
+          "description": "选择现有仓库",
+          "select_existing": "选择现有仓库",
+          "new_button": "新建",
+          "private_badge": "私有",
+          "select_aria_label": "选择仓库 {name}"
+        },
+        "auto_create": {
+          "title": "创建仓库",
+          "description": "为您的项目自动创建仓库",
+          "creating_title": "正在创建仓库...",
+          "ready_title": "准备导出",
+          "creating_description": "正在设置您的 GitHub 仓库",
+          "ready_description": "自动创建并导出您的项目",
+          "project_title": "项目：{name}",
+          "creating_project_description": "正在创建 GitHub 仓库并准备代码导出...",
+          "ready_project_description": "我们将自动创建一个 GitHub 仓库并导出您的项目代码。",
+          "progress_message": "这可能需要几分钟时间...",
+          "select_existing_button": "选择现有仓库"
+        },
+        "push": {
+          "title": "导出代码",
+          "description": "将代码导出到选定的仓库",
+          "files_title": "将要导出的文件：",
+          "new_file": "新文件",
+          "back_button": "返回",
+          "export_button": "导出代码"
+        },
+        "success": {
+          "title": "GitHub 集成",
+          "description": "GitHub 集成已准备好进行代码导出",
+          "ready_title": "GitHub 集成已就绪",
+          "access_title": "仓库访问",
+          "access_description": "连接有问题？重新验证",
+          "authorize_button": "授权",
+          "export_title": "导出仓库",
+          "export_description": "准备导出您的代码",
+          "sync_button": "同步文件到 GitHub"
+        },
+        "modal": {
+          "checking_connection": "正在检查 GitHub 连接...",
+          "step_install": "安装 GitHub 应用",
+          "step_oauth": "完成身份验证",
+          "step_repositories": "选择仓库",
+          "step_create": "创建仓库",
+          "step_push": "导出代码",
+          "step_success": "GitHub 集成",
+          "description_install": "安装 Libra GitHub 应用以启用代码导出",
+          "description_oauth": "授权访问您的 GitHub 仓库",
+          "description_repositories": "选择代码导出位置",
+          "description_create": "为您的项目自动创建仓库",
+          "description_push": "将代码导出到选定的仓库",
+          "description_success": "GitHub 集成已准备好进行代码导出"
+        },
+        "repository_display": {
+          "copy_tooltip": "复制仓库 URL",
+          "copied_tooltip": "已复制！",
+          "private_badge": "私有"
+        },
+        "messages": {
+          "installation_success": "GitHub 应用安装成功！",
+          "installation_cancelled": "GitHub 应用安装已取消或未完成。您可以随时重试。",
+          "installation_check_failed": "请刷新页面以检查 GitHub 应用是否安装成功。",
+          "oauth_success": "GitHub 授权完成成功！",
+          "oauth_cancelled": "GitHub 授权已取消或未完成。您可以随时重试。",
+          "oauth_check_failed": "请刷新页面以检查 GitHub 授权是否完成成功。",
+          "oauth_not_required": "组织账户不需要 OAuth 授权。",
+          "not_authenticated": "未通过 GitHub 身份验证",
+          "push_failed": "推送代码失败",
+          "refresh_failed": "刷新仓库失败",
+          "create_repo_failed": "创建项目仓库失败",
+          "popup_blocked": "弹窗被阻止。请允许此网站的弹窗并重试。",
+          "oauth_failed": "无法打开 GitHub OAuth 授权",
+          "installation_failed": "无法打开 GitHub 应用安装"
+        },
+        "test_repo": {
+          "title": "测试仓库创建",
+          "description": "通过创建新仓库来测试集成",
+          "placeholder": "测试仓库名称",
+          "button": "创建测试仓库"
+        }
+      },
+      "coming_soon": {
+        "title": "更多集成即将推出",
+        "description": "我们正在努力添加更多集成以增强您的开发体验"
+      }
+    },
+    "share": {
+      "modal": {
+        "title": "分享项目",
+        "description": "通过社交媒体或复制链接与他人分享您已部署的项目。",
+        "description_not_deployed": "请先部署您的项目，然后再与他人分享。",
+        "visibility": {
+          "title": "项目是公开的",
+          "description": "其他人可以查看和访问您的项目",
+          "privateProjectDescription": "此项目为私有项目，仅您和您的团队成员可见。",
+          "upgradeForPrivateProjects": "升级到专业版以创建私有项目。"
+        },
+        "social": {
+          "share_on_x": "在 X 上分享",
+          "share_on_facebook": "在 Facebook 上分享",
+          "share_on_linkedin": "在 LinkedIn 上分享",
+          "share_on_reddit": "在 Reddit 上分享"
+        },
+        "copy_link": {
+          "title": "或者复制链接",
+          "description": "分享项目的直接链接",
+          "copy_button": "复制"
+        },
+        "states": {
+          "loading": "正在加载项目信息...",
+          "not_deployed": "项目尚未部署。请先部署项目再进行分享。",
+          "copy_success": "项目链接已复制到剪贴板！",
+          "copy_failed": "复制项目链接失败",
+          "visibilityUpdateSuccess": "项目可见性更新成功",
+          "visibilityUpdateFailed": "更新项目可见性失败"
+        },
+        "close": "关闭对话框",
+        "share_text": {
+          "twitter": "看看我用 Libra AI 构建的项目！",
+          "linkedin_title": "我用 Libra AI 构建的项目",
+          "linkedin_summary": "看看我使用 Libra AI 构建的这个精彩项目！",
+          "reddit_title": "看看我用 Libra AI 构建的项目！"
+        }
+      }
+    },
+    "projectCard": {
+      "noDescription": "暂无描述",
+      "projectSettings": "项目设置",
+      "inactiveTooltip": "此项目已停用，无法访问",
+      "inactive": "已停用",
+      "openingProject": "正在打开项目...",
+      "inactiveAriaLabel": "此项目当前已停用",
+      "time": {
+        "updatedAgo": "{time}前更新",
+        "createdAgo": "{time}前创建",
+        "justCreated": "刚刚创建"
+      }
+    },
+    "createProject": {
+      "requirements": {
+        "title": "您想构建什么应用？",
+        "subtitle": "为 \"{projectName}\" 添加详细需求",
+        "placeholder": "描述您想要构建的应用。我们建议从一个功能开始，然后逐步添加更多功能。(例如：创建一个允许用户上传图片并在画廊中查看的应用)",
+        "required": "项目描述是必需的",
+        "generateButton": "生成应用",
+        "generating": "生成应用中...",
+        "describeProject": "请描述您想要构建的项目"
+      },
+      "notifications": {
+        "generating": "正在生成\"{projectName}\"应用...",
+        "generatingDescription": "这可能需要一些时间，请耐心等待",
+        "success": "\"{projectName}\" 应用生成成功!",
+        "successDescription": "您现在可以开始使用您的新应用",
+        "viewNow": "立即查看",
+        "updateFailed": "更新项目需求失败，请重试",
+        "generateFailed": "生成应用失败，请重试"
+      }
+    },
+    "projectDetails": {
+      "dialog": {
+        "title": "项目详情",
+        "description": "管理项目配置、团队和设置",
+        "backButton": "返回",
+        "unsaved": "未保存",
+        "unsavedChanges": "您有未保存的更改",
+        "saving": "保存中...",
+        "saveChanges": "保存修改"
+      },
+      "errors": {
+        "loadFailed": "加载项目信息失败",
+        "loadFailedDescription": "无法获取项目数据，请重试或联系管理员",
+        "retry": "重试"
+      }
+    },
+    "workspace": {
+      "switcher": {
+        "switchedTo": "已切换到工作区: {name}",
+        "switchFailed": "切换工作区失败，请重试"
+      },
+      "create": {
+        "cancel": "取消",
+        "createButton": "创建工作区",
+        "createFailed": "创建工作区失败，请重试",
+        "createFailedWithMessage": "创建工作区失败：{message}",
+        "createNew": "创建新工作区",
+        "createSuccess": "工作区 {name} 创建成功！",
+        "creating": "创建中...",
+        "description": "创建新工作区来管理您的项目或与他人协作。创建后，您可以邀请团队成员加入。",
+        "nameHelp": "为您的工作区选择一个描述性名称，以便您和团队成员能够轻松识别。",
+        "nameLabel": "工作区名称",
+        "namePlaceholder": "输入工作区名称",
+        "nameRequired": "请输入有效的工作区名称",
+        "retryMessage": "请重试",
+        "slugTaken": "此工作区标识符已被占用，请尝试其他标识符",
+        "title": "创建新工作区"
+      },
+      "projectDetails": {
+        "dateFormat": {
+          "invalid": "无效日期",
+          "unknown": "未知"
+        },
+        "notifications": {
+          "deleteFailed": "删除失败",
+          "deleteFailedDesc": "请稍后重试",
+          "deleteSuccess": "项目删除成功",
+          "saveFailed": "保存失败",
+          "saveFailedDesc": "请检查网络连接并重试",
+          "updateSuccess": "项目更新成功",
+          "updateSuccessDesc": "所有更改已保存"
+        }
+      },
+      "slugEditor": {
+        "clickToEdit": "点击编辑",
+        "customize": "自定义",
+        "description": "这将是您工作区的唯一标识符，用于URL和API调用。",
+        "editLabel": "编辑工作区标识符",
+        "fixDescription": "请修正工作区标识符以确保符合要求。",
+        "label": "工作区标识符",
+        "reset": "重置",
+        "rules": {
+          "format": "只能包含小写字母、数字和连字符",
+          "length": "必须为3-30个字符",
+          "noStartEnd": "不能以连字符开头或结尾"
+        }
+      },
+      "validation": {
+        "slugEmpty": "工作区标识符不能为空",
+        "slugTooShort": "工作区标识符必须至少3个字符",
+        "slugInvalidFormat": "工作区标识符只能包含小写字母、数字和中间的连字符",
+        "slugAlreadyInUse": "此工作区标识符已被使用，请尝试其他标识符",
+        "slugCheckFailed": "无法检查标识符可用性，请稍后重试"
+      }
+    },
+    "projectDetailsTabs": {
+      "groups": {
+        "project": "项目",
+        "content": "内容",
+        "dangerZone": "危险操作"
+      },
+      "tabs": {
+        "details": "项目详情",
+        "members": "团队成员",
+        "history": "历史记录",
+        "knowledge": "知识库",
+        "assets": "资产管理",
+        "analytics": "数据分析",
+        "danger": "删除项目"
+      },
+      "comingSoon": "即将推出",
+      "details": {
+        "basicInfo": "基本信息",
+        "projectName": "项目名称",
+        "readOnly": "只读",
+        "projectDescription": "项目描述",
+        "descriptionPlaceholder": "描述您的项目...",
+        "descriptionHint": "项目描述将用于AI理解您的项目需求。",
+        "projectNamePlaceholder": "输入项目名称",
+        "projectDescriptionPlaceholder": "项目描述将用于AI理解您的项目需求",
+        "projectDescriptionHelp": "项目描述将用于AI理解您的项目需求。",
+        "projectInfo": "项目信息",
+        "createdAt": "创建时间",
+        "lastUpdated": "最后更新",
+        "projectId": "项目ID"
+      },
+      "knowledge": {
+        "title": "知识库",
+        "description": "添加关于您项目的上下文信息，这些信息将在生成代码时使用。可以包括具体需求、约束条件或任何其他相关信息。",
+        "placeholder": "例如：\"所有组件使用 TypeScript\"，\"遵循 Material Design 设计原则\"，\"包含无障碍功能\"...（最多500字符）",
+        "tipTitle": "专业提示",
+        "tipContent": "这些信息将在您与AI助手的每次对话中自动包含。您可以添加诸如写作风格偏好、公司术语或希望AI始终记住的特定指导原则等内容。",
+        "unsaved": "未保存的更改",
+        "autoSaving": "自动保存中...",
+        "lastSaved": "已保存"
+      },
+      "danger": {
+        "title": "危险区域",
+        "description": "此区域的操作可能导致数据丢失。请谨慎操作。",
+        "warning": "警告",
+        "warningText": "删除操作不可逆转。所有项目数据、代码和配置将被永久删除。",
+        "deleteButton": "删除此项目",
+        "deleting": "删除中...",
+        "step1Title": "危险操作警告",
+        "step1Description": "您即将进入危险操作区域。请仔细阅读以下信息，确保您了解操作的后果。",
+        "step2Title": "确认删除项目",
+        "step2Instruction": "请输入项目名称 \"{projectName}\" 以确认删除操作",
+        "confirmationInputLabel": "项目名称",
+        "confirmationInputPlaceholder": "输入项目名称以确认",
+        "finalWarning": "此操作将永久删除项目及其所有数据，包括代码文件、配置信息和历史记录。此操作无法撤销。",
+        "proceedButton": "我了解风险，继续删除",
+        "backButton": "返回上一步",
+        "inputMismatchError": "输入的项目名称不匹配，请重新输入",
+        "safetyTip": "安全提示",
+        "safetyTipContent": "在删除项目之前，建议您先下载项目文件作为备份。",
+        "whatWillHappen": "删除操作将会：",
+        "consequence1": "永久删除所有项目文件和代码",
+        "consequence2": "清除项目配置和设置信息",
+        "consequence3": "删除项目的访问权限和协作信息",
+        "consequence4": "移除项目的部署和自定义域名",
+        "alternativeAction": "如果您只是想暂停项目，可以考虑导出项目文件而不是删除。",
+        "proceedToDeletion": "继续删除操作",
+        "close": "关闭",
+        "projectNameMatch": "项目名称匹配",
+        "deleteConfirm": {
+          "cancel": "取消",
+          "confirm": "确认删除",
+          "description": "此操作无法撤销。项目 \"{projectName}\" 及其所有相关数据将被永久删除。",
+          "title": "确认删除项目？"
+        },
+        "unsavedChanges": {
+          "continueEditing": "继续编辑",
+          "description": "您有未保存的更改。确定要离开吗？所有未保存的更改将丢失。",
+          "discardAndLeave": "放弃更改并离开",
+          "title": "未保存的更改"
+        }
+      }
+    },
+    "projectCreateButton": {
+      "quota": {
+        "loading": "加载配额信息中...",
+        "exhausted": "项目配额已用完 ({used}/{limit})",
+        "remaining": "剩余 {remaining} 个项目配额 ({used}/{limit} 已使用)",
+        "upgradeHint": "升级您的套餐以获取更多项目配额",
+        "upgradeButton": "立即升级"
+      }
+    }
+  },
+  "auth": {
+    "email_form": {
+      "title": "创建账户或登录",
+      "subtitle": "您将在邮箱中收到一个魔法链接",
+      "github_button": "GitHub",
+      "connecting": "连接中...",
+      "github_connecting": "正在连接 GitHub...",
+      "github_redirecting": "正在跳转到 GitHub...",
+      "github_success": "GitHub 认证成功！",
+      "github_error": "GitHub 认证失败，请重试。",
+      "github_popup_blocked": "弹窗被阻止，请允许弹窗后重试。",
+      "github_network_error": "网络错误，请检查网络连接后重试。",
+      "github_timeout": "认证超时，请重试。",
+      "github_cancelled": "认证已取消，您可以随时重试。",
+      "retry": "重试",
+      "help_popup_blocked": "启用弹窗：点击浏览器地址栏中的弹窗阻止图标，选择始终允许弹窗。",
+      "unknown_error": "未知错误",
+      "authentication_error": "身份验证错误",
+      "retry_github_auth": "重试 GitHub 身份验证",
+      "or_continue": "或继续使用",
+      "email_label": "邮箱",
+      "email_placeholder": "nextify@libra.dev",
+      "send_link": "发送我的链接",
+      "sending": "发送中...",
+      "email_required": "请输入有效的邮箱地址",
+      "captcha_required": "请完成上方的安全验证"
+    },
+    "otp_form": {
+      "change_email": "更改",
+      "verification_code": "验证码",
+      "enter_code": "输入我们发送到您邮箱的6位数字验证码",
+      "verifying": "验证中...",
+      "verify_button": "验证并登录"
+    },
+    "feature_showcase": {
+      "ai_powered_development": "AI 驱动开发",
+      "cloud_ide_environment": "云端 IDE 环境",
+      "open_source_core": "开源核心架构",
+      "github_integration": "GitHub 集成",
+      "custom_domain_deployment": "自定义域名部署",
+      "multi_model_ai_support": "多模型 AI 支持",
+      "real_time_preview": "实时预览",
+      "welcome": "欢迎来到 Libra"
+    },
+    "oauth": {
+      "continue_github": "使用 GitHub 继续",
+      "continue_google": "使用 Google 继续"
+    }
+  },
+  "ui": {
+    "typewriter": {
+      "text1": "带有问题和答案的测验页面",
+      "text2": "博客文章详情页面布局",
+      "text3": "带有侧边栏的仪表板",
+      "text4": "类似 platform.openai.com 的界面....",
+      "text5": "按钮",
+      "text6": "追踪非标准分段睡眠周期的应用",
+      "text7": "展示用户成就的透明卡片"
+    },
+    "error": {
+      "title": "错误",
+      "description": "出现了问题！",
+      "refresh": "刷新"
+    },
+    "accessibility": {
+      "close": "关闭",
+      "toggleSidebar": "切换侧边栏",
+      "sidebar": "侧边栏",
+      "sidebarDescription": "显示移动端侧边栏。",
+      "searchThroughDashboard": "搜索仪表盘",
+      "goToPreviousPage": "转到上一页",
+      "goToNextPage": "转到下一页",
+      "useAlternativeSyntax": "使用替代语法高亮",
+      "switchToCodeMode": "切换到代码模式",
+      "switchToPreviewMode": "切换到预览模式",
+      "viewSourceCode": "查看源代码",
+      "previewMarkdown": "预览 Markdown",
+      "switchToLightMode": "切换到浅色模式",
+      "switchToDarkMode": "切换到深色模式",
+      "copyToClipboard": "复制代码到剪贴板",
+      "copied": "已复制！"
+    }
+  },
+  "chat": {
+    "toolbar": {
+      "file_upload": "上传文件",
+      "enhance_prompt": "增强提示"
+    },
+    "assistantReply": "我已分析页面内容。有什么可以帮助您的吗？",
+    "className": "类名",
+    "closeChat": "关闭聊天",
+    "component": "组件",
+    "copiedToClipboard": "已复制到剪贴板",
+    "copyElementPath": "复制元素路径",
+    "element": "元素",
+    "elementSelected": "已选择元素：{tagName}",
+    "keyboardShortcut": "使用快捷键",
+    "keyboardShortcutSuffix": "快速访问聊天",
+    "placeholder": "输入消息...",
+    "question1": "这个页面的主要功能是什么？",
+    "question2": "帮我分析页面结构",
+    "question3": "解释这段代码的功能",
+    "quickQuestions": "快速问题",
+    "showMoreOptions": "显示更多选项",
+    "startConversation": "开始对话",
+    "startConversationHelper": "您可以询问关于当前代码文件的任何问题，或请求帮助分析页面元素。",
+    "thinking": "思考中...",
+    "title": "聊天助手"
+  },
+  "admin": {
+    "title": "管理员控制台",
+    "description": "管理系统用户，包括查看用户信息、封禁/解封用户等操作",
+    "current_admin": "当前登录管理员",
+    "user_management": "用户管理",
+    "user_management_description": "查看和管理系统中的所有用户，支持搜索、排序和分页功能",
+    "search_field": "搜索字段",
+    "search_placeholder_email": "按邮箱搜索...",
+    "search_placeholder_name": "按姓名搜索...",
+    "total_users": "共找到 {count} 个用户",
+    "no_data": "暂无数据",
+    "loading_failed": "加载用户数据失败",
+    "columns": {
+      "user_info": "用户信息",
+      "role": "角色",
+      "registration_time": "注册时间",
+      "email_verification": "邮箱验证",
+      "status": "状态",
+      "actions": "操作"
+    },
+    "user_status": {
+      "normal": "正常",
+      "banned": "已封禁",
+      "verified": "已验证",
+      "unverified": "未验证"
+    },
+    "user_roles": {
+      "admin": "管理员",
+      "superadmin": "超级管理员",
+      "user": "普通用户"
+    },
+    "actions": {
+      "ban": "封禁",
+      "unban": "解封",
+      "ban_user": "封禁用户",
+      "unban_user": "解封用户",
+      "confirm_ban": "确认封禁",
+      "confirm_unban": "确认解封",
+      "ban_reason": "封禁原因",
+      "ban_reason_placeholder": "请输入封禁原因...",
+      "ban_duration": "封禁时长",
+      "ban_duration_placeholder": "天数 (留空为永久封禁)",
+      "ban_duration_help": "留空表示永久封禁，输入天数表示临时封禁",
+      "ban_success": "用户已成功封禁",
+      "unban_success": "用户已成功解封",
+      "ban_failed": "封禁用户失败",
+      "unban_failed": "解封用户失败",
+      "copy_user_id": "复制用户ID",
+      "copy_email": "复制邮箱地址",
+      "view_details": "查看详细信息",
+      "more_actions": "打开菜单"
+    },
+    "ban_dialog": {
+      "title": "封禁用户",
+      "description": "您即将封禁用户 {name} ({email})。封禁后该用户将无法登录系统。",
+      "reason_optional": "封禁原因 (可选)",
+      "duration_optional": "封禁时长 (可选)"
+    },
+    "unban_dialog": {
+      "title": "确认解封用户",
+      "description": "您确定要解封用户 {name} ({email}) 吗？",
+      "ban_reason_label": "封禁原因"
+    },
+    "pagination": {
+      "total_records": "共 {total} 条记录，第 {current} 页，共 {pages} 页",
+      "first_page": "首页",
+      "previous_page": "上一页",
+      "next_page": "下一页",
+      "last_page": "末页"
+    },
+    "table": {
+      "columns_display": "列显示",
+      "no_name": "未设置姓名"
+    },
+    "search": {
+      "field_label": "搜索字段:",
+      "field_email": "邮箱",
+      "field_name": "姓名",
+      "placeholder_email": "按邮箱搜索...",
+      "placeholder_name": "按姓名搜索...",
+      "placeholder_default": "搜索..."
+    },
+    "errors": {
+      "load_failed": "加载用户数据失败",
+      "unknown_error": "未知错误",
+      "retry": "重试"
+    },
+    "status": {
+      "reason": "原因",
+      "expires": "到期",
+      "user_actions": "用户操作",
+      "open_menu": "打开菜单"
+    }
+  },
+  "common": {
+    "loading": "加载中...",
+    "loading_skeleton": {
+      "text1": "创意正在转化为代码...",
+      "text2": "AI 正在为您构建应用...",
+      "text3": "精心打磨每一行代码...",
+      "text4": "美好的应用即将诞生...",
+      "text5": "智能分析，精准构建...",
+      "text6": "代码世界正在成形...",
+      "fallback": "最美好的事物往往需要等待"
+    },
+    "error": "出现错误",
+    "retry": "重试",
+    "cancel": "取消",
+    "no_data": "暂无数据",
+    "pagination_info": "共 {total} 条记录，第 {current} 页，共 {totalPages} 页",
+    "save": "保存",
+    "delete": "删除",
+    "edit": "编辑",
+    "close": "关闭",
+    "back": "返回",
+    "next": "下一步",
+    "previous": "上一步",
+    "submit": "提交",
+    "search": "搜索",
+    "filter": "筛选",
+    "sort": "排序",
+    "language": "语言",
+    "languages": {
+      "english": "English",
+      "chinese": "中文"
+    },
+    "theme_toggle": "切换主题",
+    "user_tiers": {
+      "free": "免费版",
+      "free_desc": "免费套餐，基础功能",
+      "pro": "专业版",
+      "pro_desc": "专业套餐，更多功能",
+      "max": "最高版",
+      "max_desc": "最高套餐，无限制"
+    },
+    "user_menu": {
+      "upgrade": "升级",
+      "manage": "管理",
+      "ai_usage": "AI 消息使用量",
+      "remaining": "剩余 {count} 次",
+      "loading": "加载中...",
+      "user_menu_label": "用户菜单"
+    }
+  },
+  "userButton": {
+    "usageDisplay": {
+      "hybridPlan": "混合套餐",
+      "usageAlmostExhausted": "使用量即将耗尽",
+      "usageHigh": "使用量较高，建议升级套餐",
+      "planDetails": "套餐详情",
+      "paidPlan": "付费套餐",
+      "freeQuota": "免费额度"
+    },
+    "navigation": {
+      "dashboard": "控制台",
+      "profile": "个人资料"
+    },
+    "actions": {
+      "logOut": "退出登录"
+    }
+  },
+  "themeSwitcher": {
+    "options": {
+      "light": "浅色",
+      "dark": "深色",
+      "system": "跟随系统"
+    }
+  },
+  "networkState": {
+    "offline": "您当前处于离线状态。"
+  },
+  "avatar": {
+    "userAlt": "用户"
+  },
+  "logo": {
+    "alt": "Logo"
+  },
+  "icon": {
+    "rollback": {
+      "alt": "回滚"
+    }
+  },
+  "ide": {
+    "navbar": {
+      "download": "下载",
+      "downloadAriaLabel": "下载沙盒文件",
+      "downloading": "下载中...",
+      "downloadFailed": "下载失败，请重试。",
+      "brand": "Libra AI Web Coding",
+      "search": "搜索",
+      "switchToPreview": "切换到预览模式",
+      "switchToCode": "切换到代码模式",
+      "quotaExceeded": "AI配额已超限 - 请升级以使用此功能",
+      "quotaExceededUpgrade": "AI配额已超限。请升级以继续使用此功能。",
+      "exportToGitHub": "导出到GitHub",
+      "deploy": "部署",
+      "deploying": "部署中",
+      "deployProject": "部署项目到生产环境",
+      "deployingProject": "正在部署项目",
+      "deployProgress": "部署进度：{progress}%，当前阶段：{stage}",
+      "deployShortcut": "快捷键：Cmd+D",
+      "currentStage": "当前阶段：{stage}",
+      "deployAriaLabel": "部署项目（快捷键：Cmd+D）",
+      "deployingAriaLabel": "正在部署项目，进度：{progress}%",
+      "code": "代码",
+      "preview": "预览",
+      "switchModeTooltip": "在代码编辑器和预览模式之间切换",
+      "share": "分享",
+      "returnToDashboard": "返回控制台",
+      "libraAltText": "Libra - AI 开发平台"
+    },
+    "errorDisplay": {
+      "failedToLoad": "加载文件结构失败",
+      "networkIssue": "这可能由于网络问题或服务器暂时不可用。请稍后重试。",
+      "refreshPage": "刷新页面"
+    },
+    "chatToggle": {
+      "openChat": "打开聊天",
+      "openChatAriaLabel": "打开聊天"
+    },
+    "fileExplorer": {
+      "hideSidebar": "隐藏侧边栏",
+      "showSidebar": "显示侧边栏",
+      "codeBrowser": "代码浏览器",
+      "code": "代码",
+      "exitFullscreen": "退出全屏",
+      "enterFullscreen": "进入全屏",
+      "comments": {
+        "exposeExpandMethod": "暴露展开方法给父组件"
+      }
+    },
+    "browserToolbar": {
+      "takeScreenshot": "截图",
+      "takeScreenshotAriaLabel": "截图"
+    },
+    "helpPanel": {
+      "closeHelpPanel": "关闭帮助面板",
+      "shortcutsAndHelp": "快捷键和帮助",
+      "keyboardShortcuts": "键盘快捷键",
+      "sendMessage": "发送消息",
+      "elementSelector": "元素选择器",
+      "cancelRequest": "取消请求",
+      "usageTips": "使用技巧",
+      "selectElementsTitle": "选择元素进行交互",
+      "selectElementsDesc": "使用元素选择器直接点击页面元素进行快速交互和提问",
+      "describeRequirementsTitle": "具体描述需求",
+      "describeRequirementsDesc": "提问时，尽量清楚地描述具体需求以获得更准确的答案",
+      "cancelRequestsTitle": "取消正在进行的请求",
+      "cancelRequestsDesc": "要取消正在进行的请求，请点击暂停按钮或按ESC键",
+      "closeHelp": "关闭帮助"
+    },
+    "forkModal": {
+      "forkConversation": "分叉对话",
+      "createNewProject": "通过分叉到此点的对话创建新项目。",
+      "forkDescription": "这将创建一个包含从对话开始到此点所有消息的新项目。您可以在新项目中从此状态继续开发。",
+      "sourceProject": "源项目",
+      "forkPoint": "分叉点",
+      "whatHappens": "将发生什么：",
+      "newProjectCreated": "将创建一个新项目",
+      "conversationCopied": "所有对话历史记录将复制到此点",
+      "redirectToNew": "您将被重定向到新项目",
+      "originalUnchanged": "原项目保持不变",
+      "cancel": "取消",
+      "creatingFork": "创建分叉中...",
+      "createFork": "创建分叉"
+    },
+    "revertModal": {
+      "revertToState": "回滚到先前状态",
+      "confirmRevertAction": "此操作将永久删除所选回滚点之后创建的所有版本。",
+      "warningMessage": "⚠️ 警告：此操作无法撤销，将永久删除数据。",
+      "revertPoint": "回滚点",
+      "whatWillHappen": "将发生什么：",
+      "allVersionsAfterDeleted": "此点之后创建的所有版本将被永久删除",
+      "actionCannotBeUndone": "此操作无法撤销",
+      "projectStateRestored": "项目状态将恢复到所选点",
+      "cancel": "取消",
+      "reverting": "回滚中...",
+      "confirmRevert": "确认回滚"
+    },
+    "upgrade": {
+      "quotaStatus": "配额状态",
+      "quotaRemaining": "剩余0次"
+    },
+    "fileTree": {
+      "fileIcon": {
+        "alt": "{filename} 文件图标"
+      },
+      "accessibility": {
+        "folderLabel": "{name} 文件夹",
+        "fileLabel": "{name} 文件"
+      },
+      "console": {
+        "renderingFileTree": "渲染文件树",
+        "clickedFile": "点击文件: {path}, 类型: {type}",
+        "correctedDuplicatePath": "修正重复路径: {original} -> {corrected}"
+      },
+      "codeblock": {
+        "toolbar": {
+          "useAlternativeSyntax": "使用替代语法高亮",
+          "switchToCodeMode": "切换到代码模式",
+          "switchToPreviewMode": "切换到预览模式",
+          "viewSourceCode": "查看源代码",
+          "previewMarkdown": "预览Markdown",
+          "switchToLightMode": "切换到浅色模式",
+          "switchToDarkMode": "切换到深色模式",
+          "copyToClipboard": "复制代码到剪贴板",
+          "copied": "已复制！"
+        }
+      },
+      "codeExplorer": {
+        "selectFilePrompt": "请从左侧选择一个文件",
+        "selectFileDescription": "从文件浏览器中选择一个文件以查看其内容"
+      },
+      "imageRender": {
+        "imageLabel": "图片:",
+        "svgFile": "SVG 文件",
+        "imageFile": "图片文件"
+      },
+      "download": {
+        "noFilesAvailable": "没有可下载的文件",
+        "zipGenerationFailed": "ZIP 文件生成失败",
+        "downloadFailed": "文件下载失败"
+      }
+    },
+    "codeEditor": {
+      "editMode": "编辑模式",
+      "toggleEditMode": "切换编辑模式",
+      "deploySuccess": "文件修改已成功部署",
+      "deployFailedRetry": "部署失败，请重试",
+      "deployFailedPrefix": "部署失败: ",
+      "fileUpdateFailed": "文件更新失败",
+      "submitFailed": "提交失败，请重试",
+      "deployFailedWithError": "部署失败: {error}",
+      "cancel": "取消",
+      "submitting": "提交中...",
+      "deploying": "部署中...",
+      "retry": "重试",
+      "submit": "提交"
+    },
+    "fileDiff": {
+      "loadingDiffView": "正在加载差异视图...",
+      "unableToLoadDiffView": "无法加载差异视图",
+      "checkConsoleForInfo": "请查看控制台了解更多信息",
+      "reload": "重新加载",
+      "noDiffContentAvailable": "没有可用的差异内容",
+      "filesIdenticalOrProcessing": "文件内容相同或正在处理中",
+      "fileLabel": "文件:",
+      "linesAdded": "行已添加",
+      "linesDeleted": "行已删除",
+      "printDiff": "打印差异"
+    },
+    "deployment": {
+      "dialog": {
+        "deploymentInProgress": "正在部署项目...",
+        "deploymentStarted": "部署已成功启动！",
+        "deploymentProgressDescription": "正在部署您的项目，请稍候...",
+        "deploymentSuccessTitle": "部署成功！",
+        "deploymentSuccessDescription": "您的项目已成功部署并上线。",
+        "projectDeployedTitle": "项目已部署",
+        "projectDeployedDescription": "您的项目已经上线，可以通过下方链接访问。",
+        "deploymentConfirmationTitle": "部署项目",
+        "deploymentConfirmationDescription": "部署您的项目使其在线可访问。",
+        "currentDeploymentAddress": "网站地址",
+        "previewDeploymentAddress": "预期地址",
+        "liveDeploymentAddress": "上线地址",
+        "customDomain": "自定义域名",
+        "useCustomDomain": "使用您自己的域名访问网站",
+        "domainAddress": "域名地址",
+        "domainRequired": "请输入域名",
+        "invalidDomainFormat": "域名格式不正确",
+        "deployAfterHint": "💡 部署后需要配置 DNS 记录指向我们的服务器，我们将提供详细的配置指南",
+        "previewWarning": "此地址将在部署后可用",
+        "previewUrlSimple": "部署后可访问",
+        "deploymentUrlPreview": "预期部署地址",
+        "deploymentStatusPreview": "预览",
+        "deploymentStatusPreparing": "准备中",
+        "deploymentStatusDeploying": "部署中",
+        "deploymentStatusDeployed": "已部署",
+        "deploymentStatusLive": "已上线",
+        "deploymentStatusFailed": "部署失败",
+        "deploymentStatusExisting": "已上线",
+        "urlNotAccessibleYet": "地址将在部署后可用",
+        "urlAccessibleNow": "地址现已可访问",
+        "redeploy": "重新部署",
+        "close": "关闭",
+        "cancel": "取消",
+        "deployButton": "部署",
+        "deploying": "部署中...",
+        "customDomainRemoved": "自定义域名已移除",
+        "customDomainRemoveFailed": "移除自定义域名失败：{message}",
+        "customDomainVerifyFailed": "域名验证失败：{message}",
+        "customDomainSetSuccess": "自定义域名设置成功",
+        "customDomainSetFailed": "设置自定义域名失败：{message}",
+        "customDomainVerifySuccess": "域名验证成功",
+        "deploymentFailedUrlNotAccessible": "部署失败 - URL 无法访问",
+        "statusUnknown": "未知",
+        "copied": "已复制",
+        "copy": "复制",
+        "open": "打开",
+        "active": "激活",
+        "deploymentUrl": "部署 URL",
+        "deploymentConfirmationNote": "点击部署将启动异步部署过程，完成后您将收到通知",
+        "startingCloudflareWorkflow": "正在启动 Cloudflare 工作流...",
+        "premiumFeature": "高级功能",
+        "customDomainsPremiumFeature": "自定义域名功能仅适用于 Pro 和 Max 套餐",
+        "sslCertificateActive": "SSL 证书已激活",
+        "sslCertificateDescription": "您的自定义域名已完全配置，支持 HTTPS。",
+        "live": "在线",
+        "verify": "验证",
+        "deploymentFeatures": "部署特性",
+        "redeployProject": "重新部署项目",
+        "redeployDescription": "重新部署您的项目到最新版本",
+        "updateAtAddress": "更新地址",
+        "cancelDeployment": "取消部署",
+        "startDeployment": "开始部署",
+        "confirmationAriaLabel": "部署项目确认",
+        "redeployConfirmationAriaLabel": "重新部署项目确认",
+        "availableAfterDeploy": "部署后可用",
+        "globalCdn": "全球 CDN",
+        "sslSecurity": "SSL 安全",
+        "cancelDeploymentAriaLabel": "取消部署操作",
+        "redeployProjectAriaLabel": "重新部署项目",
+        "startDeploymentAriaLabel": "开始部署项目",
+        "deploy": "部署",
+        "successNetworkDescription": "您的项目已成功部署到全球网络",
+        "projectRunningDescription": "您的项目正在线上运行",
+        "deploymentComplete": "部署完成",
+        "liveRunning": "在线运行",
+        "liveAddress": "在线地址",
+        "accessDescription": "您的项目现在可以通过以下地址访问",
+        "httpsSecurityFeature": "HTTPS 安全连接与 SSL 加密",
+        "globalCdnFeature": "全球 CDN 加速访问",
+        "serviceAvailability": "99.9% 服务可用性保障",
+        "httpsSecurityShort": "HTTPS 安全连接",
+        "globalCdnShort": "全球 CDN 加速",
+        "secureLabel": "安全",
+        "fastLabel": "加速",
+        "reliableLabel": "可靠",
+        "secureTooltip": "HTTPS 安全连接与 SSL 加密",
+        "fastTooltip": "全球 CDN 加速访问",
+        "reliableTooltip": "99.9% 服务可用性保障",
+        "closeDialogAriaLabel": "关闭对话框",
+        "titles": {
+          "confirmation": "部署项目",
+          "progress": "部署进行中",
+          "success": "部署成功",
+          "existing": "项目已部署",
+          "default": "部署"
+        },
+        "descriptions": {
+          "confirmation": "确认部署设置并开始部署流程",
+          "progress": "正在部署您的项目，请稍候...",
+          "success": "您的项目已成功部署并可在线访问",
+          "existing": "管理您的现有部署",
+          "default": "部署您的项目"
+        },
+        "announcements": {
+          "confirmation": "部署确认阶段",
+          "progress": "部署进行中",
+          "success": "部署成功完成",
+          "existing": "现有部署管理",
+          "default": "部署状态已更新"
+        }
+      },
+      "progress": {
+        "preparingEnvironment": "准备部署环境...",
+        "deployingProject": "正在部署项目",
+        "deploymentProgress": "部署进度",
+        "start": "开始",
+        "complete": "完成",
+        "completed": "完成",
+        "deploymentTime": "⏱️ 部署过程通常需要 1-3 分钟，请耐心等待",
+        "buildingOptimizing": "我们正在为您构建和优化项目文件",
+        "deployingToGlobalNetwork": "部署到全球网络...",
+        "deploymentAlmostComplete": "部署即将完成...",
+        "deploymentInProgress": "部署进行中...",
+        "estimatedTimeRemaining": "预计剩余时间",
+        "deploymentStages": "部署阶段",
+        "stages": {
+          "startingWorkflow": "启动 Cloudflare 工作流程",
+          "buildingOptimizing": "构建和优化项目文件",
+          "deployingToNetwork": "部署到全球网络",
+          "almostComplete": "部署即将完成"
+        },
+        "estimatedTime": {
+          "twoToThreeMinutes": "2-3 分钟",
+          "oneToTwoMinutes": "1-2 分钟",
+          "lessThanOneMinute": "少于 1 分钟"
+        },
+        "ariaLabels": {
+          "progress": "进度: {progress}%",
+          "progressRing": "进度环: {progress}%",
+          "progressIndicator": "进度指示器"
+        }
+      },
+      "customDomain": {
+        "baseUrl": "基础URL",
+        "yourDomain": "您的域名",
+        "visitYourDomain": "访问您的域名：",
+        "setFollowingRecords": "请在您的DNS服务商设置以下记录。",
+        "record": "记录",
+        "type": "类型",
+        "name": "名称",
+        "target": "值",
+        "dnsPropagationTime": "DNS 更改可能需要最多 48 小时生效。",
+        "removeDomain": "移除域名",
+        "active": "已激活",
+        "verified": "待配置",
+        "pending": "待验证",
+        "failed": "验证失败",
+        "ownershipVerification": "用于验证域名所有权",
+        "sslCertificateVerification": "用于SSL证书自动验证",
+        "domainResolution": "用于域名解析到网站",
+        "sslCertificateActive": "SSL证书已激活",
+        "sslStatus": "您的自定义域名已配置完成，SSL证书状态：",
+        "addCustomDomain": "添加自定义域名",
+        "domainVerification": "域名验证",
+        "domainConfiguration": "域名配置",
+        "addDnsRecord": "添加以下DNS记录以验证域名所有权：",
+        "addCnameRecords": "添加以下CNAME记录以完成域名配置：",
+        "addARecords": "添加以下A记录以完成域名配置：",
+        "addDnsRecordsApex": "对于顶级域名，请添加以下A记录。如果您的域名供应商支持CNAME扁平化，也可以使用CNAME记录：",
+        "addDnsRecordsSubdomain": "对于二级域名，请添加以下CNAME记录：",
+        "cnameFlattening": "CNAME扁平化备选方案",
+        "cnameAlternative": "如果您的域名供应商支持CNAME扁平化（CNAME flattening），您也可以创建CNAME记录指向 customers.libra.sh",
+        "verificationFailed": "验证失败。DNS更改可能需要最多48小时生效。",
+        "ownershipVerified": "域名所有权验证成功。请配置上述CNAME记录以完成设置。",
+        "dnsHint": "DNS更改可能需要最多48小时生效。点击验证检查状态。",
+        "setting": "设置中",
+        "setDomain": "设置域名",
+        "cancel": "取消",
+        "verify": "验证",
+        "customDomain": "自定义域名",
+        "configuring": "配置中",
+        "sslPendingValidation": "SSL 证书验证待处理",
+        "sslPendingDescription": "SSL 证书正在验证中。请配置下方的 DNS 记录以完成此过程。"
+      },
+      "success": {
+        "deploymentSuccessTitle": "部署成功！",
+        "projectDeployedTitle": "项目已部署",
+        "deploymentSuccessDescription": "您的项目已成功部署到全球网络",
+        "projectDeployedDescription": "您的项目正在线上运行",
+        "liveUrlTitle": "在线地址",
+        "liveUrlSubtitle": "Live Site URL",
+        "cancel": "取消",
+        "redeploy": "重新部署",
+        "complete": "完成"
+      },
+      "features": {
+        "sslEnabled": "SSL 已启用",
+        "cdnAccelerated": "CDN 已加速",
+        "realTimeSync": "实时同步",
+        "fastAccess": "快速访问",
+        "sslCertificate": "SSL 证书"
+      },
+      "urlStatus": {
+        "liveOnline": "实时在线",
+        "sslEnabled": "已启用 SSL"
+      },
+      "status": {
+        "success": "成功",
+        "warning": "警告",
+        "error": "错误",
+        "info": "信息",
+        "loading": "加载中",
+        "preparingRedeploy": "准备重新部署",
+        "preparingDeploy": "准备部署"
+      },
+      "error": {
+        "deploymentFailed": "部署失败",
+        "deploymentError": "部署出现错误",
+        "unexpectedError": "部署过程中发生了意外错误，请重试或联系支持团队。",
+        "categories": {
+          "network": {
+            "title": "网络连接错误",
+            "description": "请检查您的网络连接",
+            "suggestion": "确保网络连接稳定"
+          },
+          "timeout": {
+            "title": "部署超时",
+            "description": "部署时间过长",
+            "suggestion": "可能是项目较大或网络较慢导致"
+          },
+          "build": {
+            "title": "构建错误",
+            "description": "构建过程中出现错误",
+            "suggestion": "请检查代码是否有错误"
+          },
+          "unknown": {
+            "title": "部署错误",
+            "description": "发生了意外错误",
+            "suggestion": "请重试或联系支持团队"
+          }
+        },
+        "actions": {
+          "close": "关闭",
+          "closeAriaLabel": "关闭错误对话框",
+          "retry": "重试",
+          "retryDeployment": "重试部署",
+          "retryAriaLabel": "重试部署",
+          "retryOperationAriaLabel": "重试操作",
+          "getHelp": "获取帮助",
+          "getHelpAriaLabel": "获取帮助"
+        },
+        "details": {
+          "technicalDetails": "技术详情"
+        },
+        "solutions": {
+          "title": "常见解决方案",
+          "checkCode": {
+            "title": "检查代码",
+            "description": "确保没有语法错误"
+          },
+          "checkNetwork": {
+            "title": "网络连接",
+            "description": "检查网络连接是否稳定"
+          }
+        }
+      },
+      "actions": {
+        "canRedeploy": "可以重新部署更新",
+        "operationComplete": "部署操作完成"
+      },
+      "statusLabels": {
+        "preparing": "准备中",
+        "deploying": "部署中",
+        "success": "部署成功",
+        "error": "部署失败",
+        "cancelled": "已取消",
+        "deploymentStatus": "部署状态"
+      },
+      "urlPreview": {
+        "openWebsite": "打开网站 {url}",
+        "previewAddress": "预览地址: {url}",
+        "copiedToClipboard": "已复制到剪贴板",
+        "copyLinkToClipboard": "复制链接到剪贴板"
+      },
+      "dnsRecords": {
+        "descriptions": {
+          "ownershipVerification": "域名所有权验证",
+          "sslVerification": "SSL 证书验证",
+          "domainResolution": "域名解析",
+          "cnameFlattening": "CNAME 扁平化"
+        },
+        "statuses": {
+          "active": "活跃",
+          "verified": "已验证",
+          "pending": "待处理",
+          "failed": "失败",
+          "unknown": "状态未知"
+        }
+      }
+    },
+    "customDomain": {
+      "title": "自定义域名",
+      "description": "使用您自己的域名访问网站",
+      "addDomain": "添加自定义域名",
+      "domainPlaceholder": "example.com",
+      "setDomain": "设置",
+      "cancel": "取消",
+      "verify": "验证",
+      "remove": "移除",
+      "status": {
+        "pending": "待验证",
+        "verified": "已验证",
+        "active": "已激活",
+        "failed": "验证失败"
+      },
+      "messages": {
+        "setSuccess": "自定义域名设置成功",
+        "setError": "设置自定义域名失败: {message}",
+        "verifySuccess": "域名验证成功",
+        "verifyError": "域名验证失败: {message}",
+        "removeSuccess": "自定义域名已移除",
+        "removeError": "移除自定义域名失败: {message}",
+        "domainRequired": "请输入域名",
+        "invalidFormat": "域名格式不正确",
+        "domainReserved": "此域名已被保留，无法使用",
+        "verificationInstructions": "请在您的域名DNS设置中添加以下CNAME记录以启用DCV委派和SSL证书自动颁发：",
+        "setupInstructions": "设置后需要验证域名所有权，请确保您有该域名的管理权限",
+        "dcvDelegation": {
+          "title": "DCV委派配置",
+          "description": "此记录将允许Cloudflare自动为您的域名颁发和续订SSL证书",
+          "recordName": "名称",
+          "recordType": "类型",
+          "recordValue": "值"
+        }
+      },
+      "api": {
+        "cloudflare": {
+          "tokenNotConfigured": "Cloudflare API令牌未配置",
+          "dnsQueryFailed": "DNS查询失败：{message}",
+          "dnsQueryError": "DNS查询返回错误状态",
+          "createHostnameFailed": "创建自定义主机名失败",
+          "hostnameCreationFailed": "自定义主机名创建失败",
+          "getHostnameStatusFailed": "获取自定义主机名状态失败",
+          "deleteHostnameFailed": "删除自定义主机名失败",
+          "getZoneIdFailed": "获取区域ID失败",
+          "createDnsRecordFailed": "创建DNS记录失败",
+          "dnsRecordCreationFailed": "DNS记录创建失败",
+          "apiError": "Cloudflare API错误：{message}",
+          "domainNotFound": "在Cloudflare账户中未找到域名"
+        }
+      }
+    },
+    "github": {
+      "modal": {
+        "checkingConnection": "正在检查GitHub连接...",
+        "loadingStatus": "正在加载GitHub集成状态..."
+      }
+    },
+    "deploymentHook": {
+      "deploymentComplete": "部署完成",
+      "deploymentFailed": "部署失败",
+      "deploymentSuccess": "项目部署成功！访问地址：{url}",
+      "deploymentError": "部署失败：{message}",
+      "deploymentStarted": "部署已成功启动！",
+      "deploymentInProgress": "部署进行中...",
+      "cannotDeployNoProjectId": "无法部署：项目ID不存在",
+      "preparingEnvironment": "准备部署环境...",
+      "buildingProject": "构建项目文件...",
+      "uploadingToServer": "上传到服务器...",
+      "configuringRuntime": "配置运行环境...",
+      "deploying": "部署中..."
+    },
+    "statusComponents": {
+      "loadingContent": "正在加载内容...",
+      "pleaseBePatient": "请耐心等待，我们正在处理您的请求。",
+      "noContentAvailable": "暂无可用内容",
+      "noContentToDisplay": "暂无可显示的内容"
+    },
+    "unifiedLoadingSystem": {
+      "loadingTabs": "正在加载标签页...",
+      "loadingMessage": "正在加载消息...",
+      "loadingPlan": "正在加载计划...",
+      "loadingCommands": "正在加载命令...",
+      "loadingCodeChanges": "正在加载代码更改..."
+    },
+    "fileComponents": {
+      "new": "新建",
+      "edit": "编辑",
+      "openFile": "打开 {path}",
+      "viewDiff": "查看 {fileName} 的差异",
+      "fileChanges": "文件更改",
+      "noFileChanges": "无文件更改",
+      "file": "个文件",
+      "files": "个文件"
+    },
+    "diffModal": {
+      "modifiedFile": "已修改文件",
+      "newFile": "新建文件",
+      "dialogTitle": "文件差异：{path} ({fileTypeText})",
+      "dialogDescription": "查看 {path} ({fileTypeText}) 的更改。新增 {additions} 行，删除 {deletions} 行。",
+      "unableToOpenFile": "无法打开文件",
+      "new": "新建",
+      "edit": "编辑",
+      "loadingFailed": "加载失败",
+      "retry": "重试",
+      "contentUnavailable": "内容不可用",
+      "unableToLoadDiff": "无法加载文件差异",
+      "modified": "已修改",
+      "close": "关闭",
+      "openFile": "打开文件",
+      "closeDialog": "关闭对话框"
+    }
+  },
+  "browserPreview": {
+    "toolbar": {
+      "themeChanged": "主题已切换为 {theme}",
+      "viewChanged": "已切换到 {view} 视图",
+      "switchToDarkTheme": "切换到深色主题",
+      "switchToLightTheme": "切换到浅色主题",
+      "switchToSystemTheme": "切换到系统主题",
+      "back": "后退",
+      "forward": "前进",
+      "refresh": "刷新",
+      "switchToDesktop": "切换到桌面视图",
+      "switchToMobile": "切换到移动视图"
+    },
+    "chat": {
+      "elementSelected": "已选择元素：{tagName}",
+      "assistantReply": "我已分析页面内容。有什么可以帮助您的吗？",
+      "showMoreOptions": "显示更多选项",
+      "title": "聊天助手",
+      "closeChat": "关闭聊天",
+      "startConversation": "开始对话",
+      "startConversationHelper": "您可以询问关于当前代码文件的任何问题，或请求帮助分析页面元素。",
+      "quickQuestions": "快速问题",
+      "question1": "这个页面的主要功能是什么？",
+      "question2": "帮我分析页面结构",
+      "question3": "解释这段代码的功能",
+      "keyboardShortcut": "使用快捷键",
+      "keyboardShortcutSuffix": "快速访问聊天",
+      "thinking": "思考中...",
+      "placeholder": "输入消息...",
+      "copyElementPath": "复制元素路径",
+      "copiedToClipboard": "已复制到剪贴板",
+      "element": "元素",
+      "className": "类名",
+      "component": "组件"
+    },
+    "frameViewer": {
+      "loadError": "无法加载页面 \"{src}\"。请检查 URL 或网络连接。",
+      "loadFailed": "加载失败",
+      "checkUrl": "请检查 URL 或网络连接后重试。",
+      "title": "浏览器预览"
+    },
+    "messageDialog": {
+      "title": "iframe 消息",
+      "noMessages": "暂无消息历史",
+      "noMessagesHelper": "与 iframe 的交互消息将在此处显示"
+    },
+    "iframeManager": {
+      "cannotCommunicate": "无法与预览窗口通信",
+      "cannotLoadUrl": "无法加载 URL：{url}",
+      "inspectorActivated": "元素选择器已激活。点击页面元素进行选择。",
+      "inspectorDeactivated": "元素选择器已停用",
+      "urlRedirected": "URL 已重定向到本地地址。您可能需要检查应用程序配置。",
+      "pageLoadFailed": "页面加载失败"
+    },
+    "messageHandler": {
+      "elementSelected": "元素已选择"
+    },
+    "index": {
+      "getPreviewUrlFailed": "获取预览 URL 失败",
+      "getPreviewUrlError": "获取预览 URL 失败，请稍后重试",
+      "projectIdMissing": "项目 ID 缺失"
+    },
+    "loading": {
+      "connecting": "正在连接服务器...",
+      "initializing": "正在初始化预览...",
+      "rendering": "正在渲染内容...",
+      "ready": "即将完成..."
+    }
+  },
+  "dashboard_nav": {
+    "title": "Libra"
+  },
+  "chatPanel": {
+    "main": {
+      "ariaLabel": "Chat assistant panel"
+    },
+    "header": {
+      "title": "设计助手",
+      "expandPanel": "展开面板",
+      "collapsePanel": "收起面板",
+      "closePanel": "关闭面板"
+    },
+    "input": {
+      "placeholder": "输入您的消息...",
+      "placeholderQuotaExceeded": "AI配额已超限。请升级以继续。",
+      "characterCount": "{current}/{max}",
+      "chatInputLabel": "聊天输入",
+      "send": "发送",
+      "sendAriaLabel": "发送消息",
+      "stop": "停止",
+      "stopAriaLabel": "停止生成"
+    },
+    "notifications": {
+      "promptEnhanced": "提示增强成功！",
+      "loginRequired": "请登录以使用提示增强功能",
+      "enhanceFailed": "增强提示失败，请重试。"
+    },
+    "errors": {
+      "generic": "处理您的请求时出现错误，请稍后重试。",
+      "quotaExceeded": "AI配额已用完",
+      "quotaExceededDesc": "您已达到AI使用限制。请升级您的套餐或等待下一个计费周期。",
+      "unauthorized": "请登录后继续",
+      "forbidden": "访问被拒绝。请检查您的权限。",
+      "upgradeButton": "升级套餐"
+    },
+    "toolbar": {
+      "enhance_prompt": "增强提示",
+      "file_upload": "上传文件",
+      "select_elements": "选择元素",
+      "stop_selecting": "停止选择",
+      "toggle_element_selector": "切换元素选择器",
+      "send_message": "发送消息",
+      "stop_generation": "停止生成",
+      "quotaExceededElementSelection": "AI配额已用完。请升级以使用元素选择。",
+      "quotaExceededFileUpload": "AI配额已用完。请升级以上传文件。",
+      "quotaExceededElementSelectionShort": "AI配额已用完 - 升级以使用元素选择",
+      "quotaExceededFileUploadShort": "AI配额已用完 - 升级以上传文件"
+    },
+    "autoFix": {
+      "button": "自动修复",
+      "processing": "修复中...",
+      "errorsDetected": "检测到 {count} 个错误",
+      "recentErrors": "最近的错误：",
+      "andMore": "... 还有 {count} 个",
+      "tooltip": {
+        "fix": "使用AI自动修复 {count} 个检测到的错误",
+        "processing": "自动修复正在分析和修复检测到的错误...",
+        "quotaExceeded": "AI配额已用完。请升级以使用自动修复功能。"
+      },
+      "aria": {
+        "button": "自动修复 {count} 个错误",
+        "processing": "自动修复正在处理中...",
+        "quotaExceeded": "AI配额已用完 - 升级以使用自动修复"
+      }
+    },
+    "upgrade": {
+      "quotaExceededShort": "AI配额已用完",
+      "upgrade": "升级"
+    },
+    "fileUpload": {
+      "removeFile": "Remove file"
+    },
+    "newMessage": {
+      "viewNewMessages": "View new messages",
+      "newMessage": "New message",
+      "newMessages": "{count} new messages"
+    },
+    "selectedElements": {
+      "title": "已选元素",
+      "clearAll": "清除全部",
+      "removeElement": "移除 {name}"
+    },
+    "elementSelector": {
+      "activatedSuccess": "元素选择模式已激活",
+      "activationFailed": "激活元素选择模式失败",
+      "deactivated": "元素选择模式已停用",
+      "elementRemoved": "已移除 {tagName} 元素",
+      "stateInactive": "点击开始选择元素",
+      "stateActivating": "正在启动选择模式...",
+      "stateActive": "点击页面元素进行选择",
+      "stateSelecting": "已选择 {count} 个元素",
+      "autoDeactivated": "选择模式已自动停用",
+      "maxSelectionsReached": "最多只能选择 {max} 个元素",
+      "elementAlreadySelected": "该元素已被选择",
+      "elementAdded": "已选择 {tagName} 元素",
+      "allElementsCleared": "已清除 {count} 个选中元素"
+    },
+    "elementEditor": {
+      "title": "编辑元素",
+      "sections": {
+        "content": "填充文本",
+        "typography": "字号&字重",
+        "color": "文本颜色",
+        "margin": "外边距",
+        "padding": "内边距"
+      },
+      "fields": {
+        "content": "内容",
+        "contentPlaceholder": "输入文本内容...",
+        "fontSize": "字号",
+        "fontWeight": "字重",
+        "color": "颜色",
+        "colorPlaceholder": "white",
+        "marginTop": "上",
+        "marginRight": "右",
+        "marginBottom": "下",
+        "marginLeft": "左",
+        "paddingTop": "上",
+        "paddingRight": "右",
+        "paddingBottom": "下",
+        "paddingLeft": "左"
+      },
+      "fontWeights": {
+        "normal": "Normal",
+        "bold": "Bold",
+        "lighter": "Lighter"
+      },
+      "buttons": {
+        "deleteElement": "删除元素",
+        "cancel": "取消",
+        "applyChanges": "应用更改",
+        "submitToAI": "提交到AI"
+      }
+    },
+    "modelSelector": {
+      "currentModel": "当前选择的AI模型: {name}",
+      "modelMenu": "AI模型选择菜单",
+      "subscriptionError": "无法获取订阅信息",
+      "subscriptionErrorDesc": "请检查网络连接或稍后重试",
+      "modelSwitched": "已切换到 {name}",
+      "modelRestricted": "{name} 需要升级订阅",
+      "upgrade": "升级",
+      "quotaExceededChangeModels": "AI配额已用完。请升级以更改模型。",
+      "quotaExceededChangeModelsShort": "AI配额已用完 - 升级以更改模型"
+    },
+    "modelItem": {
+      "planBadge": {
+        "free": "免费",
+        "pro": "专业版",
+        "max": "最高版"
+      },
+      "upgradeTooltip": {
+        "title": "需要升级订阅",
+        "description": "此模型需要 {plan} 订阅才能使用",
+        "upgradeButton": "立即升级",
+        "requiresPlan": "需要 {plan}",
+        "upgradeToAccess": "升级后您将获得：",
+        "upgradeButtonText": "升级到 {plan}",
+        "planFeatures": {
+          "pro1": "高级AI模型",
+          "pro2": "无限对话",
+          "pro3": "优先支持",
+          "max1": "所有AI模型",
+          "max2": "无限制使用",
+          "max3": "专属支持",
+          "max4": "早期功能访问"
+        }
+      }
+    },
+    "message": {
+      "processingError": "Processing Error",
+      "retry": "Retry",
+      "thinkingExpanded": "Thinking process expanded",
+      "thinkingCollapsed": "Thinking process collapsed",
+      "expandThinking": "Expand thinking process",
+      "collapseThinking": "Collapse thinking process",
+      "viewThinkingProcess": "View Thinking Process",
+      "thinkingProcessDetails": "AI thinking process details",
+      "messageContent": "Message content"
+    }
+  },
+  "upgradeModal": {
+    "editMode": {
+      "title": "需要升级",
+      "description": "请升级以使用编辑模式。",
+      "features": {
+        "editCode": "编辑和修改代码文件",
+        "deployChanges": "即时部署更改",
+        "unlimitedEdits": "无限制文件编辑"
+      }
+    },
+    "aiModel": {
+      "title": "高级AI模型访问",
+      "description": "访问 {model} 需要升级。",
+      "features": {
+        "advancedModels": "访问高级AI模型",
+        "unlimitedUsage": "无限制AI对话",
+        "prioritySupport": "优先支持"
+      }
+    },
+    "projectLimit": {
+      "title": "项目数量已达上限",
+      "description": "升级以创建无限数量的项目。",
+      "features": {
+        "unlimitedProjects": "无限制项目创建",
+        "teamCollaboration": "团队协作功能",
+        "advancedFeatures": "高级项目功能"
+      }
+    }
+  },
+  "notFound": {
+    "title": "404",
+    "subtitle": "页面未找到",
+    "description": "您要查找的页面可能已被删除、更名或暂时不可用。",
+    "buttons": {
+      "home": "首页",
+      "dashboard": "控制台",
+      "goBack": "返回"
+    },
+    "svg": {
+      "error404": "404",
+      "pageNotFoundText": "页面未找到。"
+    }
+  },
+  "lib": {
+    "fileTree": {
+      "downloadSuccess": "项目文件下载成功",
+      "sampleDownloadSuccess": "示例项目文件下载成功",
+      "downloadFailed": "下载失败: {errorMessage}"
+    }
+  },
+  "privacy": {
+    "title": "隐私政策",
+    "lastUpdated": "最后更新：{date}",
+    "about": {
+      "title": "关于本隐私政策",
+      "description": "您的隐私对我们非常重要。本隐私政策说明了当您使用我们的平台时，我们如何收集、使用和保护您的信息。",
+      "serviceDescription": "本隐私声明描述了当您使用我们的服务时，我们可能如何以及为什么访问、收集、存储、使用和/或共享您的个人信息，包括当您：",
+      "usageScenarios": {
+        "website": "访问我们的网站 {websiteUrl}，或任何链接到本隐私声明的我们的网站",
+        "platform": "使用我们的 AI 开发平台和工具",
+        "interaction": "以其他相关方式与我们互动，包括任何销售、营销或活动"
+      }
+    },
+    "concerns": {
+      "title": "有疑问或担忧？",
+      "description": "阅读本隐私声明将帮助您了解您的隐私权利和选择。我们负责决定如何处理您的个人信息。如果您不同意我们的政策和做法，请不要使用我们的服务。如果您仍有任何疑问或担忧，请通过 {contactEmail} 联系我们。"
+    },
+    "tableOfContents": {
+      "title": "目录"
+    },
+    "sections": {
+      "informationCollection": {
+        "title": "信息收集",
+        "shortDescription": "我们在您使用我们的平台时可能收集以下类型的信息。",
+        "personalInfo": {
+          "title": "个人信息",
+          "description": "当您注册时，我们收集您的姓名、电子邮件地址和其他联系详情。"
+        },
+        "usageData": {
+          "title": "使用数据",
+          "description": "关于您如何与我们平台互动的信息，例如页面访问和活动日志。"
+        },
+        "contentData": {
+          "title": "内容数据",
+          "description": "您使用我们平台创建的任何项目、提示或其他内容。"
+        }
+      },
+      "usage": {
+        "title": "使用方式",
+        "shortDescription": "我们使用收集的数据来提供、维护和改进我们的平台。",
+        "description": "我们使用收集的数据来：",
+        "purposes": {
+          "platform": "提供、维护和改进我们的平台",
+          "personalization": "个性化您的体验",
+          "communication": "就更新和支持与您沟通",
+          "security": "确保安全并防止欺诈"
+        }
+      },
+      "dataSharingSecurity": {
+        "title": "数据共享与安全",
+        "shortDescription": "我们致力于保护您的信息，并对我们如何共享数据保持透明。",
+        "noMarketing": {
+          "title": "不进行营销销售",
+          "description": "我们不会出售或与第三方分享您的个人信息用于营销目的。"
+        },
+        "trustedProviders": {
+          "title": "可信服务提供商",
+          "description": "我们可能与协助运营我们平台的可信服务提供商共享数据。"
+        },
+        "securityMeasures": {
+          "title": "安全措施",
+          "description": "我们实施行业标准的安全措施来保护您的信息。"
+        }
+      },
+      "cookiesTracking": {
+        "title": "Cookie与跟踪",
+        "shortDescription": "我们使用 Cookie 和类似技术来改善您的体验。",
+        "description": "我们使用 Cookie 和类似技术来改善您的体验。您可以在浏览器设置中管理您的 Cookie 偏好。",
+        "analyticsTools": {
+          "title": "分析和用户体验工具",
+          "description": "我们使用以下第三方分析和用户体验工具来收集和分析用户与我们服务交互的数据：",
+          "ga4": {
+            "title": "Google Analytics 4 (GA4)",
+            "description": "我们使用 Google Analytics 4 来分析网站流量、用户行为和性能指标。这帮助我们了解用户如何与我们的服务交互并改善用户体验。GA4 可能收集您的 IP 地址、浏览器类型、访问页面和在我们网站上花费的时间等信息。"
+          },
+          "posthog": {
+            "title": "PostHog",
+            "description": "我们使用 PostHog 进行产品分析和用户体验优化。PostHog 帮助我们跟踪用户交互、功能使用情况，并识别我们服务中需要改进的领域。这包括收集用户操作、会话记录（启用时）和使用模式的数据。"
+          }
+        },
+        "conclusion": "这些分析工具对我们了解用户需求、改进我们的服务并提供更好的用户体验至关重要。收集的数据仅用于分析目的和服务改进。"
+      }
+    },
+    "contact": {
+      "title": "联系我们",
+      "description": "如果您对本隐私政策有任何疑问或意见，请通过 {contactEmail} 联系我们。"
+    },
+    "updates": {
+      "title": "政策更新",
+      "description": "我们可能会不时更新本隐私政策。更新版本将通过更新的修订日期表示，更新版本一旦可访问即生效。我们建议您定期查看本隐私政策以了解我们如何保护您的信息。"
+    },
+    "closing": {
+      "statement": "通过使用我们的平台，您同意本隐私政策。我们致力于保护您的隐私，并确保数据处理的透明度。您的信任对我们很重要，我们持续努力改进我们的安全和数据实践，为您提供安全无缝的体验。"
+    }
+  },
+  "terms": {
+    "title": "服务条款",
+    "lastUpdated": "最后更新：{date}",
+    "agreement": {
+      "title": "同意我们的法律条款",
+      "description": "我们是 Libra AI，提供 AI 开发工具和服务。",
+      "serviceDescription": "我们运营网站 {websiteUrl}，以及任何其他引用或链接到这些法律条款的相关产品和服务。",
+      "warning": "如果您不同意所有这些法律条款，则明确禁止您使用服务，您必须立即停止使用。"
+    },
+    "tableOfContents": {
+      "title": "目录"
+    },
+    "sections": {
+      "ourServices": {
+        "title": "我们的服务",
+        "content": {
+          "paragraph1": "使用服务时提供的信息不适用于在任何司法管辖区或国家分发或使用，如果此类分发或使用违反法律或法规，或会使我们在此类司法管辖区或国家承担任何注册要求。",
+          "paragraph2": "服务不是为了符合行业特定法规（健康保险便携性和责任法案 (HIPAA)、联邦信息安全管理法案 (FISMA) 等）而定制的，因此如果您的互动受到此类法律约束，您不得使用服务。您不得以违反格拉姆-里奇-比利雷法案 (GLBA) 的方式使用服务。"
+        }
+      },
+      "intellectualProperty": {
+        "title": "知识产权",
+        "ourPropertyTitle": "我们的知识产权",
+        "ourPropertyParagraph1": "我们是服务中所有知识产权的所有者或被许可人，包括所有源代码、数据库、功能、软件、网站设计、音频、视频、文本、照片和图形（统称为\\\"内容\\\"），以及其中包含的商标、服务标记和徽标（\\\"标记\\\"）。",
+        "ourPropertyParagraph2": "我们的内容和标记受版权和商标法（以及各种其他知识产权和不正当竞争法）以及美国和世界各地的条约保护。",
+        "ourPropertyParagraph3": "内容和标记通过服务\\\"按原样\\\"提供，仅供您个人、非商业用途或内部业务目的使用。",
+        "yourUseTitle": "您对我们服务的使用",
+        "yourUseParagraph1": "在您遵守这些法律条款（包括下面的\\\"禁止活动\\\"部分）的前提下，我们授予您非独占、不可转让、可撤销的许可：",
+        "yourUseList1": "访问服务",
+        "yourUseList2": "下载或打印您已正确获得访问权限的任何内容部分的副本"
+      },
+      "userRepresentations": {
+        "title": "用户声明",
+        "intro": "通过使用服务，您声明并保证：",
+        "list1": "您提交的所有注册信息都是真实、准确、最新和完整的",
+        "list2": "您将保持此类信息的准确性，并根据需要及时更新此类注册信息",
+        "list3": "您具有法律行为能力，并同意遵守这些法律条款",
+        "list4": "您在居住的司法管辖区内不是未成年人",
+        "list5": "您不会通过机器人、脚本或其他自动化或非人工方式访问服务",
+        "list6": "您不会将服务用于任何非法或未经授权的目的",
+        "list7": "您对服务的使用不会违反任何适用的法律或法规",
+        "conclusion": "如果您提供的任何信息不真实、不准确、不是最新的或不完整的，我们有权暂停或终止您的账户，并拒绝您当前或将来使用服务（或其任何部分）。"
+      },
+      "userRegistration": {
+        "title": "用户注册",
+        "paragraph1": "您可能需要注册才能使用服务。您同意对您的 cloudflare 令牌保密，并对您账户和 cloudflare 令牌的所有使用负责。如果我们自行判断您选择的用户名不当、淫秽或其他令人反感，我们保留删除、收回或更改您选择的用户名的权利。"
+      },
+      "purchasesPayment": {
+        "title": "购买和付款",
+        "paymentIntro": "我们接受以下付款方式：",
+        "paymentVisa": "Visa",
+        "paymentMastercard": "Mastercard",
+        "paymentAmex": "American Express",
+        "paymentStripe": "Stripe",
+        "paragraph1": "您同意为通过服务进行的所有购买提供当前、完整和准确的购买和账户信息。您进一步同意及时更新账户和付款信息，包括电子邮件地址、付款方式和付款卡到期日期，以便我们能够完成您的交易并根据需要联系您。我们认为需要时会在购买价格中加上销售税。我们可以随时更改价格。所有付款均以美元计算。",
+        "paragraph2": "我们保留拒绝通过服务下达的任何订单的权利。我们可以自行决定限制或取消每人、每户或每订单的购买数量。这些限制可能包括在同一客户账户、同一付款方式和/或使用同一账单或送货地址下的订单。"
+      },
+      "subscriptions": {
+        "title": "订阅",
+        "billingTitle": "计费和续订",
+        "billingParagraph1": "您的订阅将继续并自动续订，除非取消。您同意我们在经常性基础上向您的付款方式收费，无需您对每次经常性收费的事先批准，直到您取消适用的订单。",
+        "billingParagraph2": "您的计费周期长度将取决于您在购买订阅时选择的订阅计划类型。",
+        "cancellationTitle": "取消",
+        "cancellationParagraph1": "您可以随时通过登录您的账户取消订阅。您的取消将在当前付费期结束时生效。",
+        "cancellationParagraph2": "如果您对我们的服务不满意，请发送电子邮件至 contact@libra.dev。",
+        "feeChangesTitle": "费用变更",
+        "feeChangesParagraph1": "我们可能会不时更改订阅费用，并将根据适用法律向您传达任何价格变更。"
+      },
+      "prohibitedActivities": {
+        "title": "禁止活动",
+        "intro1": "您不得出于我们提供服务的目的以外的任何目的访问或使用服务。",
+        "intro2": "作为服务的用户，您同意不：",
+        "list1": "系统性地从服务中检索数据或其他内容，以直接或间接创建或编译收集、汇编、数据库或目录，除非得到我们的书面许可",
+        "list2": "欺骗、欺诈或误导我们和其他用户，特别是在试图了解敏感账户信息（如用户密码）的任何尝试中",
+        "list3": "规避、禁用或以其他方式干扰服务的安全相关功能",
+        "list4": "在我们看来，贬低、玷污或以其他方式损害我们和/或服务",
+        "list5": "使用从服务获得的任何信息来骚扰、虐待或伤害他人",
+        "list6": "不当使用我们的支持服务或提交虚假的滥用或不当行为报告",
+        "list7": "以与任何适用法律或法规不一致的方式使用服务",
+        "list8": "参与未经授权的框架或链接到服务",
+        "list9": "上传或传输（或尝试上传或传输）病毒、特洛伊木马或其他材料",
+        "list10": "使用、启动、开发或分发任何自动化系统，包括但不限于任何蜘蛛、机器人、作弊工具、刮取器或离线阅读器来访问服务"
+      },
+      "userGeneratedContributions": {
+        "title": "用户生成的贡献",
+        "paragraph1": "服务可能邀请您聊天、贡献或参与博客、留言板、在线论坛和其他功能，并可能为您提供创建、提交、发布、显示、传输、执行、发布、分发或广播内容和材料给我们或在服务上的机会，包括但不限于文本、写作、视频、音频、照片、图形、评论、建议或个人信息或其他材料（统称为\\\"贡献\\\"）。",
+        "paragraph2": "贡献可能被服务的其他用户和通过第三方网站查看。因此，您传输的任何贡献都可能被视为非机密和非专有的。当您创建或提供任何贡献时，您特此声明并保证：",
+        "warrantyList1": "您的贡献的创建、分发、传输、公开展示或表演，以及访问、下载或复制您的贡献不会且不会侵犯任何第三方的专有权利。",
+        "warrantyList2": "您是创建者和所有者，或拥有必要的许可、权利、同意、发布和许可，以使用并授权我们、服务和服务的其他用户使用您的贡献。",
+        "warrantyList3": "您已获得贡献中每个可识别个人的书面同意、发布和/或许可。",
+        "warrantyList4": "您的贡献不是虚假、不准确或误导性的。",
+        "warrantyList5": "您的贡献不是未经请求或未经授权的广告、促销材料、金字塔计划、连锁信、垃圾邮件、群发邮件或其他形式的招揽。",
+        "warrantyList6": "您的贡献不是淫秽、猥亵、淫荡、肮脏、暴力、骚扰、诽谤、中伤或其他令人反感的。",
+        "warrantyList7": "您的贡献不会嘲笑、嘲弄、贬低、恐吓或虐待任何人。",
+        "warrantyList8": "您的贡献不用于骚扰或威胁任何其他人，也不用于促进对特定人员或人群的暴力。",
+        "warrantyList9": "您的贡献不违反任何适用的法律、法规或规则。",
+        "warrantyList10": "您的贡献不违反任何第三方的隐私或公开权。",
+        "conclusion": "违反上述规定使用服务违反了这些法律条款，可能导致终止或暂停您使用服务的权利等后果。"
+      },
+      "contributionLicense": {
+        "title": "贡献许可",
+        "paragraph1": "通过将您的贡献发布到服务的任何部分，您自动授予，并且您声明并保证您有权授予我们不受限制、无限制、不可撤销、永久、非独占、可转让、免版税、全额付费、全球范围内的权利和许可，以托管、使用、复制、再现、披露、销售、转售、发布、广播、重新命名、存档、存储、缓存、公开执行、公开展示、重新格式化、翻译、传输、摘录（全部或部分）和分发此类贡献。",
+        "paragraph2": "此许可将适用于现在已知或以后开发的任何形式、媒体或技术，并包括我们使用您的姓名、公司名称和特许经营名称（如适用），以及您提供的任何商标、服务标记、商品名称、徽标和个人和商业图像。",
+        "paragraph3": "您放弃您贡献中的所有精神权利，并保证精神权利未在您的贡献中以其他方式主张。",
+        "paragraph4": "我们不主张对您的贡献拥有任何所有权。您保留对所有贡献以及与您的贡献相关的任何知识产权或其他专有权利的完全所有权。"
+      },
+      "socialMedia": {
+        "title": "社交媒体",
+        "paragraph1": "作为服务功能的一部分，您可以通过以下方式将您的账户与您在第三方服务提供商处拥有的在线账户（每个此类账户，\\\"第三方账户\\\"）链接：(1) 通过服务提供您的第三方账户登录信息；或 (2) 允许我们访问您的第三方账户，如管理您使用每个第三方账户的适用条款和条件所允许的。",
+        "paragraph2": "通过授予我们访问任何第三方账户的权限，您理解：",
+        "list1": "我们可以访问、提供和存储您已提供并存储在第三方账户中的任何内容，以便通过您的账户在服务上和通过服务提供。",
+        "list2": "我们可以向您的第三方账户提交和接收额外信息，范围是当您将账户与第三方账户链接时通知您的范围。"
+      },
+      "thirdPartyWebsites": {
+        "title": "第三方网站和内容",
+        "paragraph1": "服务可能包含（或您可能通过网站发送）到其他网站（\\\"第三方网站\\\"）的链接，以及属于或来自第三方的文章、照片、文本、图形、图片、设计、音乐、声音、视频、信息、应用程序、软件和其他内容或项目（\\\"第三方内容\\\"）。",
+        "paragraph2": "此类第三方网站和第三方内容未经我们调查、监控或检查其准确性、适当性或完整性，我们不对通过服务访问的任何第三方网站或在服务上发布、通过服务提供或从服务安装的任何第三方内容负责。",
+        "paragraph3": "您同意并承认我们不认可第三方网站上提供的产品或服务，您应免除我们因您购买此类产品或服务而造成的任何伤害的责任。此外，您应免除我们因与任何第三方内容或与第三方网站的任何联系而遭受的任何损失或对您造成的伤害的责任。"
+      },
+      "servicesManagement": {
+        "title": "服务管理",
+        "intro": "我们保留权利，但没有义务：",
+        "list1": "监控服务是否违反这些法律条款",
+        "list2": "对任何在我们自行判断下违反法律或这些法律条款的人采取适当的法律行动",
+        "list3": "拒绝、限制访问、限制可用性或禁用您的任何贡献或其任何部分",
+        "list4": "从服务中删除或以其他方式禁用所有过大或以任何方式对我们的系统造成负担的文件和内容",
+        "list5": "以旨在保护我们的权利和财产并促进服务正常运行的方式管理服务"
+      },
+      "privacyPolicy": {
+        "title": "隐私政策",
+        "paragraph1": "我们关心数据隐私和安全。请查看我们在 libra.dev/privacy 的隐私政策。通过使用服务，您同意受我们的隐私政策约束，该政策已纳入这些法律条款。",
+        "paragraph2": "请注意，虽然我们的服务通过全球边缘网络提供以获得最佳性能，但所有用户数据都存储在美国。如果您从世界任何其他地区访问服务，该地区的法律或其他要求管理个人数据收集、使用或披露与美国适用法律不同，那么通过您继续使用服务，您承认您的数据将存储在美国，并且您明确同意在美国存储和处理您的数据。"
+      },
+      "copyrightInfringements": {
+        "title": "版权侵权",
+        "paragraph1": "我们尊重他人的知识产权。如果您认为通过服务提供的任何材料侵犯了您拥有或控制的任何版权，请立即使用下面提供的联系信息通知我们（\\\"通知\\\"）。",
+        "paragraph2": "您的通知副本将发送给发布或存储通知中涉及的材料的人。请注意，根据适用法律，如果您在通知中做出重大虚假陈述，您可能承担损害赔偿责任。因此，如果您不确定服务上或链接到的材料是否侵犯了您的版权，您应该考虑首先联系律师。"
+      },
+      "termTermination": {
+        "title": "条款和终止",
+        "paragraph1": "这些法律条款在您使用服务期间将保持完全有效。在不限制这些法律条款的任何其他规定的情况下，我们保留在我们的自行判断下，无需通知或承担责任，拒绝任何人出于任何原因或无原因访问和使用服务（包括阻止某些IP地址）的权利，包括但不限于违反这些法律条款中包含的任何陈述、保证或契约或任何适用法律或法规。",
+        "paragraph2": "如果我们出于任何原因终止或暂停您的账户，您被禁止以您的姓名、虚假或借用的姓名或任何第三方的姓名注册和创建新账户，即使您可能代表第三方行事。除了终止或暂停您的账户外，我们保留采取适当法律行动的权利，包括但不限于寻求民事、刑事和禁令救济。"
+      },
+      "modificationsInterruptions": {
+        "title": "修改和中断",
+        "paragraph1": "我们保留在任何时候或出于任何原因自行决定更改、修改或删除服务内容而不另行通知的权利。我们不会因对服务的任何修改、价格变更、暂停或停止而对您或任何第三方承担责任。",
+        "paragraph2": "我们不能保证服务始终可用。我们可能遇到硬件、软件或其他问题，或需要执行与服务相关的维护，导致中断、延迟或错误。我们保留在任何时候或出于任何原因更改、修订、更新、暂停、停止或以其他方式修改服务而不通知您的权利。"
+      },
+      "governingLaw": {
+        "title": "适用法律",
+        "paragraph1": "这些法律条款应受适用法律管辖和定义。因这些法律条款产生的任何争议应通过适当的法律渠道解决。"
+      },
+      "disputeResolution": {
+        "title": "争议解决",
+        "informalNegotiationsTitle": "非正式谈判",
+        "informalNegotiationsParagraph": "为了加快解决并控制您或我们提出的与这些法律条款相关的任何争议、争议或索赔（每个\\\"争议\\\"，统称\\\"争议\\\"）的成本（个别为\\\"一方\\\"，统称为\\\"各方\\\"），各方同意在启动仲裁之前首先尝试非正式协商任何争议至少三十（30）天。",
+        "bindingArbitrationTitle": "有约束力的仲裁",
+        "bindingArbitrationParagraph": "因这些法律条款引起或与之相关的任何争议应通过适当的法律渠道和适用的争议解决程序解决。",
+        "restrictionsTitle": "限制",
+        "restrictionsParagraph": "各方同意任何仲裁应限于各方之间的争议。在法律允许的最大范围内，(a) 任何仲裁不得与任何其他程序合并；(b) 没有权利或权限以集体诉讼的方式仲裁任何争议；(c) 没有权利或权限代表一般公众或任何其他人以所谓的代表身份提出任何争议。"
+      },
+      "corrections": {
+        "title": "更正",
+        "paragraph1": "服务上可能有包含印刷错误、不准确或遗漏的信息，包括描述、定价、可用性和各种其他信息。我们保留纠正任何错误、不准确或遗漏以及随时更改或更新服务上信息的权利，无需事先通知。"
+      },
+      "disclaimer": {
+        "title": "免责声明",
+        "content": "服务按\\\"原样\\\"和\\\"可用\\\"基础提供。您同意您使用服务将由您自担风险。在法律允许的最大范围内，我们否认与服务及您对其使用相关的所有明示或暗示保证，包括但不限于适销性、特定用途适用性和非侵权的暗示保证。我们不对服务内容或链接到服务的任何网站或移动应用程序内容的准确性或完整性做出任何保证或陈述，我们不承担任何责任：(1) 内容和材料的错误、错误或不准确；(2) 因您访问和使用服务而导致的任何性质的人身伤害或财产损害；(3) 对我们安全服务器和/或其中存储的任何和所有个人信息和/或财务信息的任何未经授权访问或使用；(4) 服务传输的任何中断或停止；(5) 任何第三方可能传输到或通过服务的任何错误、病毒、特洛伊木马等；和/或 (6) 任何内容和材料中的任何错误或遗漏，或因使用通过服务发布、传输或以其他方式提供的任何内容而导致的任何性质的损失或损害。我们不保证、认可、保证或承担通过服务、任何超链接网站或任何横幅或其他广告中特色的任何网站或移动应用程序广告或提供的任何第三方产品或服务的责任，我们不会成为或以任何方式负责监控您与任何第三方产品或服务提供商之间的任何交易。与通过任何媒介或任何环境购买产品或服务一样，您应该运用最佳判断并在适当时谨慎行事。"
+      },
+      "limitationsLiability": {
+        "title": "责任限制",
+        "content": "在任何情况下，我们或我们的董事、员工或代理人都不会因您使用服务而对您或任何第三方承担任何直接、间接、后果性、示例性、偶然、特殊或惩罚性损害，包括利润损失、收入损失、数据丢失或其他损害，即使我们已被告知此类损害的可能性。尽管本文有任何相反规定，我们对您的任何原因的责任，无论诉讼形式如何，在任何时候都将限于您在引起诉讼原因之前的一（1）个月期间向我们支付的金额（如有）。某些美国州法律和国际法律不允许对暗示保证的限制或对某些损害的排除或限制。如果这些法律适用于您，上述部分或全部免责声明或限制可能不适用于您，您可能拥有额外权利。"
+      },
+      "indemnification": {
+        "title": "赔偿",
+        "paragraph1": "您同意为以下原因或由以下原因引起的任何第三方提出的任何损失、损害、责任、索赔或要求，包括合理的律师费和费用，为我们（包括我们的子公司、关联公司以及我们各自的所有高级职员、代理人、合作伙伴和员工）进行辩护、赔偿并使我们免受损害：",
+        "list1": "您的贡献",
+        "list2": "使用服务",
+        "list3": "违反这些法律条款",
+        "list4": "违反您在这些法律条款中规定的任何陈述和保证",
+        "list5": "您违反第三方权利，包括但不限于知识产权",
+        "list6": "对您通过服务连接的服务的任何其他用户的任何公然有害行为",
+        "paragraph2": "尽管有上述规定，我们保留由您承担费用，承担您需要赔偿我们的任何事项的独家辩护和控制权，您同意由您承担费用，配合我们对此类索赔的辩护。"
+      },
+      "userData": {
+        "title": "用户数据",
+        "paragraph1": "我们将维护您传输到服务的某些数据，以管理服务的性能，以及与您使用服务相关的数据。",
+        "paragraph2": "尽管我们执行定期的常规数据备份，您对您传输的或与您使用服务进行的任何活动相关的所有数据负全责。您同意我们对任何此类数据的丢失或损坏不承担任何责任，您特此放弃因任何此类数据丢失或损坏而对我们提起的任何诉讼权。"
+      },
+      "electronicCommunications": {
+        "title": "电子通信、交易和签名",
+        "paragraph1": "访问服务、向我们发送电子邮件和完成在线表格构成电子通信。您同意接收电子通信，并且您同意我们通过电子邮件和在服务上向您提供的所有协议、通知、披露和其他通信满足此类通信必须以书面形式的任何法律要求。",
+        "paragraph2": "您特此同意使用电子签名、合同、订单和其他记录，以及我们或通过服务启动或完成的交易的通知、政策和记录的电子交付。",
+        "paragraph3": "您特此放弃任何司法管辖区的任何法规、法规、规则、条例或其他法律下的任何权利或要求，这些法律要求原始签名或非电子记录的交付或保留，或通过电子方式以外的任何方式进行付款或授予信贷。"
+      },
+      "californiaUsers": {
+        "title": "加利福尼亚用户和居民",
+        "paragraph1": "如果对我们的任何投诉未得到满意解决，您可以书面联系加利福尼亚州消费者事务部消费者服务司投诉协助单位，地址为 1625 North Market Blvd., Suite N 112, Sacramento, California 95834，或致电 (800) 952-5210 或 (916) 445-1254。"
+      },
+      "miscellaneous": {
+        "title": "其他条款",
+        "paragraph1": "这些法律条款以及我们在服务上或关于服务发布的任何政策或操作规则构成您与我们之间的完整协议和理解。我们未能行使或执行这些法律条款的任何权利或规定不应作为对此类权利或规定的放弃。",
+        "paragraph2": "这些法律条款在法律允许的最大范围内运作。我们可以随时将我们的任何或所有权利和义务转让给他人。我们不应对因超出我们合理控制的任何原因造成的任何损失、损害、延迟或未能行动负责或承担责任。",
+        "paragraph3": "如果这些法律条款的任何规定或规定的一部分被确定为非法、无效或不可执行，该规定或规定的一部分被视为与这些法律条款分离，不影响任何剩余规定的有效性和可执行性。",
+        "paragraph4": "因这些法律条款或使用服务而在您与我们之间创建的合资企业、合伙关系、雇佣或代理关系。您同意这些法律条款不会因我们起草而对我们不利地解释。",
+        "paragraph5": "您特此放弃基于这些法律条款的电子形式以及当事人缺乏签署以执行这些法律条款而可能拥有的任何和所有辩护。"
+      }
+    },
+    "contact": {
+      "title": "联系我们",
+      "description": "为了解决有关服务的投诉或获取有关服务使用的更多信息，请通过以下方式联系我们：",
+      "companyName": "Libra AI"
+    }
+  },
+  "hero_examples_title": "应用示例",
+  "hero_examples_subtitle": "点击任一示例即可应用"
+}

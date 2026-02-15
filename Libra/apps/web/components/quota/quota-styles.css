@@ -1,0 +1,94 @@
+/* Quota Component Styles */
+
+/* Enhanced mobile styles for quota components */
+@media (max-width: 640px) {
+  .quota-message-container {
+    @apply p-3 rounded-lg;
+  }
+  
+  .quota-card-mobile {
+    @apply border-0 shadow-lg;
+  }
+  
+  .quota-banner-mobile {
+    @apply fixed bottom-0 left-0 right-0 m-0 rounded-t-xl rounded-b-none z-50;
+    @apply shadow-[0_-4px_24px_rgba(0,0,0,0.1)];
+  }
+}
+
+/* Quota status indicators */
+.quota-indicator {
+  @apply relative inline-flex h-2 w-2;
+}
+
+.quota-indicator-dot {
+  @apply absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping;
+}
+
+.quota-indicator-dot-inner {
+  @apply relative inline-flex rounded-full h-2 w-2;
+}
+
+.quota-exhausted .quota-indicator-dot {
+  @apply bg-destructive;
+}
+
+.quota-exhausted .quota-indicator-dot-inner {
+  @apply bg-destructive;
+}
+
+.quota-warning .quota-indicator-dot {
+  @apply bg-orange-500;
+}
+
+.quota-warning .quota-indicator-dot-inner {
+  @apply bg-orange-500;
+}
+
+/* Progress bar enhancements */
+.quota-progress {
+  @apply relative overflow-hidden;
+}
+
+.quota-progress::after {
+  content: '';
+  @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent;
+  @apply -translate-x-full animate-[shimmer_2s_infinite];
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Gradient text for quota displays */
+.quota-gradient-text {
+  @apply bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent;
+  @apply dark:from-orange-400 dark:to-amber-400;
+}
+
+/* Improved focus states */
+.quota-focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2;
+  @apply dark:focus:ring-orange-400 dark:focus:ring-offset-background;
+}
+
+/* Animation for attention */
+@keyframes quota-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.quota-pulse {
+  animation: quota-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Smooth transitions */
+.quota-transition {
+  @apply transition-all duration-200 ease-in-out;
+}

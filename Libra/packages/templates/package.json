@@ -1,0 +1,18 @@
+{
+  "name": "@libra/templates",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Template configurations for Libra platform",
+  "type": "module",
+  "main": "index.ts",
+  "types": "./index.ts",
+  "scripts": {
+    "build": "tsup",
+    "clean": "rm -rf dist .turbo node_modules",
+    "typecheck": "tsc --noEmit",
+    "update": "bun update"
+  },
+  "devDependencies": {
+    "@libra/typescript-config": "*"
+  }
+}

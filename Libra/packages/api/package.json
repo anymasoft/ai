@@ -1,0 +1,33 @@
+{
+  "name": "@libra/api",
+  "version": "1.0.0",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "src/*"
+      ]
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "clean": "rm -rf dist .turbo node_modules",
+    "format-and-lint": "biome check .",
+    "format-and-lint:fix": "biome check . --write",
+    "typecheck": "tsc --noEmit",
+    "update": "bun update"
+  },
+  "dependencies": {
+    "@libra/auth": "*",
+    "@libra/common": "*",
+    "@libra/sandbox": "*",
+    "superjson": "^2.2.2",
+    "dinero.js": "^2.0.0-alpha.14",
+    "@dinero.js/currencies": "^2.0.0-alpha.14"
+  },
+  "devDependencies": {
+    "@libra/typescript-config": "*"
+  }
+}

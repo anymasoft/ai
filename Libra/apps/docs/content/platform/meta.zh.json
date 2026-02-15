@@ -1,0 +1,22 @@
+{
+  "title": "Libra AI",
+  "description": "平台特定功能和集成",
+  "icon": "Server",
+  "root": true,
+  "pages": [
+    "---快速开始---",
+    "index",
+    "quickstart",
+    "faq",
+    "---使用 Libra---",
+    "usinglibra/deploy/index",
+    "usinglibra/directEdit/index",
+    "usinglibra/timeMachine/index",
+    "---使用指南---",
+    "guides/effective-ai-communication",
+    "---账户与账单---",
+    "account/index",
+    "---社区---",
+    "community/index"
+  ]
+}

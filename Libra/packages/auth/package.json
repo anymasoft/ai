@@ -1,0 +1,33 @@
+{
+  "name": "@libra/auth",
+  "version": "1.0.6",
+  "private": true,
+  "main": "auth-server.ts",
+  "types": "./index.ts",
+  "scripts": {
+    "auth:generate": "NODE_OPTIONS=--experimental-detect-module bun with-env bunx @better-auth/cli generate --config auth-server.ts --output ./db/schema/auth-schema.ts -y",
+    "db:generate": "bun with-env drizzle-kit generate",
+    "db:migrate": "bun with-env bunx drizzle-kit migrate",
+    "db:migrate-remote": "bun with-env wrangler d1 migrations apply libra --remote",
+    "db:studio": "bun with-env drizzle-kit studio --port 3002",
+    "test": "bun with-env vitest",
+    "test:watch": "bun with-env vitest watch",
+    "test:coverage": "bun with-env vitest --coverage",
+    "with-env": "dotenv -e ../../.env --",
+    "update": "bun update"
+  },
+  "dependencies": {
+    "better-auth-harmony": "^1.2.5",
+    "stripe": "^18.5.0",
+    "@libra/ui": "*",
+    "@libra/db": "*",
+    "@libra/common": "*",
+    "@libra/email": "*",
+    "@libra/better-auth-cloudflare": "*",
+    "@libra/better-auth-stripe": "*"
+  },
+  "devDependencies": {
+    "@libra/typescript-config": "*",
+    "@better-auth/cli": "^1.3.16"
+  }
+}

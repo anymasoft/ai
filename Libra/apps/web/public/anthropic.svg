@@ -1,0 +1,25 @@
+<!--
+  - SPDX-License-Identifier: AGPL-3.0-only
+  - anthropic.svg
+  - Copyright (C) 2025 Nextify Limited
+  -
+  - This program is free software: you can redistribute it and/or modify
+  - it under the terms of the GNU Affero General Public License as
+  - published by the Free Software Foundation, either version 3 of the
+  - License, or (at your option) any later version.
+  -
+  - This program is distributed in the hope that it will be useful,
+  - but WITHOUT ANY WARRANTY; without even the implied warranty of
+  - MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  - GNU Affero General Public License for more details.
+  -
+  - You should have received a copy of the GNU Affero General Public License
+  - along with this program. If not, see <https://www.gnu.org/licenses/>.
+  -
+  -->
+
+<svg fill="#000" fill-rule="evenodd" style="flex:none;line-height:1" viewBox="0 0 24 24" width="1em"
+     xmlns="http://www.w3.org/2000/svg">
+    <title>Anthropic</title>
+    <path d="M13.827 3.52h3.603L24 20h-3.603l-6.57-16.48zm-7.258 0h3.767L16.906 20h-3.674l-1.343-3.461H5.017l-1.344 3.46H0L6.57 3.522zm4.132 9.959L8.453 7.687 6.205 13.48H10.7z"></path>
+</svg>

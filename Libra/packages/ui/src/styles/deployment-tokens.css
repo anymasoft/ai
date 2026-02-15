@@ -1,0 +1,127 @@
+/*
+ * SPDX-License-Identifier: AGPL-3.0-only
+ * deployment-tokens.css
+ * Copyright (C) 2025 Nextify Limited
+ *
+ * Deployment Modal Design Tokens
+ * Unified design system for deployment modal components
+ */
+
+/* ===== SPACING TOKENS ===== */
+:root {
+  /* Deployment-specific spacing scale */
+  --deployment-space-xs: 0.5rem; /* 8px */
+  --deployment-space-sm: 0.75rem; /* 12px */
+  --deployment-space-md: 1rem; /* 16px */
+  --deployment-space-lg: 1.5rem; /* 24px */
+  --deployment-space-xl: 2rem; /* 32px */
+  --deployment-space-2xl: 3rem; /* 48px */
+
+  /* Component-specific spacing */
+  --deployment-modal-padding: var(--deployment-space-lg);
+  --deployment-card-padding: var(--deployment-space-lg);
+  --deployment-section-gap: var(--deployment-space-xl);
+  --deployment-element-gap: var(--deployment-space-md);
+  --deployment-button-gap: var(--deployment-space-sm);
+
+  /* ===== BORDER RADIUS TOKENS ===== */
+  --deployment-radius-sm: 0.5rem; /* 8px */
+  --deployment-radius-md: 0.75rem; /* 12px */
+  --deployment-radius-lg: 1rem; /* 16px */
+  --deployment-radius-xl: 1.25rem; /* 20px */
+
+  /* ===== COLOR TOKENS ===== */
+  /* Simplified neutral status colors */
+  --deployment-color-neutral: hsl(var(--muted-foreground));
+  --deployment-color-neutral-bg: hsl(var(--muted) / 0.3);
+  --deployment-color-neutral-border: hsl(var(--border) / 0.5);
+
+  /* Upgrade focus colors */
+  --deployment-color-upgrade: hsl(var(--primary));
+  --deployment-color-upgrade-bg: hsl(var(--primary) / 0.1);
+  --deployment-color-upgrade-border: hsl(var(--primary) / 0.2);
+
+  /* Legacy status colors (kept for compatibility) */
+  --deployment-color-success: hsl(142, 76%, 36%);
+  --deployment-color-success-bg: hsl(142, 76%, 96%);
+  --deployment-color-success-border: hsl(142, 76%, 86%);
+
+  --deployment-color-warning: hsl(38, 92%, 50%);
+  --deployment-color-warning-bg: hsl(38, 92%, 96%);
+  --deployment-color-warning-border: hsl(38, 92%, 86%);
+
+  --deployment-color-error: hsl(0, 84%, 60%);
+  --deployment-color-error-bg: hsl(0, 84%, 96%);
+  --deployment-color-error-border: hsl(0, 84%, 86%);
+
+  --deployment-color-info: hsl(217, 91%, 60%);
+  --deployment-color-info-bg: hsl(217, 91%, 96%);
+  --deployment-color-info-border: hsl(217, 91%, 86%);
+
+  /* Progress colors */
+  --deployment-progress-bg: hsl(var(--muted));
+  --deployment-progress-fill: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--brand)));
+  --deployment-progress-text: hsl(var(--primary));
+
+  /* ===== TYPOGRAPHY TOKENS ===== */
+  --deployment-font-size-xs: 0.75rem; /* 12px */
+  --deployment-font-size-sm: 0.875rem; /* 14px */
+  --deployment-font-size-base: 1rem; /* 16px */
+  --deployment-font-size-lg: 1.125rem; /* 18px */
+  --deployment-font-size-xl: 1.25rem; /* 20px */
+  --deployment-font-size-2xl: 1.5rem; /* 24px */
+
+  --deployment-font-weight-normal: 400;
+  --deployment-font-weight-medium: 500;
+  --deployment-font-weight-semibold: 600;
+  --deployment-font-weight-bold: 700;
+
+  --deployment-line-height-tight: 1.25;
+  --deployment-line-height-normal: 1.5;
+  --deployment-line-height-relaxed: 1.75;
+
+  /* ===== SHADOW TOKENS ===== */
+  --deployment-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --deployment-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --deployment-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --deployment-shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+  /* ===== ANIMATION TOKENS ===== */
+  --deployment-transition-fast: 150ms ease-out;
+  --deployment-transition-normal: 250ms ease-out;
+  --deployment-transition-slow: 350ms ease-out;
+
+  --deployment-animation-pulse: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --deployment-animation-spin: spin 1s linear infinite;
+  --deployment-animation-bounce: bounce 1s infinite;
+
+  /* ===== Z-INDEX TOKENS ===== */
+  --deployment-z-modal: 50;
+  --deployment-z-overlay: 40;
+  --deployment-z-dropdown: 30;
+  --deployment-z-tooltip: 20;
+}
+
+/* Dark mode adjustments */
+:root.dark {
+  /* Simplified neutral colors for dark mode */
+  --deployment-color-neutral-bg: hsl(var(--muted) / 0.2);
+  --deployment-color-neutral-border: hsl(var(--border) / 0.3);
+
+  /* Upgrade focus colors for dark mode */
+  --deployment-color-upgrade-bg: hsl(var(--primary) / 0.15);
+  --deployment-color-upgrade-border: hsl(var(--primary) / 0.25);
+
+  /* Legacy status colors (kept for compatibility) */
+  --deployment-color-success-bg: hsl(142, 76%, 6%);
+  --deployment-color-success-border: hsl(142, 76%, 16%);
+
+  --deployment-color-warning-bg: hsl(38, 92%, 6%);
+  --deployment-color-warning-border: hsl(38, 92%, 16%);
+
+  --deployment-color-error-bg: hsl(0, 84%, 6%);
+  --deployment-color-error-border: hsl(0, 84%, 16%);
+
+  --deployment-color-info-bg: hsl(217, 91%, 6%);
+  --deployment-color-info-border: hsl(217, 91%, 16%);
+}

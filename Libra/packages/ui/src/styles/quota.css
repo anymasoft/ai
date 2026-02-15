@@ -1,0 +1,281 @@
+/*
+ * SPDX-License-Identifier: AGPL-3.0-only
+ * quota.css
+ * Copyright (C) 2025 Nextify Limited
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
+ */
+
+/* Quota Messages Utilities for Tailwind CSS v4 */
+/* Enhanced responsive design and mobile optimization for quota-related UI components */
+
+/* Base quota message container */
+@utility quota-message-container {
+  @apply relative;
+}
+
+/* Quota status display */
+@utility quota-status {
+  @apply text-sm text-muted-foreground;
+  @apply break-words hyphens-auto;
+  @apply leading-relaxed;
+}
+
+/* Mobile-specific quota status */
+@utility quota-status-mobile {
+  @apply text-xs;
+  @apply px-2 py-1;
+  @apply max-w-[calc(100vw-2rem)];
+}
+
+/* Quota exhausted state */
+@utility quota-exhausted {
+  @apply text-destructive;
+  @apply font-medium;
+}
+
+@utility quota-exhausted-icon {
+  @apply text-destructive;
+}
+
+/* Quota available state */
+@utility quota-available {
+  @apply text-muted-foreground;
+}
+
+@utility quota-available-icon {
+  @apply text-muted-foreground;
+}
+
+/* Responsive quota display in dialogs */
+@utility quota-dialog-display {
+  @apply flex flex-col sm:flex-row sm:items-center sm:justify-between;
+  @apply gap-2 sm:gap-4;
+  @apply p-3 sm:p-4;
+  @apply bg-muted/50 rounded-md;
+  @apply border border-border/50;
+}
+
+@utility quota-dialog-display-mobile {
+  @apply text-center;
+}
+
+@utility quota-dialog-text {
+  @apply text-sm;
+  @apply break-words;
+  @apply max-w-full;
+}
+
+/* Quota button states */
+@utility quota-button-disabled {
+  @apply opacity-50 cursor-not-allowed;
+  @apply pointer-events-none;
+}
+
+/* Quota tooltip enhancements */
+@utility quota-tooltip-content {
+  @apply max-w-[280px] sm:max-w-[320px] md:max-w-[400px];
+  @apply text-xs sm:text-sm;
+  @apply px-3 py-2 sm:px-4 sm:py-2.5;
+  @apply leading-relaxed;
+  @apply break-words hyphens-auto;
+  @apply z-[100];
+}
+
+/* Mobile-specific tooltip adjustments */
+@utility quota-tooltip-content-mobile {
+  @apply max-w-[calc(100vw-2rem)];
+  @apply shadow-lg;
+  @apply backdrop-blur-sm;
+  @apply border-2;
+  @apply font-medium;
+}
+
+/* Quota warning styles */
+@utility quota-warning {
+  @apply flex items-start gap-2;
+  @apply p-3 rounded-md;
+  @apply bg-destructive/10 border border-destructive/20;
+  @apply text-destructive;
+}
+
+@utility quota-warning-dark {
+  @apply bg-destructive/20 border-destructive/30;
+}
+
+@utility quota-warning-icon {
+  @apply text-destructive text-sm mt-0.5 shrink-0;
+}
+
+@utility quota-warning-text {
+  @apply flex-1 min-w-0 text-sm;
+  @apply break-words;
+}
+
+/* Quota info styles */
+@utility quota-info {
+  @apply flex items-start gap-2;
+  @apply p-3 rounded-md;
+  @apply bg-muted/90 border border-border/50;
+  @apply text-muted-foreground;
+}
+
+@utility quota-info-dark {
+  @apply bg-muted/80;
+}
+
+@utility quota-info-text {
+  @apply flex-1 min-w-0 text-sm;
+  @apply break-words;
+}
+
+/* Responsive text truncation utilities */
+@utility quota-text-truncate {
+  @apply truncate;
+  @apply max-w-full;
+}
+
+@utility quota-text-truncate-sm {
+  @apply max-w-[200px];
+}
+
+@utility quota-text-truncate-xs {
+  @apply max-w-[150px];
+}
+
+/* Quota loading state */
+@utility quota-loading {
+  @apply animate-pulse;
+  @apply text-muted-foreground/70;
+}
+
+/* Accessibility improvements */
+@utility quota-tooltip-focus {
+  @apply focus-visible:outline-none;
+  @apply focus-visible:ring-2;
+  @apply focus-visible:ring-ring;
+  @apply focus-visible:ring-offset-2;
+}
+
+/* High contrast mode support */
+@utility quota-exhausted-contrast {
+  @apply border-2 border-destructive;
+}
+
+@utility quota-available-contrast {
+  @apply border border-border;
+}
+
+@utility quota-tooltip-content-contrast {
+  @apply border-2;
+}
+
+/* Complex styles that need traditional CSS syntax */
+@layer components {
+  /* Mobile-specific quota status adjustments */
+  @media (max-width: 767px) {
+    .quota-status {
+      @apply quota-status-mobile;
+    }
+  }
+
+  /* Quota dialog mobile adjustments */
+  @media (max-width: 640px) {
+    .quota-dialog-display {
+      @apply quota-dialog-display-mobile;
+    }
+
+    .quota-dialog-display .quota-text {
+      @apply quota-dialog-text;
+    }
+  }
+
+  /* Quota button hover states */
+  .quota-button-disabled:hover {
+    @apply opacity-50;
+  }
+
+  /* Mobile-specific tooltip adjustments */
+  @media (max-width: 767px) {
+    .quota-tooltip-content {
+      @apply quota-tooltip-content-mobile;
+    }
+  }
+
+  /* Dark mode adjustments */
+  @media (prefers-color-scheme: dark) {
+    .quota-warning {
+      @apply quota-warning-dark;
+    }
+
+    .quota-info {
+      @apply quota-info-dark;
+    }
+  }
+
+  /* Responsive text truncation */
+  @media (max-width: 640px) {
+    .quota-text-truncate {
+      @apply quota-text-truncate-sm;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .quota-text-truncate {
+      @apply quota-text-truncate-xs;
+    }
+  }
+
+  /* Accessibility improvements */
+  .quota-message-container [role="tooltip"] {
+    @apply quota-tooltip-focus;
+  }
+
+  /* High contrast mode support */
+  @media (prefers-contrast: high) {
+    .quota-exhausted {
+      @apply quota-exhausted-contrast;
+    }
+
+    .quota-available {
+      @apply quota-available-contrast;
+    }
+
+    .quota-tooltip-content {
+      @apply quota-tooltip-content-contrast;
+    }
+  }
+
+  /* Icon-specific styles */
+  .quota-exhausted .quota-icon {
+    @apply quota-exhausted-icon;
+  }
+
+  .quota-available .quota-icon {
+    @apply quota-available-icon;
+  }
+
+  .quota-warning .quota-warning-icon {
+    @apply quota-warning-icon;
+  }
+
+  .quota-warning .quota-warning-text {
+    @apply quota-warning-text;
+  }
+
+  .quota-info .quota-info-text {
+    @apply quota-info-text;
+  }
+}

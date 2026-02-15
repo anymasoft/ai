@@ -1,0 +1,43 @@
+{
+  "name": "@libra/better-auth-cloudflare",
+  "version": "1.0.10",
+  "description": "Cloudflare integration plugin for Better Auth",
+  "keywords": [
+    "cloudflare",
+    "auth",
+    "better-auth",
+    "plugin",
+    "d1",
+    "kv"
+  ],
+  "private": true,
+  "main": "./index.js",
+  "types": "./index.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsup",
+    "clean": "rm -rf dist .turbo node_modules",
+    "typecheck": "tsc --noEmit",
+    "update": "bun update"
+  },
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "default": "./index.ts"
+    },
+    "./client": {
+      "types": "./client.ts",
+      "default": "./client.ts"
+    }
+  },
+  "dependencies": {
+    "better-auth": "^1.3.16"
+  },
+  "devDependencies": {
+    "@libra/typescript-config": "*"
+  },
+  "peerDependencies": {
+    "@cloudflare/workers-types": "^4.20250924.0",
+    "@opennextjs/cloudflare": "^1.8.5"
+  }
+}

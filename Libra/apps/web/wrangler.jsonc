@@ -1,0 +1,133 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "libra",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-09-03",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "global_fetch_strictly_public"
+  ],
+  "preview_urls": true,
+  "minify": true,
+  "keep_vars": true,
+  "assets": {
+    "binding": "ASSETS",
+    "directory": ".open-next/assets"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "routes": [
+    {
+      "pattern": "libra.dev",
+      "custom_domain": true
+    }
+  ],
+  /**
+   * Smart Placement
+   * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
+   */
+  "placement": {
+    "mode": "smart"
+  },
+  /**
+   * Environment Variables
+   * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
+   */
+
+  /**
+   * Note: Use secrets to store sensitive data.
+   * https://developers.cloudflare.com/workers/configuration/secrets/
+   */
+  "vars": {
+    "NEXT_PUBLIC_APP_URL": "https://libra.dev",
+    "NEXT_PUBLIC_CDN_URL": "https://cdn.libra.dev",
+    "NEXT_PUBLIC_DEPLOY_URL": "https://deploy.libra.dev",
+    "NEXT_PUBLIC_DISPATCHER_URL": "https://dispatcher.libra.dev",
+    "NEXT_PUBLIC_DOCS_URL": "https://docs.libra.dev",
+    "NEXT_PUBLIC_SCREENSHOT_URL": "https://screenshot.libra.dev",
+    "NEXT_PUBLIC_SCAN": "0",
+    "NEXT_PUBLIC_TURNSTILE_SITE_KEY": "0x4AAAAAABgQW7OpphMdlFWn",
+    "NEXT_PUBLIC_SANDBOX_DEFAULT_PROVIDER": "e2b",
+    "NEXT_PUBLIC_SANDBOX_BUILDER_DEFAULT_PROVIDER": "e2b",
+    "NEXT_PUBLIC_POSTHOG_KEY": "phc_wBRTFUWUwNBj8GduilPefxNZAFBMU7j091feuG58n6h",
+    "NEXT_PUBLIC_POSTHOG_HOST": "https://us.i.posthog.com",
+    "NEXT_PUBLIC_CLOUDFLARE_DCV_VERIFICATION_ID": "847d63bd5e1880b5",
+    "NEXT_PUBLIC_CUSTOMERS_IP_ADDRESS": "104.17.243.236"
+  },
+  /**
+   * Bindings
+   * Bindings allow your Worker to interact with resources on the Cloudflare Developer Platform, including
+   * databases, object storage, AI inference, real-time communication and more.
+   * https://developers.cloudflare.com/workers/runtime-apis/bindings/
+   */
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "libra"
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DATABASE",
+      "database_name": "libra",
+      "database_id": "67910497-d3de-4085-ba2f-70c7d4ba5983"
+    }
+  ],
+  // docker run --name libra -e POSTGRES_PASSWORD=postgres -d postgres
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "c00328e4ab70457fb86356e1e325ef7d",
+      "localConnectionString": "postgresql://postgres:postgres@libra:5432/libra"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "KV",
+      "id": "0251e67dd0194dbab2d78c47e6d2cce9"
+    },
+    {
+      "binding": "CACHE",
+      "id": "69f9a5f9a5b9411a8d55ee35273837c4"
+    }
+  ],
+  // R2 incremental cache
+  "r2_buckets": [
+    {
+      "binding": "NEXT_INC_CACHE_R2_BUCKET",
+      "bucket_name": "libra-inc-cache"
+    }
+  ],
+  // DO Queue and DO Sharded Tag Cache
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "NEXT_CACHE_DO_QUEUE",
+        "class_name": "DOQueueHandler",
+        "script_name": "opennext-cache"
+      },
+      {
+        "name": "NEXT_TAG_CACHE_DO_SHARDED",
+        "class_name": "DOShardedTagCache",
+        "script_name": "opennext-cache"
+      }
+    ]
+  }
+  // "migrations": [
+  //   {
+  //     "tag": "v1",
+  //     "new_sqlite_classes": [
+  //       "DOQueueHandler",
+  //       "DOShardedTagCache"
+  //     ]
+  //   },
+  //   {
+  //     "tag": "v2",
+  //     "deleted_classes": [
+  //       "DOQueueHandler",
+  //       "DOShardedTagCache"
+  //     ]
+  //   }
+  // ]
+}

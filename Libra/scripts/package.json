@@ -1,0 +1,17 @@
+{
+  "name": "libra-scripts",
+  "version": "1.0.0",
+  "description": "Utility scripts for Libra project",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "init-env": "dotenv -e ../.env.prod -- bun init-env.ts"
+  },
+  "dependencies": {
+    "libsodium-wrappers": "^0.7.15",
+    "@libra/typescript-config": "*"
+  },
+  "devDependencies": {
+    "@types/libsodium-wrappers": "^0.7.14"
+  }
+}

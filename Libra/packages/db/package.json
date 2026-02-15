@@ -1,0 +1,24 @@
+{
+  "name": "@libra/db",
+  "version": "1.0.1",
+  "private": true,
+  "description": "Database schemas and utilities for Libra",
+  "main": "index.ts",
+  "types": "./index.ts",
+  "type": "module",
+  "scripts": {
+    "db:generate": "bun with-env drizzle-kit generate",
+    "db:migrate": "bun with-env bunx drizzle-kit migrate",
+    "with-env": "dotenv -e ../../.env --",
+    "update": "bun update"
+  },
+  "dependencies": {
+    "@libra/common": "*",
+    "@paralleldrive/cuid2": "^2.2.2",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.15.5",
+    "@libra/typescript-config": "*"
+  }
+}

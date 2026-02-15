@@ -1,0 +1,10 @@
+e2b.Dockerfile
+e2b.toml
+e2b.toml.example
+.gitignore
+.idea
+_filestructure.ts
+fileStructure.ts
+generate-structure.ts
+BUILDER-zh.md
+BUILDER.md

@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Libra AI</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module">
+      const inspectorHost = import.meta.env.VITE_INSPECTOR_HOST || 'localhost';
+      const inspectorPort = import.meta.env.VITE_INSPECTOR_PORT || '3004';
+      const inspectorUrl = import.meta.env.VITE_INSPECTOR_URL;
+      const script = document.createElement('script');
+      script.src = inspectorUrl ?
+        `${inspectorUrl}/inspect.js` :
+        `http://${inspectorHost}:${inspectorPort}/inspect.js`;
+      document.body.appendChild(script);
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

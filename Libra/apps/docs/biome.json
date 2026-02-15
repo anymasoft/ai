@@ -1,0 +1,11 @@
+{
+  "extends": "//",
+  "linter": {
+    "rules": {
+      "a11y": {
+        "useKeyWithClickEvents": "warn",
+        "useValidAnchor": "error"
+      }
+    }
+  }
+}

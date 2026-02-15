@@ -1,0 +1,96 @@
+# === Daytona optimized .dockerignore ===
+# This file is optimized for Daytona snapshot creation
+# Only exclude files that are truly unnecessary in the container
+
+# === Version Control ===
+.git
+.gitignore
+
+# === IDE and Editor files ===
+.vscode
+.idea
+*.swp
+*.swo
+.*.swp
+.*.swo
+
+# === OS Generated files ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === Logs and debug files ===
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# === Test coverage ===
+coverage/
+*.lcov
+.nyc_output
+
+# === Temporary files ===
+*.tmp
+*.temp
+.tmp/
+.temp/
+tmp/
+temp/
+
+# === Build cache (but NOT build output) ===
+.turbo/
+.parcel-cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# === Optional npm cache (keep for faster builds) ===
+# .npm
+# .pnpm-store
+
+# === Documentation and non-runtime files ===
+# Keep documentation files for reference
+# *.md files are kept
+# Remove only if space is critical
+
+# === Environment files ===
+# Note: .env files are excluded for security
+# Create them during deployment or use secrets management
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+
+# === E2B specific files (not needed for Daytona) ===
+e2b.Dockerfile
+e2b.toml
+e2b.toml.example
+
+# === File structure generation (development only) ===
+_filestructure.ts
+fileStructure.ts
+generate-structure.ts
+
+# === Build scripts (copied separately to container root) ===
+# compile_page.sh - removed from ignore to allow separate copy, duplicate removed in Dockerfile
+
+# === IMPORTANT: DO NOT EXCLUDE ===
+# - node_modules (can be rebuilt but speeds up container start)
+# - dist/ or build/ (may contain pre-built assets)
+# - package.json, package-lock.json, pnpm-lock.yaml
+# - Source code (src/)
+# - Public assets (public/)
+# - Configuration files (vite.config.ts, tsconfig.json, etc.)
+
+# === Notes for Daytona ===
+# If you need to exclude additional files:
+# 1. Make sure they're not required for the app to run
+# 2. Consider if they can be regenerated inside the container
+# 3. Document why they're excluded

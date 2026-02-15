@@ -1,0 +1,28 @@
+{
+  "extends": "@libra/typescript-config/base.json",
+  "compilerOptions": {
+    "baseUrl": "../..",
+    "paths": {
+      "@/*": ["./apps/web/*"],
+      "@libra/ui/*": ["../../packages/ui/src/*"],
+      "@libra/shikicode": ["./packages/shikicode/src/index.ts"],
+      "@libra/shikicode/*": ["./packages/shikicode/src/*"],
+      "@payload-config": ["./payload.config.ts"]
+    },
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
+  },
+  "include": [
+    "next-env.d.ts",
+    "next.config.mjs",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "cloudflare-env.d.ts",
+    "imageLoader.ts"
+  ],
+  "exclude": ["node_modules", "paraglide", "../../packages/better-auth-stripe/**/*"]
+}

@@ -1,0 +1,11 @@
+{
+  "extends": "@libra/typescript-config/base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@libra/ui/*": ["./src/*"]
+    }
+  },
+  "include": ["*.ts", "src"],
+  "exclude": ["node_modules"]
+}

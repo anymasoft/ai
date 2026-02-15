@@ -1,0 +1,40 @@
+# Development Environment Variables for Deploy V2
+# Copy this file to .dev.vars and fill in your actual values
+
+# Cloudflare Configuration
+CLOUDFLARE_ACCOUNT_ID=your_account_id_here
+CLOUDFLARE_API_TOKEN=your_api_token_here
+CLOUDFLARE_ZONE_ID=your_zone_id_here
+
+# Database Configuration
+DATABASE_ID=your_d1_database_id_here
+POSTGRES_URL=your_postgres_connection_string_here
+
+# Authentication Configuration
+BETTER_GITHUB_CLIENT_ID=your_github_client_id_here
+BETTER_GITHUB_CLIENT_SECRET=your_github_client_secret_here
+TURNSTILE_SECRET_KEY=your_turnstile_secret_here
+
+# Sandbox Provider Configuration
+E2B_API_KEY=your_e2b_api_key_here
+DAYTONA_API_KEY=your_daytona_api_key_here
+SANDBOX_BUILDER_DEFAULT_PROVIDER=daytona
+
+# Optional: Payment Configuration
+STRIPE_SECRET_KEY=your_stripe_secret_key_here
+STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret_here
+
+# Application Configuration
+ENVIRONMENT=development
+LOG_LEVEL=debug
+NODE_ENV=development
+
+# Queue Configuration
+DEPLOYMENT_QUEUE_NAME=deployment-queue
+DEPLOYMENT_DLQ_NAME=deployment-dlq
+MAX_DEPLOYMENT_TIMEOUT=600000
+MAX_CONCURRENT_DEPLOYMENTS=5
+
+# Application URLs
+NEXT_PUBLIC_DISPATCHER_URL=https://libra.sh
+DISPATCH_NAMESPACE_NAME=libra-dispatcher

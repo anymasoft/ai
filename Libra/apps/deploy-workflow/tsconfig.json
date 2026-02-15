@@ -1,0 +1,11 @@
+{
+  "extends": "@libra/typescript-config/base.json",
+  "include": [
+    "src/**/*",
+    "worker-configuration.d.ts"
+  ],
+  "exclude": [
+    "public/inspect.js",
+    "public/inspect.src.js"
+  ]
+}

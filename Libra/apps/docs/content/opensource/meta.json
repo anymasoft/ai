@@ -1,0 +1,17 @@
+{
+  "title": "Open Source",
+  "description": "Open source documentation and guides",
+  "icon": "BookOpen",
+  "root": true,
+  "pages": [
+    "---Getting Started---",
+    "getstarted/index",
+    "getstarted/faq",
+
+    "---Best Practice---",
+    "bestpractice/index",
+
+    "---Open Source---",
+    "index"
+  ]
+}

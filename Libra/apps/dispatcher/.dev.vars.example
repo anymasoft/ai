@@ -1,0 +1,25 @@
+# Development environment variables for dispatcher
+# Copy this file to .dev.vars and fill in the actual values
+
+# GitHub OAuth (required for auth)
+BETTER_GITHUB_CLIENT_ID=
+BETTER_GITHUB_CLIENT_SECRET=
+
+# Cloudflare settings (required for dispatcher operations)
+CLOUDFLARE_ACCOUNT_ID=
+DATABASE_ID=
+CLOUDFLARE_API_TOKEN=
+
+# Security (required for auth)
+TURNSTILE_SECRET_KEY=
+
+# Optional variables
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+
+# Email (optional for dispatcher)
+RESEND_FROM=
+RESEND_API_KEY=
+
+# Database (optional for dispatcher)
+POSTGRES_URL=

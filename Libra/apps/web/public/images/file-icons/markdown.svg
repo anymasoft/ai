@@ -1,0 +1,21 @@
+<!--
+  - SPDX-License-Identifier: AGPL-3.0-only
+  - markdown.svg
+  - Copyright (C) 2025 Nextify Limited
+  -
+  - This program is free software: you can redistribute it and/or modify
+  - it under the terms of the GNU Affero General Public License as
+  - published by the Free Software Foundation, either version 3 of the
+  - License, or (at your option) any later version.
+  -
+  - This program is distributed in the hope that it will be useful,
+  - but WITHOUT ANY WARRANTY; without even the implied warranty of
+  - MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  - GNU Affero General Public License for more details.
+  -
+  - You should have received a copy of the GNU Affero General Public License
+  - along with this program. If not, see <https://www.gnu.org/licenses/>.
+  -
+  -->
+
+<svg xmlns="http://www.w3.org/2000/svg" fill="#000000" class="bi bi-markdown-fill" viewBox="0 0 16 16" id="Markdown-Fill--Streamline-Bootstrap" height="16" width="16"><desc>Markdown Fill Streamline Icon: https://streamlinehq.com</desc><path d="M0 4a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2H2a2 2 0 0 1 -2 -2zm11.5 1a0.5 0.5 0 0 0 -0.5 0.5v3.793L9.854 8.146a0.5 0.5 0 1 0 -0.708 0.708l2 2a0.5 0.5 0 0 0 0.708 0l2 -2a0.5 0.5 0 0 0 -0.708 -0.708L12 9.293V5.5a0.5 0.5 0 0 0 -0.5 -0.5M3.56 7.01h0.056l1.428 3.239h0.774l1.42 -3.24h0.056V11h1.073V5.001h-1.2l-1.71 3.894h-0.039l-1.71 -3.894H2.5V11h1.06z" stroke-width="1"></path></svg>

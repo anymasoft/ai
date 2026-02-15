@@ -1,0 +1,261 @@
+/*
+ * SPDX-License-Identifier: AGPL-3.0-only
+ * file-diff-styles.css
+ * Copyright (C) 2025 Nextify Limited
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
+ */
+
+* {
+  box-sizing: border-box;
+}
+
+/* Component theme responsive switching animation */
+.diff-style-root {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.diff-style-root tr,
+.diff-style-root td,
+.diff-style-root * {
+  transition: background-color 0.3s ease, color 0.2s ease;
+}
+
+[data-theme="light"] .diff-style-root {
+  --diff-border--: #dedede;
+  --diff-add-content--: #e6ffec;
+  --diff-del-content--: #ffebe9;
+  --diff-add-lineNumber--: #ccffd8;
+  --diff-del-lineNumber--: #ffd7d5;
+  --diff-plain-content--: #ffffff;
+  --diff-expand-content--: #fafafa;
+  --diff-plain-lineNumber--: #fafafa;
+  --diff-plain-lineNumber-color--: #555555;
+  --diff-hunk-content--: #ddf4ff;
+  --diff-hunk-lineNumber--: #c7ecff;
+  --diff-hunk-lineNumber-hover--: #0969da;
+  --diff-add-content-highlight--: #abf2bc;
+  --diff-del-content-highlight--: #ffb3ad;
+  --diff-add-widget--: #0969d2;
+  --diff-add-widget-color--: #ffffff;
+  --diff-empty-content--: #fafafa;
+  --diff-hunk-content-color--: #777777;
+
+  color: #24292f;
+}
+
+.diff-style-root .diff-line-syntax-raw *,
+[data-theme="light"] .diff-line-syntax-raw * {
+  color: var(--diff-view-light, inherit);
+  font-weight: var(--diff-view-light-font-weight, inherit);
+}
+
+[data-theme="dark"] .diff-style-root {
+  /* Improved dark mode color scheme */
+  --diff-border--: #30363d;
+  --diff-add-content--: #0f2b16;
+  --diff-del-content--: #350c12;
+  --diff-add-lineNumber--: #133929;
+  --diff-del-lineNumber--: #55292b;
+  --diff-plain-content--: #0d1117;
+  --diff-expand-content--: #161b22;
+  --diff-plain-lineNumber--: #161b22;
+  --diff-plain-lineNumber-color--: #b0bac0;
+  --diff-hunk-content--: #112233;
+  --diff-hunk-lineNumber--: #1d4979;
+  --diff-hunk-lineNumber-hover--: #2188ff;
+  --diff-add-content-highlight--: #1a633a;
+  --diff-del-content-highlight--: #8d2d30;
+  --diff-add-widget--: #238636;
+  --diff-add-widget-color--: #ffffff;
+  --diff-empty-content--: #161b22;
+  --diff-hunk-content-color--: #9ba1aa;
+
+  color: #e6edf3;
+}
+
+[data-theme="dark"] .diff-line-syntax-raw * {
+  color: var(--diff-view-dark, inherit);
+  font-weight: var(--diff-view-dark-font-weight, inherit);
+}
+
+/* Custom scrollbar styles */
+[data-theme="dark"] .diff-style-root::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+[data-theme="dark"] .diff-style-root::-webkit-scrollbar-track {
+  background: #161b22;
+}
+
+[data-theme="dark"] .diff-style-root::-webkit-scrollbar-thumb {
+  background-color: #30363d;
+  border-radius: 4px;
+}
+
+[data-theme="dark"] .diff-style-root::-webkit-scrollbar-thumb:hover {
+  background-color: #444c56;
+}
+
+table,
+tr,
+td {
+  border-color: transparent;
+  border-width: 0px;
+  text-align: left;
+}
+
+.diff-line-old-num,
+.diff-line-new-num,
+.diff-line-num {
+  text-align: right;
+}
+
+.diff-style-root tr {
+  content-visibility: auto;
+}
+
+/* Optimize line number and content spacing */
+.diff-style-root td.diff-line-num {
+  padding-right: 8px;
+}
+
+.diff-style-root td.diff-line-old-content,
+.diff-style-root td.diff-line-new-content {
+  padding-left: 8px;
+}
+
+.diff-add-widget-wrapper {
+  transform-origin: center;
+  transform: translateX(-50%) !important;
+}
+
+.diff-line-old-content .diff-add-widget-wrapper,
+.diff-line-new-content .diff-add-widget-wrapper {
+  transform: translateX(50%) !important;
+}
+
+.diff-add-widget-wrapper:hover {
+  transform: translateX(-50%) scale(1.1) !important;
+}
+
+.diff-line-old-content .diff-add-widget-wrapper:hover,
+.diff-line-new-content .diff-add-widget-wrapper:hover {
+  transform: translateX(50%) scale(1.1) !important;
+}
+
+.diff-widget-tooltip {
+  position: relative;
+}
+
+.diff-add-widget,
+.diff-widget-tooltip {
+  font-family: inherit;
+  font-feature-settings: inherit;
+  font-variation-settings: inherit;
+  font-size: 100%;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  margin: 0;
+  text-transform: none;
+  border-width: 0px;
+  background-color: transparent;
+  background-image: none;
+}
+
+.diff-widget-tooltip::after {
+  display: none;
+  box-sizing: border-box;
+  background-color: #555555;
+  position: absolute;
+  content: attr(data-title);
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  overflow: hidden;
+  top: 50%;
+  white-space: nowrap;
+  transform: translateY(-50%);
+  left: calc(100% + 8px);
+  color: #ffffff;
+  z-index: 10;
+}
+
+[data-theme="dark"] .diff-widget-tooltip::after {
+  background-color: #2d333b;
+  color: #e6edf3;
+  border: 1px solid #444c56;
+}
+
+.diff-widget-tooltip::before {
+  display: none;
+  box-sizing: border-box;
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: calc(100% - 2px);
+  transform: translateY(-50%);
+  border: 6px solid transparent;
+  border-right-color: #555555;
+  z-index: 10;
+}
+
+[data-theme="dark"] .diff-widget-tooltip::before {
+  border-right-color: #444c56;
+}
+
+.diff-widget-tooltip:hover {
+  background-color: var(--diff-hunk-lineNumber-hover--);
+  color: white;
+}
+
+.diff-widget-tooltip:hover::before {
+  display: block;
+}
+
+.diff-widget-tooltip:hover::after {
+  display: block;
+}
+
+.diff-line-extend-wrapper * {
+  color: initial;
+}
+
+.diff-line-widget-wrapper * {
+  color: initial;
+}
+
+/* Highlight current line */
+.diff-style-root tr:hover td.diff-line-new-content,
+.diff-style-root tr:hover td.diff-line-old-content {
+  filter: brightness(1.05);
+}
+
+[data-theme="dark"] .diff-style-root tr:hover td.diff-line-new-content,
+[data-theme="dark"] .diff-style-root tr:hover td.diff-line-old-content {
+  filter: brightness(1.15);
+}
+
+/* Improve line number styles */
+[data-theme="dark"] .diff-line-num {
+  opacity: 0.7;
+}
+
+[data-theme="dark"] tr:hover .diff-line-num {
+  opacity: 1;
+}

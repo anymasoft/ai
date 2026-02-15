@@ -1,0 +1,15 @@
+{
+  "extends": "@libra/typescript-config/base.json",
+  "compilerOptions": {
+    "types": []
+  },
+  "include": [
+    "src/**/*",
+    "worker-configuration.d.ts"
+  ],
+  "exclude": [
+    "public/inspect.js",
+    "public/inspect.src.js",
+    "../../packages/better-auth-stripe/**/*"
+  ]
+}

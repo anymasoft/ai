@@ -1,0 +1,72 @@
+{
+  "name": "libra",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "turbo build --concurrency=100%",
+    "clean": "git clean -xdf node_modules",
+    "clean:workspaces": "turbo clean",
+    "dev": "turbo dev --parallel",
+    "dev:web": "turbo dev --parallel --filter !stripe",
+    "format": "turbo format --continue --",
+    "format:fix": "turbo format --continue -- --write",
+    "lint": "turbo lint --continue --",
+    "lint:fix": "turbo lint --continue -- --apply",
+    "check-deps": "check-dependency-version-consistency .",
+    "typecheck": "turbo typecheck",
+    "gen": "turbo gen --config 'turbo/generators/config.ts'",
+    "migration:local": "turbo migration:local",
+    "migration:generate": "cd ./packages/db && drizzle-kit generate --config=drizzle.config.ts",
+    "stripe:local": "stripe listen --forward-to localhost:3000/api/webhooks",
+    "studio:dev": "turbo studio:dev",
+    "preview": "cd apps/web && opennextjs-cloudflare build && opennextjs-cloudflare preview ",
+    "deploy": "cd apps/web &&  opennextjs-cloudflare build && opennextjs-cloudflare deploy -- --keep-vars",
+    "deploy:cache": "cd apps/opennext-cache && wrangler deploy",
+    "upload": "cd apps/web &&  opennextjs-cloudflare build && opennextjs-cloudflare upload ",
+    "postinstall": "chmod +x node_modules/@biomejs/cli-darwin-arm64/biome 2>/dev/null || true",
+    "fix-biome-permissions": "chmod +x node_modules/@biomejs/cli-darwin-arm64/biome",
+    "update:all": "bun update && turbo update --concurrency=1 --continue"
+  },
+  "devDependencies": {
+    "@babel/runtime": "^8.0.0-beta.2",
+    "@biomejs/biome": "^2.2.4",
+    "@changesets/cli": "^2.29.7",
+    "@cloudflare/workers-types": "^4.20250924.0",
+    "@t3-oss/env-nextjs": "^0.13.8",
+    "@turbo/gen": "^2.5.7",
+    "turbo": "^2.5.7",
+    "@types/node": "^24.5.2",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "babel-plugin-react-compiler": "^19.1.0-rc.1-rc-af1b7da-20250421",
+    "changeset": "^0.2.6",
+    "dotenv": "^17.2.2",
+    "dotenv-cli": "^10.0.0",
+    "drizzle-kit": "^0.31.4",
+    "drizzle-seed": "^0.3.1",
+    "knip": "^5.64.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "@octokit/rest": "^22.0.0",
+    "@opennextjs/cloudflare": "^1.8.5",
+    "better-auth": "^1.3.16",
+    "drizzle-orm": "^0.44.5",
+    "e2b": "1.2.0-beta.5",
+    "next-themes": "^0.4.6",
+    "zod": "^4.1.11"
+  },
+  "engines": {
+    "node": ">=24",
+    "npm": ">=11"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "tooling/*",
+    "scripts"
+  ],
+  "packageManager": "bun@1.2.21"
+}

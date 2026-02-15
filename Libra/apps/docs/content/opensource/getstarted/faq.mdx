@@ -1,0 +1,290 @@
+---
+title: "FAQ"
+mode: "center"
+icon: CircleHelp
+---
+
+# Frequently Asked Questions
+
+Welcome to the Libra AI FAQ! This comprehensive guide addresses the most common questions about using Libra, from getting started to advanced features. If you can't find the answer you're looking for here, don't hesitate to reach out to our community on [Forum](https://forum.libra.dev) where our team and community members are always ready to help.
+
+## Getting Started
+
+### What is Libra AI?
+
+Libra AI is an open-source, full-stack application generation platform that combines the rapid UI generation experience of V0 with the backend flexibility of modern development tools. It's completely self-hostable with no vendor lock-in, giving you complete control over your code, data, and design system.
+
+### How is Libra different from V0 or Lovable?
+
+While V0 provides instant UI generation but lacks backend flexibility and self-hosting options, and other platforms may tie you to specific databases or billing models, Libra combines the best of both worlds:
+
+- **Complete ownership**: Your domain, database, design system - switch freely
+- **Lightning-fast development**: One-click UI + backend generation, ready to use
+- **Unlimited extensibility**: Open source, self-hostable, no vendor dependencies
+- **Technology stack freedom**: Support for multiple mainstream frameworks and database combinations
+
+### Do I need coding experience to use Libra?
+
+No! Libra is designed to be accessible to users of all skill levels:
+
+- **Beginners**: Use AI generators and templates to get started quickly
+- **Intermediate developers**: Customize components and business logic
+- **Advanced developers**: Deep customization and platform extension
+
+Building with Libra is an excellent way to learn web development in a practical, hands-on manner, with AI support always available to guide you through the process.
+
+### What can I build with Libra?
+
+You can create a wide range of applications including:
+
+- **Content Websites**: Blogs, portfolios, marketing sites, and documentation
+- **E-commerce Platforms**: Online stores with payment processing and inventory management
+- **Productivity Apps**: Task managers, note-taking apps, and collaboration tools
+- **Social Applications**: Community platforms, forums, and social networks
+- **Business Tools**: CRM systems, dashboards, and analytics platforms
+- **Educational Platforms**: Learning management systems and course websites
+
+## Project Creation and Management
+
+### How do I create my first project?
+
+1. **Install dependencies**: Run `bun install` in your project directory
+2. **Configure environment**: Copy `.env.example` to `.env` and fill in your settings
+3. **Initialize databases**: Follow the guides in `packages/auth/DEV.md` and `packages/db/DEV.md`
+4. **Start development**: Run `cd apps/web && bun dev`
+
+### Can I import existing projects or designs?
+
+Currently, Libra focuses on generating new applications from natural language descriptions. Integration with design tools like Figma and version control systems like GitHub are planned for future releases.
+
+### How do I manage multiple projects?
+
+Libra provides a centralized dashboard where you can:
+- View all your projects in one place
+- Monitor project status and deployment health
+- Access project settings and configurations
+- Manage team access and permissions (coming soon)
+
+### Can I collaborate with team members?
+
+Team collaboration features are currently in development. You can track progress and request early access through our [Community Forum](https://forum.libra.dev).
+
+## Technical Questions
+
+### What technologies does Libra use?
+
+Libra is built on a modern tech stack:
+
+**Frontend:**
+- Next.js 15+
+- React 19
+- TypeScript
+- Tailwind CSS v4.0
+- shadcn/ui components
+
+**Backend:**
+- tRPC for type-safe APIs
+- Drizzle ORM for database operations
+- Cloudflare D1 for auth data
+- NEON PostgreSQL for business data
+
+**Development:**
+- Bun for package management
+- Turborepo for monorepo management
+- GitHub Actions for CI/CD
+
+### Which databases are supported?
+
+Libra supports multiple database options:
+- **PostgreSQL** (recommended, via NEON)
+- **Cloudflare D1** (for auth and permissions)
+- **MySQL** (planned)
+- **SQLite** (planned)
+- **MongoDB** (planned)
+
+You can switch between databases as your needs evolve, with no vendor lock-in.
+
+### Can I use my own design system?
+
+Absolutely! Libra provides flexible design system choices:
+- Use the built-in Tailwind v4 + shadcn/ui component library
+- Integrate your existing design system
+- Completely customize design tokens and components
+
+### How do I deploy my Libra application?
+
+Currently supported deployment platforms:
+- ✅ **Cloudflare Workers** (recommended)
+- 🔄 **Vercel** (planned)
+- 🔄 **Self-hosted servers** (in development)
+
+Detailed deployment guides are available in our [technical documentation](https://docs.libra.dev//deploy).
+
+## Troubleshooting
+
+### My application shows a blank page
+
+This usually indicates a build or configuration issue. Try these steps:
+
+1. **Check the console**: Open browser developer tools and look for JavaScript errors
+2. **Verify environment variables**: Ensure all required variables in `.env` are properly set
+3. **Clear cache**: Delete `node_modules`, `.turbo`, and `.next` directories, then reinstall dependencies
+4. **Check database connections**: Verify your database URLs and credentials are correct
+
+### I'm getting console errors
+
+Common console errors and solutions:
+
+- **Module not found**: Run `bun install` to ensure all dependencies are installed
+- **Environment variable undefined**: Check your `.env` file configuration
+- **Database connection failed**: Verify your database URLs and network connectivity
+- **Type errors**: Run `bun run typecheck` to identify and fix TypeScript issues
+
+### The application isn't responsive on mobile
+
+Libra applications are built with responsive design by default. If you're experiencing mobile issues:
+
+1. **Check viewport meta tag**: Ensure it's properly configured in your layout
+2. **Test responsive breakpoints**: Use browser dev tools to test different screen sizes
+3. **Review custom CSS**: Check if any custom styles override responsive behavior
+4. **Update components**: Ensure you're using the latest version of UI components
+
+### Build or deployment failures
+
+If you encounter build issues:
+
+1. **Check dependencies**: Run `bun install` to ensure all packages are up to date
+2. **Clear build cache**: Delete `.turbo` and build directories
+3. **Verify environment**: Ensure all required environment variables are set for production
+4. **Check logs**: Review build logs for specific error messages
+5. **Test locally**: Ensure the application builds successfully in your local environment
+
+## Pricing and Plans
+
+### Is Libra free to use?
+
+Yes! Libra offers a generous free tier perfect for learning and small projects. Our pricing structure includes:
+
+- **Free Tier**: Core features for personal projects and learning
+- **Pro Plans**: Advanced features for professional developers
+- **MAX Plans**: Unlimited access to all features
+- **Enterprise**: Custom solutions for large organizations
+
+### What's included in the free tier?
+
+The free tier includes:
+- Full access to the AI code generator
+- Basic project management
+- Community support via Forum
+- Self-hosting capabilities
+- Core UI components and templates
+
+### How does billing work for paid plans?
+
+Pricing is based on usage and features accessed. We offer transparent, scalable pricing with no hidden fees. Learn more about [pricing details](https://libra.dev/pricing) on our website.
+
+### Can I upgrade or downgrade my plan?
+
+Yes, you can change your plan at any time. Upgrades take effect immediately, while downgrades take effect at the end of your current billing cycle.
+
+## Community and Support
+
+### How do I get help?
+
+We offer multiple support channels:
+
+| Issue Type | Recommended Channel | Response Time |
+|------------|-------------------|---------------|
+| 🐛 **Bug Reports** | [GitHub Issues](https://github.com/nextify-limited/libra/issues) | 1-2 business days |
+| 💡 **Feature Requests** | [GitHub Discussions](https://github.com/nextify-limited/libra/discussions) | 3-5 business days |
+| ❓ **Usage Questions** | [Community Forum](https://forum.libra.dev) | Real-time response |
+| 🏢 **Business Inquiries** | [contact@libra.dev](mailto:contact@libra.dev) | 1 business day |
+
+### How can I contribute to Libra?
+
+We welcome all forms of contribution:
+
+- 🐛 **Report Issues**: Through GitHub Issues
+- 💡 **Feature Suggestions**: Through GitHub Discussions
+- 🔧 **Code Contributions**: Submit Pull Requests
+- 📖 **Documentation Improvements**: Enhance guides and API docs
+
+Detailed contribution guidelines are available in our [CONTRIBUTING.md](https://github.com/nextify-limited/libra/blob/main/CONTRIBUTING.md).
+
+### Is there a community forum?
+
+Yes! Join our active Community Forum at [forum.libra.dev](https://forum.libra.dev) where you can:
+
+- Get real-time help from the community and team
+- Share your projects and get feedback
+- Participate in weekly tech talks
+- Access exclusive sponsor channels (for sponsors)
+- Get early access to new features
+
+### How do I stay updated with new features?
+
+Follow us on these channels for the latest updates:
+
+- 🐦 **Twitter**: [@nextify2024](https://twitter.com/nextify2024) for development updates
+- 💬 **Forum**: [Join our community](https://forum.libra.dev) for announcements
+- 📖 **Documentation**: [docs.libra.dev](https://docs.libra.dev/) for feature guides
+- 🌐 **Website**: [libra.dev](https://libra.dev) for major releases
+
+## Advanced Features
+
+### Can I extend Libra with custom functionality?
+
+Absolutely! Libra is designed for extensibility:
+
+- **Custom Components**: Create and integrate your own UI components
+- **API Extensions**: Add new tRPC routers and endpoints
+- **Database Schema**: Extend the database with custom tables and relationships
+- **Middleware**: Implement custom authentication and authorization logic
+- **Integrations**: Connect with third-party services and APIs
+
+### How do I integrate with external services?
+
+Libra supports integration with various external services:
+
+- **Payment Processing**: Stripe integration (coming soon)
+- **Authentication**: Custom auth providers and SSO
+- **Storage**: File upload and management services
+- **Analytics**: Tracking and monitoring tools
+- **Email**: Transactional email services
+
+### Can I white-label Libra for my clients?
+
+Yes! Under the AGPL-3.0 license, you can:
+- ✅ Use Libra for commercial projects
+- ✅ Modify and customize the platform
+- ✅ Deploy for clients (with proper attribution)
+- ✅ Offer Libra-based services
+
+However, you must:
+- ⚠️ Keep the source code open if you distribute modifications
+- ⚠️ Provide proper attribution to the Libra project
+- ⚠️ Share any improvements back to the community
+
+For commercial licensing options, contact us at [contact@libra.dev](mailto:contact@libra.dev).
+
+### How do I backup and export my projects?
+
+Currently, project data is stored in your configured databases. We recommend:
+
+1. **Database Backups**: Regular backups of your PostgreSQL and D1 databases
+2. **Code Export**: Download your generated code from the platform
+3. **Environment Configs**: Keep copies of your environment configurations
+4. **Asset Backups**: Backup any uploaded files and media
+
+Automated backup and export features are planned for future releases.
+
+## Still Have Questions?
+
+If you couldn't find the answer to your question in this FAQ, we're here to help:
+
+- 💬 **Join our Forum**: [forum.libra.dev](https://forum.libra.dev) for real-time community support
+- 📧 **Email us**: [contact@libra.dev](mailto:contact@libra.dev) for business inquiries
+- 🐛 **Report issues**: [GitHub Issues](https://github.com/nextify-limited/libra/issues) for bugs and technical problems
+- 💡 **Request features**: [GitHub Discussions](https://github.com/nextify-limited/libra/discussions) for feature suggestions
+
+Our community and team are always ready to help you succeed with Libra AI!

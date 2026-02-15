@@ -1,0 +1,51 @@
+/*
+ * SPDX-License-Identifier: AGPL-3.0-only
+ * imageLoader.ts
+ * Copyright (C) 2025 Nextify Limited
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
+ */
+
+const normalizeSrc = (src: string) => {
+  return src.startsWith('/') ? src.slice(1) : src
+}
+
+export default function cloudflareLoader({
+  src,
+  width,
+  quality,
+}: { src: string; width: number; quality?: number }) {
+  const params = [`width=${width}`]
+  if (quality) {
+    params.push(`quality=${quality}`)
+  }
+  const paramsString = params.join(',')
+
+  if (process.env.NODE_ENV === 'development') {
+    if (process.env.CLOUDFLARE_DOMAIN) {
+      return `https://${process.env.CLOUDFLARE_DOMAIN}/cdn-cgi/image/${paramsString}/${normalizeSrc(src)}`
+    }
+    return src
+  }
+
+  // Skip Cloudflare image optimization for cdn.libra.dev URLs
+  // This prevents double processing of images already served by our CDN
+  if (src.startsWith('https://cdn.libra.dev/') || src.startsWith('http://cdn.libra.dev/')) {
+    return src
+  }
+
+  // Production environment uses relative paths for other images
+  return `/cdn-cgi/image/${paramsString}/${normalizeSrc(src)}`
+}

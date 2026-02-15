@@ -1,0 +1,10 @@
+{
+  "name": "@libra/auth-studio",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "cd ../../packages/auth && bun with-env drizzle-kit studio --port 3002",
+    "with-env": "dotenv -e ../../.env --",
+    "update": "bun update"
+  }
+}

@@ -1,0 +1,120 @@
+{
+  "$schema": "https://turborepo.org/schema.json",
+  "globalDependencies": [
+    "**/.env",
+    "**/.env.local",
+    "**/.env.example"
+  ],
+  "tasks": {
+    "topo": {
+      "dependsOn": [
+        "^topo"
+      ]
+    },
+    "build": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        ".next/**",
+        "!.next/cache/**",
+        "next-env.d.ts",
+        "env.d.ts",
+        "dist/**",
+        "build/**",
+        "paraglide/**"
+      ]
+    },
+    "format-and-lint": {
+      "dependsOn": [
+        "^format-and-lint"
+      ]
+    },
+    "format": {
+      "dependsOn": [
+        "^topo"
+      ]
+    },
+    "lint": {
+      "dependsOn": [
+        "^topo"
+      ]
+    },
+    "typecheck": {
+      "dependsOn": [
+        "^topo"
+      ],
+      "outputs": [
+        "node_modules/.cache/tsbuildinfo.json",
+        "**/*.tsbuildinfo"
+      ]
+    },
+    "test": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "coverage/**"
+      ]
+    },
+    "clean": {
+      "cache": false
+    },
+    "dev": {
+      "env": [
+        "NODE_ENV=development"
+      ],
+      "cache": false,
+      "persistent": true
+    },
+    "studio:dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "deploy": {
+      "dependsOn": [
+        "build"
+      ],
+      "cache": false
+    },
+    "preview": {
+      "dependsOn": [
+        "build"
+      ],
+      "cache": false
+    },
+    "cf-typegen": {
+      "outputs": [
+        "**/*.d.ts",
+        "**/cloudflare-env.d.ts",
+        "**/worker-configuration.d.ts"
+      ]
+    },
+    "migration:generate": {
+      "dependsOn": [
+        "^build"
+      ],
+      "cache": false
+    },
+    "migration:local": {
+      "dependsOn": [
+        "migration:generate"
+      ],
+      "cache": false
+    },
+    "with-env": {
+      "cache": false
+    },
+    "update": {
+      "cache": false,
+      "persistent": false,
+      "outputs": [],
+      "inputs": ["package.json", "bun.lockb"]
+    }
+  },
+  "ui": "stream",
+  "remoteCache": {
+    "signature": true
+  }
+}
+  

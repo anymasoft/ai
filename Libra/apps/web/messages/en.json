@@ -1,0 +1,2390 @@
+{
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "nav": {
+    "features": "Features",
+    "pricing": "Pricing",
+    "price": "Price",
+    "contact": "Contact",
+    "login": "Login",
+    "signup": "Sign Up",
+    "dashboard": "Create",
+    "documentation": "Docs",
+    "templates": "Templates",
+    "playground": "Playground",
+    "start_coding": "Start Building",
+    "brand": "Libra AI",
+    "toggleNavigation": "Toggle navigation menu",
+    "logo_description": "Landing page template built with React, Shadcn/ui and Tailwind that you can copy/paste into your project."
+  },
+  "hero": {
+    "badge": "Built on Developer-Loved Tools",
+    "title": "Turn ideas into apps in",
+    "subtitle": "Brings your app ideas to life with AI, and deploys them to your domain.",
+    "cta_primary": "Start Free",
+    "cta_secondary": "View on GitHub",
+    "form": {
+      "typewriter_base": "Ask Libra to create ",
+      "placeholder": "A cozy reading tracker where bookworms can log their adventures...",
+      "add_attachment": "Add image",
+      "send": "Send",
+      "footer_text": "Free forever. Your code, your ownership. Download or sync to GitHub.",
+      "clear": "Clear",
+      "clearInput": "Clear input"
+    },
+    "examples": {
+      "title": "App Ideas Examples",
+      "subtitle": "Click any example to apply",
+      "buttons": {
+        "discord": "Discord",
+        "github": "Github",
+        "forum": "Community"
+      },
+      "productivity": "Productivity",
+      "social": "Social Media",
+      "health": "Health",
+      "task_manager": "Task Manager",
+      "task_manager_desc": "A cozy task tracker that feels more like a journal than work.",
+      "task_manager_preview": "Make productivity feel magical",
+      "note_taking": "Note Taking App",
+      "note_taking_desc": "A digital garden where ideas grow and connect in beautiful ways.",
+      "note_taking_preview": "Nurture your thoughts",
+      "interest_community": "Interest Community",
+      "interest_community_desc": "A cozy corner of the internet where quirky interests find their tribe.",
+      "interest_community_preview": "Find your creative kindred spirits",
+      "local_events": "Local Events",
+      "local_events_desc": "A platform to discover and organize local community events and activities.",
+      "local_events_preview": "Explore events around you",
+      "diet_tracker": "Diet Tracker",
+      "diet_tracker_desc": "A mindful eating companion that celebrates food joy, not restriction.",
+      "diet_tracker_preview": "Rediscover the pleasure of eating",
+      "fitness_plan": "Fitness Plan",
+      "fitness_plan_desc": "Movement that feels like play, not punishment, tailored to your unique body.",
+      "fitness_plan_preview": "Celebrate your body's awesome"
+    },
+    "fileUpload": {
+      "deleteFailed": "File deletion failed",
+      "unknownError": "Unknown error",
+      "uploadFailed": "Upload failed",
+      "fileTooLarge": "File is too large (max 5MB). Selected: {size}MB",
+      "invalidFileType": "Invalid file type. Please select an image. Selected: {type}"
+    },
+    "projectCreate": {
+      "success": "Project {name} created successfully!",
+      "limitExceeded": "Failed to create project, limit may be exceeded"
+    },
+    "minutes": "minutes",
+    "title_minutes": "minutes"
+  },
+  "features": {
+    "title": "Powerful Features Developers Love",
+    "subtitle": "Built on modern tools with exceptional developer experience and user interface outputs.",
+    "auth_title": "Auto Package Installation",
+    "auth_description": "Intelligently detects and automatically installs required dependencies. No manual configuration needed.",
+    "payments_title": "Image Upload Functionality",
+    "payments_description": "Fully functional image upload with support for multiple formats and cloud storage integration.",
+    "database_title": "GitHub Auto-Commit",
+    "database_description": "Automatically sync code to GitHub repositories with version control and collaborative development support.",
+    "ui_title": "Visual Editor",
+    "ui_description": "Precise visual editor with real-time preview and code synchronization for accurate editing.",
+    "api_title": "Free Auto-Fix",
+    "api_description": "AI-powered automatic error detection and fixing to boost development efficiency.",
+    "deployment_title": "Custom Domain Deployment",
+    "deployment_description": "Deploy to custom domains with complete control over your application's access URL."
+  },
+  "pricing": {
+    "title": "Simple, transparent pricing",
+    "subtitle": "Choose the plan that's right for your business",
+    "title_default": "Pricing Plans",
+    "description_default": "Choose a plan that suits your needs, with features and support tailored to your requirements.",
+    "free_plan": "Free",
+    "free_price": "$0",
+    "free_period": "forever",
+    "free_description": "Perfect for getting started",
+    "pro_plan": "Pro",
+    "pro_price": "$29",
+    "pro_period": "per month",
+    "pro_description": "For growing businesses",
+    "enterprise_plan": "Enterprise",
+    "enterprise_price": "Custom",
+    "enterprise_period": "contact us",
+    "enterprise_description": "For large organizations",
+    "get_started": "Get Started",
+    "contact_sales": "Contact Sales",
+    "feature_users": "Up to {count} users",
+    "feature_projects": "Up to {count} projects",
+    "feature_storage": "{amount} storage",
+    "feature_support": "Email support",
+    "feature_priority_support": "Priority support",
+    "feature_custom": "Custom integrations",
+    "feature_sla": "SLA guarantee",
+    "loading": "Loading pricing plans...",
+    "error": "Error loading plan data.",
+    "forever_free": "Forever free",
+    "yearly": "Yearly",
+    "monthly": "Monthly",
+    "save_up_to": "Save up to {discount}%"
+  },
+  "testimonials": {
+    "title": "What our users say",
+    "subtitle": "Hear from developers who have built amazing products with our platform.",
+    "description": "Libra isn't just a tool—it's a complete development ecosystem designed for everyone—from beginners to pros.",
+    "user1": {
+      "name": "Sarah Johnson",
+      "role": "Crypto Investor",
+      "quote": "This platform has completely transformed how I manage my crypto investments. The tools are intuitive and powerful."
+    },
+    "user2": {
+      "name": "Michael Chen",
+      "role": "Day Trader",
+      "quote": "The real-time analytics and portfolio tracking features have given me an edge in my trading decisions."
+    },
+    "user3": {
+      "name": "Emma Davis",
+      "role": "Beginner Investor",
+      "quote": "As someone new to crypto, this platform made it easy to get started and learn the ropes."
+    }
+  },
+  "faq": {
+    "title": "Frequently Asked Questions",
+    "subtitle": "Everything you need to know about the Libra AI platform",
+    "q1": "Is Libra open source?",
+    "a1": "Yes, this is the biggest difference from other AI building tools. Libra is core open source with transparent code, community-driven development, and no vendor lock-in.",
+    "q2": "What is Libra?",
+    "a2": "Libra is an AI-powered platform that transforms text descriptions into functional web applications. Built with React + shadcn/ui, supporting automated development workflows.",
+    "q3": "What's the difference from other AI building tools?",
+    "a3": "Libra is built on developer-loved tools, supports auto package installation, uses React + shadcn/ui, core open source, supports custom domain deployment, fully functional image upload, GitHub auto-commit, visual editor for precise editing, free auto-fix functionality, excellent UI/UX output, and production-ready results.",
+    "q4": "What's the pricing model?",
+    "a4": "Libra offers flexible pricing plans starting free. Core features are permanently free, with reasonable paid options for advanced features.",
+    "q5": "Who owns the code?",
+    "a5": "Users have complete ownership of generated code. You can download all files or sync to GitHub without any restrictions.",
+    "q6": "Do I need programming experience?",
+    "a6": "Not required. Libra is friendly to both developers and non-developers, providing intuitive interface and AI-assisted development."
+  },
+  "bento": {
+    "title": "Built on Developer-Loved Tools",
+    "description": "Built for developers who refuse compromises: core open source, modern tech stack, automated workflows, and actually usable outputs. Your code, your control, your freedom—exactly as it should be.",
+    "ai_coding": {
+      "title": "AI-Powered Code Generation",
+      "description": "Multi-model AI integration with Claude, Azure OpenAI, and Gemini. Natural language driven production-grade code generation with intelligent context awareness and best practice compliance."
+    },
+    "lightning_fast": {
+      "title": "Built with React + shadcn/ui",
+      "description": "Uses developers' favorite modern tech stack. Based on React 19, TypeScript, Tailwind CSS, and shadcn/ui component library, ensuring code quality and maintainability."
+    },
+    "complete_ownership": {
+      "title": "Core Open Source",
+      "description": "Unlike closed-source tools, Libra is core open source. You can view, modify, and extend every line of code. No black boxes, no vendor lock-in, true development freedom."
+    },
+    "performance_optimized": {
+      "title": "Custom Domain Deployment",
+      "description": "Deploy to your own domain with complete control over your application's access URL. No dependency on third-party platforms, truly own your product."
+    },
+    "tech_stack_freedom": {
+      "title": "Image Upload & GitHub Auto-Commit",
+      "description_1": "Fully functional image upload supporting multiple formats and cloud storage. Automatically sync code to GitHub repositories with version control support.",
+      "description_2": "Visual editor supports precise editing, free AI auto-fix functionality boosts development efficiency."
+    },
+    "community_driven": {
+      "title": "Excellent User Experience Output",
+      "description_1": "Product outputs are actually usable, not simple demos. Generated apps have complete functionality, excellent UI/UX design, and production-grade code quality.",
+      "description_2": "Open source community-driven, continuous improvement and innovation."
+    }
+  },
+  "cta": {
+    "title": "Ready to Start Building for Free?",
+    "subtitle": "Join the open source developer community and use Libra to transform ideas into truly usable products. Free forever, your code completely belongs to you.",
+    "button": "Start Building Free",
+    "secondary": "View Open Source Code"
+  },
+  "footer": {
+    "description": "Open source magic for creative developers who refuse to be boxed in.",
+    "product": "Product",
+    "features": "Features",
+    "pricing": "Pricing",
+    "changelog": "Changelog",
+    "company": "Company",
+    "about": "About",
+    "contact": "Contact",
+    "blog": "Blog",
+    "careers": "Careers",
+    "resources": "Resources",
+    "documentation": "Documentation",
+    "support": "Support",
+    "community": "Community",
+    "discord": "Discord",
+    "twitter": "Twitter",
+    "github": "Github",
+    "legal": "Legal",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "cookies": "Cookie Policy",
+    "copyright": "© 2025 Nextify Limited. All rights reserved.",
+    "copyright_nextify": "© 2025 Nextify Limited. All rights reserved",
+    "status": "Status",
+    "all_rights_reserved": "All rights reserved.",
+    "made_with_love": "Crafted with ❤️ by dreamers, for dreamers"
+  },
+  "contact": {
+    "page_title": "Contact Us",
+    "page_description": "We look forward to hearing your suggestions and needs. Please fill out the form below and our team will contact you as soon as possible.",
+    "form_name_label": "Name",
+    "form_name_placeholder": "Please enter your name",
+    "form_company_label": "Company",
+    "form_company_placeholder": "Please enter your company name",
+    "form_email_label": "Email",
+    "form_email_placeholder": "your.email@company.com",
+    "form_requirements_label": "Requirements",
+    "form_requirements_placeholder": "Please tell us your requirements, e.g., custom features, SSO integration, deployment needs, etc.",
+    "submit_button": "Submit",
+    "privacy_notice": "By submitting, you agree to our",
+    "privacy_policy": "Privacy Policy",
+    "enterprise_title": "Enterprise Custom Services",
+    "enterprise_support": "Dedicated Customer Support",
+    "enterprise_deployment": "Customized Deployment Solutions",
+    "enterprise_sso": "Single Sign-On (SSO) Integration",
+    "enterprise_security": "Data Security and Compliance Support",
+    "enterprise_training": "Professional Training and Consulting Services",
+    "other_contact_title": "Other Contact Methods",
+    "customer_support": "Customer Support",
+    "customer_support_email": "support@yourcompany.com",
+    "business_cooperation": "Business Cooperation",
+    "business_cooperation_email": "sales@yourcompany.com",
+    "media_inquiry": "Media Inquiry",
+    "media_inquiry_email": "press@yourcompany.com"
+  },
+  "dashboard": {
+    "my_projects": "My Projects",
+    "create_project": "Create Project",
+    "creating": "Creating...",
+    "empty_state_title": "Start Your First Project",
+    "empty_state_description": "Create a project to start managing your work and collaborating with your team",
+    "empty_state_button": "Create Project",
+    "project_name_dialog_title": "Create New Project",
+    "project_name_dialog_description": "Create a new project to start your work. You can modify project settings at any time.",
+    "project_name_label": "Project Name",
+    "project_name_placeholder": "Enter project name",
+    "project_name_help": "Choose a descriptive name for your project for easy identification.",
+    "project_name_length": "{current}/32",
+    "project_create_button": "Create Project",
+    "project_create_cancel": "Cancel",
+    "project_name_required": "Please enter a valid project name",
+    "project_create_success": "Project created successfully!",
+    "login_required": "Please log in before creating a project",
+    "create_failed": "Failed to create project, please try again",
+    "quota_exhausted": "Project quota exhausted, please upgrade your plan or wait for quota reset",
+    "siteHeader": {
+      "projectManagement": "Project Management"
+    },
+    "sidebar": {
+      "navigation": {
+        "admin": "Admin",
+        "dashboard": "Dashboard",
+        "teams": "Teams",
+        "billing": "Billing",
+        "session": "Session",
+        "integrations": "Integrations",
+        "docs": "Docs",
+        "github": "Github",
+        "support": "Support",
+        "help": "Help"
+      }
+    },
+    "navUser": {
+      "profile": "Profile",
+      "session": "Session",
+      "billing": "Billing",
+      "settings": "Settings",
+      "logout": "Log Out",
+      "loggingOut": "Logging out...",
+      "switchToLight": "Switch to Light Mode",
+      "switchToDark": "Switch to Dark Mode",
+      "logoutFailed": "Logout failed, please try again"
+    },
+    "teams": {
+      "title": "Team Management",
+      "subtitle": "Manage team members and invitations",
+      "refreshData": "Refresh Data",
+      "refreshing": "Refreshing data...",
+      "refreshSuccess": "Data refreshed successfully",
+      "currentOrganization": "Current Organization",
+      "unnamedOrganization": "Unnamed Organization",
+      "loadingOrganizationData": "Loading organization data...",
+      "inviteForm": {
+        "title": "Invite Team Member",
+        "description": "Send an invitation to join your team",
+        "emailLabel": "Email Address",
+        "emailPlaceholder": "colleague@example.com",
+        "roleLabel": "Role",
+        "selectRole": "Select a role",
+        "roleOwner": "Owner",
+        "roleAdmin": "Admin",
+        "roleMember": "Member",
+        "sendInvitation": "Send Invitation",
+        "sending": "Sending...",
+        "invitationSent": "Invitation sent to {email}",
+        "sendFailed": "Failed to send invitation. Please try again.",
+        "noOrganization": "No organization selected",
+        "emailInvalid": "Please enter a valid email address",
+        "roleRequired": "Please select a role",
+        "rolePlaceholder": "Select role"
+      },
+      "memberTable": {
+        "title": "Team Members",
+        "noMembers": "No team members yet",
+        "inviteFirst": "Invite your first team member to get started",
+        "unnamedUser": "Unnamed User",
+        "columns": {
+          "name": "Name",
+          "email": "Email",
+          "role": "Role",
+          "joinedAt": "Joined At",
+          "actions": "Actions"
+        },
+        "status": {
+          "active": "Active",
+          "inactive": "Offline",
+          "pending": "Pending",
+          "blocked": "Blocked",
+          "unknown": "Unknown"
+        },
+        "actions": {
+          "updateRole": "Update Role",
+          "remove": "Remove",
+          "confirmRemove": "Remove member?",
+          "confirmRemoveDesc": "Are you sure you want to remove {name} from the team?",
+          "cancel": "Cancel",
+          "confirm": "Remove",
+          "removing": "Removing...",
+          "removed": "Member {name} removed",
+          "removeFailed": "Failed to remove member. Please try again.",
+          "roleUpdated": "Member role updated",
+          "roleUpdateFailed": "Failed to update role. Please try again."
+        }
+      },
+      "invitationTable": {
+        "title": "Pending Invitations",
+        "noInvitations": "No pending invitations",
+        "noInvitationsDesc": "All invitations have been processed or none have been sent",
+        "currentStatus": "Current Status",
+        "columns": {
+          "email": "Email",
+          "role": "Role",
+          "status": "Status",
+          "expiresAt": "Expires At",
+          "actions": "Actions"
+        },
+        "status": {
+          "pending": "Pending",
+          "expired": "Expired",
+          "accepted": "Accepted",
+          "canceled": "Canceled",
+          "rejected": "Rejected",
+          "unknown": "Unknown"
+        },
+        "actions": {
+          "cancel": "Cancel",
+          "confirmCancel": "Cancel invitation?",
+          "confirmCancelDesc": "Are you sure you want to cancel the invitation for {email}?",
+          "cancelButton": "Cancel Invitation",
+          "canceling": "Canceling...",
+          "canceled": "Invitation for {email} canceled",
+          "cancelFailed": "Failed to cancel invitation. Please try again."
+        }
+      },
+      "tabs": {
+        "members": "Team Members",
+        "invitations": "Invitations"
+      },
+      "errors": {
+        "fetchFailed": "Failed to fetch team data",
+        "noOrganization": "No organization selected"
+      }
+    },
+    "billing": {
+      "title": "Subscription Management",
+      "subtitle": "Manage your subscription plan and usage",
+      "upgradePlan": "Upgrade Plan",
+      "quickStats": {
+        "aiRemaining": "AI Remaining",
+        "teamMembers": "Team Members",
+        "activeProjects": "Active Projects",
+        "currentPlan": "Current Plan"
+      },
+      "currentPlan": {
+        "title": "Current Plan",
+        "plan": "{plan} Plan",
+        "billingPeriodEnd": "Billing period ends: {date}"
+      },
+      "usage": {
+        "title": "Usage Overview",
+        "insufficient": "Low",
+        "aiMessages": {
+          "title": "AI Messages",
+          "titleWithPlan": "AI Messages ({plan})",
+          "description": "Monthly AI chat and generation usage",
+          "paidDescription": "Paid plan AI chat and generation usage",
+          "freeDescription": "Free plan AI chat and generation usage",
+          "hybridDescription": "AI message quota (Paid {paid} + Free {free})",
+          "used": "Used",
+          "remaining": "Remaining",
+          "total": "Total",
+          "upgradeForMore": "Upgrade for more quota"
+        },
+        "teamSeats": {
+          "title": "Team Seats",
+          "description": "Current team member count",
+          "used": "Used",
+          "remaining": "Remaining",
+          "total": "Total",
+          "expandSeats": "Expand team seats"
+        },
+        "projects": {
+          "title": "Projects",
+          "titleWithPlan": "Projects ({plan})",
+          "description": "Total projects created",
+          "paidDescription": "Total projects created under paid plan",
+          "freeDescription": "Total projects created under free plan",
+          "hybridDescription": "Project quota (Paid {paid} + Free {free})",
+          "used": "Used",
+          "remaining": "Remaining",
+          "total": "Total",
+          "createMore": "Create more projects"
+        }
+      },
+      "upgrade": {
+        "title": "Upgrade Your Plan",
+        "description": "Unlock more features, higher limits and priority support",
+        "features": {
+          "moreAI": "More AI message quota",
+          "expandTeam": "Expand team collaboration",
+          "unlimitedProjects": "Unlimited project creation"
+        },
+        "viewPlans": "View All Plans",
+        "resourcesRunningOut": "Some resources are running out, upgrade your plan for more quota",
+        "button": "Upgrade"
+      },
+      "manage": {
+        "title": "Manage Plan",
+        "button": "Manage Plan",
+        "processing": "Processing..."
+      },
+      "loadError": {
+        "title": "Loading Failed",
+        "description": "Unable to load subscription information. Please try again later or contact support.",
+        "backToDashboard": "Back to Dashboard"
+      }
+    },
+    "session": {
+      "title": "Session Management",
+      "subtitle": "View your account login sessions for security",
+      "refresh": "Refresh session data",
+      "securityTip": {
+        "title": "Account Security Tip",
+        "description": "Regularly check your login sessions. If you notice suspicious activity, terminate the session and contact Us."
+      },
+      "table": {
+        "columns": {
+          "device": "Device",
+          "ipAddress": "IP Address",
+          "location": "Location",
+          "loginTime": "Login Time",
+          "status": "Status"
+        },
+        "deviceTypes": {
+          "iPhone": "iPhone Device",
+          "iPad": "iPad Device",
+          "androidPhone": "Android Phone",
+          "androidTablet": "Android Tablet",
+          "windows": "Windows Device",
+          "mac": "Mac Device",
+          "linux": "Linux Device",
+          "other": "Other Device",
+          "unknown": "Unknown Device"
+        },
+        "unknownLocation": "Unknown Location",
+        "unknownIP": "Unknown",
+        "expiresAt": "Expires at: {time}",
+        "noSessions": "No session records",
+        "terminateTooltip": "Terminate this session"
+      },
+      "status": {
+        "current": "Current Session",
+        "expired": "Expired",
+        "active": "Active"
+      },
+      "actions": {
+        "terminate": "Terminate",
+        "terminateFailed": "Failed to terminate session: {error}"
+      }
+    },
+    "integrations": {
+      "title": "Integrations",
+      "subtitle": "Connect external services to enhance your development workflow",
+      "github": {
+        "title": "GitHub Integration",
+        "description": "Connect your GitHub account to create repositories and manage code",
+        "connected": "Connected",
+        "not_connected": "Not Connected",
+        "connect_button": "Connect GitHub Account",
+        "connecting": "Connecting...",
+        "connect_description": "Connect your GitHub account to enable repository creation and management features.",
+        "authenticating": "Authenticating...",
+        "checking_connection": "Checking connection...",
+        "connection_failed": "Failed to check GitHub connection",
+        "repositories": "Repositories",
+        "followers": "Followers",
+        "following": "Following",
+        "view_profile": "View Profile",
+        "connect_account_title": "Connect your GitHub account",
+        "connect_account_description": "Add your GitHub account to manage connected organizations and sync your projects.",
+        "connect_github": "Connect GitHub",
+        "test_repo": {
+          "title": "Test Repository Creation",
+          "description": "Test the integration by creating a new repository",
+          "placeholder": "test-repo-name",
+          "button": "Create Test Repo"
+        },
+        "install": {
+          "title": "Install GitHub App",
+          "subtitle": "Enable code export to your repositories",
+          "description": "Install the Libra GitHub App to enable repository access and code export",
+          "button": "Install GitHub App",
+          "installing": "Installing...",
+          "required_title": "Installation Required",
+          "required_description": "Install the Libra GitHub App to enable repository access and code export.",
+          "error_popup_blocked": "Popup blocked. Please allow popups for this site and try again.",
+          "error_installation_failed": "Failed to open GitHub App installation"
+        },
+        "oauth": {
+          "title": "Complete Authentication",
+          "description": "Grant permission to access your GitHub repositories",
+          "connected_personal": "Connected to {account} (personal account)",
+          "connected_organization": "Connected to {account} (organization)",
+          "connected_generic": "Connected to {account}",
+          "app_connected": "GitHub App Connected",
+          "access_required": "Repository Access Required",
+          "access_description": "Grant permission to access your repositories for code export.",
+          "authorize_button": "Authorize Repository Access"
+        },
+        "repository": {
+          "title": "Select Repository",
+          "description": "Choose an existing repository",
+          "select_existing": "Choose an existing repository",
+          "new_button": "New",
+          "private_badge": "Private",
+          "select_aria_label": "Select repository {name}"
+        },
+        "auto_create": {
+          "title": "Create Repository",
+          "description": "Automatically create a repository for your project",
+          "creating_title": "Creating Repository...",
+          "ready_title": "Ready to Export",
+          "creating_description": "Setting up your GitHub repository",
+          "ready_description": "Automatically create and export your project",
+          "project_title": "Project: {name}",
+          "creating_project_description": "Creating GitHub repository and preparing for code export...",
+          "ready_project_description": "We'll automatically create a GitHub repository and export your project code.",
+          "progress_message": "This may take a few moments...",
+          "select_existing_button": "Select Existing Repository"
+        },
+        "push": {
+          "title": "Export Code",
+          "description": "Export your code to the selected repository",
+          "files_title": "Files to be exported:",
+          "new_file": "New file",
+          "back_button": "Back",
+          "export_button": "Export Code"
+        },
+        "success": {
+          "title": "GitHub Integration",
+          "description": "GitHub integration is ready for code export",
+          "ready_title": "GitHub Integration Ready",
+          "access_title": "Repository Access",
+          "access_description": "Have trouble connecting? Reauthenticate",
+          "authorize_button": "Authorize",
+          "export_title": "Export Repository",
+          "export_description": "Ready to export your code",
+          "sync_button": "Sync Files to GitHub"
+        },
+        "modal": {
+          "checking_connection": "Checking GitHub connection...",
+          "step_install": "Install GitHub App",
+          "step_oauth": "Complete Authentication",
+          "step_repositories": "Select Repository",
+          "step_create": "Create Repository",
+          "step_push": "Export Code",
+          "step_success": "GitHub Integration",
+          "description_install": "Install the Libra GitHub App to enable code export",
+          "description_oauth": "Grant permission to access your GitHub repositories",
+          "description_repositories": "Choose where to export your code",
+          "description_create": "Automatically create a repository for your project",
+          "description_push": "Export your code to the selected repository",
+          "description_success": "GitHub integration is ready for code export"
+        },
+        "repository_display": {
+          "copy_tooltip": "Copy repository URL",
+          "copied_tooltip": "Copied!",
+          "private_badge": "Private"
+        },
+        "messages": {
+          "installation_success": "GitHub App installed successfully!",
+          "installation_cancelled": "GitHub App installation was cancelled or incomplete. You can try again anytime.",
+          "installation_check_failed": "Please refresh the page to check if GitHub App was installed successfully.",
+          "oauth_success": "GitHub authorization completed successfully!",
+          "oauth_cancelled": "GitHub authorization was cancelled or incomplete. You can try again anytime.",
+          "oauth_check_failed": "Please refresh the page to check if GitHub authorization was completed successfully.",
+          "oauth_not_required": "OAuth authorization is not required for organization accounts.",
+          "not_authenticated": "Not authenticated with GitHub",
+          "push_failed": "Failed to push code",
+          "refresh_failed": "Failed to refresh repositories",
+          "create_repo_failed": "Failed to create project repository",
+          "popup_blocked": "Popup blocked. Please allow popups for this site and try again.",
+          "oauth_failed": "Failed to open GitHub OAuth authorization",
+          "installation_failed": "Failed to open GitHub App installation"
+        }
+      },
+      "coming_soon": {
+        "title": "More Integrations Coming Soon",
+        "description": "We're working on adding more integrations to enhance your development experience"
+      }
+    },
+    "share": {
+      "modal": {
+        "title": "Share Project",
+        "description": "Share your deployed project with others through social media or by copying the link.",
+        "description_not_deployed": "Deploy your project first, then share it with others.",
+        "visibility": {
+          "title": "Project is public",
+          "description": "Others can view and access your project",
+          "privateProjectDescription": "This project is private and only visible to you and your team members.",
+          "upgradeForPrivateProjects": "Upgrade to Pro to create private projects."
+        },
+        "social": {
+          "share_on_x": "Share on X",
+          "share_on_facebook": "Share on Facebook",
+          "share_on_linkedin": "Share on LinkedIn",
+          "share_on_reddit": "Share on Reddit"
+        },
+        "copy_link": {
+          "title": "Or copy the link",
+          "description": "Share this direct link to your project",
+          "copy_button": "Copy"
+        },
+        "states": {
+          "loading": "Loading project information...",
+          "not_deployed": "Project is not deployed yet. Deploy your project first to share it.",
+          "copy_success": "Project link copied to clipboard!",
+          "copy_failed": "Failed to copy project link",
+          "visibilityUpdateSuccess": "Project visibility updated successfully",
+          "visibilityUpdateFailed": "Failed to update project visibility"
+        },
+        "close": "Close dialog",
+        "share_text": {
+          "twitter": "Check out my project built with Libra AI!",
+          "linkedin_title": "My Project built with Libra AI",
+          "linkedin_summary": "Check out this amazing project I built using Libra AI!",
+          "reddit_title": "Check out my project built with Libra AI!"
+        }
+      }
+    },
+    "projectCard": {
+      "noDescription": "No description",
+      "projectSettings": "Project Settings",
+      "inactiveTooltip": "This project is inactive and cannot be accessed",
+      "inactive": "Inactive",
+      "openingProject": "Opening project...",
+      "inactiveAriaLabel": "This project is currently inactive",
+      "time": {
+        "updatedAgo": "Updated {time} ago",
+        "createdAgo": "Created {time} ago",
+        "justCreated": "Just created"
+      }
+    },
+    "createProject": {
+      "requirements": {
+        "title": "What app do you want to build?",
+        "subtitle": "Add detailed requirements for \"{projectName}\"",
+        "placeholder": "Describe the app you want to build. We recommend starting with one feature and then gradually adding more. (e.g., Create an app that allows users to upload images and view them in a gallery)",
+        "required": "Project description is required",
+        "generateButton": "Generate App",
+        "generating": "Generating app...",
+        "describeProject": "Please describe the project you want to build"
+      },
+      "notifications": {
+        "generating": "Generating \"{projectName}\" app...",
+        "generatingDescription": "This may take some time, please be patient",
+        "success": "\"{projectName}\" app generated successfully!",
+        "successDescription": "You can now start using your new app",
+        "viewNow": "View Now",
+        "updateFailed": "Failed to update project requirements, please try again",
+        "generateFailed": "Failed to generate app, please try again"
+      }
+    },
+    "projectDetails": {
+      "dialog": {
+        "title": "Project Details",
+        "description": "Manage project configuration, team and settings",
+        "backButton": "Back",
+        "unsaved": "Unsaved",
+        "unsavedChanges": "You have unsaved changes",
+        "saving": "Saving...",
+        "saveChanges": "Save Changes"
+      },
+      "errors": {
+        "loadFailed": "Failed to load project information",
+        "loadFailedDescription": "Unable to get project data, please try again or contact administrator",
+        "retry": "Retry"
+      }
+    },
+    "workspace": {
+      "switcher": {
+        "switchedTo": "Switched to workspace: {name}",
+        "switchFailed": "Failed to switch workspace, please try again"
+      },
+      "create": {
+        "title": "Create New Workspace",
+        "description": "Create a new workspace to manage your projects or collaborate with others. After creation, you can invite team members to join.",
+        "nameLabel": "Workspace Name",
+        "namePlaceholder": "Enter workspace name",
+        "nameHelp": "Choose a descriptive name for your workspace so you and your team members can easily identify it.",
+        "cancel": "Cancel",
+        "creating": "Creating...",
+        "createButton": "Create Workspace",
+        "nameRequired": "Please enter a valid workspace name",
+        "createSuccess": "Workspace {name} created successfully!",
+        "createFailed": "Failed to create workspace, please try again",
+        "slugTaken": "This workspace identifier is already taken, please try another one",
+        "createFailedWithMessage": "Failed to create workspace: {message}",
+        "retryMessage": "Please try again",
+        "createNew": "Create New Workspace"
+      },
+      "slugEditor": {
+        "label": "Workspace Identifier",
+        "customize": "Customize",
+        "reset": "Reset",
+        "rules": {
+          "length": "Must be 3-30 characters",
+          "format": "Can only contain lowercase letters, numbers and hyphens",
+          "noStartEnd": "Cannot start or end with hyphens"
+        },
+        "clickToEdit": "Click to edit",
+        "editLabel": "Edit workspace identifier",
+        "description": "This will be your workspace's unique identifier, used for URLs and API calls.",
+        "fixDescription": "Please fix the workspace identifier to ensure it meets the requirements."
+      },
+      "validation": {
+        "slugEmpty": "Workspace identifier cannot be empty",
+        "slugTooShort": "Workspace identifier must be at least 3 characters",
+        "slugInvalidFormat": "Workspace identifier can only contain lowercase letters, numbers, and hyphens in the middle",
+        "slugAlreadyInUse": "This workspace identifier is already in use, please try another one",
+        "slugCheckFailed": "Unable to check identifier availability, please try again later"
+      },
+      "projectDetails": {
+        "dateFormat": {
+          "unknown": "Unknown",
+          "invalid": "Invalid date"
+        },
+        "notifications": {
+          "updateSuccess": "Project updated successfully",
+          "updateSuccessDesc": "All changes have been saved",
+          "saveFailed": "Save failed",
+          "saveFailedDesc": "Please check your network connection and try again",
+          "deleteSuccess": "Project deleted successfully",
+          "deleteFailed": "Delete failed",
+          "deleteFailedDesc": "Please try again later"
+        }
+      }
+    },
+    "projectDetailsTabs": {
+      "groups": {
+        "project": "Project",
+        "content": "Content",
+        "dangerZone": "Danger Zone"
+      },
+      "tabs": {
+        "details": "Project Details",
+        "members": "Team Members",
+        "history": "History",
+        "knowledge": "Knowledge",
+        "assets": "Assets",
+        "analytics": "Analytics",
+        "danger": "Delete Project"
+      },
+      "comingSoon": "Coming Soon",
+      "details": {
+        "basicInfo": "Basic Information",
+        "projectName": "Project Name",
+        "readOnly": "Read Only",
+        "projectDescription": "Project Description",
+        "descriptionPlaceholder": "Describe your project...",
+        "descriptionHint": "The project description will be used for AI to understand your project requirements.",
+        "projectNamePlaceholder": "Enter project name",
+        "projectDescriptionPlaceholder": "Project description will be used for AI to understand your project requirements",
+        "projectDescriptionHelp": "Project description will be used for AI to understand your project requirements.",
+        "projectInfo": "Project Information",
+        "createdAt": "Created At",
+        "lastUpdated": "Last Updated",
+        "projectId": "Project ID"
+      },
+      "knowledge": {
+        "title": "Knowledge",
+        "description": "Add context about your project that will be used when generating code. This can include specific requirements, constraints, or any other relevant information.",
+        "placeholder": "e.g., \"Use TypeScript for all components\", \"Follow Material Design principles\", \"Include accessibility features\"... (max 500 chars)",
+        "tipTitle": "Pro Tip",
+        "tipContent": "This information will be automatically included in every conversation with your AI assistant. You can add things like writing style preferences, company terminology, or specific guidelines that you want the AI to always remember.",
+        "unsaved": "Unsaved changes",
+        "autoSaving": "Auto-saving...",
+        "lastSaved": "Saved"
+      },
+      "danger": {
+        "title": "Danger Zone",
+        "description": "Actions in this area may result in data loss. Please proceed with caution.",
+        "warning": "Warning",
+        "warningText": "Deletion is irreversible. All project data, code, and configuration will be permanently deleted.",
+        "deleteButton": "Delete this project",
+        "deleting": "Deleting...",
+        "step1Title": "Dangerous Operation Warning",
+        "step1Description": "You are about to enter the danger zone. Please read the following information carefully to ensure you understand the consequences of the operation.",
+        "step2Title": "Confirm Project Deletion",
+        "step2Instruction": "Please enter the project name \"{projectName}\" to confirm the deletion operation",
+        "confirmationInputLabel": "Project Name",
+        "confirmationInputPlaceholder": "Enter project name to confirm",
+        "finalWarning": "This operation will permanently delete the project and all its data, including code files, configuration information, and history records. This action cannot be undone.",
+        "proceedButton": "I understand the risks, proceed with deletion",
+        "backButton": "Go back",
+        "inputMismatchError": "The entered project name does not match, please try again",
+        "safetyTip": "Safety Tip",
+        "safetyTipContent": "Before deleting the project, we recommend downloading the project files as a backup.",
+        "whatWillHappen": "The deletion operation will:",
+        "consequence1": "Permanently delete all project files and code",
+        "consequence2": "Clear project configuration and settings",
+        "consequence3": "Remove project access permissions and collaboration information",
+        "consequence4": "Delete project deployments and custom domains",
+        "alternativeAction": "If you just want to pause the project, consider exporting project files instead of deleting.",
+        "proceedToDeletion": "Proceed to deletion",
+        "close": "Close",
+        "projectNameMatch": "Project name matches",
+        "deleteConfirm": {
+          "title": "Confirm project deletion?",
+          "description": "This action cannot be undone. Project \"{projectName}\" and all its related data will be permanently deleted.",
+          "cancel": "Cancel",
+          "confirm": "Confirm Delete"
+        },
+        "unsavedChanges": {
+          "title": "Unsaved Changes",
+          "description": "You have unsaved changes. Are you sure you want to leave? All unsaved changes will be lost.",
+          "continueEditing": "Continue Editing",
+          "discardAndLeave": "Discard Changes and Leave"
+        }
+      }
+    },
+    "projectCreateButton": {
+      "quota": {
+        "loading": "Loading quota information...",
+        "exhausted": "Project quota exhausted ({used}/{limit})",
+        "remaining": "{remaining} project quota remaining ({used}/{limit} used)",
+        "upgradeHint": "Upgrade your plan to get more project quota",
+        "upgradeButton": "Upgrade Now"
+      }
+    }
+  },
+  "auth": {
+    "email_form": {
+      "title": "Create an account or sign-In",
+      "subtitle": "You will receive a magic link in your email",
+      "github_button": "GitHub",
+      "connecting": "Connecting...",
+      "github_connecting": "Connecting to GitHub...",
+      "github_redirecting": "Redirecting to GitHub...",
+      "github_success": "GitHub authentication successful!",
+      "github_error": "GitHub authentication failed. Please try again.",
+      "github_popup_blocked": "Popup blocked. Please allow popups and try again.",
+      "github_network_error": "Network error. Please check your connection and try again.",
+      "github_timeout": "Authentication timed out. Please try again.",
+      "github_cancelled": "Authentication was cancelled. You can try again anytime.",
+      "retry": "Retry",
+      "help_popup_blocked": "To enable popups: Click the popup blocker icon in your browser's address bar and select 'Always allow popups'.",
+      "unknown_error": "Unknown error",
+      "authentication_error": "Authentication Error",
+      "retry_github_auth": "Retry GitHub authentication",
+      "or_continue": "Or continue with",
+      "email_label": "Email",
+      "email_placeholder": "nextify@libra.dev",
+      "send_link": "Send me my link",
+      "sending": "Sending...",
+      "email_required": "Please enter a valid email address",
+      "captcha_required": "Please complete the security verification above"
+    },
+    "otp_form": {
+      "change_email": "Change",
+      "verification_code": "VERIFICATION CODE",
+      "enter_code": "Enter the 6-digit code we sent to your email",
+      "verifying": "Verifying...",
+      "verify_button": "Verify and sign in"
+    },
+    "feature_showcase": {
+      "ai_powered_development": "AI-Powered Development",
+      "cloud_ide_environment": "Cloud IDE Environment",
+      "open_source_core": "Open Source Core",
+      "github_integration": "GitHub Integration",
+      "custom_domain_deployment": "Custom Domain Deployment",
+      "multi_model_ai_support": "Multi-Model AI Support",
+      "real_time_preview": "Real-Time Preview",
+      "welcome": "Welcome to Libra"
+    },
+    "oauth": {
+      "continue_github": "Continue with GitHub",
+      "continue_google": "Continue with Google"
+    }
+  },
+  "ui": {
+    "typewriter": {
+      "text1": "quiz page with questions and answers",
+      "text2": "blog Article Details Page Layout",
+      "text3": "dashboard with a sidebar",
+      "text4": "ui like platform.openai.com....",
+      "text5": "button",
+      "text6": "app that tracks non-standard split sleep cycles",
+      "text7": "transparent card to showcase achievements of a user"
+    },
+    "error": {
+      "title": "Error",
+      "description": "Something went wrong!",
+      "refresh": "Refresh"
+    },
+    "accessibility": {
+      "close": "Close",
+      "toggleSidebar": "Toggle Sidebar",
+      "sidebar": "Sidebar",
+      "sidebarDescription": "Displays the mobile sidebar.",
+      "searchThroughDashboard": "Search through dashboard",
+      "goToPreviousPage": "Go to previous page",
+      "goToNextPage": "Go to next page",
+      "useAlternativeSyntax": "Use alternative syntax highlighting",
+      "switchToCodeMode": "Switch to code mode",
+      "switchToPreviewMode": "Switch to preview mode",
+      "viewSourceCode": "View source code",
+      "previewMarkdown": "Preview Markdown",
+      "switchToLightMode": "Switch to light mode",
+      "switchToDarkMode": "Switch to dark mode",
+      "copyToClipboard": "Copy code to clipboard",
+      "copied": "Copied!"
+    }
+  },
+  "chat": {
+    "toolbar": {
+      "file_upload": "Upload file",
+      "enhance_prompt": "Enhance prompt"
+    },
+    "elementSelected": "Selected element: {tagName}",
+    "assistantReply": "I have analyzed the page content. How can I help you?",
+    "showMoreOptions": "Show more options",
+    "title": "Chat Assistant",
+    "closeChat": "Close chat",
+    "startConversation": "Start a conversation",
+    "startConversationHelper": "You can ask any questions about the current code file, or request help analyzing page elements.",
+    "quickQuestions": "Quick Questions",
+    "question1": "What are the main functions of this page?",
+    "question2": "Help me analyze the page structure",
+    "question3": "Explain the functionality of this code",
+    "keyboardShortcut": "Use shortcut",
+    "keyboardShortcutSuffix": "to quickly access chat",
+    "thinking": "Thinking...",
+    "placeholder": "Enter a message...",
+    "copyElementPath": "Copy element path",
+    "copiedToClipboard": "Copied to clipboard",
+    "element": "Element",
+    "className": "Class Name",
+    "component": "Component"
+  },
+  "admin": {
+    "title": "Admin Console",
+    "description": "Manage system users, including viewing user information, banning/unbanning users, and other operations",
+    "current_admin": "Current admin",
+    "user_management": "User Management",
+    "user_management_description": "View and manage all users in the system with search, sort, and pagination features",
+    "search_field": "Search field",
+    "search_placeholder_email": "Search by email...",
+    "search_placeholder_name": "Search by name...",
+    "total_users": "Found {count} users",
+    "no_data": "No data",
+    "loading_failed": "Failed to load user data",
+    "columns": {
+      "user_info": "User Info",
+      "role": "Role",
+      "registration_time": "Registration Time",
+      "email_verification": "Email Verification",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "user_status": {
+      "normal": "Normal",
+      "banned": "Banned",
+      "verified": "Verified",
+      "unverified": "Unverified"
+    },
+    "user_roles": {
+      "admin": "Admin",
+      "superadmin": "Super Admin",
+      "user": "User"
+    },
+    "actions": {
+      "ban": "Ban",
+      "unban": "Unban",
+      "ban_user": "Ban User",
+      "unban_user": "Unban User",
+      "confirm_ban": "Confirm Ban",
+      "confirm_unban": "Confirm Unban",
+      "ban_reason": "Ban Reason",
+      "ban_reason_placeholder": "Enter ban reason...",
+      "ban_duration": "Ban Duration",
+      "ban_duration_placeholder": "Days (leave empty for permanent ban)",
+      "ban_duration_help": "Leave empty for permanent ban, enter days for temporary ban",
+      "ban_success": "User banned successfully",
+      "unban_success": "User unbanned successfully",
+      "ban_failed": "Failed to ban user",
+      "unban_failed": "Failed to unban user",
+      "copy_user_id": "Copy User ID",
+      "copy_email": "Copy Email Address",
+      "view_details": "View Details",
+      "more_actions": "Open menu"
+    },
+    "ban_dialog": {
+      "title": "Ban User",
+      "description": "You are about to ban user {name} ({email}). The user will not be able to log in after being banned.",
+      "reason_optional": "Ban Reason (Optional)",
+      "duration_optional": "Ban Duration (Optional)"
+    },
+    "unban_dialog": {
+      "title": "Confirm Unban User",
+      "description": "Are you sure you want to unban user {name} ({email})?",
+      "ban_reason_label": "Ban Reason"
+    },
+    "pagination": {
+      "total_records": "Total {total} records, page {current} of {pages}",
+      "first_page": "First",
+      "previous_page": "Previous",
+      "next_page": "Next",
+      "last_page": "Last"
+    },
+    "table": {
+      "columns_display": "Columns",
+      "no_name": "No name set"
+    },
+    "search": {
+      "field_label": "Search field:",
+      "field_email": "Email",
+      "field_name": "Name",
+      "placeholder_email": "Search by email...",
+      "placeholder_name": "Search by name...",
+      "placeholder_default": "Search..."
+    },
+    "errors": {
+      "load_failed": "Failed to load user data",
+      "unknown_error": "Unknown error",
+      "retry": "Retry"
+    },
+    "status": {
+      "reason": "Reason",
+      "expires": "Expires",
+      "user_actions": "User Actions",
+      "open_menu": "Open menu"
+    }
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "no_data": "No data",
+    "previous": "Previous",
+    "next": "Next",
+    "pagination_info": "Total {total} records, page {current} of {totalPages}",
+    "close": "Close",
+    "back": "Back",
+    "submit": "Submit",
+    "search": "Search",
+    "filter": "Filter",
+    "sort": "Sort",
+    "language": "Language",
+    "languages": {
+      "english": "English",
+      "chinese": "中文"
+    },
+    "theme_toggle": "Toggle theme",
+    "user_tiers": {
+      "free": "Free",
+      "free_desc": "Free plan with basic features",
+      "pro": "Pro",
+      "pro_desc": "Pro plan with advanced features",
+      "max": "Max",
+      "max_desc": "Max plan with unlimited features"
+    },
+    "user_menu": {
+      "upgrade": "Upgrade",
+      "manage": "Manage",
+      "ai_usage": "AI Message Usage",
+      "remaining": "Remaining {count} times",
+      "loading": "Loading...",
+      "user_menu_label": "User menu"
+    },
+    "loading_skeleton": {
+      "text1": "Transforming ideas into code...",
+      "text2": "AI is building your app...",
+      "text3": "Crafting every line with care...",
+      "text4": "Amazing app coming to life...",
+      "text5": "Intelligent analysis in progress...",
+      "text6": "Your digital vision taking shape...",
+      "fallback": "The best things take time"
+    }
+  },
+  "userButton": {
+    "usageDisplay": {
+      "hybridPlan": "Hybrid Plan",
+      "usageAlmostExhausted": "Usage almost exhausted",
+      "usageHigh": "High usage, consider upgrading plan",
+      "planDetails": "Plan Details",
+      "paidPlan": "Paid Plan",
+      "freeQuota": "Free Quota"
+    },
+    "navigation": {
+      "dashboard": "Dashboard",
+      "profile": "Profile"
+    },
+    "actions": {
+      "logOut": "Log Out"
+    }
+  },
+  "themeSwitcher": {
+    "options": {
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    }
+  },
+  "networkState": {
+    "offline": "You are currently offline."
+  },
+  "avatar": {
+    "userAlt": "User"
+  },
+  "logo": {
+    "alt": "Logo"
+  },
+  "icon": {
+    "rollback": {
+      "alt": "rollback"
+    }
+  },
+  "ide": {
+    "navbar": {
+      "download": "Download",
+      "downloadAriaLabel": "Download the sandbox files",
+      "downloading": "Downloading...",
+      "downloadFailed": "Download failed. Please try again.",
+      "brand": "Libra AI Web Coding",
+      "search": "Search",
+      "switchToPreview": "Switch to preview mode",
+      "switchToCode": "Switch to code mode",
+      "quotaExceeded": "AI quota exceeded - upgrade to use this feature",
+      "quotaExceededUpgrade": "AI quota exceeded. Please upgrade to use this feature.",
+      "exportToGitHub": "Export to GitHub",
+      "deploy": "Deploy",
+      "deploying": "Deploying",
+      "deployProject": "Deploy project to production",
+      "deployingProject": "Deploying project",
+      "deployProgress": "Deployment progress: {progress}%, current stage: {stage}",
+      "deployShortcut": "Shortcut: Cmd+D",
+      "currentStage": "Current stage: {stage}",
+      "deployAriaLabel": "Deploy project (Shortcut: Cmd+D)",
+      "deployingAriaLabel": "Deploying project, progress: {progress}%",
+      "code": "Code",
+      "preview": "Preview",
+      "switchModeTooltip": "Switch between code editor and preview mode",
+      "share": "Share",
+      "returnToDashboard": "Return to Dashboard",
+      "libraAltText": "Libra - AI Development Platform"
+    },
+    "errorDisplay": {
+      "failedToLoad": "Failed to load file structure",
+      "networkIssue": "This may be due to network issues or the server being temporarily unavailable. Please try again later.",
+      "refreshPage": "Refresh Page"
+    },
+    "chatToggle": {
+      "openChat": "Open Chat",
+      "openChatAriaLabel": "Open Chat"
+    },
+    "fileExplorer": {
+      "hideSidebar": "Hide sidebar",
+      "showSidebar": "Show sidebar",
+      "codeBrowser": "Code Browser",
+      "code": "Code",
+      "exitFullscreen": "Exit fullscreen",
+      "enterFullscreen": "Enter fullscreen",
+      "comments": {
+        "exposeExpandMethod": "Expose expand method to parent component"
+      }
+    },
+    "browserToolbar": {
+      "takeScreenshot": "Take screenshot",
+      "takeScreenshotAriaLabel": "Take screenshot"
+    },
+    "helpPanel": {
+      "closeHelpPanel": "Close help panel",
+      "shortcutsAndHelp": "Shortcuts & Help",
+      "keyboardShortcuts": "Keyboard Shortcuts",
+      "sendMessage": "Send Message",
+      "elementSelector": "Element Selector",
+      "cancelRequest": "Cancel Request",
+      "usageTips": "Usage Tips",
+      "selectElementsTitle": "Select Elements for Interaction",
+      "selectElementsDesc": "Use the element selector to directly click page elements for quick interaction and questions",
+      "describeRequirementsTitle": "Describe Requirements Specifically",
+      "describeRequirementsDesc": "When asking questions, try to describe specific requirements clearly to get more accurate answers",
+      "cancelRequestsTitle": "Cancel Ongoing Requests",
+      "cancelRequestsDesc": "To cancel an ongoing request, click the pause button or press the ESC key",
+      "closeHelp": "Close Help"
+    },
+    "forkModal": {
+      "forkConversation": "Fork Conversation",
+      "createNewProject": "Create a new project by forking the conversation up to this point.",
+      "forkDescription": "This will create a new project containing all messages from the beginning of the conversation up to this point. You can continue developing from this state in the new project.",
+      "sourceProject": "Source Project",
+      "forkPoint": "Fork Point",
+      "whatHappens": "What happens:",
+      "newProjectCreated": "A new project will be created",
+      "conversationCopied": "All conversation history up to this point will be copied",
+      "redirectToNew": "You'll be redirected to the new project",
+      "originalUnchanged": "The original project remains unchanged",
+      "cancel": "Cancel",
+      "creatingFork": "Creating Fork...",
+      "createFork": "Create Fork"
+    },
+    "upgrade": {
+      "quotaStatus": "Quota Status",
+      "quotaRemaining": "0 remaining"
+    },
+    "fileTree": {
+      "fileIcon": {
+        "alt": "{filename} file icon"
+      },
+      "accessibility": {
+        "folderLabel": "{name} folder",
+        "fileLabel": "{name} file"
+      },
+      "console": {
+        "renderingFileTree": "Rendering file tree",
+        "clickedFile": "Clicked file: {path}, type: {type}",
+        "correctedDuplicatePath": "Corrected duplicate path: {original} -> {corrected}"
+      },
+      "codeblock": {
+        "toolbar": {
+          "useAlternativeSyntax": "Use alternative syntax highlighting",
+          "switchToCodeMode": "Switch to code mode",
+          "switchToPreviewMode": "Switch to preview mode",
+          "viewSourceCode": "View source code",
+          "previewMarkdown": "Preview Markdown",
+          "switchToLightMode": "Switch to light mode",
+          "switchToDarkMode": "Switch to dark mode",
+          "copyToClipboard": "Copy code to clipboard",
+          "copied": "Copied!"
+        }
+      },
+      "codeExplorer": {
+        "selectFilePrompt": "Please select a file from the left",
+        "selectFileDescription": "Select a file from the file browser to view its content"
+      },
+      "imageRender": {
+        "imageLabel": "Image:",
+        "svgFile": "SVG File",
+        "imageFile": "Image File"
+      },
+      "download": {
+        "noFilesAvailable": "No files available for download",
+        "zipGenerationFailed": "ZIP file generation failed",
+        "downloadFailed": "File download failed"
+      }
+    },
+    "codeEditor": {
+      "editMode": "Edit Mode",
+      "toggleEditMode": "Toggle edit mode",
+      "deploySuccess": "File changes deployed successfully",
+      "deployFailedRetry": "Deployment failed, please retry",
+      "deployFailedPrefix": "Deploy failed: ",
+      "fileUpdateFailed": "File update failed",
+      "submitFailed": "Submit failed, please retry",
+      "deployFailedWithError": "Deployment failed: {error}",
+      "cancel": "Cancel",
+      "submitting": "Submitting...",
+      "deploying": "Deploying...",
+      "retry": "Retry",
+      "submit": "Submit"
+    },
+    "fileDiff": {
+      "loadingDiffView": "Loading diff view...",
+      "unableToLoadDiffView": "Unable to load diff view",
+      "checkConsoleForInfo": "Please check console for more information",
+      "reload": "Reload",
+      "noDiffContentAvailable": "No diff content available",
+      "filesIdenticalOrProcessing": "File contents are identical or being processed",
+      "fileLabel": "File:",
+      "linesAdded": "lines added",
+      "linesDeleted": "lines deleted",
+      "printDiff": "Print diff"
+    },
+    "deployment": {
+      "dialog": {
+        "deploymentInProgress": "Deploying project...",
+        "deploymentStarted": "Deployment started successfully!",
+        "deploymentProgressDescription": "Deploying your project, please wait...",
+        "deploymentSuccessTitle": "Deployment Successful!",
+        "deploymentSuccessDescription": "Your project has been successfully deployed and is now live.",
+        "projectDeployedTitle": "Project Already Deployed",
+        "projectDeployedDescription": "Your project is already live and accessible through the link below.",
+        "deploymentConfirmationTitle": "Deploy Project",
+        "deploymentConfirmationDescription": "Deploy your project to make it accessible online.",
+        "currentDeploymentAddress": "Live Site URL",
+        "previewDeploymentAddress": "Expected URL",
+        "liveDeploymentAddress": "Live Site URL",
+        "previewWarning": "This URL will be available after deployment",
+        "previewUrlSimple": "Available after deployment",
+        "deploymentUrlPreview": "Expected Deployment URL",
+        "deploymentStatusPreview": "Preview",
+        "deploymentStatusPreparing": "Preparing",
+        "deploymentStatusDeploying": "Deploying",
+        "deploymentStatusDeployed": "Deployed",
+        "deploymentStatusLive": "Live",
+        "deploymentStatusFailed": "Failed",
+        "deploymentStatusExisting": "Live",
+        "urlNotAccessibleYet": "URL will be available after deployment",
+        "urlAccessibleNow": "URL is now accessible",
+        "customDomain": "Custom Domain",
+        "useCustomDomain": "Use your own domain to access the website",
+        "domainAddress": "Domain address",
+        "domainRequired": "Please enter domain name",
+        "invalidDomainFormat": "Invalid domain format",
+        "deployAfterHint": "💡 After deployment, you need to configure DNS records to point to our servers. We will provide detailed configuration guide.",
+        "redeploy": "Redeploy",
+        "close": "Close",
+        "cancel": "Cancel",
+        "deployButton": "Deploy",
+        "deploying": "Deploying...",
+        "customDomainRemoved": "Custom domain removed",
+        "customDomainRemoveFailed": "Failed to remove custom domain: {message}",
+        "customDomainVerifyFailed": "Domain verification failed: {message}",
+        "customDomainSetSuccess": "Custom domain set successfully",
+        "customDomainSetFailed": "Failed to set custom domain: {message}",
+        "customDomainVerifySuccess": "Domain verification successful",
+        "deploymentFailedUrlNotAccessible": "Deployment failed - URL is not accessible",
+        "statusUnknown": "Unknown",
+        "copied": "Copied",
+        "copy": "Copy",
+        "open": "Open",
+        "active": "Active",
+        "deploymentUrl": "Deployment URL",
+        "deploymentConfirmationNote": "Click deploy to start the asynchronous deployment process. You will be notified when it's complete.",
+        "startingCloudflareWorkflow": "Starting Cloudflare workflow...",
+        "premiumFeature": "Premium Feature",
+        "customDomainsPremiumFeature": "Custom domains are available for Pro and Max plans",
+        "sslCertificateActive": "SSL Certificate Active",
+        "sslCertificateDescription": "Your custom domain is fully configured with HTTPS support.",
+        "live": "Live",
+        "verify": "Verify",
+        "deploymentFeatures": "Deployment Features",
+        "redeployProject": "Redeploy Project",
+        "redeployDescription": "Redeploy your project to the latest version",
+        "updateAtAddress": "Update at address",
+        "cancelDeployment": "Cancel Deployment",
+        "startDeployment": "Start Deployment",
+        "confirmationAriaLabel": "Deploy project confirmation",
+        "redeployConfirmationAriaLabel": "Redeploy project confirmation",
+        "availableAfterDeploy": "Available after deployment",
+        "globalCdn": "Global CDN",
+        "sslSecurity": "SSL Security",
+        "cancelDeploymentAriaLabel": "Cancel deployment operation",
+        "redeployProjectAriaLabel": "Redeploy project",
+        "startDeploymentAriaLabel": "Start deploying project",
+        "deploy": "Deploy",
+        "successNetworkDescription": "Your project has been successfully deployed to the global network",
+        "projectRunningDescription": "Your project is running online",
+        "deploymentComplete": "Deployment Complete",
+        "liveRunning": "Live Running",
+        "liveAddress": "Live Address",
+        "accessDescription": "Your project can now be accessed through the following address",
+        "httpsSecurityFeature": "HTTPS secure connection with SSL encryption",
+        "globalCdnFeature": "Global CDN accelerated access",
+        "serviceAvailability": "99.9% service availability guarantee",
+        "httpsSecurityShort": "HTTPS Secure Connection",
+        "globalCdnShort": "Global CDN Acceleration",
+        "secureLabel": "Secure",
+        "fastLabel": "Fast",
+        "reliableLabel": "Reliable",
+        "secureTooltip": "HTTPS secure connection with SSL encryption",
+        "fastTooltip": "Global CDN accelerated access",
+        "reliableTooltip": "99.9% service availability guarantee",
+        "closeDialogAriaLabel": "Close dialog",
+        "titles": {
+          "confirmation": "Deploy Project",
+          "progress": "Deployment in Progress",
+          "success": "Deployment Successful",
+          "existing": "Project Deployed",
+          "default": "Deploy"
+        },
+        "descriptions": {
+          "confirmation": "Confirm deployment settings and start deployment process",
+          "progress": "Deploying your project, please wait...",
+          "success": "Your project has been successfully deployed and is accessible online",
+          "existing": "Manage your existing deployment",
+          "default": "Deploy your project"
+        },
+        "announcements": {
+          "confirmation": "Deployment confirmation stage",
+          "progress": "Deployment in progress",
+          "success": "Deployment completed successfully",
+          "existing": "Existing deployment management",
+          "default": "Deployment status updated"
+        }
+      },
+      "progress": {
+        "preparingEnvironment": "Preparing deployment environment...",
+        "deployingProject": "Deploying project",
+        "deploymentProgress": "Deployment Progress",
+        "start": "Start",
+        "complete": "Complete",
+        "completed": "Completed",
+        "deploymentTime": "⏱️ Deployment process usually takes 1-3 minutes, please be patient",
+        "buildingOptimizing": "We are building and optimizing your project files",
+        "deployingToGlobalNetwork": "Deploying to global network...",
+        "deploymentAlmostComplete": "Deployment almost complete...",
+        "deploymentInProgress": "Deployment in progress...",
+        "estimatedTimeRemaining": "Estimated time remaining",
+        "estimatedTime2to3Minutes": "2-3 minutes",
+        "estimatedTime1to2Minutes": "1-2 minutes",
+        "estimatedTimeLessThan1Minute": "Less than 1 minute",
+        "deploymentStages": "Deployment Stages",
+        "stages": {
+          "startingWorkflow": "Starting Cloudflare workflow",
+          "buildingOptimizing": "Building and optimizing project files",
+          "deployingToNetwork": "Deploying to global network",
+          "almostComplete": "Deployment almost complete"
+        },
+        "estimatedTime": {
+          "twoToThreeMinutes": "2-3 minutes",
+          "oneToTwoMinutes": "1-2 minutes",
+          "lessThanOneMinute": "Less than 1 minute"
+        },
+        "ariaLabels": {
+          "progress": "Progress: {progress}%",
+          "progressRing": "Progress ring: {progress}%",
+          "progressIndicator": "Progress indicator"
+        }
+      },
+      "customDomain": {
+        "baseUrl": "Base URL",
+        "yourDomain": "Your Domain",
+        "visitYourDomain": "Visit your domain:",
+        "setFollowingRecords": "Set the following records with your DNS provider.",
+        "record": "Record",
+        "type": "Type",
+        "name": "Name",
+        "target": "Target",
+        "dnsPropagationTime": "DNS changes may take up to 48 hours to propagate.",
+        "removeDomain": "Remove Domain",
+        "active": "Active",
+        "verified": "Verified",
+        "pending": "Pending",
+        "failed": "Failed",
+        "ownershipVerification": "for domain ownership verification",
+        "sslCertificateVerification": "for SSL certificate automatic verification",
+        "domainResolution": "for domain resolution to website",
+        "sslCertificateActive": "SSL Certificate Active",
+        "sslStatus": "Your custom domain is fully configured, SSL certificate status:",
+        "addCustomDomain": "Add Custom Domain",
+        "domainVerification": "Domain Verification",
+        "domainConfiguration": "Domain Configuration",
+        "addDnsRecord": "Add the following DNS record to verify domain ownership:",
+        "addCnameRecords": "Add the following CNAME records to complete domain configuration:",
+        "addARecords": "Add the following A records to complete domain configuration:",
+        "addDnsRecordsApex": "For apex domains, add the following A records. If your DNS provider supports CNAME flattening, you can also use CNAME records:",
+        "addDnsRecordsSubdomain": "For subdomains, add the following CNAME records:",
+        "cnameFlattening": "CNAME Flattening Alternative",
+        "cnameAlternative": "If your DNS provider supports CNAME flattening, you can also create a CNAME record pointing to customers.libra.sh",
+        "verificationFailed": "Verification failed. DNS changes may take up to 48 hours to take effect.",
+        "ownershipVerified": "Domain ownership verified. Please configure the CNAME records above to complete setup.",
+        "dnsHint": "DNS changes may take up to 48 hours to take effect. Click verify to check status.",
+        "setting": "Setting...",
+        "setDomain": "Set Domain",
+        "cancel": "Cancel",
+        "verify": "Verify",
+        "customDomain": "Custom Domain",
+        "configuring": "Configuring",
+        "sslPendingValidation": "SSL Certificate Validation Pending",
+        "sslPendingDescription": "SSL certificate is being validated. Please configure the DNS records below to complete this process.",
+        "ownershipVerificationDescription": "Domain ownership verification",
+        "sslCertificateVerificationDescription": "SSL certificate verification",
+        "domainResolutionDescription": "Domain resolution",
+        "cnameFlatteningDescription": "CNAME flattening",
+        "statusActive": "Active",
+        "statusVerified": "Verified",
+        "statusPending": "Pending",
+        "statusFailed": "Failed",
+        "statusUnknown": "Unknown"
+      },
+      "success": {
+        "deploymentSuccessTitle": "Deployment Successful!",
+        "projectDeployedTitle": "Project Already Deployed",
+        "deploymentSuccessDescription": "Your project has been successfully deployed to the global network",
+        "projectDeployedDescription": "Your project is running online",
+        "liveUrlTitle": "Live Site URL",
+        "liveUrlSubtitle": "Live Site URL",
+        "cancel": "Cancel",
+        "redeploy": "Redeploy",
+        "complete": "Complete"
+      },
+      "features": {
+        "sslEnabled": "SSL Enabled",
+        "cdnAccelerated": "CDN Accelerated",
+        "realTimeSync": "Real-time Sync",
+        "fastAccess": "Fast Access",
+        "sslCertificate": "SSL Certificate"
+      },
+      "urlStatus": {
+        "liveOnline": "Live Online",
+        "sslEnabled": "SSL Enabled"
+      },
+      "status": {
+        "success": "Success",
+        "warning": "Warning",
+        "error": "Error",
+        "info": "Info",
+        "loading": "Loading",
+        "preparingRedeploy": "Preparing Redeploy",
+        "preparingDeploy": "Preparing Deploy"
+      },
+      "error": {
+        "deploymentFailed": "Deployment Failed",
+        "deploymentError": "Deployment Error",
+        "unexpectedError": "An unexpected error occurred during deployment. Please retry or contact support team.",
+        "categories": {
+          "network": {
+            "title": "Network Connection Error",
+            "description": "Please check your network connection",
+            "suggestion": "Ensure network connection is stable"
+          },
+          "timeout": {
+            "title": "Deployment Timeout",
+            "description": "Deployment took too long",
+            "suggestion": "This may be due to large project size or slow network"
+          },
+          "build": {
+            "title": "Build Error",
+            "description": "Error occurred during build process",
+            "suggestion": "Please check if there are any code errors"
+          },
+          "unknown": {
+            "title": "Deployment Error",
+            "description": "An unexpected error occurred",
+            "suggestion": "Please retry or contact support team"
+          }
+        },
+        "actions": {
+          "close": "Close",
+          "closeAriaLabel": "Close error dialog",
+          "retry": "Retry",
+          "retryDeployment": "Retry Deployment",
+          "retryAriaLabel": "Retry deployment",
+          "retryOperationAriaLabel": "Retry operation",
+          "getHelp": "Get Help",
+          "getHelpAriaLabel": "Get help"
+        },
+        "details": {
+          "technicalDetails": "Technical Details"
+        },
+        "solutions": {
+          "title": "Common Solutions",
+          "checkCode": {
+            "title": "Check Code",
+            "description": "Ensure there are no syntax errors"
+          },
+          "checkNetwork": {
+            "title": "Network Connection",
+            "description": "Check if network connection is stable"
+          }
+        }
+      },
+      "actions": {
+        "canRedeploy": "Can redeploy updates",
+        "operationComplete": "Deployment operation complete"
+      },
+      "statusLabels": {
+        "preparing": "Preparing",
+        "deploying": "Deploying",
+        "success": "Deployment Successful",
+        "error": "Deployment Failed",
+        "cancelled": "Cancelled",
+        "deploymentStatus": "Deployment Status"
+      },
+      "urlPreview": {
+        "openWebsite": "Open website {url}",
+        "previewAddress": "Preview address: {url}",
+        "copiedToClipboard": "Copied to clipboard",
+        "copyLinkToClipboard": "Copy link to clipboard"
+      },
+      "dnsRecords": {
+        "descriptions": {
+          "ownershipVerification": "Domain ownership verification",
+          "sslVerification": "SSL certificate verification",
+          "domainResolution": "Domain resolution",
+          "cnameFlattening": "CNAME flattening"
+        },
+        "statuses": {
+          "active": "Active",
+          "verified": "Verified",
+          "pending": "Pending",
+          "failed": "Failed",
+          "unknown": "Status unknown"
+        }
+      }
+    },
+    "customDomain": {
+      "title": "Custom Domain",
+      "description": "Use your own domain to access the website",
+      "addDomain": "Add Custom Domain",
+      "domainPlaceholder": "example.com",
+      "setDomain": "Set",
+      "cancel": "Cancel",
+      "verify": "Verify",
+      "remove": "Remove",
+      "status": {
+        "pending": "Pending Verification",
+        "verified": "Verified",
+        "active": "Active",
+        "failed": "Verification Failed"
+      },
+      "messages": {
+        "setSuccess": "Custom domain set successfully",
+        "setError": "Failed to set custom domain: {message}",
+        "verifySuccess": "Domain verification successful",
+        "verifyError": "Domain verification failed: {message}",
+        "removeSuccess": "Custom domain removed successfully",
+        "removeError": "Failed to remove custom domain: {message}",
+        "domainRequired": "Please enter a domain name",
+        "invalidFormat": "Invalid domain name format",
+        "domainReserved": "This domain is reserved and cannot be used",
+        "verificationInstructions": "Please add the following CNAME record to your domain's DNS settings to enable DCV delegation and automatic SSL certificate issuance:",
+        "setupInstructions": "After setup, domain ownership verification is required. Please ensure you have management rights for this domain",
+        "dcvDelegation": {
+          "title": "DCV Delegation Configuration",
+          "description": "This record will allow Cloudflare to automatically issue and renew SSL certificates for your domain",
+          "recordName": "Name",
+          "recordType": "Type",
+          "recordValue": "Value"
+        }
+      },
+      "api": {
+        "cloudflare": {
+          "tokenNotConfigured": "Cloudflare API token not configured",
+          "dnsQueryFailed": "DNS query failed: {message}",
+          "dnsQueryError": "DNS query returned error status",
+          "createHostnameFailed": "Failed to create custom hostname",
+          "hostnameCreationFailed": "Custom hostname creation failed",
+          "getHostnameStatusFailed": "Failed to get custom hostname status",
+          "deleteHostnameFailed": "Failed to delete custom hostname",
+          "getZoneIdFailed": "Failed to get zone ID",
+          "createDnsRecordFailed": "Failed to create DNS record",
+          "dnsRecordCreationFailed": "DNS record creation failed",
+          "apiError": "Cloudflare API error: {message}",
+          "domainNotFound": "Domain not found in Cloudflare account"
+        }
+      }
+    },
+    "github": {
+      "modal": {
+        "checkingConnection": "Checking GitHub connection...",
+        "loadingStatus": "Loading GitHub integration status..."
+      }
+    },
+    "deploymentHook": {
+      "deploymentComplete": "Deployment completed",
+      "deploymentFailed": "Deployment failed",
+      "deploymentSuccess": "Project deployed successfully! Access URL: {url}",
+      "deploymentError": "Deployment failed: {message}",
+      "deploymentStarted": "Deployment started successfully!",
+      "deploymentInProgress": "Deployment in progress...",
+      "cannotDeployNoProjectId": "Cannot deploy: Project ID does not exist",
+      "preparingEnvironment": "Preparing deployment environment...",
+      "buildingProject": "Building project files...",
+      "uploadingToServer": "Uploading to server...",
+      "configuringRuntime": "Configuring runtime environment...",
+      "deploying": "Deploying..."
+    },
+    "statusComponents": {
+      "loadingContent": "Loading content...",
+      "pleaseBePatient": "Please be patient while we process your request.",
+      "noContentAvailable": "No content available",
+      "noContentToDisplay": "No content to display"
+    },
+    "unifiedLoadingSystem": {
+      "loadingTabs": "Loading tabs...",
+      "loadingMessage": "Loading message...",
+      "loadingPlan": "Loading plan...",
+      "loadingCommands": "Loading commands...",
+      "loadingCodeChanges": "Loading code changes..."
+    },
+    "fileComponents": {
+      "new": "New",
+      "edit": "Edit",
+      "openFile": "Open {path}",
+      "viewDiff": "View diff for {fileName}",
+      "fileChanges": "File Changes",
+      "noFileChanges": "No file changes",
+      "file": "file",
+      "files": "files"
+    },
+    "diffModal": {
+      "modifiedFile": "Modified File",
+      "newFile": "New File",
+      "dialogTitle": "File Diff: {path} ({fileTypeText})",
+      "dialogDescription": "Viewing changes for {path} ({fileTypeText}). {additions} additions, {deletions} deletions.",
+      "unableToOpenFile": "Unable to open file",
+      "new": "New",
+      "edit": "Edit",
+      "loadingFailed": "Loading Failed",
+      "retry": "Retry",
+      "contentUnavailable": "Content Unavailable",
+      "unableToLoadDiff": "Unable to load file differences",
+      "modified": "Modified",
+      "close": "Close",
+      "openFile": "Open File",
+      "closeDialog": "Close dialog"
+    },
+    "revertModal": {
+      "revertToState": "Revert to Previous State",
+      "confirmRevertAction": "This action will permanently delete all versions created after the selected revert point.",
+      "warningMessage": "⚠️ Warning: This action cannot be undone and will permanently delete data.",
+      "revertPoint": "Revert Point",
+      "whatWillHappen": "What will happen:",
+      "allVersionsAfterDeleted": "All versions created after this point will be permanently deleted",
+      "actionCannotBeUndone": "This action cannot be undone",
+      "projectStateRestored": "Project state will be restored to the selected point",
+      "cancel": "Cancel",
+      "reverting": "Reverting...",
+      "confirmRevert": "Confirm Revert"
+    }
+  },
+  "browserPreview": {
+    "toolbar": {
+      "themeChanged": "Theme changed to {theme}",
+      "viewChanged": "Switched to {view} view",
+      "switchToDarkTheme": "Switch to dark theme",
+      "switchToLightTheme": "Switch to light theme",
+      "switchToSystemTheme": "Switch to system theme",
+      "back": "Back",
+      "forward": "Forward",
+      "refresh": "Refresh",
+      "switchToDesktop": "Switch to desktop view",
+      "switchToMobile": "Switch to mobile view"
+    },
+    "chat": {
+      "elementSelected": "Selected element: {tagName}",
+      "assistantReply": "I have analyzed the page content. How can I help you?",
+      "showMoreOptions": "Show more options",
+      "title": "Chat Assistant",
+      "closeChat": "Close chat",
+      "startConversation": "Start a conversation",
+      "startConversationHelper": "You can ask any questions about the current code file, or request help analyzing page elements.",
+      "quickQuestions": "Quick Questions",
+      "question1": "What are the main functions of this page?",
+      "question2": "Help me analyze the page structure",
+      "question3": "Explain the functionality of this code",
+      "keyboardShortcut": "Use shortcut",
+      "keyboardShortcutSuffix": "to quickly access chat",
+      "thinking": "Thinking...",
+      "placeholder": "Enter a message...",
+      "copyElementPath": "Copy element path",
+      "copiedToClipboard": "Copied to clipboard",
+      "element": "Element",
+      "className": "Class Name",
+      "component": "Component"
+    },
+    "frameViewer": {
+      "loadError": "Could not load page \"{src}\". Please check the URL or your network connection.",
+      "loadFailed": "Load Failed",
+      "checkUrl": "Please check the URL or network connection and try again.",
+      "title": "Browser Preview"
+    },
+    "messageDialog": {
+      "title": "iframe Messages",
+      "noMessages": "No message history",
+      "noMessagesHelper": "Interaction messages with the iframe will be displayed here"
+    },
+    "iframeManager": {
+      "cannotCommunicate": "Could not communicate with preview window",
+      "cannotLoadUrl": "Could not load URL: {url}",
+      "inspectorActivated": "Element selector activated. Click on page elements to select.",
+      "inspectorDeactivated": "Element selector deactivated",
+      "urlRedirected": "URL was redirected to a local address. You may need to check your application configuration.",
+      "pageLoadFailed": "Page failed to load"
+    },
+    "messageHandler": {
+      "elementSelected": "Element selected"
+    },
+    "index": {
+      "getPreviewUrlFailed": "Failed to get preview URL",
+      "getPreviewUrlError": "Failed to get preview URL, please try again later",
+      "projectIdMissing": "Project ID is missing"
+    },
+    "loading": {
+      "connecting": "Connecting to server...",
+      "initializing": "Initializing preview...",
+      "rendering": "Rendering content...",
+      "ready": "Almost ready..."
+    }
+  },
+  "dashboard_nav": {
+    "title": "Libra"
+  },
+  "chatPanel": {
+    "main": {
+      "ariaLabel": "Chat assistant panel"
+    },
+    "header": {
+      "title": "Design Assistant",
+      "expandPanel": "Expand panel",
+      "collapsePanel": "Collapse panel",
+      "closePanel": "Close panel"
+    },
+    "input": {
+      "placeholder": "Enter your message...",
+      "placeholderQuotaExceeded": "AI quota exceeded. Please upgrade to continue.",
+      "characterCount": "{current}/{max}",
+      "chatInputLabel": "Chat input box",
+      "send": "Send",
+      "sendAriaLabel": "Send message",
+      "stop": "Stop",
+      "stopAriaLabel": "Stop generation"
+    },
+    "notifications": {
+      "promptEnhanced": "Prompt enhanced successfully!",
+      "loginRequired": "Please login to use prompt enhancement",
+      "enhanceFailed": "Failed to enhance prompt. Please try again."
+    },
+    "errors": {
+      "generic": "An error occurred while processing your request. Please try again later.",
+      "quotaExceeded": "AI quota exceeded",
+      "quotaExceededDesc": "You have reached your AI usage limit. Please upgrade your plan or wait for the next billing cycle.",
+      "unauthorized": "Please login to continue",
+      "forbidden": "Access denied. Please check your permissions.",
+      "upgradeButton": "Upgrade Plan"
+    },
+    "toolbar": {
+      "enhance_prompt": "Enhance prompt",
+      "file_upload": "Upload file",
+      "select_elements": "Select elements",
+      "stop_selecting": "Stop selecting",
+      "toggle_element_selector": "Toggle element selector",
+      "send_message": "Send message",
+      "stop_generation": "Stop generation",
+      "quotaExceededElementSelection": "AI quota exceeded. Please upgrade to use element selection.",
+      "quotaExceededFileUpload": "AI quota exceeded. Please upgrade to upload files.",
+      "quotaExceededElementSelectionShort": "AI quota exceeded - upgrade to use element selection",
+      "quotaExceededFileUploadShort": "AI quota exceeded - upgrade to upload files"
+    },
+    "fileUpload": {
+      "removeFile": "Remove file"
+    },
+    "newMessage": {
+      "viewNewMessages": "View new messages",
+      "newMessage": "New message",
+      "newMessages": "{count} new messages"
+    },
+    "selectedElements": {
+      "title": "Selected elements",
+      "clearAll": "Clear all",
+      "removeElement": "Remove element {name}"
+    },
+    "modelSelector": {
+      "currentModel": "Current AI model: {name}",
+      "modelMenu": "AI model selection menu",
+      "subscriptionError": "Unable to get subscription information",
+      "subscriptionErrorDesc": "Please check your network connection or try again later",
+      "modelSwitched": "Switched to {name}",
+      "modelRestricted": "{name} requires subscription upgrade",
+      "upgrade": "Upgrade",
+      "quotaExceededChangeModels": "AI quota exceeded. Please upgrade to change models.",
+      "quotaExceededChangeModelsShort": "AI quota exceeded - upgrade to change models"
+    },
+    "modelItem": {
+      "planBadge": {
+        "free": "Free",
+        "pro": "Pro",
+        "max": "Max"
+      },
+      "upgradeTooltip": {
+        "title": "Subscription upgrade required",
+        "description": "This model requires {plan} subscription to use",
+        "upgradeButton": "Upgrade now",
+        "requiresPlan": "Requires {plan}",
+        "upgradeToAccess": "After upgrading you will get:",
+        "upgradeButtonText": "Upgrade to {plan}",
+        "planFeatures": {
+          "pro1": "Advanced AI models",
+          "pro2": "Unlimited conversations",
+          "pro3": "Priority support",
+          "max1": "All AI models",
+          "max2": "Unlimited usage",
+          "max3": "Dedicated support",
+          "max4": "Early feature access"
+        }
+      }
+    },
+    "message": {
+      "processingError": "Processing Error",
+      "retry": "Retry",
+      "thinkingExpanded": "Thinking process expanded",
+      "thinkingCollapsed": "Thinking process collapsed",
+      "expandThinking": "Expand thinking process",
+      "collapseThinking": "Collapse thinking process",
+      "viewThinkingProcess": "View Thinking Process",
+      "thinkingProcessDetails": "AI thinking process details",
+      "messageContent": "Message content"
+    },
+    "autoFix": {
+      "button": "Auto Fix",
+      "processing": "Fixing...",
+      "errorsDetected": "{count} error{plural} detected",
+      "recentErrors": "Recent errors:",
+      "andMore": "... and {count} more",
+      "tooltip": {
+        "fix": "Automatically fix {count} detected error{plural} using AI",
+        "processing": "Auto Fix is analyzing and fixing the detected errors...",
+        "quotaExceeded": "AI quota exceeded. Please upgrade to use Auto Fix."
+      },
+      "aria": {
+        "button": "Auto Fix {count} error{plural}",
+        "processing": "Auto Fix is processing...",
+        "quotaExceeded": "AI quota exceeded - upgrade to use Auto Fix"
+      }
+    },
+    "upgrade": {
+      "quotaExceededShort": "AI quota exceeded",
+      "upgrade": "Upgrade"
+    },
+    "elementEditor": {
+      "title": "Edit Element",
+      "sections": {
+        "content": "Content",
+        "typography": "Typography",
+        "color": "Text Color",
+        "margin": "Margin",
+        "padding": "Padding"
+      },
+      "fields": {
+        "content": "Content",
+        "contentPlaceholder": "Enter text content...",
+        "fontSize": "Font Size",
+        "fontWeight": "Font Weight",
+        "color": "Color",
+        "colorPlaceholder": "white",
+        "marginTop": "Top",
+        "marginRight": "Right",
+        "marginBottom": "Bottom",
+        "marginLeft": "Left",
+        "paddingTop": "Top",
+        "paddingRight": "Right",
+        "paddingBottom": "Bottom",
+        "paddingLeft": "Left"
+      },
+      "fontWeights": {
+        "normal": "Normal",
+        "bold": "Bold",
+        "lighter": "Lighter"
+      },
+      "buttons": {
+        "deleteElement": "Delete Element",
+        "cancel": "Cancel",
+        "applyChanges": "Apply Changes",
+        "submitToAI": "Submit to AI"
+      }
+    },
+    "elementSelector": {
+      "activatedSuccess": "Element selector activated",
+      "activationFailed": "Failed to activate element selector",
+      "deactivated": "Element selector deactivated",
+      "elementRemoved": "Removed {tagName} element",
+      "stateInactive": "Click to start selecting elements",
+      "stateActivating": "Starting selection mode...",
+      "stateActive": "Click page elements to select them",
+      "stateSelecting": "Selected {count} elements",
+      "autoDeactivated": "Selection mode automatically deactivated",
+      "maxSelectionsReached": "Maximum {max} elements can be selected",
+      "elementAlreadySelected": "This element is already selected",
+      "elementAdded": "Selected {tagName} element",
+      "allElementsCleared": "Cleared {count} selected elements"
+    }
+  },
+  "upgradeModal": {
+    "editMode": {
+      "title": "Upgrade Required",
+      "description": "Please upgrade to use edit mode.",
+      "features": {
+        "editCode": "Edit and modify code files",
+        "deployChanges": "Deploy changes instantly",
+        "unlimitedEdits": "Unlimited file edits"
+      }
+    },
+    "aiModel": {
+      "title": "Advanced AI Model Access",
+      "description": "Access to {model} requires upgrade.",
+      "features": {
+        "advancedModels": "Access to advanced AI models",
+        "unlimitedUsage": "Unlimited AI conversations",
+        "prioritySupport": "Priority support"
+      }
+    },
+    "projectLimit": {
+      "title": "Project Limit Reached",
+      "description": "Upgrade to create unlimited projects.",
+      "features": {
+        "unlimitedProjects": "Unlimited project creation",
+        "teamCollaboration": "Team collaboration features",
+        "advancedFeatures": "Advanced project features"
+      }
+    }
+  },
+  "notFound": {
+    "title": "404",
+    "subtitle": "Page Not Found",
+    "description": "The page you are looking for might have been removed, had its name changed, or is temporarily unavailable.",
+    "buttons": {
+      "home": "Home",
+      "dashboard": "Dashboard",
+      "goBack": "Go Back"
+    },
+    "svg": {
+      "error404": "404",
+      "pageNotFoundText": "Page not found."
+    }
+  },
+  "lib": {
+    "fileTree": {
+      "downloadSuccess": "Project files downloaded successfully",
+      "sampleDownloadSuccess": "Sample project files downloaded successfully",
+      "downloadFailed": "Download failed: {errorMessage}"
+    }
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "lastUpdated": "Last updated: {date}",
+    "about": {
+      "title": "About This Privacy Policy",
+      "description": "Your privacy is important to us. This Privacy Policy explains how we collect, use, and protect your information when you use our platform.",
+      "serviceDescription": "This Privacy Notice describes how and why we might access, collect, store, use, and/or share your personal information when you use our services, including when you:",
+      "usageScenarios": {
+        "website": "Visit our website {websiteUrl}, or any website of ours that links to this Privacy Notice",
+        "platform": "Use our AI development platform and tools",
+        "interaction": "Engage with us in other related ways, including any sales, marketing, or events"
+      }
+    },
+    "concerns": {
+      "title": "Questions or concerns?",
+      "description": "Reading this Privacy Notice will help you understand your privacy rights and choices. We are responsible for making decisions about how your personal information is processed. If you do not agree with our policies and practices, please do not use our Services. If you still have any questions or concerns, please contact us at {contactEmail}."
+    },
+    "tableOfContents": {
+      "title": "Table of Contents"
+    },
+    "sections": {
+      "informationCollection": {
+        "title": "Information Collection",
+        "shortDescription": "We may collect the following types of information when you use our platform.",
+        "personalInfo": {
+          "title": "Personal Information",
+          "description": "Name, email address, and other contact details when you sign up."
+        },
+        "usageData": {
+          "title": "Usage Data",
+          "description": "Information about how you interact with our platform, such as page visits and activity logs."
+        },
+        "contentData": {
+          "title": "Content Data",
+          "description": "Any projects, prompts, or other content you create using our platform."
+        }
+      },
+      "usage": {
+        "title": "Usage",
+        "shortDescription": "We use the collected data to provide, maintain, and improve our platform.",
+        "description": "We use the collected data to:",
+        "purposes": {
+          "platform": "Provide, maintain, and improve our platform",
+          "personalization": "Personalize your experience",
+          "communication": "Communicate with you regarding updates and support",
+          "security": "Ensure security and prevent fraud"
+        }
+      },
+      "dataSharingSecurity": {
+        "title": "Data Sharing & Security",
+        "shortDescription": "We are committed to protecting your information and being transparent about how we share data.",
+        "noMarketing": {
+          "title": "No Marketing Sales",
+          "description": "We do not sell or share your personal information with third parties for marketing purposes."
+        },
+        "trustedProviders": {
+          "title": "Trusted Service Providers",
+          "description": "We may share data with trusted service providers who assist in operating our platform."
+        },
+        "securityMeasures": {
+          "title": "Security Measures",
+          "description": "We implement industry-standard security measures to protect your information."
+        }
+      },
+      "cookiesTracking": {
+        "title": "Cookies & Tracking",
+        "shortDescription": "We use cookies and similar technologies to improve your experience.",
+        "description": "We use cookies and similar technologies to improve your experience. You can manage your cookie preferences in your browser settings.",
+        "analyticsTools": {
+          "title": "Analytics and User Experience Tools",
+          "description": "We use the following third-party analytics and user experience tools to collect and analyze data about how users interact with our Services:",
+          "ga4": {
+            "title": "Google Analytics 4 (GA4)",
+            "description": "We use Google Analytics 4 to analyze website traffic, user behavior, and performance metrics. This helps us understand how users interact with our Services and improve user experience. GA4 may collect information such as your IP address, browser type, pages visited, and time spent on our site."
+          },
+          "posthog": {
+            "title": "PostHog",
+            "description": "We use PostHog for product analytics and user experience optimization. PostHog helps us track user interactions, feature usage, and identify areas for improvement in our Services. This includes collecting data about user actions, session recordings (when enabled), and usage patterns."
+          }
+        },
+        "conclusion": "These analytics tools are essential for us to understand user needs, improve our Services, and provide a better user experience. The data collected is used solely for analytical purposes and service improvement."
+      }
+    },
+    "contact": {
+      "title": "Contact Us",
+      "description": "If you have questions or comments about this privacy policy, please contact us at {contactEmail}."
+    },
+    "updates": {
+      "title": "Policy Updates",
+      "description": "We may update this privacy policy from time to time. The updated version will be indicated by an updated revision date and the updated version will be effective as soon as it is accessible. We recommend that you review this privacy policy periodically to stay informed of how we are protecting your information."
+    },
+    "closing": {
+      "statement": "By using our platform, you agree to this Privacy Policy. We are committed to safeguarding your privacy and ensuring transparency in how your data is handled. Your trust is important to us, and we continuously strive to improve our security and data practices to offer a safe and seamless experience."
+    }
+  },
+  "terms": {
+    "title": "Terms of Service",
+    "lastUpdated": "Last updated: {date}",
+    "agreement": {
+      "title": "Agreement to Our Legal Terms",
+      "description": "We are Libra AI, providing AI development tools and services.",
+      "serviceDescription": "We operate the website {websiteUrl}, as well as any other related products and services that refer or link to these legal terms.",
+      "warning": "If you do not agree with all of these legal terms, then you are expressly prohibited from using the services and you must discontinue use immediately."
+    },
+    "tableOfContents": {
+      "title": "TABLE OF CONTENTS"
+    },
+    "sections": {
+      "ourServices": {
+        "title": "OUR SERVICES",
+        "content": {
+          "paragraph1": "The information provided when using the Services is not intended for distribution to or use by any person or entity in any jurisdiction or country where such distribution or use would be contrary to law or regulation or which would subject us to any registration requirement within such jurisdiction or country.",
+          "paragraph2": "The Services are not tailored to comply with industry-specific regulations (Health Insurance Portability and Accountability Act (HIPAA), Federal Information Security Management Act (FISMA), etc.), so if your interactions would be subjected to such laws, you may not use the Services. You may not use the Services in a way that would violate the Gramm-Leach-Bliley Act (GLBA)."
+        }
+      },
+      "intellectualProperty": {
+        "title": "INTELLECTUAL PROPERTY RIGHTS",
+        "ourPropertyTitle": "Our intellectual property",
+        "ourPropertyParagraph1": "We are the owner or the licensee of all intellectual property rights in our Services, including all source code, databases, functionality, software, website designs, audio, video, text, photographs, and graphics in the Services (collectively, the \\\"Content\\\"), as well as the trademarks, service marks, and logos contained therein (the \\\"Marks\\\").",
+        "ourPropertyParagraph2": "Our Content and Marks are protected by copyright and trademark laws (and various other intellectual property rights and unfair competition laws) and treaties in the United States and around the world.",
+        "ourPropertyParagraph3": "The Content and Marks are provided in or through the Services \\\"AS IS\\\" for your personal, non-commercial use or internal business purpose only.",
+        "yourUseTitle": "Your use of our Services",
+        "yourUseParagraph1": "Subject to your compliance with these Legal Terms, including the \\\"PROHIBITED ACTIVITIES\\\" section below, we grant you a non-exclusive, non-transferable, revocable license to:",
+        "yourUseList1": "Access the Services",
+        "yourUseList2": "Download or print a copy of any portion of the Content to which you have properly gained access"
+      },
+      "userRepresentations": {
+        "title": "USER REPRESENTATIONS",
+        "intro": "By using the Services, you represent and warrant that:",
+        "list1": "All registration information you submit will be true, accurate, current, and complete",
+        "list2": "You will maintain the accuracy of such information and promptly update such registration information as necessary",
+        "list3": "You have the legal capacity and you agree to comply with these Legal Terms",
+        "list4": "You are not a minor in the jurisdiction in which you reside",
+        "list5": "You will not access the Services through automated or non-human means, whether through a bot, script, or otherwise",
+        "list6": "You will not use the Services for any illegal or unauthorized purpose",
+        "list7": "Your use of the Services will not violate any applicable law or regulation",
+        "conclusion": "If you provide any information that is untrue, inaccurate, not current, or incomplete, we have the right to suspend or terminate your account and refuse any and all current or future use of the Services (or any portion thereof)."
+      },
+      "userRegistration": {
+        "title": "USER REGISTRATION",
+        "paragraph1": "You may be required to register to use the Services. You agree to keep your cloudflare token confidential and will be responsible for all use of your account and cloudflare token. We reserve the right to remove, reclaim, or change a username you select if we determine, in our sole discretion, that such username is inappropriate, obscene, or otherwise objectionable."
+      },
+      "purchasesPayment": {
+        "title": "PURCHASES AND PAYMENT",
+        "paymentIntro": "We accept the following forms of payment:",
+        "paymentVisa": "Visa",
+        "paymentMastercard": "Mastercard",
+        "paymentAmex": "American Express",
+        "paymentStripe": "Stripe",
+        "paragraph1": "You agree to provide current, complete, and accurate purchase and account information for all purchases made via the Services. You further agree to promptly update account and payment information, including email address, payment method, and payment card expiration date, so that we can complete your transactions and contact you as needed. Sales tax will be added to the price of purchases as deemed required by us. We may change prices at any time. All payments shall be in US dollars.",
+        "paragraph2": "We reserve the right to refuse any order placed through the Services. We may, in our sole discretion, limit or cancel quantities purchased per person, per household, or per order. These restrictions may include orders placed by or under the same customer account, the same payment method, and/or orders that use the same billing or shipping address."
+      },
+      "subscriptions": {
+        "title": "SUBSCRIPTIONS",
+        "billingTitle": "Billing and Renewal",
+        "billingParagraph1": "Your subscription will continue and automatically renew unless cancelled. You consent to our charging your payment method on a recurring basis without requiring your prior approval for each recurring charge, until such time as you cancel the applicable order.",
+        "billingParagraph2": "The length of your billing cycle will depend on the type of subscription plan you choose when purchasing the subscription.",
+        "cancellationTitle": "Cancellation",
+        "cancellationParagraph1": "You can cancel your subscription at any time by logging into your account. Your cancellation will take effect at the end of the current paid term.",
+        "cancellationParagraph2": "If you are unsatisfied with our Services, please email us at contact@libra.dev.",
+        "feeChangesTitle": "Fee Changes",
+        "feeChangesParagraph1": "We may, from time to time, make changes to the subscription fee and will communicate any price changes to you in accordance with applicable law."
+      },
+      "prohibitedActivities": {
+        "title": "PROHIBITED ACTIVITIES",
+        "intro1": "You may not access or use the Services for any purpose other than that for which we make the Services available.",
+        "intro2": "As a user of the Services, you agree not to:",
+        "list1": "Systematically retrieve data or other content from the Services to create or compile, directly or indirectly, a collection, compilation, database, or directory without written permission from us",
+        "list2": "Trick, defraud, or mislead us and other users, especially in any attempt to learn sensitive account information such as user passwords",
+        "list3": "Circumvent, disable, or otherwise interfere with security-related features of the Services",
+        "list4": "Disparage, tarnish, or otherwise harm, in our opinion, us and/or the Services",
+        "list5": "Use any information obtained from the Services in order to harass, abuse, or harm another person",
+        "list6": "Make improper use of our support services or submit false reports of abuse or misconduct",
+        "list7": "Use the Services in a manner inconsistent with any applicable laws or regulations",
+        "list8": "Engage in unauthorized framing of or linking to the Services",
+        "list9": "Upload or transmit (or attempt to upload or to transmit) viruses, Trojan horses, or other material",
+        "list10": "Use, launch, develop, or distribute any automated system, including without limitation, any spider, robot, cheat utility, scraper, or offline reader that accesses the Services"
+      },
+      "userGeneratedContributions": {
+        "title": "USER GENERATED CONTRIBUTIONS",
+        "paragraph1": "The Services may invite you to chat, contribute to, or participate in blogs, message boards, online forums, and other functionality, and may provide you with the opportunity to create, submit, post, display, transmit, perform, publish, distribute, or broadcast content and materials to us or on the Services, including but not limited to text, writings, video, audio, photographs, graphics, comments, suggestions, or personal information or other material (collectively, \\\"Contributions\\\").",
+        "paragraph2": "Contributions may be viewable by other users of the Services and through third-party websites. As such, any Contributions you transmit may be treated as non-confidential and non-proprietary. When you create or make available any Contributions, you thereby represent and warrant that:",
+        "warrantyList1": "The creation, distribution, transmission, public display, or performance, and the accessing, downloading, or copying of your Contributions do not and will not infringe the proprietary rights of any third party.",
+        "warrantyList2": "You are the creator and owner of or have the necessary licenses, rights, consents, releases, and permissions to use and to authorize us, the Services, and other users of the Services to use your Contributions.",
+        "warrantyList3": "You have the written consent, release, and/or permission of each and every identifiable individual person in your Contributions.",
+        "warrantyList4": "Your Contributions are not false, inaccurate, or misleading.",
+        "warrantyList5": "Your Contributions are not unsolicited or unauthorized advertising, promotional materials, pyramid schemes, chain letters, spam, mass mailings, or other forms of solicitation.",
+        "warrantyList6": "Your Contributions are not obscene, lewd, lascivious, filthy, violent, harassing, libelous, slanderous, or otherwise objectionable.",
+        "warrantyList7": "Your Contributions do not ridicule, mock, disparage, intimidate, or abuse anyone.",
+        "warrantyList8": "Your Contributions are not used to harass or threaten any other person and to promote violence against a specific person or class of people.",
+        "warrantyList9": "Your Contributions do not violate any applicable law, regulation, or rule.",
+        "warrantyList10": "Your Contributions do not violate the privacy or publicity rights of any third party.",
+        "conclusion": "Any use of the Services in violation of the foregoing violates these Legal Terms and may result in, among other things, termination or suspension of your rights to use the Services."
+      },
+      "contributionLicense": {
+        "title": "CONTRIBUTION LICENSE",
+        "paragraph1": "By posting your Contributions to any part of the Services, you automatically grant, and you represent and warrant that you have the right to grant, to us an unrestricted, unlimited, irrevocable, perpetual, non-exclusive, transferable, royalty-free, fully-paid, worldwide right, and license to host, use, copy, reproduce, disclose, sell, resell, publish, broadcast, retitle, archive, store, cache, publicly perform, publicly display, reformat, translate, transmit, excerpt (in whole or in part), and distribute such Contributions.",
+        "paragraph2": "This license will apply to any form, media, or technology now known or hereafter developed, and includes our use of your name, company name, and franchise name, as applicable, and any of the trademarks, service marks, trade names, logos, and personal and commercial images you provide.",
+        "paragraph3": "You waive all moral rights in your Contributions, and you warrant that moral rights have not otherwise been asserted in your Contributions.",
+        "paragraph4": "We do not assert any ownership over your Contributions. You retain full ownership of all of your Contributions and any intellectual property rights or other proprietary rights associated with your Contributions."
+      },
+      "socialMedia": {
+        "title": "SOCIAL MEDIA",
+        "paragraph1": "As part of the functionality of the Services, you may link your account with online accounts you have with third-party service providers (each such account, a \\\"Third-Party Account\\\") by either: (1) providing your Third-Party Account login information through the Services; or (2) allowing us to access your Third-Party Account, as is permitted under the applicable terms and conditions that govern your use of each Third-Party Account.",
+        "paragraph2": "By granting us access to any Third-Party Accounts, you understand that:",
+        "list1": "We may access, make available, and store any content that you have provided to and stored in your Third-Party Account so that it is available on and through the Services via your account.",
+        "list2": "We may submit to and receive from your Third-Party Account additional information to the extent you are notified when you link your account with the Third-Party Account."
+      },
+      "thirdPartyWebsites": {
+        "title": "THIRD-PARTY WEBSITES AND CONTENT",
+        "paragraph1": "The Services may contain (or you may be sent via the Site) links to other websites (\"Third-Party Websites\") as well as articles, photographs, text, graphics, pictures, designs, music, sound, video, information, applications, software, and other content or items belonging to or originating from third parties (\"Third-Party Content\").",
+        "paragraph2": "Such Third-Party Websites and Third-Party Content are not investigated, monitored, or checked for accuracy, appropriateness, or completeness by us, and we are not responsible for any Third-Party Websites accessed through the Services or any Third-Party Content posted on, available through, or installed from the Services.",
+        "paragraph3": "You agree and acknowledge that we do not endorse the products or services offered on Third-Party Websites and you shall hold us blameless from any harm caused by your purchase of such products or services. Additionally, you shall hold us blameless from any losses sustained by you or harm caused to you relating to or resulting in any way from any Third-Party Content or any contact with Third-Party Websites."
+      },
+      "servicesManagement": {
+        "title": "SERVICES MANAGEMENT",
+        "intro": "We reserve the right, but not the obligation, to:",
+        "list1": "Monitor the Services for violations of these Legal Terms",
+        "list2": "Take appropriate legal action against anyone who, in our sole discretion, violates the law or these Legal Terms",
+        "list3": "Refuse, restrict access to, limit the availability of, or disable any of your Contributions or any portion thereof",
+        "list4": "Remove from the Services or otherwise disable all files and content that are excessive in size or are in any way burdensome to our systems",
+        "list5": "Otherwise manage the Services in a manner designed to protect our rights and property and to facilitate the proper functioning of the Services"
+      },
+      "privacyPolicy": {
+        "title": "PRIVACY POLICY",
+        "paragraph1": "We care about data privacy and security. Please review our Privacy Policy at libra.dev/privacy. By using the Services, you agree to be bound by our Privacy Policy, which is incorporated into these Legal Terms.",
+        "paragraph2": "Please be advised that while our Services are delivered through a global edge network for optimal performance, all user data is stored in the United States. If you access the Services from any other region of the world with laws or other requirements governing personal data collection, use, or disclosure that differ from applicable laws in the United States, then through your continued use of the Services, you acknowledge that your data will be stored in the United States, and you expressly consent to have your data stored and processed in the United States."
+      },
+      "copyrightInfringements": {
+        "title": "COPYRIGHT INFRINGEMENTS",
+        "paragraph1": "We respect the intellectual property rights of others. If you believe that any material available on or through the Services infringes upon any copyright you own or control, please immediately notify us using the contact information provided below (a \"Notification\").",
+        "paragraph2": "A copy of your Notification will be sent to the person who posted or stored the material addressed in the Notification. Please be advised that pursuant to applicable law you may be held liable for damages if you make material misrepresentations in a Notification. Thus, if you are not sure that material located on or linked to by the Services infringes your copyright, you should consider first contacting an attorney."
+      },
+      "termTermination": {
+        "title": "TERM AND TERMINATION",
+        "paragraph1": "These Legal Terms shall remain in full force and effect while you use the Services. WITHOUT LIMITING ANY OTHER PROVISION OF THESE LEGAL TERMS, WE RESERVE THE RIGHT TO, IN OUR SOLE DISCRETION AND WITHOUT NOTICE OR LIABILITY, DENY ACCESS TO AND USE OF THE SERVICES (INCLUDING BLOCKING CERTAIN IP ADDRESSES), TO ANY PERSON FOR ANY REASON OR FOR NO REASON, INCLUDING WITHOUT LIMITATION FOR BREACH OF ANY REPRESENTATION, WARRANTY, OR COVENANT CONTAINED IN THESE LEGAL TERMS OR OF ANY APPLICABLE LAW OR REGULATION.",
+        "paragraph2": "If we terminate or suspend your account for any reason, you are prohibited from registering and creating a new account under your name, a fake or borrowed name, or the name of any third party, even if you may be acting on behalf of the third party. In addition to terminating or suspending your account, we reserve the right to take appropriate legal action, including without limitation pursuing civil, criminal, and injunctive redress."
+      },
+      "modificationsInterruptions": {
+        "title": "MODIFICATIONS AND INTERRUPTIONS",
+        "paragraph1": "We reserve the right to change, modify, or remove the contents of the Services at any time or for any reason at our sole discretion without notice. We will not be liable to you or any third party for any modification, price change, suspension, or discontinuance of the Services.",
+        "paragraph2": "We cannot guarantee the Services will be available at all times. We may experience hardware, software, or other problems or need to perform maintenance related to the Services, resulting in interruptions, delays, or errors. We reserve the right to change, revise, update, suspend, discontinue, or otherwise modify the Services at any time or for any reason without notice to you."
+      },
+      "governingLaw": {
+        "title": "GOVERNING LAW",
+        "paragraph1": "These Legal Terms shall be governed by and defined following applicable laws. Any disputes arising from these Legal Terms shall be resolved through appropriate legal channels."
+      },
+      "disputeResolution": {
+        "title": "DISPUTE RESOLUTION",
+        "informalNegotiationsTitle": "Informal Negotiations",
+        "informalNegotiationsParagraph": "To expedite resolution and control the cost of any dispute, controversy, or claim related to these Legal Terms (each a \"Dispute\" and collectively, the \"Disputes\") brought by either you or us (individually, a \"Party\" and collectively, the \"Parties\"), the Parties agree to first attempt to negotiate any Dispute informally for at least thirty (30) days before initiating arbitration.",
+        "bindingArbitrationTitle": "Binding Arbitration",
+        "bindingArbitrationParagraph": "Any dispute arising out of or in connection with these Legal Terms shall be resolved through appropriate legal channels and applicable dispute resolution procedures.",
+        "restrictionsTitle": "Restrictions",
+        "restrictionsParagraph": "The Parties agree that any arbitration shall be limited to the Dispute between the Parties individually. To the full extent permitted by law, (a) no arbitration shall be joined with any other proceeding; (b) there is no right or authority for any Dispute to be arbitrated on a class-action basis; and (c) there is no right or authority for any Dispute to be brought in a purported representative capacity on behalf of the general public or any other persons."
+      },
+      "corrections": {
+        "title": "CORRECTIONS",
+        "paragraph1": "There may be information on the Services that contains typographical errors, inaccuracies, or omissions, including descriptions, pricing, availability, and various other information. We reserve the right to correct any errors, inaccuracies, or omissions and to change or update the information on the Services at any time, without prior notice."
+      },
+      "disclaimer": {
+        "title": "DISCLAIMER",
+        "content": "THE SERVICES ARE PROVIDED ON AN AS-IS AND AS-AVAILABLE BASIS. YOU AGREE THAT YOUR USE OF THE SERVICES WILL BE AT YOUR SOLE RISK. TO THE FULLEST EXTENT PERMITTED BY LAW, WE DISCLAIM ALL WARRANTIES, EXPRESS OR IMPLIED, IN CONNECTION WITH THE SERVICES AND YOUR USE THEREOF, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON- INFRINGEMENT. WE MAKE NO WARRANTIES OR REPRESENTATIONS ABOUT THE ACCURACY OR COMPLETENESS OF THE SERVICES' CONTENT OR THE CONTENT OF ANY WEBSITES OR MOBILE APPLICATIONS LINKED TO THE SERVICES AND WE WILL ASSUME NO LIABILITY OR RESPONSIBILITY FOR ANY (1) ERRORS, MISTAKES, OR INACCURACIES OF CONTENT AND MATERIALS, (2) PERSONAL INJURY OR PROPERTY DAMAGE, OF ANY NATURE WHATSOEVER, RESULTING FROM YOUR ACCESS TO AND USE OF THE SERVICES, (3) ANY UNAUTHORIZED ACCESS TO OR USE OF OUR SECURE SERVERS AND/OR ANY AND ALL PERSONAL INFORMATION AND/OR FINANCIAL INFORMATION STORED THEREIN, (4) ANY INTERRUPTION OR CESSATION OF TRANSMISSION TO OR FROM THE SERVICES, (5) ANY BUGS, VIRUSES, TROJAN HORSES, OR THE LIKE WHICH MAY BE TRANSMITTED TO OR THROUGH THE SERVICES BY ANY THIRD PARTY, AND/OR (6) ANY ERRORS OR OMISSIONS IN ANY CONTENT AND MATERIALS OR FOR ANY LOSS OR DAMAGE OF ANY KIND INCURRED AS A RESULT OF THE USE OF ANY CONTENT POSTED, TRANSMITTED, OR OTHERWISE MADE AVAILABLE VIA THE SERVICES. WE DO NOT WARRANT, ENDORSE, GUARANTEE, OR ASSUME RESPONSIBILITY FOR ANY PRODUCT OR SERVICE ADVERTISED OR OFFERED BY A THIRD PARTY THROUGH THE SERVICES, ANY HYPERLINKED WEBSITE, OR ANY WEBSITE OR MOBILE APPLICATION FEATURED IN ANY BANNER OR OTHER ADVERTISING, AND WE WILL NOT BE A PARTY TO OR IN ANY WAY BE RESPONSIBLE FOR MONITORING ANY TRANSACTION BETWEEN YOU AND ANY THIRD-PARTY PROVIDERS OF PRODUCTS OR SERVICES. AS WITH THE PURCHASE OF A PRODUCT OR SERVICE THROUGH ANY MEDIUM OR IN ANY ENVIRONMENT, YOU SHOULD USE YOUR BEST JUDGMENT AND EXERCISE CAUTION WHERE APPROPRIATE."
+      },
+      "limitationsLiability": {
+        "title": "LIMITATIONS OF LIABILITY",
+        "content": "IN NO EVENT WILL WE OR OUR DIRECTORS, EMPLOYEES, OR AGENTS BE LIABLE TO YOU OR ANY THIRD PARTY FOR ANY DIRECT, INDIRECT, CONSEQUENTIAL, EXEMPLARY, INCIDENTAL, SPECIAL, OR PUNITIVE DAMAGES, INCLUDING LOST PROFIT, LOST REVENUE, LOSS OF DATA, OR OTHER DAMAGES ARISING FROM YOUR USE OF THE SERVICES, EVEN IF WE HAVE BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. NOTWITHSTANDING ANYTHING TO THE CONTRARY CONTAINED HEREIN, OUR LIABILITY TO YOU FOR ANY CAUSE WHATSOEVER AND REGARDLESS OF THE FORM OF THE ACTION, WILL AT ALL TIMES BE LIMITED TO THE AMOUNT PAID, IF ANY, BY YOU TO US DURING THE ONE (1) MONTH PERIOD PRIOR TO ANY CAUSE OF ACTION ARISING. CERTAIN US STATE LAWS AND INTERNATIONAL LAWS DO NOT ALLOW LIMITATIONS ON IMPLIED WARRANTIES OR THE EXCLUSION OR LIMITATION OF CERTAIN DAMAGES. IF THESE LAWS APPLY TO YOU, SOME OR ALL OF THE ABOVE DISCLAIMERS OR LIMITATIONS MAY NOT APPLY TO YOU, AND YOU MAY HAVE ADDITIONAL RIGHTS."
+      },
+      "indemnification": {
+        "title": "INDEMNIFICATION",
+        "paragraph1": "You agree to defend, indemnify, and hold us harmless, including our subsidiaries, affiliates, and all of our respective officers, agents, partners, and employees, from and against any loss, damage, liability, claim, or demand, including reasonable attorneys' fees and expenses, made by any third party due to or arising out of:",
+        "list1": "Your Contributions",
+        "list2": "Use of the Services",
+        "list3": "Breach of these Legal Terms",
+        "list4": "Any breach of your representations and warranties set forth in these Legal Terms",
+        "list5": "Your violation of the rights of a third party, including but not limited to intellectual property rights",
+        "list6": "Any overt harmful act toward any other user of the Services with whom you connected via the Services",
+        "paragraph2": "Notwithstanding the foregoing, we reserve the right, at your expense, to assume the exclusive defense and control of any matter for which you are required to indemnify us, and you agree to cooperate, at your expense, with our defense of such claims."
+      },
+      "userData": {
+        "title": "USER DATA",
+        "paragraph1": "We will maintain certain data that you transmit to the Services for the purpose of managing the performance of the Services, as well as data relating to your use of the Services.",
+        "paragraph2": "Although we perform regular routine backups of data, you are solely responsible for all data that you transmit or that relates to any activity you have undertaken using the Services. You agree that we shall have no liability to you for any loss or corruption of any such data, and you hereby waive any right of action against us arising from any such loss or corruption of such data."
+      },
+      "electronicCommunications": {
+        "title": "ELECTRONIC COMMUNICATIONS, TRANSACTIONS, AND SIGNATURES",
+        "paragraph1": "Visiting the Services, sending us emails, and completing online forms constitute electronic communications. You consent to receive electronic communications, and you agree that all agreements, notices, disclosures, and other communications we provide to you electronically, via email and on the Services, satisfy any legal requirement that such communication be in writing.",
+        "paragraph2": "You hereby agree to the use of electronic signatures, contracts, orders, and other records, and to electronic delivery of notices, policies, and records of transactions initiated or completed by us or via the Services.",
+        "paragraph3": "You hereby waive any rights or requirements under any statutes, regulations, rules, ordinances, or other laws in any jurisdiction which require an original signature or delivery or retention of non-electronic records, or to payments or the granting of credits by any means other than electronic means."
+      },
+      "californiaUsers": {
+        "title": "CALIFORNIA USERS AND RESIDENTS",
+        "paragraph1": "If any complaint with us is not satisfactorily resolved, you can contact the Complaint Assistance Unit of the Division of Consumer Services of the California Department of Consumer Affairs in writing at 1625 North Market Blvd., Suite N 112, Sacramento, California 95834 or by telephone at (800) 952-5210 or (916) 445-1254."
+      },
+      "miscellaneous": {
+        "title": "MISCELLANEOUS",
+        "paragraph1": "These Legal Terms and any policies or operating rules posted by us on the Services or in respect to the Services constitute the entire agreement and understanding between you and us. Our failure to exercise or enforce any right or provision of these Legal Terms shall not operate as a waiver of such right or provision.",
+        "paragraph2": "These Legal Terms operate to the fullest extent permissible by law. We may assign any or all of our rights and obligations to others at any time. We shall not be responsible or liable for any loss, damage, delay, or failure to act caused by any cause beyond our reasonable control.",
+        "paragraph3": "If any provision or part of a provision of these Legal Terms is determined to be unlawful, void, or unenforceable, that provision or part of the provision is deemed severable from these Legal Terms and does not affect the validity and enforceability of any remaining provisions.",
+        "paragraph4": "There is no joint venture, partnership, employment or agency relationship created between you and us as a result of these Legal Terms or use of the Services. You agree that these Legal Terms will not be construed against us by virtue of having drafted them.",
+        "paragraph5": "You hereby waive any and all defenses you may have based on the electronic form of these Legal Terms and the lack of signing by the parties hereto to execute these Legal Terms."
+      }
+    },
+    "contact": {
+      "title": "Contact Us",
+      "description": "In order to resolve a complaint regarding the Services or to receive further information regarding use of the Services, please contact us at:",
+      "companyName": "Libra AI"
+    }
+  },
+  "hero_examples_title": "App Ideas Examples",
+  "hero_examples_subtitle": "Click any example to apply"
+}

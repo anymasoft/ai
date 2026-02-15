@@ -1,0 +1,26 @@
+{
+  "name": "@libra/deploy-workflow",
+  "version": "1.0.5",
+  "scripts": {
+    "dev": "wrangler dev --port 3008 --persist-to=../web/.wrangler/state",
+    "deploy": "wrangler deploy --minify",
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings",
+    "typecheck": "tsc --noEmit",
+    "update": "bun update"
+  },
+  "dependencies": {
+    "@libra/auth": "*",
+    "@libra/common": "*",
+    "@libra/db": "*",
+    "@libra/middleware": "*",
+    "@libra/sandbox": "*",
+    "@libra/templates": "*",
+    "@libra/typescript-config": "*",
+    "hono": "^4.9.8",
+    "@scalar/hono-api-reference": "^0.9.19",
+    "@hono/zod-openapi": "^0.19.10"
+  },
+  "devDependencies": {
+    "wrangler": "4.27.0"
+  }
+}

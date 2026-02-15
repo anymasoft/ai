@@ -1,0 +1,329 @@
+/*
+ * SPDX-License-Identifier: AGPL-3.0-only
+ * utils.css
+ * Copyright (C) 2025 Nextify Limited
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
+ */
+
+/* Glass effects */
+@utility glass-1 {
+  @apply border-border from-card/80 to-card/40 dark:border-border/10 dark:border-b-border/5 dark:border-t-border/20 dark:from-card/5 dark:to-card/0 border bg-linear-to-b;
+}
+@utility glass-2 {
+  @apply border-border from-card/100 to-card/80 dark:border-border/10 dark:border-b-border/5 dark:border-t-border/20 dark:from-card/10 dark:to-card/5 border bg-linear-to-b;
+}
+@utility glass-3 {
+  @apply border-border from-card/30 to-card/20 dark:border-border/10 dark:border-t-border/20 dark:border-b-border/5 dark:from-primary/5 dark:to-primary/2 border bg-linear-to-b;
+}
+@utility glass-4 {
+  @apply border-border border-b-input/90 from-card/60 to-card/20 dark:border-border/10 dark:border-t-border/30 dark:from-primary/10 dark:to-primary/5 border bg-linear-to-b dark:border-b-0;
+}
+@utility glass-5 {
+  @apply border-border border-b-input from-card/100 to-card/20 dark:border-border/10 dark:border-t-border/30 dark:from-primary/15 dark:to-primary/5 border bg-linear-to-b dark:border-b-0;
+}
+
+/* Fade effects */
+@utility fade-x {
+  mask-image: linear-gradient(to right, transparent 0%, black 25%, black 75%, transparent 100%);
+}
+@utility fade-y {
+  mask-image: linear-gradient(to top, transparent 0%, black 25%, black 75%, transparent 100%);
+}
+@utility fade-top {
+  mask-image: linear-gradient(to bottom, transparent 0%, black 35%);
+}
+@utility fade-bottom {
+  mask-image: linear-gradient(to top, transparent 0%, black 35%);
+}
+@utility fade-top-lg {
+  mask-image: linear-gradient(to bottom, transparent 15%, black 100%);
+}
+@utility fade-bottom-lg {
+  mask-image: linear-gradient(to top, transparent 15%, black 100%);
+}
+@utility fade-left {
+  mask-image: linear-gradient(to right, transparent 0%, black 35%);
+}
+@utility fade-right {
+  mask-image: linear-gradient(to left, transparent 0%, black 35%);
+}
+@utility fade-left-lg {
+  mask-image: linear-gradient(to right, transparent 15%, black 100%);
+}
+@utility fade-right-lg {
+  mask-image: linear-gradient(to left, transparent 15%, black 100%);
+}
+
+/* Deployment component utilities */
+@utility deployment-container {
+  @apply glass-2 rounded-2xl border border-border/50 shadow-2xl backdrop-blur-xl;
+}
+
+@utility deployment-card {
+  @apply bg-background/95 rounded-xl border border-border/30 shadow-md;
+}
+
+@utility deployment-primary-card {
+  @apply deployment-card border-2 border-primary/20 shadow-lg;
+}
+
+@utility deployment-stage {
+  @apply space-y-6 p-6;
+}
+
+@utility deployment-action-bar {
+  @apply deployment-card p-4 flex gap-3;
+}
+
+@utility icon-container {
+  @apply w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 flex-shrink-0;
+}
+
+@utility deployment-button-primary {
+  @apply bg-gradient-to-r from-primary to-brand hover:from-primary/90 hover:to-brand/90 text-primary-foreground font-semibold shadow-lg transition-all duration-300;
+}
+
+@utility deployment-status-success {
+  @apply text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/20;
+}
+
+@utility deployment-status-warning {
+  @apply text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-950/20;
+}
+
+@utility deployment-status-error {
+  @apply text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20;
+}
+
+@utility deployment-feature-grid {
+  @apply grid grid-cols-1 sm:grid-cols-3 gap-4;
+}
+
+@utility deployment-success-header {
+  @apply text-center space-y-3;
+}
+
+@utility deployment-success-icon {
+  @apply relative w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg;
+}
+
+/* Enhanced deployment utilities using design tokens */
+@utility deployment-modal {
+  @apply bg-background/95 backdrop-blur-xl border border-border/50 shadow-2xl;
+  border-radius: var(--deployment-radius-xl);
+  padding: var(--deployment-modal-padding);
+
+  /* Responsive adjustments */
+  @media (max-width: 640px) {
+    border-radius: 0;
+    padding: var(--deployment-space-md);
+    height: 100vh;
+    max-height: none;
+  }
+
+  @media (min-width: 641px) and (max-width: 768px) {
+    padding: var(--deployment-space-lg);
+    max-width: 90vw;
+  }
+}
+
+@utility deployment-card-enhanced {
+  @apply bg-background/98 border border-border/30;
+  border-radius: var(--deployment-radius-lg);
+  padding: var(--deployment-card-padding);
+  box-shadow: var(--deployment-shadow-md);
+  transition: all var(--deployment-transition-normal);
+}
+
+@utility deployment-card-primary {
+  @apply deployment-card-enhanced border-2 border-primary/20;
+  box-shadow: var(--deployment-shadow-lg);
+}
+
+@utility deployment-section {
+  gap: var(--deployment-section-gap);
+}
+
+@utility deployment-element-spacing {
+  gap: var(--deployment-element-gap);
+}
+
+@utility deployment-button-spacing {
+  gap: var(--deployment-button-gap);
+}
+
+@utility deployment-status-success {
+  background-color: var(--deployment-color-success-bg);
+  border-color: var(--deployment-color-success-border);
+  color: var(--deployment-color-success);
+}
+
+@utility deployment-status-warning {
+  background-color: var(--deployment-color-warning-bg);
+  border-color: var(--deployment-color-warning-border);
+  color: var(--deployment-color-warning);
+}
+
+@utility deployment-status-error {
+  background-color: var(--deployment-color-error-bg);
+  border-color: var(--deployment-color-error-border);
+  color: var(--deployment-color-error);
+}
+
+@utility deployment-status-info {
+  background-color: var(--deployment-color-info-bg);
+  border-color: var(--deployment-color-info-border);
+  color: var(--deployment-color-info);
+}
+
+@utility deployment-progress-bar {
+  background: var(--deployment-progress-bg);
+  border-radius: var(--deployment-radius-md);
+  overflow: hidden;
+  position: relative;
+}
+
+@utility deployment-progress-fill {
+  background: var(--deployment-progress-fill);
+  transition: width var(--deployment-transition-slow);
+  border-radius: var(--deployment-radius-md);
+}
+
+@utility deployment-icon-container-enhanced {
+  @apply flex items-center justify-center flex-shrink-0 border;
+  width: 3rem;
+  height: 3rem;
+  border-radius: var(--deployment-radius-lg);
+  background-color: hsl(var(--primary) / 0.1);
+  border-color: hsl(var(--primary) / 0.2);
+}
+
+@utility deployment-text-title {
+  font-size: var(--deployment-font-size-xl);
+  font-weight: var(--deployment-font-weight-semibold);
+  line-height: var(--deployment-line-height-tight);
+}
+
+@utility deployment-text-subtitle {
+  font-size: var(--deployment-font-size-sm);
+  font-weight: var(--deployment-font-weight-medium);
+  line-height: var(--deployment-line-height-normal);
+}
+
+@utility deployment-text-body {
+  font-size: var(--deployment-font-size-sm);
+  font-weight: var(--deployment-font-weight-normal);
+  line-height: var(--deployment-line-height-relaxed);
+}
+
+@utility deployment-text-caption {
+  font-size: var(--deployment-font-size-xs);
+  font-weight: var(--deployment-font-weight-medium);
+  line-height: var(--deployment-line-height-normal);
+}
+
+/* Enhanced responsive utilities */
+@utility deployment-action-bar-responsive {
+  @apply flex pt-6;
+  gap: var(--deployment-button-gap);
+
+  /* Responsive action bar */
+  @media (max-width: 640px) {
+    flex-direction: column;
+    gap: var(--deployment-space-sm);
+    padding-top: var(--deployment-space-lg);
+  }
+
+  @media (min-width: 641px) {
+    flex-direction: row;
+  }
+}
+
+@utility deployment-responsive-grid {
+  @apply grid;
+  gap: var(--deployment-element-gap);
+
+  /* Responsive grid layout */
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 641px) and (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (min-width: 769px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@utility deployment-mobile-stack {
+  @apply flex;
+
+  /* Mobile-first stacking */
+  @media (max-width: 640px) {
+    flex-direction: column;
+    gap: var(--deployment-space-md);
+  }
+
+  @media (min-width: 641px) {
+    flex-direction: row;
+    gap: var(--deployment-space-lg);
+    align-items: center;
+  }
+}
+
+@utility deployment-touch-target {
+  /* Enhanced touch targets for mobile */
+  @media (max-width: 768px) {
+    min-height: 44px;
+    min-width: 44px;
+    padding: var(--deployment-space-sm) var(--deployment-space-md);
+  }
+}
+
+@utility deployment-text-responsive {
+  /* Responsive text sizing */
+  @media (max-width: 640px) {
+    font-size: var(--deployment-font-size-sm);
+    line-height: var(--deployment-line-height-normal);
+  }
+
+  @media (min-width: 641px) {
+    font-size: var(--deployment-font-size-base);
+    line-height: var(--deployment-line-height-relaxed);
+  }
+}
+
+/* Animation utilities */
+@utility animation-delay-200 {
+  animation-delay: 200ms;
+}
+
+@utility animation-delay-400 {
+  animation-delay: 400ms;
+}
+
+@utility animation-delay-600 {
+  animation-delay: 600ms;
+}
+
+/* Smooth tab transitions */
+@utility tab-transition {
+  transition-property: all;
+  transition-duration: 300ms;
+  transition-timing-function: ease-in-out;
+}

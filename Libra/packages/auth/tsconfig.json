@@ -1,0 +1,11 @@
+{
+  "extends": "@libra/typescript-config/base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@libra/better-auth-cloudflare": ["../better-auth-cloudflare"],
+      "@libra/better-auth-cloudflare/*": ["../better-auth-cloudflare/*"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx","../../apps/web/cloudflare-env.d.ts"]
+}

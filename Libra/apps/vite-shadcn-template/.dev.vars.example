@@ -1,0 +1,10 @@
+# Cloudflare Workers Development Environment Variables
+# Copy this file to .dev.vars and fill in your values
+
+# Environment setting
+ENVIRONMENT=development
+
+# Add any additional environment variables your application needs
+# Example:
+# API_KEY=your-api-key-here
+# DATABASE_URL=your-database-url-here

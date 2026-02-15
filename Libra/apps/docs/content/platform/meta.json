@@ -1,0 +1,22 @@
+{
+  "title": "Libra AI",
+  "description": "Platform specific features and integrations",
+  "icon": "Server",
+  "root": true,
+  "pages": [
+    "---Quickstart---",
+    "index",
+    "quickstart",
+    "faq",
+    "---Using Libra---",
+    "usinglibra/deploy/index",
+    "usinglibra/directEdit/index",
+    "usinglibra/timeMachine/index",
+    "---Guides---",
+    "guides/effective-ai-communication",
+    "---Account & Billing---",
+    "account/index",
+    "---Community---",
+    "community/index"
+  ]
+}

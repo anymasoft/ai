@@ -1,0 +1,11 @@
+{
+  "extends": "@libra/typescript-config/base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
+    "noPropertyAccessFromIndexSignature": false
+  },
+  "include": [".","../../apps/web/cloudflare-env.d.ts",
+    "../../apps/email/emails"
+  ],
+  "exclude": ["node_modules", "dist"]
+}
