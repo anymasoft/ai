@@ -25,23 +25,24 @@ import { Label } from '@libra/ui/components/label'
 import { Textarea } from '@libra/ui/components/textarea'
 import { Section } from '@libra/ui/components/section'
 import * as m from '@/paraglide/messages'
-import { initAuth } from '@libra/auth/auth-server'
-import { headers } from 'next/headers'
+// FAKE_AUTH: Commented out real auth check for local development
+// import { initAuth } from '@libra/auth/auth-server'
+// import { headers } from 'next/headers'
 
 export default async function ContactPage() {
-  // Check authentication status on server side
+  // FAKE_AUTH: Use fake authentication for local development
   let isAuthenticated = false
-  try {
-    const auth = await initAuth()
-    const headersList = await headers()
-    const session = await auth.api.getSession({
-      headers: headersList,
-    })
-    isAuthenticated = !!session?.user
-  } catch (error) {
-    // Default to unauthenticated if auth check fails
-    isAuthenticated = false
-  }
+  // try {
+  //   const auth = await initAuth()
+  //   const headersList = await headers()
+  //   const session = await auth.api.getSession({
+  //     headers: headersList,
+  //   })
+  //   isAuthenticated = !!session?.user
+  // } catch (error) {
+  //   // Default to unauthenticated if auth check fails
+  //   isAuthenticated = false
+  // }
 
   return (
     <main className='min-h-screen w-full overflow-hidden bg-[var(--background-landing)] text-[var(--foreground-landing)]'>
@@ -136,4 +137,4 @@ export default async function ContactPage() {
       </Section>
     </main>
   )
-} 
+}

@@ -23,25 +23,26 @@ import { z } from 'zod'
 
 export const env = createEnv({
   server: {
-    BETTER_GITHUB_CLIENT_ID: z.string().min(1),
-    BETTER_GITHUB_CLIENT_SECRET: z.string().min(1),
+    // FAKE_AUTH: Make all parameters optional for local development
+    BETTER_GITHUB_CLIENT_ID: z.string().optional(),
+    BETTER_GITHUB_CLIENT_SECRET: z.string().optional(),
     STRIPE_SECRET_KEY: z.string().optional(),
     STRIPE_WEBHOOK_SECRET: z.string().optional(),
-    CLOUDFLARE_ACCOUNT_ID: z.string().min(1),
-    DATABASE_ID: z.string().min(1),
-    CLOUDFLARE_API_TOKEN: z.string().min(1),
-    TURNSTILE_SECRET_KEY: z.string().min(1),
+    CLOUDFLARE_ACCOUNT_ID: z.string().optional(),
+    DATABASE_ID: z.string().optional(),
+    CLOUDFLARE_API_TOKEN: z.string().optional(),
+    TURNSTILE_SECRET_KEY: z.string().optional(),
     ADMIN_USER_IDS: z.string().optional(),
   },
   runtimeEnv: {
-    BETTER_GITHUB_CLIENT_ID: process.env['BETTER_GITHUB_CLIENT_ID'],
-    BETTER_GITHUB_CLIENT_SECRET: process.env['BETTER_GITHUB_CLIENT_SECRET'],
+    BETTER_GITHUB_CLIENT_ID: process.env['BETTER_GITHUB_CLIENT_ID'] || 'fake-github-client-id-dev',
+    BETTER_GITHUB_CLIENT_SECRET: process.env['BETTER_GITHUB_CLIENT_SECRET'] || 'fake-github-client-secret-dev',
     STRIPE_SECRET_KEY: process.env['STRIPE_SECRET_KEY'],
     STRIPE_WEBHOOK_SECRET: process.env['STRIPE_WEBHOOK_SECRET'],
-    CLOUDFLARE_ACCOUNT_ID: process.env['CLOUDFLARE_ACCOUNT_ID'],
-    DATABASE_ID: process.env['DATABASE_ID'],
-    CLOUDFLARE_API_TOKEN: process.env['CLOUDFLARE_API_TOKEN'],
-    TURNSTILE_SECRET_KEY: process.env['TURNSTILE_SECRET_KEY'],
+    CLOUDFLARE_ACCOUNT_ID: process.env['CLOUDFLARE_ACCOUNT_ID'] || 'fake-cloudflare-account-id-dev',
+    DATABASE_ID: process.env['DATABASE_ID'] || 'fake-database-id-dev',
+    CLOUDFLARE_API_TOKEN: process.env['CLOUDFLARE_API_TOKEN'] || 'fake-cloudflare-api-token-dev',
+    TURNSTILE_SECRET_KEY: process.env['TURNSTILE_SECRET_KEY'] || 'fake-turnstile-secret-key-dev',
     ADMIN_USER_IDS: process.env['ADMIN_USER_IDS'],
   },
 })
