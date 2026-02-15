@@ -19,22 +19,32 @@
  */
 
 import { AppSidebar } from '@/components/dashboard/app-sidebar'
-import { initAuth } from '@libra/auth/auth-server'
+// FAKE_AUTH: Commented out initAuth for local development
+// import { initAuth } from '@libra/auth/auth-server'
 import { SidebarInset, SidebarProvider } from '@libra/ui/components/sidebar'
 import { SiteHeader } from 'apps/web/components/dashboard/site-header'
-import { headers } from 'next/headers'
-import { redirect } from 'next/navigation'
+// import { headers } from 'next/headers'
+// import { redirect } from 'next/navigation'
 import type React from 'react'
+import { ENABLE_FAKE_AUTH, FAKE_USER } from '@/lib/fake-auth'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const auth = await initAuth()
-  // Get current session and user information
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  })
-  const sessionUser = session?.user
-  if (!sessionUser) {
-    redirect('/')
+  let sessionUser = null
+
+  // FAKE_AUTH: Use test user for local development
+  if (ENABLE_FAKE_AUTH) {
+    sessionUser = FAKE_USER
+  } else {
+    // Real authentication flow
+    const auth = await initAuth()
+    // Get current session and user information
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    })
+    sessionUser = session?.user
+    if (!sessionUser) {
+      redirect('/')
+    }
   }
 
   // Add active organization ID to user data

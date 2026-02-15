@@ -26,23 +26,24 @@ import Footer from '@/components/marketing/footer'
 import Hero from '@/components/marketing/hero/index'
 import Navbar from '@/components/marketing/nav'
 import Pricing from '@/components/marketing/price'
-import { initAuth } from '@libra/auth/auth-server'
-import { headers } from 'next/headers'
+// FAKE_AUTH: Commented out real auth check for local development
+// import { initAuth } from '@libra/auth/auth-server'
+// import { headers } from 'next/headers'
 
 export default async function Home() {
-  // Check authentication status on server side
+  // FAKE_AUTH: Use fake authentication for local development
   let isAuthenticated = false
-  try {
-    const auth = await initAuth()
-    const headersList = await headers()
-    const session = await auth.api.getSession({
-      headers: headersList,
-    })
-    isAuthenticated = !!session?.user
-  } catch (error) {
-    // Default to unauthenticated if auth check fails
-    isAuthenticated = false
-  }
+  // try {
+  //   const auth = await initAuth()
+  //   const headersList = await headers()
+  //   const session = await auth.api.getSession({
+  //     headers: headersList,
+  //   })
+  //   isAuthenticated = !!session?.user
+  // } catch (error) {
+  //   // Default to unauthenticated if auth check fails
+  //   isAuthenticated = false
+  // }
 
   return (
     <main className='min-h-screen w-full overflow-hidden bg-[var(--background-landing)] text-[var(--foreground-landing)] '>
@@ -58,11 +59,8 @@ export default async function Home() {
       <Features />
 
       <Pricing />
-
       <FAQ />
-
       <CTA />
-
       <Footer />
     </main>
   )
