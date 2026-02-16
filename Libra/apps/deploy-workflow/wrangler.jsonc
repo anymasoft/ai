@@ -1,0 +1,26 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "libra-deploy",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-02-16",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "global_fetch_strictly_public"
+  ],
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "public"
+  },
+  "limits": {
+    "cpu_ms": 300000
+  },
+  "minify": false,
+  "env": {
+    "development": {
+      "vars": {
+        "ENVIRONMENT": "development",
+        "LOG_LEVEL": "debug"
+      }
+    }
+  }
+}
