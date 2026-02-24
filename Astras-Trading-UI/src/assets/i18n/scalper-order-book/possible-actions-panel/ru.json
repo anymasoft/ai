@@ -1,9 +1,0 @@
-﻿{
-  "mode": "Режим",
-  "actions": {
-    "limitOrder": "лимитная заявка",
-    "marketOrder": "рыночная заявка",
-    "stopLimitOrder": "стоп-лимит заявка",
-    "stopLossOrder": "стоп-лосс заявка"
-  }
-}
