@@ -6,7 +6,7 @@ let db: Database.Database | null = null;
 function initDb() {
   if (db) return db;
 
-  const dbPath = process.env.DATABASE_URL;
+  const dbPath = process.env.DATABASE_URL || path.join(process.cwd(), 'database.sqlite');
   const absoluteDbPath = path.resolve(dbPath);
 
   console.log('[DB] Initializing database:');
