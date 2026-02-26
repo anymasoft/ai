@@ -21,7 +21,7 @@ async function verifyAdmin(context: any) {
     };
   }
 
-  if (!isAdmin(user.email)) {
+  if (!isAdmin(user)) {
     return {
       ok: false,
       response: new Response(
