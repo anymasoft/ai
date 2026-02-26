@@ -1,0 +1,776 @@
+---
+import { getUserFromSession, isAdmin } from '../lib/auth';
+import AppLayout from '../layouts/AppLayout.astro';
+import { getDb } from '../lib/db';
+
+// Эта страница должна быть динамичной для работы с cookies
+export const prerender = false;
+
+// Получаем текущего пользователя из сессии
+const sessionToken = Astro.cookies.get('session_token')?.value;
+const user = sessionToken ? getUserFromSession(sessionToken) : null;
+
+// Если пользователь не авторизован, редиректим на sign-in
+if (!user) {
+  return Astro.redirect('/sign-in');
+}
+
+// Проверяем, является ли пользователь админом
+if (!isAdmin(user.email)) {
+  return Astro.redirect('/app');
+}
+
+// Загружаем пользователей из БД с пагинацией
+const db = getDb();
+
+interface UserWithBalance {
+  id: string;
+  name: string;
+  email: string;
+  generation_balance: number;
+  generation_used: number;
+  createdAt: number;
+}
+
+// Получаем параметры из URL
+const url = new URL(Astro.request.url);
+const searchEmail = url.searchParams.get('search') || '';
+const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
+const perPage = 20;
+const offset = (page - 1) * perPage;
+
+// Загружаем все пользователей для статистики
+const allUsers = db.prepare(`
+  SELECT id, name, email, generation_balance, generation_used, createdAt
+  FROM users
+  ORDER BY createdAt DESC
+`).all() as UserWithBalance[];
+
+// Загружаем пользователей для текущей страницы с фильтром
+let query = `
+  SELECT id, name, email, generation_balance, generation_used, createdAt
+  FROM users
+`;
+
+if (searchEmail) {
+  query += ` WHERE email LIKE ?`;
+}
+
+query += ` ORDER BY createdAt DESC LIMIT ? OFFSET ?`;
+
+const params = searchEmail ? [`%${searchEmail}%`, perPage, offset] : [perPage, offset];
+const users = db.prepare(query).all(...params) as UserWithBalance[];
+
+// Подсчитываем количество результатов поиска
+let totalResults = allUsers.length;
+if (searchEmail) {
+  const countQuery = 'SELECT COUNT(*) as count FROM users WHERE email LIKE ?';
+  const countResult = db.prepare(countQuery).get(`%${searchEmail}%`) as any;
+  totalResults = countResult?.count || 0;
+}
+
+const totalPages = Math.ceil(totalResults / perPage);
+const totalUsers = allUsers.length;
+
+const totalGenerationCredits = allUsers.reduce((sum, u) => sum + (u.generation_balance + u.generation_used), 0);
+const totalBalance = allUsers.reduce((sum, u) => sum + u.generation_balance, 0);
+---
+
+<AppLayout title="Admin Settings - Beem">
+  <div class="h-full overflow-auto">
+    <div class="max-w-6xl mx-auto p-4 md:p-6">
+      <!-- Back Button -->
+      <a href="/app" class="inline-flex items-center justify-center p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer mb-4">
+        <svg class="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+        </svg>
+      </a>
+
+      <!-- Search Box -->
+      <div class="mb-4">
+        <form method="GET" class="flex gap-2">
+          <input
+            type="text"
+            name="search"
+            placeholder="Поиск по email..."
+            value={searchEmail}
+            class="flex-1 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+          <button
+            type="submit"
+            class="px-6 py-2 rounded-lg bg-primary text-white font-semibold hover:opacity-90 transition"
+          >
+            Поиск
+          </button>
+          {searchEmail && (
+            <a
+              href="/admin"
+              class="px-6 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+            >
+              Очистить
+            </a>
+          )}
+        </form>
+        {searchEmail && (
+          <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">
+            Результаты поиска по "{searchEmail}": <strong>{totalResults}</strong> пользователей
+          </p>
+        )}
+      </div>
+
+      <!-- Statistics Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-1 gap-4 mb-6">
+        <!-- Total Users -->
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
+          <div class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">Всего пользователей</div>
+          <div class="text-3xl font-bold text-gray-900 dark:text-white" data-stat="totalUsers">{totalUsers}</div>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Активных аккаунтов в системе</p>
+        </div>
+      </div>
+
+      <!-- Users Table -->
+      <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+        <!-- Table Header -->
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+          <h2 class="text-lg font-bold text-gray-900 dark:text-white">Пользователи системы</h2>
+        </div>
+
+        <!-- Table -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-gray-200 dark:border-gray-800">
+                <th class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Имя</th>
+                <th class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Email</th>
+                <th class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Баланс</th>
+                <th class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Использовано</th>
+                <th class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Дата создания</th>
+                <th class="px-6 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u) => (
+                <tr class="border-b border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition" data-user-id={u.id}>
+                  <td class="px-6 py-3 font-medium text-gray-900 dark:text-white">{u.name}</td>
+                  <td class="px-6 py-3 text-gray-600 dark:text-gray-400 text-xs">{u.email}</td>
+                  <td class="px-6 py-3">
+                    <span class="inline-flex items-center gap-2">
+                      <span class="font-semibold text-green-600 dark:text-green-400">{u.generation_balance}</span>
+                      <button
+                        class="edit-balance-btn text-xs px-2 py-1 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition"
+                        data-user-id={u.id}
+                      >
+                        Изменить
+                      </button>
+                    </span>
+                  </td>
+                  <td class="px-6 py-3 text-gray-600 dark:text-gray-400">{u.generation_used}</td>
+                  <td class="px-6 py-3 text-xs text-gray-500 dark:text-gray-500">{new Date(u.createdAt * 1000).toLocaleDateString('ru-RU')}</td>
+                  <td class="px-6 py-3">
+                    <button
+                      class="reset-balance-btn text-xs px-3 py-1 rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/50 transition"
+                      data-user-id={u.id}
+                    >
+                      Обнулить
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        {totalPages > 1 && (
+          <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between">
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+              Страница <strong>{page}</strong> из <strong>{totalPages}</strong> · Показано <strong>{users.length}</strong> из <strong>{totalResults}</strong>
+            </p>
+            <div class="flex gap-2">
+              {page > 1 && (
+                <a
+                  href={searchEmail ? `/admin?search=${encodeURIComponent(searchEmail)}&page=${page - 1}` : `/admin?page=${page - 1}`}
+                  class="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                >
+                  ← Назад
+                </a>
+              )}
+              {page < totalPages && (
+                <a
+                  href={searchEmail ? `/admin?search=${encodeURIComponent(searchEmail)}&page=${page + 1}` : `/admin?page=${page + 1}`}
+                  class="px-4 py-2 rounded-lg bg-primary text-white font-semibold hover:opacity-90 transition"
+                >
+                  Далее →
+                </a>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <!-- Financial Overview Section -->
+      <div class="mb-6 mt-10">
+        <!-- Financial Filters -->
+        <div class="flex gap-2 mb-4 overflow-x-auto pb-2">
+          <button
+            class="financial-filter whitespace-nowrap px-4 py-2 rounded-lg font-semibold transition cursor-pointer bg-primary text-white"
+            data-filter="all"
+          >
+            Все пользователи
+          </button>
+          <button
+            class="financial-filter whitespace-nowrap px-4 py-2 rounded-lg font-semibold transition cursor-pointer bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700"
+            data-filter="Активный"
+          >
+            🟢 Активный
+          </button>
+          <button
+            class="financial-filter whitespace-nowrap px-4 py-2 rounded-lg font-semibold transition cursor-pointer bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700"
+            data-filter="Под риском"
+          >
+            🟡 Под риском
+          </button>
+          <button
+            class="financial-filter whitespace-nowrap px-4 py-2 rounded-lg font-semibold transition cursor-pointer bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700"
+            data-filter="Спящий"
+          >
+            ⚫ Спящий
+          </button>
+        </div>
+
+        <!-- Top Payers & High Balance Indicators -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div class="bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-2xl border border-yellow-200 dark:border-yellow-800 p-4">
+            <div class="text-sm font-semibold text-yellow-800 dark:text-yellow-300 mb-2">🔥 Топ плательщиков</div>
+            <div id="top-payers" class="text-sm text-yellow-700 dark:text-yellow-400">Загрузка...</div>
+          </div>
+          <div class="bg-gradient-to-br from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20 rounded-2xl border border-red-200 dark:border-red-800 p-4">
+            <div class="text-sm font-semibold text-red-800 dark:text-red-300 mb-2">⚠️ Высокий баланс (Финансовый риск)</div>
+            <div id="high-balance" class="text-sm text-red-700 dark:text-red-400">Загрузка...</div>
+          </div>
+        </div>
+
+        <!-- Financial Table -->
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+          <!-- Table Header -->
+          <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+            <h3 class="text-lg font-bold text-gray-900 dark:text-white">Финансовый обзор пользователей</h3>
+          </div>
+
+          <!-- Scrollable Table -->
+          <div class="overflow-x-auto" style="max-height: 600px; overflow-y: auto;">
+            <table class="w-full text-xs">
+              <thead class="sticky top-0 bg-gray-50 dark:bg-gray-800">
+                <tr class="border-b border-gray-200 dark:border-gray-800">
+                  <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="email">Email</th>
+                  <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="name">Имя</th>
+                  <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="totalCreditsBought">Куплено кредитов</th>
+                  <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="totalCreditsUsed">Использовано</th>
+                  <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="currentBalance">Баланс</th>
+                  <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="totalRevenue">Выручка (₽)</th>
+                  <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="avgPricePerCredit">Средняя цена</th>
+                  <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="lastPaymentDate">Последний платеж</th>
+                  <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" data-sort="status">Статус</th>
+                </tr>
+              </thead>
+              <tbody id="financial-table-body">
+                <tr class="text-center py-8">
+                  <td colspan="9" class="px-6 py-8 text-gray-500 dark:text-gray-400">Загрузка данных...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Edit Balance Modal -->
+      <div id="edit-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 max-w-sm w-full mx-4">
+          <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Изменить баланс кредитов</h3>
+
+          <div class="mb-4">
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+              Текущий баланс: <span id="current-balance" class="font-bold text-gray-900 dark:text-white">0</span>
+            </p>
+
+            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Новое значение</label>
+            <input
+              type="number"
+              id="balance-input"
+              class="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="Введите новое значение"
+              min="0"
+            />
+          </div>
+
+          <div class="flex gap-3">
+            <button
+              id="cancel-edit"
+              class="flex-1 px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+            >
+              Отмена
+            </button>
+            <button
+              id="save-balance"
+              class="flex-1 px-4 py-2 rounded-lg bg-primary text-white font-semibold hover:opacity-90 transition"
+            >
+              Сохранить
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Reset Confirmation Modal -->
+      <div id="reset-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 max-w-sm w-full mx-4">
+          <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Обнулить баланс?</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+            Вы уверены, что хотите обнулить баланс этого пользователя? Это действие невозможно отменить.
+          </p>
+          <div class="flex gap-3">
+            <button
+              id="cancel-reset"
+              class="flex-1 px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+            >
+              Отмена
+            </button>
+            <button
+              id="confirm-reset"
+              class="flex-1 px-4 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition"
+            >
+              Обнулить
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status Messages -->
+      <div id="status-message" class="hidden fixed bottom-4 right-4 px-4 py-3 rounded-lg text-sm font-semibold max-w-sm z-50"></div>
+    </div>
+  </div>
+</AppLayout>
+
+<script>
+  // Функция для обновления статистики в реальном времени
+  async function updateStats() {
+    try {
+      const response = await fetch('/api/admin/stats');
+      if (!response.ok) return;
+
+      const data = await response.json();
+      if (!data.success) return;
+
+      const totalUsersEl = document.querySelector('[data-stat="totalUsers"]');
+      if (totalUsersEl && data.totalUsers.toString() !== totalUsersEl.textContent?.trim()) {
+        totalUsersEl.textContent = data.totalUsers;
+      }
+    } catch (error) {
+      console.error('[ADMIN_STATS] Error fetching stats:', error);
+    }
+  }
+
+  // Периодическое обновление каждые 5 секунд
+  const statsInterval = setInterval(updateStats, 5000);
+
+  // Очистка интервала при выгрузке страницы
+  window.addEventListener('unload', () => {
+    clearInterval(statsInterval);
+  });
+
+  const editModal = document.getElementById('edit-modal') as HTMLDivElement;
+  const cancelEditBtn = document.getElementById('cancel-edit') as HTMLButtonElement;
+  const saveBalanceBtn = document.getElementById('save-balance') as HTMLButtonElement;
+  const balanceInput = document.getElementById('balance-input') as HTMLInputElement;
+  const currentBalanceSpan = document.getElementById('current-balance') as HTMLSpanElement;
+  const statusMessage = document.getElementById('status-message') as HTMLDivElement;
+
+  const resetModal = document.getElementById('reset-modal') as HTMLDivElement;
+  const cancelResetBtn = document.getElementById('cancel-reset') as HTMLButtonElement;
+  const confirmResetBtn = document.getElementById('confirm-reset') as HTMLButtonElement;
+
+  let selectedUserId: string | null = null;
+  let resetUserId: string | null = null;
+
+  // Функция для отображения статус-сообщения
+  function showStatus(message: string, type: 'success' | 'error') {
+    statusMessage.textContent = message;
+    statusMessage.classList.remove('hidden', 'bg-green-50', 'dark:bg-green-900/20', 'border-green-200', 'dark:border-green-800', 'text-green-700', 'dark:text-green-400', 'bg-red-50', 'dark:bg-red-900/20', 'border-red-200', 'dark:border-red-800', 'text-red-700', 'dark:text-red-400');
+
+    if (type === 'success') {
+      statusMessage.classList.add('bg-green-50', 'dark:bg-green-900/20', 'border', 'border-green-200', 'dark:border-green-800', 'text-green-700', 'dark:text-green-400');
+    } else {
+      statusMessage.classList.add('bg-red-50', 'dark:bg-red-900/20', 'border', 'border-red-200', 'dark:border-red-800', 'text-red-700', 'dark:text-red-400');
+    }
+
+    setTimeout(() => {
+      statusMessage.classList.add('hidden');
+    }, 4000);
+  }
+
+  // Обработчик кнопок "Изменить"
+  document.querySelectorAll('.edit-balance-btn').forEach(btn => {
+    btn.addEventListener('click', (e: Event) => {
+      const target = e.target as HTMLButtonElement;
+      selectedUserId = target.getAttribute('data-user-id');
+
+      if (selectedUserId) {
+        const row = document.querySelector(`tr[data-user-id="${selectedUserId}"]`);
+        if (row) {
+          const currentBalance = row.querySelector('.font-semibold.text-green-600')?.textContent || '0';
+          currentBalanceSpan.textContent = currentBalance;
+          balanceInput.value = currentBalance;
+          editModal.classList.remove('hidden');
+          balanceInput.focus();
+        }
+      }
+    });
+  });
+
+  // Закрытие модального окна
+  cancelEditBtn.addEventListener('click', () => {
+    editModal.classList.add('hidden');
+    selectedUserId = null;
+  });
+
+  // Закрытие модального окна при клике на фон
+  editModal.addEventListener('click', (e: Event) => {
+    if (e.target === editModal) {
+      editModal.classList.add('hidden');
+      selectedUserId = null;
+    }
+  });
+
+  // Сохранение баланса
+  saveBalanceBtn.addEventListener('click', async () => {
+    if (!selectedUserId) return;
+
+    const newBalance = parseInt(balanceInput.value, 10);
+
+    if (isNaN(newBalance) || newBalance < 0) {
+      showStatus('Пожалуйста, введите корректное значение', 'error');
+      return;
+    }
+
+    saveBalanceBtn.disabled = true;
+    saveBalanceBtn.textContent = 'Сохранение...';
+
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: selectedUserId,
+          generation_balance: newBalance
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        showStatus(`Ошибка: ${errorData.error || 'Не удалось обновить баланс'}`, 'error');
+        saveBalanceBtn.disabled = false;
+        saveBalanceBtn.textContent = 'Сохранить';
+        return;
+      }
+
+      // Обновляем строку в таблице
+      const row = document.querySelector(`tr[data-user-id="${selectedUserId}"]`);
+      if (row) {
+        const balanceCell = row.querySelector('.font-semibold.text-green-600');
+        if (balanceCell) {
+          balanceCell.textContent = newBalance.toString();
+        }
+      }
+
+      editModal.classList.add('hidden');
+      showStatus('✓ Баланс успешно обновлен', 'success');
+      selectedUserId = null;
+      saveBalanceBtn.disabled = false;
+      saveBalanceBtn.textContent = 'Сохранить';
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+      showStatus(`Ошибка: ${errorMessage}`, 'error');
+      saveBalanceBtn.disabled = false;
+      saveBalanceBtn.textContent = 'Сохранить';
+    }
+  });
+
+  // Обработчик кнопок "Обнулить"
+  document.querySelectorAll('.reset-balance-btn').forEach(btn => {
+    btn.addEventListener('click', (e: Event) => {
+      const target = e.target as HTMLButtonElement;
+      const userId = target.getAttribute('data-user-id');
+
+      if (!userId) return;
+
+      resetUserId = userId;
+      resetModal.classList.remove('hidden');
+    });
+  });
+
+  // Закрытие модального окна подтверждения обнуления
+  cancelResetBtn.addEventListener('click', () => {
+    resetModal.classList.add('hidden');
+    resetUserId = null;
+  });
+
+  // Закрытие модального окна при клике на фон
+  resetModal.addEventListener('click', (e: Event) => {
+    if (e.target === resetModal) {
+      resetModal.classList.add('hidden');
+      resetUserId = null;
+    }
+  });
+
+  // Подтверждение обнуления баланса
+  confirmResetBtn.addEventListener('click', async () => {
+    if (!resetUserId) return;
+
+    const target = document.querySelector(`button[data-user-id="${resetUserId}"].reset-balance-btn`) as HTMLButtonElement;
+    if (target) {
+      target.disabled = true;
+      target.textContent = 'Обнуление...';
+    }
+
+    resetModal.classList.add('hidden');
+
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: resetUserId,
+          generation_balance: 0
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        showStatus(`Ошибка: ${errorData.error || 'Не удалось обнулить баланс'}`, 'error');
+        if (target) {
+          target.disabled = false;
+          target.textContent = 'Обнулить';
+        }
+        return;
+      }
+
+      // Обновляем строку в таблице
+      const row = document.querySelector(`tr[data-user-id="${resetUserId}"]`);
+      if (row) {
+        const balanceCell = row.querySelector('.font-semibold.text-green-600');
+        if (balanceCell) {
+          balanceCell.textContent = '0';
+        }
+      }
+
+      showStatus('✓ Баланс успешно обнулен', 'success');
+      if (target) {
+        target.disabled = false;
+        target.textContent = 'Обнулить';
+      }
+      resetUserId = null;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+      showStatus(`Ошибка: ${errorMessage}`, 'error');
+      if (target) {
+        target.disabled = false;
+        target.textContent = 'Обнулить';
+      }
+      resetUserId = null;
+    }
+  });
+
+  // ========== ФИНАНСОВАЯ ТАБЛИЦА ==========
+  interface UserFinancial {
+    userId: string;
+    email: string;
+    name: string;
+    totalCreditsBought: number;
+    totalCreditsUsed: number;
+    currentBalance: number;
+    lastPaymentDate: number | null;
+    totalRevenue: number;
+    avgPricePerCredit: number;
+    status: 'Активный' | 'Под риском' | 'Спящий';
+  }
+
+  let allFinancialData: UserFinancial[] = [];
+  let currentFilter: string = 'all';
+  let currentSort: { field: string; direction: 'asc' | 'desc' } = { field: 'totalRevenue', direction: 'desc' };
+  const financialTableBody = document.getElementById('financial-table-body') as HTMLTableSectionElement;
+  const topPayersEl = document.getElementById('top-payers') as HTMLDivElement;
+  const highBalanceEl = document.getElementById('high-balance') as HTMLDivElement;
+
+  // Загрузка финансовых данных
+  async function loadFinancialData() {
+    try {
+      const response = await fetch('/api/admin/financial-overview');
+      if (!response.ok) throw new Error('Failed to fetch financial data');
+
+      const result = await response.json();
+      if (!result.success) throw new Error('API error');
+
+      allFinancialData = result.data;
+      renderFinancialTable();
+      updateFinancialIndicators();
+    } catch (error) {
+      console.error('[FINANCIAL_TABLE] Error:', error);
+      financialTableBody.innerHTML = '<tr class="text-center"><td colspan="9" class="px-6 py-8 text-red-500">Ошибка загрузки данных</td></tr>';
+    }
+  }
+
+  // Обновление финансовых индикаторов (Top Payers и High Balance)
+  function updateFinancialIndicators() {
+    // Top Payers - 3 пользователя с наибольшей выручкой
+    const topPayers = allFinancialData
+      .filter(u => u.totalRevenue > 0)
+      .sort((a, b) => b.totalRevenue - a.totalRevenue)
+      .slice(0, 3);
+
+    if (topPayers.length > 0) {
+      topPayersEl.innerHTML = topPayers
+        .map(u => `<div>${u.email}: <strong>${u.totalRevenue}₽</strong></div>`)
+        .join('');
+    } else {
+      topPayersEl.textContent = 'Нет платежей';
+    }
+
+    // High Balance - пользователи с высоким балансом (потенциальный риск)
+    const highBalance = allFinancialData
+      .filter(u => u.currentBalance > 100)
+      .sort((a, b) => b.currentBalance - a.currentBalance)
+      .slice(0, 3);
+
+    if (highBalance.length > 0) {
+      highBalanceEl.innerHTML = highBalance
+        .map(u => `<div>${u.email}: <strong>${u.currentBalance} кредитов</strong></div>`)
+        .join('');
+    } else {
+      highBalanceEl.textContent = 'Нет пользователей с высоким балансом';
+    }
+  }
+
+  // Фильтрация и сортировка данных
+  function getFilteredAndSortedData(): UserFinancial[] {
+    let filtered = allFinancialData;
+
+    // Фильтр по статусу
+    if (currentFilter !== 'all') {
+      filtered = filtered.filter(u => u.status === currentFilter);
+    }
+
+    // Сортировка
+    return filtered.sort((a, b) => {
+      let aVal: any = a[currentSort.field as keyof UserFinancial];
+      let bVal: any = b[currentSort.field as keyof UserFinancial];
+
+      if (typeof aVal === 'string') {
+        aVal = aVal.toLowerCase();
+        bVal = bVal.toLowerCase();
+      }
+
+      if (aVal < bVal) return currentSort.direction === 'asc' ? -1 : 1;
+      if (aVal > bVal) return currentSort.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }
+
+  // Форматирование даты
+  function formatDate(timestamp: number | null): string {
+    if (!timestamp) return 'Никогда';
+    const date = new Date(timestamp * 1000);
+    const now = Date.now();
+    const diffMs = now - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'Сегодня';
+    if (diffDays === 1) return 'Вчера';
+    if (diffDays < 7) return `${diffDays} дней назад`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} недель назад`;
+    return date.toLocaleDateString('ru-RU');
+  }
+
+  // Статус цвет
+  function getStatusColor(status: string): string {
+    switch (status) {
+      case 'Активный': return 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded';
+      case 'Под риском': return 'text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 px-2 py-1 rounded';
+      case 'Спящий': return 'text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded';
+      default: return '';
+    }
+  }
+
+  // Отрисовка финансовой таблицы
+  function renderFinancialTable() {
+    const filtered = getFilteredAndSortedData();
+
+    if (filtered.length === 0) {
+      financialTableBody.innerHTML = '<tr class="text-center"><td colspan="9" class="px-6 py-8 text-gray-500 dark:text-gray-400">Нет данных для отображения</td></tr>';
+      return;
+    }
+
+    financialTableBody.innerHTML = filtered
+      .map(user => `
+        <tr class="border-b border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+          <td class="px-4 py-3 font-medium text-gray-900 dark:text-white truncate max-w-xs">${user.email}</td>
+          <td class="px-4 py-3 text-gray-600 dark:text-gray-400 truncate">${user.name}</td>
+          <td class="px-4 py-3 text-right font-semibold text-gray-900 dark:text-white">${user.totalCreditsBought}</td>
+          <td class="px-4 py-3 text-right text-gray-600 dark:text-gray-400">${user.totalCreditsUsed}</td>
+          <td class="px-4 py-3 text-right font-semibold ${user.currentBalance > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}">${user.currentBalance}</td>
+          <td class="px-4 py-3 text-right font-semibold text-blue-600 dark:text-blue-400">${Math.round(user.totalRevenue)}₽</td>
+          <td class="px-4 py-3 text-right text-gray-600 dark:text-gray-400">${user.avgPricePerCredit.toFixed(2)}₽</td>
+          <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">${formatDate(user.lastPaymentDate)}</td>
+          <td class="px-4 py-3"><span class="${getStatusColor(user.status)}">${user.status}</span></td>
+        </tr>
+      `)
+      .join('');
+  }
+
+  // Обработчики фильтров
+  document.querySelectorAll('.financial-filter').forEach(btn => {
+    btn.addEventListener('click', (e: Event) => {
+      const target = e.target as HTMLButtonElement;
+      const filter = target.getAttribute('data-filter') || 'all';
+
+      // Обновляем активную кнопку
+      document.querySelectorAll('.financial-filter').forEach(b => {
+        b.classList.remove('bg-primary', 'text-white');
+        b.classList.add('bg-gray-100', 'dark:bg-gray-800', 'text-gray-900', 'dark:text-white');
+      });
+      target.classList.remove('bg-gray-100', 'dark:bg-gray-800', 'text-gray-900', 'dark:text-white');
+      target.classList.add('bg-primary', 'text-white');
+
+      currentFilter = filter;
+      renderFinancialTable();
+    });
+  });
+
+  // Обработчики сортировки
+  document.querySelectorAll('[data-sort]').forEach(th => {
+    th.addEventListener('click', (e: Event) => {
+      const target = e.target as HTMLElement;
+      const field = target.getAttribute('data-sort');
+
+      if (!field) return;
+
+      // Переключаем направление если кликнули по одному полю
+      if (currentSort.field === field) {
+        currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+      } else {
+        currentSort.field = field;
+        currentSort.direction = 'desc';
+      }
+
+      renderFinancialTable();
+    });
+  });
+
+  // Загрузка данных при загрузке страницы
+  loadFinancialData();
+
+  // Периодическое обновление финансовых данных каждые 10 секунд
+  setInterval(loadFinancialData, 10000);
+</script>

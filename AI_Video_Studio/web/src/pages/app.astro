@@ -1,0 +1,1039 @@
+---
+import AppLayout from '../layouts/AppLayout.astro';
+import PromptInput from '../components/PromptInput.astro';
+import QuickActions from '../components/QuickActions.astro';
+import DurationSelector from '../components/DurationSelector.astro';
+import { getUserFromSession } from '../lib/auth';
+
+// Эта страница должна быть динамичной для работы с middleware и cookies
+export const prerender = false;
+
+// Получаем текущего пользователя из сессии
+const sessionToken = Astro.cookies.get('session_token')?.value;
+let user = sessionToken ? getUserFromSession(sessionToken) : null;
+
+// ИСПРАВЛЕНИЕ: Если cookie существует, но сессии нет в БД → удалить cookie
+if (sessionToken && !user) {
+  console.log(`\n⚠️ APP: Cookie существует, но сессия не найдена в БД`);
+  console.log(`   - Удаляем "залипшую" cookie`);
+
+  // Правильное удаление cookie с ТЕМИ ЖЕ параметрами
+  Astro.cookies.set('session_token', '', {
+    path: '/',
+    sameSite: 'lax',
+    secure: import.meta.env.PROD,
+    httpOnly: true,
+    maxAge: 0,
+  });
+
+  console.log(`   ✅ Cookie очищена (maxAge=0)`);
+  user = null;
+}
+
+// Если пользователь не авторизован, редиректим на главную
+if (!user) {
+  return Astro.redirect('/');
+}
+
+const userBalance = user.generation_balance || 0;
+---
+
+<AppLayout title="Create Video - Beem">
+    <!-- Main Container - No scroll, fixed 100vh -->
+    <div class="w-full h-full flex flex-col overflow-hidden" data-user-balance={userBalance}>
+        <!-- Content Area - flex-1 to fill remaining height -->
+        <div class="flex-1 overflow-hidden">
+            <!-- Grid: LEFT (upload) + RIGHT (video stage) -->
+            <div class="h-full p-4 flex gap-4">
+
+                <!-- LEFT COLUMN: Upload Image + Duration (FIXED WIDTH) -->
+                <div class="flex-shrink-0 w-80">
+                    <div class="h-full border border-gray-100 dark:border-gray-700 rounded-3xl p-4 bg-white dark:bg-gray-800 flex flex-col overflow-hidden gap-3">
+
+                        <!-- Upload Canvas - flex-1 to fill available space -->
+                        <div class="relative border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-2xl overflow-hidden hover:border-primary transition cursor-pointer group flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+
+                            <input
+                                type="file"
+                                accept="image/jpeg"
+                                class="absolute inset-0 opacity-0 cursor-pointer z-10"
+                                id="image-upload"
+                                title=""
+                            />
+
+                            <!-- Placeholder -->
+                            <div id="upload-placeholder" class="space-y-3 text-center pointer-events-none">
+                                <svg class="w-8 h-8 mx-auto text-gray-400 group-hover:text-primary transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                </svg>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Перетащите фото сюда</p>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">или нажмите, чтобы выбрать</p>
+                                    <p class="text-xs text-gray-400 dark:text-gray-500">(только формат JPG)</p>
+                                </div>
+                            </div>
+
+                            <!-- Image Preview -->
+                            <img
+                                id="image-preview"
+                                class="hidden absolute inset-0 w-full h-full object-contain"
+                                alt="Preview"
+                            />
+                        </div>
+
+                        <!-- Duration Selector - Powered by DurationSelector Component -->
+                        <DurationSelector />
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN: Video Stage (FILLS REMAINING SPACE) -->
+                <div class="flex-1 overflow-hidden no-video" id="video-section">
+                    <div class="h-full border border-gray-100 dark:border-gray-700 rounded-3xl overflow-hidden bg-white dark:bg-gray-800 flex flex-col relative">
+
+                        <!-- Video Area - flex-1 to fill space -->
+                        <div class="flex-1 video-area-mesh flex items-center justify-center relative overflow-hidden">
+
+                            <!-- Video Placeholder (shown before generation) -->
+                            <div id="video-placeholder" class="text-center space-y-4">
+                                <svg class="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <p class="text-gray-500 dark:text-gray-400 text-sm">Создайте видео</p>
+                            </div>
+
+                            <!-- Loading Spinner (shown during generation) -->
+                            <div id="video-loading" class="hidden text-center space-y-4">
+                                <div class="flex justify-center">
+                                    <div class="animate-spin rounded-full h-12 w-12 border-4 border-gray-200 dark:border-gray-700 border-t-primary"></div>
+                                </div>
+                                <p class="text-gray-500 dark:text-gray-400 text-sm">Создаём видео...</p>
+                            </div>
+
+                            <!-- Video Player (shown after generation) -->
+                            <video
+                                id="video-output"
+                                class="hidden w-full h-full object-contain"
+                                controls
+                                controlsList="nodownload"
+                            >
+                                Your browser does not support the video tag.
+                            </video>
+
+                            <!-- Paywall Overlay (shown when balance is insufficient) -->
+                            <div id="player-paywall" class="hidden absolute inset-0 flex flex-col items-center justify-center bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm z-20">
+                                <p class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Недостаточно кредитов</p>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                                    Чтобы создать видео, пополните баланс
+                                </p>
+                                <button id="paywall-topup" class="px-6 py-3 rounded-xl bg-primary text-white text-base font-semibold hover:bg-primary/90 transition shadow-lg">
+                                    Пополнить баланс
+                                </button>
+                            </div>
+
+                            <!-- Download & Clear Buttons - Top Right (hidden until generation) -->
+                            <div id="video-controls" class="hidden absolute top-4 right-4 flex gap-2 z-20">
+                                <!-- Download Button -->
+                                <button
+                                    id="download-btn"
+                                    class="p-2.5 rounded-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600 transition shadow-lg cursor-pointer"
+                                >
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                    </svg>
+                                </button>
+
+                                <!-- Clear Button -->
+                                <button
+                                    id="clear-btn"
+                                    class="p-2.5 rounded-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600 transition shadow-lg cursor-pointer"
+                                >
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <!-- PROMPT BAR - Floating Control Panel (CENTERED, BOTTOM) -->
+                            <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-none px-4 w-full" style="max-width: 60%">
+
+                                <!-- Input Container (Full Width Minus Padding) -->
+                                <div class="pointer-events-auto relative space-y-3">
+
+                                    <!-- PROMPT INPUT: Powered by Shadcn/ui -->
+                                    <PromptInput />
+
+                                    <!-- QUICK ACTIONS: Powered by Tailus -->
+                                    <QuickActions />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</AppLayout>
+
+<script>
+    // ========== Get User Balance ==========
+    const mainContainer = document.querySelector('[data-user-balance]') as HTMLElement;
+    const userBalance = parseInt(mainContainer?.dataset.userBalance || '0', 10);
+    console.log(`[APP] User balance: ${userBalance} credits`);
+
+    // ========== Отслеживание успешной авторизации ==========
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('auth') === '1') {
+        window.beemGoal("auth_success");
+        // Очищаем параметр из URL
+        window.history.replaceState({}, document.title, '/app');
+    }
+
+    // ========== Toast Notification System ==========
+    function showToast(message: string, type: 'error' | 'success' = 'error') {
+        const toast = document.createElement('div');
+        toast.className = `fixed top-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50 animate-in fade-in slide-in-from-top-2 ${
+            type === 'error'
+                ? 'bg-red-500 text-white'
+                : 'bg-green-500 text-white'
+        }`;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+
+        // Auto-hide after 3 seconds
+        setTimeout(() => {
+            toast.classList.add('opacity-0');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    // ========== Paywall Overlay for Insufficient Balance ==========
+    function showPaywallOverlay() {
+        const paywall = document.getElementById('player-paywall') as HTMLElement;
+        if (!paywall) return;
+
+        // Show paywall
+        paywall.classList.remove('hidden');
+        window.beemGoal("paywall_shown");
+
+        // Auto-hide and reset after 3 seconds
+        setTimeout(() => {
+            paywall.classList.add('hidden');
+        }, 3000);
+    }
+
+    // ========== Paywall Button Handler ==========
+    const paywallTopupBtn = document.getElementById('paywall-topup') as HTMLButtonElement;
+    if (paywallTopupBtn) {
+        paywallTopupBtn.addEventListener('click', () => {
+            window.location.href = '/billing';
+        });
+    }
+
+    // ========== Validation and Button State ==========
+    const generateBtn = document.getElementById('generate-btn') as HTMLButtonElement;
+    const promptTextarea = document.getElementById('prompt') as HTMLTextAreaElement;
+    const imageUpload = document.getElementById('image-upload') as HTMLInputElement;
+    let selectedDuration: string | null = null;
+    let selectedImage: File | null = null;
+
+    function updateGenerateButtonState() {
+        const hasPrompt = promptTextarea?.value.trim().length > 0;
+        const hasDuration = selectedDuration !== null;
+        const hasImage = selectedImage !== null;
+
+        if (generateBtn) {
+            if (hasPrompt && hasDuration && hasImage) {
+                generateBtn.disabled = false;
+                generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                generateBtn.disabled = true;
+                generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        }
+    }
+
+    // ========== Tooltip Hover Management ==========
+    const tooltip = document.getElementById('generate-tooltip') as HTMLElement;
+
+    if (generateBtn && tooltip) {
+        generateBtn.addEventListener('mouseenter', () => {
+            if (generateBtn.disabled) {
+                tooltip.classList.remove('hidden');
+            }
+        });
+
+        generateBtn.addEventListener('mouseleave', () => {
+            tooltip.classList.add('hidden');
+        });
+    }
+
+    // Character Counter + Button Validation
+    if (promptTextarea) {
+        promptTextarea.addEventListener('input', () => {
+            const count = promptTextarea.value.length;
+
+            // Truncate if over 500
+            if (count > 500) {
+                promptTextarea.value = promptTextarea.value.substring(0, 500);
+            }
+            updateGenerateButtonState();
+        });
+    }
+
+    // ========== Duration Selection ==========
+    const durationBtns = document.querySelectorAll('.duration-toggle-btn') as NodeListOf<HTMLButtonElement>;
+
+    durationBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            // Remove active state from all buttons
+            durationBtns.forEach(b => {
+                b.classList.remove('duration-toggle-active');
+            });
+
+            // Add active state to clicked button
+            btn.classList.add('duration-toggle-active');
+            selectedDuration = btn.dataset.duration || null;
+            updateGenerateButtonState();
+        });
+    });
+
+    // ========== Image Upload ==========
+    const imagePreview = document.getElementById('image-preview') as HTMLImageElement;
+    const uploadPlaceholder = document.getElementById('upload-placeholder') as HTMLElement;
+
+    /**
+     * Загружает изображение на сервер через API
+     */
+    async function uploadImageToServer(file: File): Promise<boolean> {
+        try {
+            const formData = new FormData();
+            formData.append('image', file);
+
+            const response = await fetch('/api/upload-image', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                console.error('[UPLOAD] Error:', data.error);
+                showToast(data.error || 'Ошибка при загрузке изображения', 'error');
+                return false;
+            }
+
+            console.log('[UPLOAD] ✅ Image uploaded:', data.imagePath);
+            window.beemGoal("image_upload_success");
+            return true;
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error('[UPLOAD] Error:', errorMessage);
+            showToast(`Ошибка: ${errorMessage}`, 'error');
+            return false;
+        }
+    }
+
+    if (imageUpload) {
+        imageUpload.addEventListener('change', async (e) => {
+            const file = (e.target as HTMLInputElement).files?.[0];
+            if (file) {
+                // Проверяем, что это JPEG
+                if (!file.type.startsWith('image/jpeg')) {
+                    showToast('Разрешены только JPEG изображения', 'error');
+                    imageUpload.value = '';
+                    return;
+                }
+
+                // Загружаем изображение на сервер
+                const uploadSuccess = await uploadImageToServer(file);
+                if (!uploadSuccess) {
+                    imageUpload.value = '';
+                    return;
+                }
+
+                // Сохраняем файл локально для preview
+                selectedImage = file;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    imagePreview.src = event.target?.result as string;
+                    imagePreview.classList.remove('hidden');
+                    uploadPlaceholder.classList.add('hidden');
+                    updateGenerateButtonState();
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Drag and drop support
+        const uploadArea = imageUpload.parentElement as HTMLElement;
+        if (uploadArea) {
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('border-primary', 'bg-primary/5');
+            });
+
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('border-primary', 'bg-primary/5');
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('border-primary', 'bg-primary/5');
+                const files = e.dataTransfer?.files;
+                if (files && files[0]) {
+                    imageUpload.files = files;
+                    const event = new Event('change', { bubbles: true });
+                    imageUpload.dispatchEvent(event);
+                }
+            });
+        }
+    }
+
+    // ========== Mode Selector ==========
+    let selectedMode: 'template' | 'prompt' = 'template';
+    const modeButtons = document.querySelectorAll('.mode-toggle-btn') as NodeListOf<HTMLButtonElement>;
+    const modeDescription = document.getElementById('mode-description') as HTMLElement;
+
+    const modeDescriptions = {
+        template: 'ИИ сам подберёт сценарий и создаст продающее видео для WB и Ozon',
+        prompt: 'Вы управляете сценой и камерой, как режиссёр'
+    };
+
+    const modePlaceholders = {
+        template: 'Красивая девушка с наушниками, стильный продукт, модный образ, для карточки WB',
+        prompt: 'Девушка идёт вперёд, поворачивается к камере, улыбается, снимает наушники, плавное движение камеры, кинематографичный свет'
+    };
+
+    // Set initial active state (template mode)
+    const templateBtn = document.getElementById('mode-template') as HTMLButtonElement;
+    const promptBtn = document.getElementById('mode-prompt') as HTMLButtonElement;
+
+    function updateModeBarState(mode: 'template' | 'prompt') {
+        modeButtons.forEach(btn => {
+            if (btn.getAttribute('data-mode') === mode) {
+                btn.classList.remove('mode-segment-inactive');
+                btn.classList.add('mode-segment-active');
+            } else {
+                btn.classList.add('mode-segment-inactive');
+                btn.classList.remove('mode-segment-active');
+            }
+        });
+    }
+
+    // Initialize with template mode active
+    updateModeBarState('template');
+
+    // Set initial placeholder
+    if (promptTextarea) {
+        promptTextarea.placeholder = modePlaceholders['template'];
+    }
+
+    modeButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const mode = btn.getAttribute('data-mode') as 'template' | 'prompt';
+            selectedMode = mode;
+            console.log(`[UI] Mode selected: ${selectedMode}`);
+
+            // Update placeholder
+            if (promptTextarea) {
+                promptTextarea.placeholder = modePlaceholders[mode];
+            }
+        });
+    });
+
+    // ========== Generate Button ==========
+    const generateIcon = document.getElementById('generate-icon') as HTMLImageElement;
+    const generateSpinner = document.getElementById('generate-spinner') as HTMLElement;
+    const videoPlaceholder = document.getElementById('video-placeholder') as HTMLElement;
+    const videoLoading = document.getElementById('video-loading') as HTMLElement;
+    const videoOutput = document.getElementById('video-output') as HTMLVideoElement;
+    const videoControls = document.getElementById('video-controls') as HTMLElement;
+    const downloadBtn = document.getElementById('download-btn') as HTMLButtonElement;
+    const clearBtn = document.getElementById('clear-btn') as HTMLButtonElement;
+    const videoSection = document.getElementById('video-section') as HTMLElement;
+
+    // ========== UI Mode Manager (has-video / no-video) ==========
+    function updateUIMode() {
+        if (!videoSection) return;
+
+        const hasVideo = videoOutput.src && videoOutput.src.trim() !== '';
+
+        if (hasVideo) {
+            videoSection.classList.remove('no-video');
+            videoSection.classList.add('has-video');
+            console.log('[UI] Switched to HAS-VIDEO mode (glass blur UI)');
+        } else {
+            videoSection.classList.remove('has-video');
+            videoSection.classList.add('no-video');
+            console.log('[UI] Switched to NO-VIDEO mode (white contrast UI)');
+        }
+    }
+
+    // Initialize UI mode
+    updateUIMode();
+
+    if (generateBtn) {
+        generateBtn.addEventListener('click', async () => {
+            // ДИАГНОСТИКА
+            console.log('[GEN] Button clicked!', {
+                hasImage: !!selectedImage,
+                hasDuration: !!selectedDuration,
+                hasPrompt: !!(promptTextarea?.value),
+                promptLen: promptTextarea?.value?.length || 0,
+                buttonDisabled: generateBtn.disabled,
+                mode: selectedMode,
+                duration: selectedDuration
+            });
+
+            if (!selectedImage || !selectedDuration || !promptTextarea?.value) {
+                console.error('[GEN] ❌ Missing required data', {
+                    selectedImage: selectedImage ? 'YES' : 'NO',
+                    selectedDuration: selectedDuration ? 'YES' : 'NO',
+                    promptValue: promptTextarea?.value ? `"${promptTextarea.value.substring(0, 50)}..."` : 'EMPTY'
+                });
+                return;
+            }
+
+            // ✨ CHECK BALANCE BEFORE GENERATION
+            if (userBalance <= 0) {
+                console.log(`[GEN] Insufficient balance: ${userBalance} credits`);
+                showPaywallOverlay();
+                return;
+            }
+
+            // ✨ STEP 1: Clear player before starting generation
+            videoOutput.classList.add('hidden');
+            videoControls.classList.add('hidden');
+            videoOutput.src = '';
+
+            // Disable button and show loading state
+            generateBtn.disabled = true;
+            generateIcon.classList.add('hidden');
+            generateSpinner.classList.remove('hidden');
+
+            // Hide placeholder, show loading indicator
+            videoPlaceholder.classList.add('hidden');
+            videoLoading.classList.remove('hidden');
+
+            try {
+                // Логирование генерации
+                console.log(`[UI] generation mode = ${selectedMode}`);
+                console.log(`[UI] Starting generation: mode=${selectedMode}, duration=${selectedDuration}s, prompt="${promptTextarea.value.substring(0, 50)}..."`);
+
+                // Дополнительная отладка
+                console.log(`[UI] Mode: ${selectedMode === 'template' ? '🎬 TEMPLATE (AI-selected scene)' : '✏️ PROMPT (Free-form scenario)'}`);
+                console.log(`[UI] Duration: ${selectedDuration}s`);
+                console.log(`[UI] Cost: ${selectedDuration === 6 ? '1 credit' : '2 credits'}`);
+
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        prompt: promptTextarea.value,
+                        duration: parseInt(selectedDuration || '6', 10),
+                        mode: selectedMode,
+                    }),
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    console.error(`[UI] ❌ Server rejected generation request`);
+                    console.error(`[UI]   - status: ${response.status}`);
+                    console.error(`[UI]   - error: ${data.error}`);
+
+                    videoLoading.classList.add('hidden');
+                    generateIcon.classList.remove('hidden');
+                    generateSpinner.classList.add('hidden');
+                    generateBtn.disabled = false;
+
+                    const errorMsg = data.error || 'Ошибка при генерации видео';
+                    const isBalanceError = errorMsg.toLowerCase().includes('баланс') ||
+                                          errorMsg.toLowerCase().includes('кредит') ||
+                                          errorMsg.toLowerCase().includes('недостаточно');
+
+                    if (isBalanceError) {
+                        showPaywallOverlay();
+                    } else {
+                        videoPlaceholder.classList.remove('hidden');
+                        showToast(errorMsg, 'error');
+                    }
+                    return;
+                }
+
+                const generationId = data.generationId;
+                console.log(`[UI] ✅ Generation request accepted`);
+                console.log(`[UI]   - generationId: ${generationId}`);
+                console.log(`[UI]   - mode: ${data.mode}`);
+                console.log(`[UI]   - cost: ${data.cost} credits`);
+
+                // Ждем завершения генерации (опрашиваем статус)
+                let generationComplete = false;
+                let videoUrl: string | null = null;
+                let checkAttempts = 0;
+                const maxAttempts = 300; // 300 секунд (5 минут) - ждем callback от MiniMax
+
+                while (!generationComplete && checkAttempts < maxAttempts) {
+                    await new Promise(resolve => setTimeout(resolve, 1000)); // Ждем 1 сек
+                    checkAttempts++;
+
+                    try {
+                        const statusResponse = await fetch(
+                            `/api/generate?generationId=${generationId}`
+                        );
+                        const statusData = await statusResponse.json();
+
+                        if (checkAttempts % 10 === 0) {
+                            console.log(`[UI] ⏳ Still processing... (${checkAttempts}s elapsed)`);
+                        }
+
+                        if (statusData.status === 'success' && statusData.charged) {
+                            generationComplete = true;
+                            videoUrl = statusData.videoUrl;
+                            console.log(`[UI] ✅ Generation complete`);
+                            console.log(`[UI]   - generationId: ${generationId}`);
+                            console.log(`[UI]   - videoUrl: ${videoUrl}`);
+                            window.beemGoal("generation_success");
+                        } else if (statusData.status === 'failed') {
+                            console.error(`[UI] ❌ Generation failed`);
+                            console.error(`[UI]   - generationId: ${generationId}`);
+                            console.error(`[UI]   - status: ${statusData.status}`);
+                            throw new Error('Генерация видео не удалась');
+                        }
+                    } catch (error) {
+                        if (!(error instanceof Error && error.message.includes('не удалась'))) {
+                            console.error('[UI] Error checking status:', error);
+                        } else {
+                            throw error;
+                        }
+                    }
+                }
+
+                if (!generationComplete || !videoUrl) {
+                    console.error(`[UI] ⏱️ Generation timeout (${checkAttempts}s elapsed)`);
+                    throw new Error(
+                        'Время ожидания генерации истекло. Видео может быть готово позже.'
+                    );
+                }
+
+                // Генерация готова - показываем видео из MiniMax
+                videoLoading.classList.add('hidden');
+                videoOutput.src = videoUrl;
+                videoOutput.classList.remove('hidden');
+                videoControls.classList.remove('hidden');
+
+                // Сохраняем videoUrl для скачивания
+                (downloadBtn as any).videoUrl = videoUrl;
+
+                // Обновляем UI режим на HAS-VIDEO
+                updateUIMode();
+
+                console.log(`[UI] 🎬 Video displayed successfully`);
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+                console.error(`[UI] ❌ Generation failed`);
+                console.error(`[UI]   - error: ${errorMessage}`);
+
+                videoLoading.classList.add('hidden');
+                const isBalanceError = errorMessage.toLowerCase().includes('баланс') ||
+                                      errorMessage.toLowerCase().includes('кредит') ||
+                                      errorMessage.toLowerCase().includes('недостаточно');
+
+                if (isBalanceError) {
+                    showPaywallOverlay();
+                } else {
+                    videoPlaceholder.classList.remove('hidden');
+                    showToast(`Ошибка: ${errorMessage}`, 'error');
+                }
+            } finally {
+                // Re-enable button and reset spinner
+                generateIcon.classList.remove('hidden');
+                generateSpinner.classList.add('hidden');
+                generateBtn.disabled = false;
+                updateGenerateButtonState();
+            }
+        });
+    }
+
+    // ========== Download Button ==========
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', () => {
+            // Получаем URL видео (сохранили при успешной генерации)
+            const videoUrl = (downloadBtn as any).videoUrl || '/videos/output.mp4';
+
+            // Create download link
+            const link = document.createElement('a');
+            link.href = videoUrl;
+            link.download = 'generated-video.mp4';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+    }
+
+    // ========== Clear Button ==========
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            // Hide video and controls
+            videoOutput.classList.add('hidden');
+            videoControls.classList.add('hidden');
+
+            // Show placeholder
+            videoPlaceholder.classList.remove('hidden');
+
+            // Reset video source
+            videoOutput.src = '';
+
+            // Clear image preview
+            imagePreview.classList.add('hidden');
+            imagePreview.src = '';
+            uploadPlaceholder.classList.remove('hidden');
+
+            // Clear selected image
+            selectedImage = null;
+            imageUpload.value = '';
+
+            // Обновляем UI режим обратно на NO-VIDEO
+            updateUIMode();
+
+            // Update button state
+            updateGenerateButtonState();
+        });
+    }
+
+    // Set default duration to 6s on page load
+    const firstDurationBtn = document.querySelector('[data-duration="6"]') as HTMLButtonElement;
+    if (firstDurationBtn) {
+        firstDurationBtn.click();
+    }
+
+    // Initialize button state on page load
+    updateGenerateButtonState();
+</script>
+
+<style>
+    @keyframes neon-glow {
+        0%, 100% {
+            box-shadow:
+                0 0 10px 0 rgba(59, 130, 246, 0.6),
+                0 0 20px 0 rgba(59, 130, 246, 0.4),
+                0 0 30px 0 rgba(59, 130, 246, 0.2),
+                inset 0 0 10px 0 rgba(59, 130, 246, 0.15);
+        }
+        50% {
+            box-shadow:
+                0 0 20px 0 rgba(59, 130, 246, 1),
+                0 0 40px 0 rgba(59, 130, 246, 0.8),
+                0 0 60px 0 rgba(59, 130, 246, 0.4),
+                inset 0 0 15px 0 rgba(59, 130, 246, 0.3);
+        }
+    }
+
+    #prompt {
+        border-color: rgba(59, 130, 246, 0.3);
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    #prompt:hover {
+        animation: neon-glow 2s ease-in-out infinite;
+        border-color: rgb(59, 130, 246);
+    }
+
+    #prompt:focus {
+        animation: neon-glow 2s ease-in-out infinite;
+        border-color: rgb(59, 130, 246);
+    }
+
+    @keyframes tooltip-fade-in {
+        from {
+            opacity: 0;
+            transform: translateY(4px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    #generate-tooltip {
+        transition: opacity 0.2s ease, transform 0.2s ease;
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
+    }
+
+    #generate-tooltip.hidden {
+        opacity: 0;
+        transform: translateY(4px);
+        display: none;
+        pointer-events: none;
+    }
+
+    #generate-tooltip:not(.hidden) {
+        animation: tooltip-fade-in 0.2s ease-out;
+    }
+
+    /* Active Duration button hover effect */
+    .duration-btn.bg-primary:hover {
+        background-color: rgb(37, 99, 235) !important; /* Slightly darker blue */
+    }
+
+    /* ========== MODE BAR: PREMIUM STYLES ========== */
+
+    /* Gradient border animation for Mode Bar */
+    @keyframes mode-bar-glow {
+        0%, 100% {
+            box-shadow: 0 0 12px rgba(168, 85, 247, 0.4), 0 0 24px rgba(59, 130, 246, 0.2);
+        }
+        50% {
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.6), 0 0 32px rgba(59, 130, 246, 0.4);
+        }
+    }
+
+    @keyframes segment-gradient {
+        0%, 100% {
+            background-position: 0% center;
+        }
+        50% {
+            background-position: 100% center;
+        }
+    }
+
+    /* Mode Bar Container */
+    .mode-bar-container {
+        animation: mode-bar-glow 3s ease-in-out infinite;
+    }
+
+    .mode-bar-container:hover {
+        animation: mode-bar-glow 2s ease-in-out infinite;
+    }
+
+    /* Inactive Segment Styles */
+    .mode-segment-inactive {
+        color: rgba(255, 255, 255, 0.55);
+        background-color: transparent;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .mode-segment-inactive:hover {
+        color: rgba(255, 255, 255, 0.8);
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    /* Active Segment Styles */
+    .mode-segment-active {
+        color: rgb(255, 255, 255);
+        background: linear-gradient(135deg, rgba(168, 85, 247, 0.3) 0%, rgba(59, 130, 246, 0.3) 100%);
+        border: 1px solid rgba(168, 85, 247, 0.4);
+        box-shadow: 0 0 16px rgba(168, 85, 247, 0.25), inset 0 0 8px rgba(168, 85, 247, 0.1);
+    }
+
+    .mode-segment-active:hover {
+        background: linear-gradient(135deg, rgba(168, 85, 247, 0.4) 0%, rgba(59, 130, 246, 0.4) 100%);
+        box-shadow: 0 0 20px rgba(168, 85, 247, 0.35), inset 0 0 12px rgba(168, 85, 247, 0.15);
+    }
+
+    /* ========== MESH GRADIENT BACKGROUND FOR VIDEO PLAYER ========== */
+    .video-area-mesh {
+        background: transparent;
+    }
+
+    .dark .video-area-mesh {
+        background: transparent;
+    }
+
+    /* ========== CONDITIONAL UI MODES ========== */
+
+    /* NO-VIDEO MODE: White/Contrast UI */
+    .no-video #prompt {
+        background-color: #ffffff !important;
+        border: 1px solid #e5e7eb !important;
+        color: #1f2937 !important;
+        backdrop-filter: none !important;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .dark .no-video #prompt {
+        background-color: #1f2937 !important;
+        border: 1px solid #374151 !important;
+        color: #f3f4f6 !important;
+    }
+
+    .no-video #prompt::placeholder {
+        color: #9ca3af !important;
+    }
+
+    .dark .no-video #prompt::placeholder {
+        color: #6b7280 !important;
+    }
+
+    .no-video .mode-toggle-btn {
+        border: 1px solid #d1d5db !important;
+        background-color: #ffffff !important;
+        color: #374151 !important;
+        backdrop-filter: none !important;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+    }
+
+    .dark .no-video .mode-toggle-btn {
+        border-color: #4b5563 !important;
+        background-color: #374151 !important;
+        color: #e5e7eb !important;
+    }
+
+    .no-video .mode-toggle-btn:hover:not(.mode-toggle-active) {
+        background-color: #f3f4f6 !important;
+        border-color: #9ca3af !important;
+    }
+
+    .dark .no-video .mode-toggle-btn:hover:not(.mode-toggle-active) {
+        background-color: #4b5563 !important;
+        border-color: #6b7280 !important;
+    }
+
+    .no-video .mode-toggle-active {
+        background: #dbeafe !important;
+        border-color: #3b82f6 !important;
+        color: #1e40af !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+    }
+
+    .dark .no-video .mode-toggle-active {
+        background: #1e3a8a !important;
+        border-color: #3b82f6 !important;
+        color: #93c5fd !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+    }
+
+    .no-video .duration-toggle-btn {
+        border: 1px solid #d1d5db !important;
+        background-color: #ffffff !important;
+        color: #374151 !important;
+        backdrop-filter: none !important;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+    }
+
+    .dark .no-video .duration-toggle-btn {
+        border-color: #4b5563 !important;
+        background-color: #374151 !important;
+        color: #e5e7eb !important;
+    }
+
+    .no-video .duration-toggle-btn:hover:not(.duration-toggle-active) {
+        background-color: #f3f4f6 !important;
+        border-color: #9ca3af !important;
+    }
+
+    .dark .no-video .duration-toggle-btn:hover:not(.duration-toggle-active) {
+        background-color: #4b5563 !important;
+        border-color: #6b7280 !important;
+    }
+
+    .no-video .duration-toggle-active {
+        background: #dbeafe !important;
+        border-color: #3b82f6 !important;
+        color: #1e40af !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+    }
+
+    .dark .no-video .duration-toggle-active {
+        background: #1e3a8a !important;
+        border-color: #3b82f6 !important;
+        color: #93c5fd !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+    }
+
+    /* HAS-VIDEO MODE: Glass Blur UI */
+    .has-video #prompt {
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        background-color: rgba(255, 255, 255, 0.3) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        backdrop-filter: blur(10px) !important;
+        color: #475569 !important;
+    }
+
+    .dark .has-video #prompt {
+        border-color: rgba(255, 255, 255, 0.2) !important;
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        color: #cbd5e1 !important;
+    }
+
+    .has-video .mode-toggle-btn {
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        backdrop-filter: blur(10px) !important;
+        color: #475569 !important;
+    }
+
+    .dark .has-video .mode-toggle-btn {
+        border-color: rgba(255, 255, 255, 0.2) !important;
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        color: #cbd5e1 !important;
+    }
+
+    .has-video .mode-toggle-btn:hover:not(.mode-toggle-active) {
+        background-color: rgba(255, 255, 255, 0.15) !important;
+        border-color: rgba(255, 255, 255, 0.4) !important;
+    }
+
+    .dark .has-video .mode-toggle-btn:hover:not(.mode-toggle-active) {
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        border-color: rgba(255, 255, 255, 0.3) !important;
+    }
+
+    .has-video .mode-toggle-active {
+        background: rgba(255, 255, 255, 0.25) !important;
+        border-color: rgba(255, 255, 255, 0.4) !important;
+        color: #1e40af !important;
+        box-shadow: 0 0 12px rgba(59, 130, 246, 0.3), inset 0 0 8px rgba(59, 130, 246, 0.1) !important;
+    }
+
+    .dark .has-video .mode-toggle-active {
+        background: rgba(255, 255, 255, 0.15) !important;
+        border-color: rgba(255, 255, 255, 0.3) !important;
+        color: #60a5fa !important;
+        box-shadow: 0 0 12px rgba(59, 130, 246, 0.3), inset 0 0 8px rgba(59, 130, 246, 0.1) !important;
+    }
+
+    .has-video .duration-toggle-btn {
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        backdrop-filter: blur(10px) !important;
+        color: #475569 !important;
+    }
+
+    .dark .has-video .duration-toggle-btn {
+        border-color: rgba(255, 255, 255, 0.2) !important;
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        color: #cbd5e1 !important;
+    }
+
+    .has-video .duration-toggle-btn:hover:not(.duration-toggle-active) {
+        background-color: rgba(255, 255, 255, 0.15) !important;
+        border-color: rgba(255, 255, 255, 0.4) !important;
+    }
+
+    .dark .has-video .duration-toggle-btn:hover:not(.duration-toggle-active) {
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        border-color: rgba(255, 255, 255, 0.3) !important;
+    }
+
+    .has-video .duration-toggle-active {
+        background: rgba(255, 255, 255, 0.25) !important;
+        border-color: rgba(255, 255, 255, 0.4) !important;
+        color: #1e40af !important;
+        box-shadow: 0 0 12px rgba(59, 130, 246, 0.3), inset 0 0 8px rgba(59, 130, 246, 0.1) !important;
+    }
+
+    .dark .has-video .duration-toggle-active {
+        background: rgba(255, 255, 255, 0.15) !important;
+        border-color: rgba(255, 255, 255, 0.3) !important;
+        color: #60a5fa !important;
+        box-shadow: 0 0 12px rgba(59, 130, 246, 0.3), inset 0 0 8px rgba(59, 130, 246, 0.1) !important;
+    }
+</style>

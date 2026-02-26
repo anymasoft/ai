@@ -1,0 +1,107 @@
+/**
+ * Утилиты для работы с платежами через ЮKassa
+ */
+
+import { getDb } from './db';
+
+/**
+ * ОБЩАЯ ЛОГИКА АКТИВАЦИИ УСПЕШНОГО ПЛАТЕЖА
+ *
+ * Вызывается ИЗ:
+ * - webhook при payment.succeeded
+ * - check endpoint при проверке статуса YooKassa
+ *
+ * ИДЕМПОТЕНТНА: повторный вызов = ничего не ломает
+ * Защита: проверяет payments.status ПЕРЕД UPDATE
+ */
+export async function applySuccessfulPayment(
+  paymentId: string
+): Promise<{ success: boolean; reason?: string }> {
+  const db = getDb();
+
+  try {
+    console.log(`[applySuccessfulPayment] Processing payment: ${paymentId}`);
+
+    // ШАГ 1: Найти платёж в БД
+    const paymentStmt = db.prepare(
+      'SELECT id, userId, credits, status FROM payments WHERE externalPaymentId = ?'
+    );
+    const payment = paymentStmt.get(paymentId) as any;
+
+    if (!payment) {
+      console.error(`[applySuccessfulPayment] ❌ Payment not found: ${paymentId}`);
+      return { success: false, reason: 'Payment not found in DB' };
+    }
+
+    const { userId, credits, status: currentStatus } = payment;
+
+    console.log(
+      `[applySuccessfulPayment] Found payment: userId=${userId}, credits=${credits}, status=${currentStatus}`
+    );
+
+    // ШАГ 2: ЗАЩИТА от дублирования — если уже succeeded, ничего не делаем
+    if (currentStatus === 'succeeded') {
+      console.log(
+        `[applySuccessfulPayment] ℹ️ Payment already processed (status=succeeded), skipping`
+      );
+      return { success: true, reason: 'Already processed' };
+    }
+
+    // ШАГ 3: ЗАЩИТА от незавершённых платежей
+    if (currentStatus !== 'pending') {
+      console.log(
+        `[applySuccessfulPayment] ℹ️ Payment has status=${currentStatus}, skipping`
+      );
+      return { success: false, reason: `Payment status is ${currentStatus}` };
+    }
+
+    // ШАГ 4: Получаем количество кредитов из payments таблицы
+    if (!credits || credits <= 0) {
+      console.error(`[applySuccessfulPayment] ❌ Invalid credits amount: ${credits}`);
+      return { success: false, reason: `Invalid credits amount: ${credits}` };
+    }
+
+    const creditsAmount = credits;
+
+    console.log(
+      `[applySuccessfulPayment] Adding ${creditsAmount} credits to user ${userId}`
+    );
+
+    // ШАГ 5: Увеличиваем generation_balance пользователя
+    const now = Math.floor(Date.now() / 1000);
+
+    // Проверяем текущий баланс ДО обновления
+    const userBeforeStmt = db.prepare('SELECT generation_balance FROM users WHERE id = ?');
+    const userBefore = userBeforeStmt.get(userId) as any;
+    const balanceBefore = userBefore?.generation_balance ?? 0;
+
+    const updateUserStmt = db.prepare(
+      `UPDATE users
+       SET generation_balance = generation_balance + ?, updatedAt = ?
+       WHERE id = ?`
+    );
+    const updateResult = updateUserStmt.run(creditsAmount, now, userId);
+
+    // Проверяем баланс ПОСЛЕ обновления
+    const userAfterStmt = db.prepare('SELECT generation_balance FROM users WHERE id = ?');
+    const userAfter = userAfterStmt.get(userId) as any;
+    const balanceAfter = userAfter?.generation_balance ?? 0;
+
+    console.log(`[applySuccessfulPayment] Balance update for user ${userId}: ${balanceBefore} + ${creditsAmount} = ${balanceAfter} (changes: ${updateResult.changes})`);
+
+    // ШАГ 6: Обновляем payments.status = 'succeeded'
+    const updatePaymentStmt = db.prepare(
+      "UPDATE payments SET status = 'succeeded', updatedAt = ? WHERE externalPaymentId = ?"
+    );
+    updatePaymentStmt.run(now, paymentId);
+
+    console.log(
+      `[applySuccessfulPayment] ✅ Success! Payment ${paymentId} activated for user ${userId}`
+    );
+
+    return { success: true };
+  } catch (error) {
+    console.error(`[applySuccessfulPayment] Error:`, error);
+    return { success: false, reason: 'Internal error' };
+  }
+}
