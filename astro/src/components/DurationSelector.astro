@@ -1,105 +1,97 @@
 ---
-// DurationSelector.astro - Duration Selector
-// Переключатель длительности видео: 6s vs 10s
-// Первая кнопка выбрана по умолчанию
+// DurationSelector.astro — Duration Selector
+// iOS-style segmented control: 6s vs 10s
 ---
 
-<div class="flex items-center justify-center gap-2 w-full">
-  <!-- 6s Button -->
-  <button
-    id="duration-6"
-    data-duration="6"
-    class="duration-toggle-btn duration-toggle-active flex-1 flex items-center justify-center gap-2
-           px-4 py-2 rounded-lg
-           font-medium text-sm
-           transition-all duration-200"
-  >
-    <span>6s (1 кредит)</span>
-  </button>
+<div class="space-y-1.5">
+  <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Длительность</label>
+  <div class="flex items-center gap-1 p-1 rounded-xl bg-gray-100 dark:bg-gray-800">
+    <!-- 6s Button -->
+    <button
+      id="duration-6"
+      data-duration="6"
+      class="duration-toggle-btn duration-toggle-active flex-1 flex flex-col items-center justify-center
+             px-3 py-2 rounded-lg
+             transition-all duration-150"
+    >
+      <span class="text-sm font-semibold leading-tight">6 сек</span>
+      <span class="duration-credit-label text-xs leading-tight">1 кредит</span>
+    </button>
 
-  <!-- 10s Button -->
-  <button
-    id="duration-10"
-    data-duration="10"
-    class="duration-toggle-btn flex-1 flex items-center justify-center gap-2
-           px-4 py-2 rounded-lg
-           font-medium text-sm
-           transition-all duration-200"
-  >
-    <span>10s (2 кредита)</span>
-  </button>
+    <!-- 10s Button -->
+    <button
+      id="duration-10"
+      data-duration="10"
+      class="duration-toggle-btn flex-1 flex flex-col items-center justify-center
+             px-3 py-2 rounded-lg
+             transition-all duration-150"
+    >
+      <span class="text-sm font-semibold leading-tight">10 сек</span>
+      <span class="duration-credit-label text-xs leading-tight">2 кредита</span>
+    </button>
+  </div>
 </div>
 
 <style>
-  /* Base button styles */
   .duration-toggle-btn {
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    background-color: rgba(255, 255, 255, 0.1);
-    background-image: none;
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
-    color: #475569;
+    color: #6b7280;
     cursor: pointer;
+    border: none;
+    background: transparent;
   }
 
   .dark .duration-toggle-btn {
-    border-color: rgba(255, 255, 255, 0.2);
-    background-color: rgba(255, 255, 255, 0.05);
-    color: #cbd5e1;
+    color: #9ca3af;
   }
 
-  /* Inactive state */
   .duration-toggle-btn:hover:not(.duration-toggle-active) {
-    background-color: rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 255, 255, 0.4);
+    color: #374151;
   }
 
   .dark .duration-toggle-btn:hover:not(.duration-toggle-active) {
-    background-color: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.3);
+    color: #d1d5db;
   }
 
-  /* Active state */
   .duration-toggle-active {
-    background: rgba(255, 255, 255, 0.25);
-    border-color: rgba(255, 255, 255, 0.4);
-    color: #1e40af;
-    box-shadow: 0 0 12px rgba(59, 130, 246, 0.3), inset 0 0 8px rgba(59, 130, 246, 0.1);
+    background: white;
+    color: #111827;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
   }
 
   .dark .duration-toggle-active {
-    background: rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 255, 255, 0.3);
-    color: #60a5fa;
-    box-shadow: 0 0 12px rgba(59, 130, 246, 0.3), inset 0 0 8px rgba(59, 130, 246, 0.1);
+    background: #374151;
+    color: #f9fafb;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   }
 
-  .duration-toggle-btn:focus {
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  .duration-toggle-active .duration-credit-label {
+    color: #6366f1;
+  }
+
+  .dark .duration-toggle-active .duration-credit-label {
+    color: #a5b4fc;
+  }
+
+  .duration-credit-label {
+    color: #9ca3af;
+  }
+
+  .duration-toggle-btn:focus-visible {
+    outline: 2px solid #6366f1;
+    outline-offset: 2px;
   }
 </style>
 
 <script>
-  // Duration toggle logic
   const durationButtons = document.querySelectorAll('.duration-toggle-btn');
 
   durationButtons.forEach(button => {
     button.addEventListener('click', () => {
-      // Remove active class from all buttons
       durationButtons.forEach(btn => btn.classList.remove('duration-toggle-active'));
-
-      // Add active class to clicked button
       button.classList.add('duration-toggle-active');
 
       const duration = button.getAttribute('data-duration');
-
-      // Dispatch custom event for parent component
-      window.dispatchEvent(new CustomEvent('durationChanged', {
-        detail: { duration }
-      }));
-
-      console.log(`[DURATION] Switched to: ${duration}s`);
+      window.dispatchEvent(new CustomEvent('durationChanged', { detail: { duration } }));
     });
   });
 </script>
