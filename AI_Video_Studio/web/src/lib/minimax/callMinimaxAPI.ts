@@ -87,7 +87,7 @@ export async function callMinimaxAPI(
       body: JSON.stringify(payload),
     });
 
-    const data = (await response.json()) as MinimaxResponse;
+    const data = (await response.json()) as MinimaxResponse & { base_resp?: { status_code?: number; status_msg?: string } };
 
     if (!response.ok) {
       const errorMsg = data.error || response.statusText;
@@ -99,8 +99,23 @@ export async function callMinimaxAPI(
       };
     }
 
+    // MiniMax возвращает HTTP 200 даже при ошибках — нужно проверять base_resp.status_code
+    // status_code: 0 = успех, любое другое = ошибка
+    const baseResp = data.base_resp;
+    if (baseResp && baseResp.status_code !== 0) {
+      const errorMsg = baseResp.status_msg || `MiniMax error: status_code=${baseResp.status_code}`;
+      console.error('[MINIMAX] base_resp error:', JSON.stringify(baseResp));
+      console.error('[MINIMAX] Full response:', JSON.stringify(data));
+      await notifyAdmin('MINIMAX_CALL', `base_resp error: ${errorMsg}`);
+      return {
+        success: false,
+        error: errorMsg,
+      };
+    }
+
     if (!data.task_id) {
-      const errorMsg = 'No task_id in response';
+      const rawJson = JSON.stringify(data);
+      const errorMsg = `No task_id in response: ${rawJson.slice(0, 300)}`;
       console.error('[MINIMAX] Нет task_id в ответе:', data);
       await notifyAdmin('MINIMAX_CALL', errorMsg);
       return {
