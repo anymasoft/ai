@@ -3,92 +3,87 @@ import Container from "./Container.astro";
 import LiveBalance from "./LiveBalance.astro";
 import { getUserFromSession, isAdmin } from '../lib/auth';
 
-// Получаем текущего пользователя из сессии
 const sessionToken = Astro.cookies.get('session_token')?.value;
 const user = sessionToken ? getUserFromSession(sessionToken) : null;
 
-// Инициалы для аватара
 const initials = user ? user.name.split(' ').map(n => n.charAt(0)).join('').toUpperCase().slice(0, 2) : '?';
-
-// Проверяем, является ли пользователь админом
 const userIsAdmin = user ? isAdmin(user.email) : false;
 ---
 
-<header>
-    <nav class="border-b border-black/5 dark:border-white/5 bg-white dark:bg-gray-950">
+<header class="shrink-0">
+    <nav class="border-b border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-gray-950/95 backdrop-blur-sm">
         <Container>
-            <div class="relative flex flex-wrap items-center justify-between gap-6 py-3 md:gap-0 md:py-4">
+            <div class="flex items-center justify-between h-14">
                 <!-- Logo -->
-                <div class="flex items-center space-x-2">
-                    <a href="/" aria-label="logo" class="flex items-center space-x-2">
-                        <img src="/vr_logo_small.png" alt="Beem" class="h-8 w-8" />
-                        <span class="text-2xl font-bold text-gray-900 dark:text-white">Beem</span>
-                    </a>
-                </div>
+                <a href="/" aria-label="logo" class="flex items-center gap-2 shrink-0">
+                    <img src="/vr_logo_small.png" alt="Beem" class="h-7 w-7" />
+                    <span class="text-lg font-bold text-gray-900 dark:text-white tracking-tight">Beem</span>
+                </a>
 
                 <!-- Right side: Credits Badge + User Avatar Menu -->
                 {user && (
-                    <div class="flex items-center gap-2">
-                        <!-- Credits Badge - Live Update -->
+                    <div class="flex items-center gap-3">
                         <LiveBalance size="badge" />
 
-                        <!-- User Avatar Menu -->
                         <div class="relative">
                             <button
                                 id="user-menu-trigger"
-                                class="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-blue-600 text-white font-semibold text-sm hover:shadow-lg transition-shadow duration-200 cursor-pointer"
+                                class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-white font-semibold text-xs hover:bg-indigo-700 transition-colors duration-150 cursor-pointer shrink-0"
                                 aria-label="Меню пользователя"
                             >
                                 {initials}
                             </button>
 
-                            <!-- Dropdown Menu -->
                             <div
                                 id="user-menu-dropdown"
-                                class="hidden absolute right-0 top-full mt-2 w-48 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg z-50"
+                                class="hidden absolute right-0 top-full mt-2 w-52 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg shadow-gray-200/50 dark:shadow-black/30 z-50 overflow-hidden"
                             >
-                                <!-- User Info -->
-                                <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                                    <p class="font-semibold text-gray-900 dark:text-white">{user.name}</p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
+                                <div class="px-4 py-3">
+                                    <p class="font-semibold text-sm text-gray-900 dark:text-white truncate">{user.name}</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">{user.email}</p>
                                 </div>
 
-                                <!-- Divider -->
-                                <div class="border-t border-gray-200 dark:border-gray-700"></div>
+                                <div class="h-px bg-gray-100 dark:bg-gray-800"></div>
 
-                                <!-- Action Items -->
-                                <div class="py-2">
+                                <div class="py-1">
                                     <a
                                         href="/billing"
-                                        class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                                        class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-100"
                                     >
-                                        {/* EN: Top Up */}
-                                        Пополнить
+                                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                        </svg>
+                                        Пополнить кредиты
                                     </a>
                                     {userIsAdmin && (
                                         <a
                                             href="/admin"
-                                            class="block px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition font-semibold"
+                                            class="flex items-center gap-2 px-4 py-2 text-sm text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors duration-100 font-medium"
                                         >
-                                            {/* EN: Admin Settings */}
-                                            Панель администратора
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                            </svg>
+                                            Администратор
                                         </a>
                                     )}
                                 </div>
 
-                                <!-- Divider -->
-                                <div class="border-t border-gray-200 dark:border-gray-700"></div>
+                                <div class="h-px bg-gray-100 dark:bg-gray-800"></div>
 
-                                <!-- Logout -->
-                                <form method="POST" action="/api/auth/logout" class="w-full">
-                                    <button
-                                        type="submit"
-                                        class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition cursor-pointer"
-                                    >
-                                        {/* EN: Logout */}
-                                        Выход
-                                    </button>
-                                </form>
+                                <div class="py-1">
+                                    <form method="POST" action="/api/auth/logout" class="w-full">
+                                        <button
+                                            type="submit"
+                                            class="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors duration-100 cursor-pointer"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                                            </svg>
+                                            Выйти
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -103,45 +98,32 @@ const userIsAdmin = user ? isAdmin(user.email) : false;
     const dropdown = document.getElementById('user-menu-dropdown');
 
     if (trigger && dropdown) {
-        // Открыть/закрыть меню при клике на аватар
         trigger.addEventListener('click', (e) => {
             e.stopPropagation();
             dropdown.classList.toggle('hidden');
         });
 
-        // Закрыть меню при клике вне
         document.addEventListener('click', (e) => {
-            const isClickOnTrigger = trigger.contains(e.target);
-            const isClickOnDropdown = dropdown.contains(e.target);
-
+            const isClickOnTrigger = trigger.contains(e.target as Node);
+            const isClickOnDropdown = dropdown.contains(e.target as Node);
             if (!isClickOnTrigger && !isClickOnDropdown) {
                 dropdown.classList.add('hidden');
             }
         });
 
-        // Закрыть меню при нажатии ESC
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && !dropdown.classList.contains('hidden')) {
                 dropdown.classList.add('hidden');
             }
         });
 
-        // Закрыть меню при клике на любую ссылку внутри dropdown
-        const dropdownLinks = dropdown.querySelectorAll('a');
-        dropdownLinks.forEach(link => {
-            link.addEventListener('click', () => {
-                dropdown.classList.add('hidden');
-            });
+        dropdown.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => dropdown.classList.add('hidden'));
         });
 
-        // Закрыть меню при отправке формы логаута
         const logoutForm = dropdown.querySelector('form');
         if (logoutForm) {
-            logoutForm.addEventListener('submit', () => {
-                dropdown.classList.add('hidden');
-            });
+            logoutForm.addEventListener('submit', () => dropdown.classList.add('hidden'));
         }
     }
-
-    // Обновление баланса теперь выполняется компонентом LiveBalance
 </script>

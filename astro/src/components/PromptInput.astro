@@ -1,42 +1,89 @@
 ---
-// PromptInput.astro — Clean textarea without generate button
-// Generate button lives in the sidebar (app.astro)
+// PromptInput.astro
+// Основано на Shadcn/ui Textarea компоненте
+// https://ui.shadcn.com/docs/components/textarea
 ---
 
-<div class="space-y-1.5">
-  <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Описание сцены</label>
-  <div class="relative">
-    <textarea
-      id="prompt"
-      placeholder="Опишите сцену..."
-      class="w-full px-3 py-2.5
-             border border-gray-300 dark:border-gray-700
-             rounded-lg
-             bg-white dark:bg-gray-900
-             text-sm text-gray-900 dark:text-gray-100
-             placeholder:text-gray-400 dark:placeholder:text-gray-500
-             focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 dark:focus:border-indigo-500
-             disabled:cursor-not-allowed disabled:opacity-50
-             resize-none
-             transition-colors duration-150"
-      rows="3"
-    ></textarea>
-    <span
-      id="char-count"
-      class="absolute bottom-2 right-2.5 text-[10px] text-gray-400 dark:text-gray-600 pointer-events-none select-none"
-    >0/500</span>
-  </div>
+<div class="relative w-full">
+  <textarea
+    id="prompt"
+    placeholder="Красивая девушка в чёрном платье медленно идёт вперёд, камера плавно приближается, волосы развеваются на ветру"
+    class="w-full px-4 py-3
+           border border-white/30 dark:border-white/20
+           rounded-lg
+           bg-white/30 dark:bg-white/10 backdrop-blur-md
+           text-slate-900 dark:text-slate-50
+           placeholder:text-slate-500 dark:placeholder:text-slate-400
+           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+           dark:focus:ring-offset-slate-950
+           disabled:cursor-not-allowed disabled:opacity-50
+           resize-none text-sm
+           transition-colors duration-200
+           shadow-sm"
+    rows="3"
+  ></textarea>
+
+  <!-- Generate Button Inside -->
+  <button
+    id="generate-btn"
+    class="absolute right-3 top-3
+           p-2 rounded-md
+           bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700
+           text-white
+           transition-all duration-200
+           hover:shadow-md
+           disabled:opacity-50 disabled:cursor-not-allowed
+           active:scale-95"
+    disabled
+  >
+    <svg id="generate-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+    </svg>
+    <svg id="generate-spinner" class="hidden w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+  </button>
 </div>
 
 <style>
+  @keyframes neon-glow {
+    0%, 100% {
+      box-shadow:
+        0 0 10px 0 rgba(59, 130, 246, 0.6),
+        0 0 20px 0 rgba(59, 130, 246, 0.4),
+        0 0 30px 0 rgba(59, 130, 246, 0.2),
+        inset 0 0 10px 0 rgba(59, 130, 246, 0.15);
+    }
+    50% {
+      box-shadow:
+        0 0 20px 0 rgba(59, 130, 246, 1),
+        0 0 40px 0 rgba(59, 130, 246, 0.8),
+        0 0 60px 0 rgba(59, 130, 246, 0.4),
+        inset 0 0 15px 0 rgba(59, 130, 246, 0.3);
+    }
+  }
+
+  /* Base textarea styles */
+  #prompt {
+    border-color: rgba(59, 130, 246, 0.3);
+    transition: border-color 0.6s ease;
+  }
+
+  /* Smooth animation activation with fade-in */
+  #prompt.glow-active {
+    animation: neon-glow 2s ease-in-out infinite;
+    border-color: rgb(59, 130, 246);
+  }
+
   textarea {
     font-family: inherit;
-    min-height: 80px;
-    max-height: 180px;
+    min-height: 100px;
+    max-height: 200px;
   }
 
   textarea::-webkit-scrollbar {
-    width: 4px;
+    width: 6px;
   }
 
   textarea::-webkit-scrollbar-track {
@@ -44,45 +91,60 @@
   }
 
   textarea::-webkit-scrollbar-thumb {
-    background: #d1d5db;
-    border-radius: 2px;
+    background: #cbd5e1;
+    border-radius: 3px;
   }
 
-  .dark textarea::-webkit-scrollbar-thumb {
-    background: #4b5563;
+  textarea::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+
+  :dark textarea::-webkit-scrollbar-thumb {
+    background: #475569;
+  }
+
+  :dark textarea::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
   }
 </style>
 
 <script>
-  const textarea = document.getElementById('prompt') as HTMLTextAreaElement;
-  const charCount = document.getElementById('char-count');
+  // Auto-resize textarea and smooth glow animation
+  const textarea = document.getElementById('prompt');
 
   if (textarea) {
-    function updateCharCount() {
-      const count = textarea.value.length;
-      if (charCount) {
-        charCount.textContent = `${count}/500`;
-        if (count > 450) {
-          charCount.style.color = count >= 500 ? '#ef4444' : '#f59e0b';
-        } else {
-          charCount.style.color = '';
-        }
-      }
-    }
-
-    textarea.addEventListener('input', () => {
-      // Auto-resize
-      textarea.style.height = 'auto';
-      textarea.style.height = Math.min(textarea.scrollHeight, 180) + 'px';
-
-      // Truncate at 500 chars
-      if (textarea.value.length > 500) {
-        textarea.value = textarea.value.substring(0, 500);
-      }
-
-      updateCharCount();
+    // Auto-resize on input
+    textarea.addEventListener('input', (e) => {
+      const target = e.target as HTMLTextAreaElement;
+      target.style.height = 'auto';
+      target.style.height = Math.min(target.scrollHeight, 200) + 'px';
     });
 
-    updateCharCount();
+    // Smooth glow animation on focus
+    textarea.addEventListener('focus', () => {
+      textarea.classList.add('glow-active');
+      console.log('[GLOW] Activating neon glow');
+    });
+
+    // Smooth glow fade on blur
+    textarea.addEventListener('blur', () => {
+      textarea.classList.remove('glow-active');
+      console.log('[GLOW] Deactivating neon glow');
+    });
+
+    // Smooth glow on hover
+    textarea.addEventListener('mouseenter', () => {
+      if (!textarea.classList.contains('glow-active')) {
+        textarea.classList.add('glow-active');
+        console.log('[GLOW] Activating neon glow on hover');
+      }
+    });
+
+    textarea.addEventListener('mouseleave', () => {
+      if (document.activeElement !== textarea) {
+        textarea.classList.remove('glow-active');
+        console.log('[GLOW] Deactivating neon glow on mouseleave');
+      }
+    });
   }
 </script>
