@@ -1,0 +1,78 @@
+---
+import "./../tailus.css"
+
+interface Props {
+  title?: string;
+}
+
+const { title = "Beem - Видео товаров для маркетплейсов" } = Astro.props as Props;
+---
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width" />
+        <link rel="icon" type="image/png" href="/vr_logo_small.png" />
+        <meta name="generator" content={Astro.generator} />
+        <meta name="description" content="Beem - Создавайте видео товаров для карточек Wildberries, Ozon, Amazon. Загрузите фото — получите готовое видео за минуты. Увеличьте продажи на 30%." />
+        <title>{title}</title>
+
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+        <!-- Yandex.Metrika counter -->
+        <script type="text/javascript">
+          (function(m,e,t,r,i,k,a){
+            m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+            m[i].l=1*new Date();
+            for (var j = 0; j < document.scripts.length; j++) {
+              if (document.scripts[j].src === r) { return; }
+            }
+            k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+          })(window, document, 'script', 'https://mc.yandex.ru/metrika/tag.js?id=106161271', 'ym');
+
+          // global guards to avoid double-init in case of client-side navigation/hydration
+          window.__beemMetrikaInited = window.__beemMetrikaInited || false;
+          if (!window.__beemMetrikaInited) {
+            window.__beemMetrikaInited = true;
+            ym(106161271, 'init', {
+              webvisor:true,
+              clickmap:true,
+              accurateTrackBounce:true,
+              trackLinks:true
+            });
+          }
+
+          // define helper only once
+          if (!window.beemGoal) {
+            window.beemGoal = function(name, params) {
+              try {
+                if (window.ym) {
+                  window.ym(106161271, 'reachGoal', name, params || {});
+                }
+              } catch (e) {
+                console.warn('[METRIKA]', e);
+              }
+            };
+          }
+        </script>
+        <noscript><div><img src="https://mc.yandex.ru/watch/106161271" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+        <!-- /Yandex.Metrika counter -->
+    </head>
+    <body class="bg-white dark:bg-gray-950 m-0 p-0 overflow-hidden">
+        <slot />
+    </body>
+</html>
+
+<style>
+  html, body {
+    width: 100%;
+    height: 100%;
+  }
+
+  body {
+    font-family: 'Urbanist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+</style>

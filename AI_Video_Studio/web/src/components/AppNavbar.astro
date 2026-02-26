@@ -1,0 +1,147 @@
+---
+import Container from "./Container.astro";
+import LiveBalance from "./LiveBalance.astro";
+import { getUserFromSession, isAdmin } from '../lib/auth';
+
+// Получаем текущего пользователя из сессии
+const sessionToken = Astro.cookies.get('session_token')?.value;
+const user = sessionToken ? getUserFromSession(sessionToken) : null;
+
+// Инициалы для аватара
+const initials = user ? user.name.split(' ').map(n => n.charAt(0)).join('').toUpperCase().slice(0, 2) : '?';
+
+// Проверяем, является ли пользователь админом
+const userIsAdmin = user ? isAdmin(user.email) : false;
+---
+
+<header>
+    <nav class="border-b border-black/5 dark:border-white/5 bg-white dark:bg-gray-950">
+        <Container>
+            <div class="relative flex flex-wrap items-center justify-between gap-6 py-3 md:gap-0 md:py-4">
+                <!-- Logo -->
+                <div class="flex items-center space-x-2">
+                    <a href="/" aria-label="logo" class="flex items-center space-x-2">
+                        <img src="/vr_logo_small.png" alt="Beem" class="h-8 w-8" />
+                        <span class="text-2xl font-bold text-gray-900 dark:text-white">Beem</span>
+                    </a>
+                </div>
+
+                <!-- Right side: Credits Badge + User Avatar Menu -->
+                {user && (
+                    <div class="flex items-center gap-2">
+                        <!-- Credits Badge - Live Update -->
+                        <LiveBalance size="badge" />
+
+                        <!-- User Avatar Menu -->
+                        <div class="relative">
+                            <button
+                                id="user-menu-trigger"
+                                class="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-blue-600 text-white font-semibold text-sm hover:shadow-lg transition-shadow duration-200 cursor-pointer"
+                                aria-label="Меню пользователя"
+                            >
+                                {initials}
+                            </button>
+
+                            <!-- Dropdown Menu -->
+                            <div
+                                id="user-menu-dropdown"
+                                class="hidden absolute right-0 top-full mt-2 w-48 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg z-50"
+                            >
+                                <!-- User Info -->
+                                <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                                    <p class="font-semibold text-gray-900 dark:text-white">{user.name}</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
+                                </div>
+
+                                <!-- Divider -->
+                                <div class="border-t border-gray-200 dark:border-gray-700"></div>
+
+                                <!-- Action Items -->
+                                <div class="py-2">
+                                    <a
+                                        href="/billing"
+                                        class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                                    >
+                                        {/* EN: Top Up */}
+                                        Пополнить
+                                    </a>
+                                    {userIsAdmin && (
+                                        <a
+                                            href="/admin"
+                                            class="block px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition font-semibold"
+                                        >
+                                            {/* EN: Admin Settings */}
+                                            Панель администратора
+                                        </a>
+                                    )}
+                                </div>
+
+                                <!-- Divider -->
+                                <div class="border-t border-gray-200 dark:border-gray-700"></div>
+
+                                <!-- Logout -->
+                                <form method="POST" action="/api/auth/logout" class="w-full">
+                                    <button
+                                        type="submit"
+                                        class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition cursor-pointer"
+                                    >
+                                        {/* EN: Logout */}
+                                        Выход
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </Container>
+    </nav>
+</header>
+
+<script>
+    const trigger = document.getElementById('user-menu-trigger');
+    const dropdown = document.getElementById('user-menu-dropdown');
+
+    if (trigger && dropdown) {
+        // Открыть/закрыть меню при клике на аватар
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdown.classList.toggle('hidden');
+        });
+
+        // Закрыть меню при клике вне
+        document.addEventListener('click', (e) => {
+            const isClickOnTrigger = trigger.contains(e.target);
+            const isClickOnDropdown = dropdown.contains(e.target);
+
+            if (!isClickOnTrigger && !isClickOnDropdown) {
+                dropdown.classList.add('hidden');
+            }
+        });
+
+        // Закрыть меню при нажатии ESC
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !dropdown.classList.contains('hidden')) {
+                dropdown.classList.add('hidden');
+            }
+        });
+
+        // Закрыть меню при клике на любую ссылку внутри dropdown
+        const dropdownLinks = dropdown.querySelectorAll('a');
+        dropdownLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                dropdown.classList.add('hidden');
+            });
+        });
+
+        // Закрыть меню при отправке формы логаута
+        const logoutForm = dropdown.querySelector('form');
+        if (logoutForm) {
+            logoutForm.addEventListener('submit', () => {
+                dropdown.classList.add('hidden');
+            });
+        }
+    }
+
+    // Обновление баланса теперь выполняется компонентом LiveBalance
+</script>

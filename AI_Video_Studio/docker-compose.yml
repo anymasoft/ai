@@ -1,0 +1,31 @@
+version: '3.9'
+
+services:
+
+  # ── Telegram-бот ──────────────────────────────────────────────────────────
+  bot:
+    build:
+      context: ./bot
+      dockerfile: Dockerfile
+    container_name: beem-bot
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./bot/gallery:/app/gallery       # сохранённые видео-файлы галереи
+      - ./bot/beem.db:/app/beem.db       # SQLite база данных бота
+    ports:
+      - "${BOT_PORT:-8001}:8001"         # FastAPI для вебхуков (MiniMax callback)
+
+  # ── Веб-приложение ────────────────────────────────────────────────────────
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: beem-web
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./web/beem.db:/app/beem.db       # SQLite база данных веб-приложения
+      - ./web/uploads:/app/uploads       # загруженные изображения
+    ports:
+      - "4321:4321"                      # Astro SSR сервер

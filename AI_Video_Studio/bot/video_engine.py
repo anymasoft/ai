@@ -1,0 +1,258 @@
+"""
+Video Engine - Оркестратор видео-генерации
+Координирует: prompt enhancement → camera direction → MiniMax API → queue processing
+"""
+
+import os
+import uuid
+import asyncio
+from datetime import datetime
+from typing import Optional, Dict, Any
+
+from prompts import prompt_enhancer
+from director import camera_director
+from minimax import minimax_client
+from generation_queue import queue, QueueItem
+from db import create_generation, update_generation_status
+
+print("[VIDEO-ENGINE] Initializing...")
+
+
+class VideoEngine:
+    """Главный движок генерации видео"""
+
+    def __init__(self):
+        self.temp_dir = "/tmp/beem-videos"
+        os.makedirs(self.temp_dir, exist_ok=True)
+        self._generation_status = {}  # In-memory storage генераций
+
+    # ============ GENERATION INITIATION ============
+
+    async def generate_video(
+        self,
+        user_id: int,
+        photo_path: str,
+        prompt_text: str,
+        duration: int = 6,
+    ) -> Dict[str, Any]:
+        """
+        Главная функция инициации генерации видео
+
+        Args:
+            user_id: ID пользователя (Telegram)
+            photo_path: Путь к фото
+            prompt_text: Русский текст промпта
+            duration: Длительность (6 или 10)
+
+        Returns:
+            {
+                "success": bool,
+                "generation_id": str,
+                "status": str,
+                "message": str
+            }
+        """
+        generation_id = str(uuid.uuid4())
+        print(f"[ENGINE] Generation initiated: {generation_id} (user={user_id})")
+
+        try:
+            # Фаза 1: Smart Prompt Enhancement
+            print(f"[ENGINE] Phase 1: Enhancing prompt...")
+            enhanced_prompt = await prompt_enhancer.enhance_prompt(prompt_text)
+            print(f"[ENGINE] prompt_enhanced: {generation_id}")
+
+            # Фаза 2: Camera Director (только для PROMPT MODE)
+            print(f"[ENGINE] Phase 2: Compiling camera commands...")
+            cinematic_prompt = await camera_director.compile(enhanced_prompt)
+            print(f"[ENGINE] camera_selected: {generation_id}")
+
+            # Добавляем в очередь
+            queue_item = QueueItem(
+                generation_id=generation_id,
+                user_id=user_id,
+                prompt=cinematic_prompt,
+                photo_path=photo_path,
+                duration=duration,
+            )
+
+            await queue.enqueue(queue_item)
+
+            # Сохраняем в БД
+            db_generation_id = create_generation(
+                telegram_id=user_id,
+                image_path=photo_path,
+                prompt=prompt_text
+            )
+            print(f"[ENGINE] Generation saved to DB: db_id={db_generation_id}")
+
+            # Сохраняем status в памяти
+            self._generation_status[generation_id] = {
+                "status": "queued",
+                "user_id": user_id,
+                "db_id": db_generation_id,  # ID из БД
+                "created_at": datetime.now(),
+                "prompt": prompt_text,
+                "prompt_enhanced": enhanced_prompt,
+                "prompt_cinematic": cinematic_prompt,
+            }
+
+            print(f"[ENGINE] Generation queued: {generation_id}")
+
+            return {
+                "success": True,
+                "generation_id": generation_id,
+                "status": "queued",
+                "message": "Генерация добавлена в очередь",
+            }
+
+        except Exception as e:
+            print(f"[ENGINE] Generation failed: {str(e)}")
+            self._generation_status[generation_id] = {
+                "status": "failed",
+                "user_id": user_id,
+                "error": str(e),
+            }
+            return {
+                "success": False,
+                "generation_id": generation_id,
+                "status": "failed",
+                "message": f"Ошибка: {str(e)}",
+            }
+
+    # ============ QUEUE PROCESSING ============
+
+    async def process_queue(self) -> None:
+        """
+        Обработчик очереди (работает в фоне)
+        Рекурсивно обрабатывает генерации с concurrency=1
+        """
+        print("[ENGINE] Queue processor started")
+
+        while True:
+            try:
+                # Получаем следующий элемент из очереди
+                queue_item = await queue.dequeue()
+
+                if not queue_item:
+                    # Очередь пуста - ждем перед следующей проверкой
+                    await asyncio.sleep(1)
+                    continue
+
+                # Обрабатываем генерацию
+                await self._process_generation(queue_item)
+
+            except Exception as e:
+                print(f"[ENGINE] Queue processor error: {str(e)}")
+                await asyncio.sleep(2)
+
+    async def _process_generation(self, queue_item: QueueItem) -> None:
+        """Обработка одной генерации"""
+        gen_id = queue_item.generation_id
+        user_id = queue_item.user_id
+
+        try:
+            print(f"[ENGINE] Processing generation: {gen_id}")
+
+            # Обновляем статус в памяти и БД
+            self._generation_status[gen_id]["status"] = "processing"
+
+            # Обновляем в БД
+            db_id = self._generation_status[gen_id].get("db_id")
+            if db_id:
+                update_generation_status(db_id, "processing")
+
+            # Фаза 3: Вызов MiniMax (отправляем запрос с callback_url)
+            # MiniMax вернет task_id, который мы сохраняем в маппинге
+            print(f"[ENGINE] Phase 3: Calling MiniMax...")
+            minimax_response = await minimax_client.generate_from_prompt(
+                queue_item.photo_path,
+                queue_item.prompt,
+                queue_item.duration,
+                generation_id=gen_id,  # Используется для маппинга task_id -> generation_id в callback
+            )
+
+            if not minimax_response.get("success"):
+                raise Exception(minimax_response.get("error", "MiniMax error"))
+
+            # minimax_response["generation_id"] содержит task_id от MiniMax
+            minimax_task_id = minimax_response.get("generation_id")
+            print(f"[ENGINE] MiniMax task created: {gen_id} ← task_id={minimax_task_id}")
+
+            # Обновляем статус
+            self._generation_status[gen_id].update({
+                "status": "processing",
+                "minimax_task_id": minimax_task_id,
+            })
+
+            # Фаза 4: Ожидание callback от MiniMax
+            # MiniMax отправит callback на /minimax/callback когда видео готово
+            # Callback обработчик в main.py скачает видео и обновит статус
+            print(f"[ENGINE] Phase 4: Waiting for MiniMax callback from webhook...")
+            print(f"[ENGINE] ✅ Task {minimax_task_id} sent to MiniMax, awaiting callback...")
+
+        except Exception as e:
+            print(f"[ENGINE] ❌ Generation failed: {gen_id} - {str(e)}")
+            self._generation_status[gen_id].update({
+                "status": "failed",
+                "error": str(e),
+            })
+
+            # Обновляем в БД
+            db_id = self._generation_status[gen_id].get("db_id")
+            if db_id:
+                update_generation_status(db_id, "failed")
+
+    # ============ STATUS TRACKING ============
+
+    def get_generation_status(self, generation_id: str) -> Dict[str, Any]:
+        """Получить статус генерации"""
+        return self._generation_status.get(
+            generation_id,
+            {"status": "unknown", "error": "Generation not found"}
+        )
+
+    def get_generation_video_path(self, generation_id: str) -> Optional[str]:
+        """Получить путь к видео файлу (если готово)"""
+        status_info = self._generation_status.get(generation_id)
+        if status_info and status_info.get("status") == "done":
+            return status_info.get("video_path")
+        return None
+
+    # ============ STATISTICS ============
+
+    async def get_stats(self) -> Dict[str, Any]:
+        """Получить статистику"""
+        queue_size = await queue.get_size()
+        is_queue_running = await queue.is_running()
+
+        total_generations = len(self._generation_status)
+        completed = sum(
+            1 for g in self._generation_status.values()
+            if g.get("status") == "done"
+        )
+        failed = sum(
+            1 for g in self._generation_status.values()
+            if g.get("status") == "failed"
+        )
+
+        return {
+            "total_generations": total_generations,
+            "completed": completed,
+            "failed": failed,
+            "queue_size": queue_size,
+            "queue_running": is_queue_running,
+        }
+
+
+# Глобальный экземпляр
+video_engine = VideoEngine()
+
+
+# ============ BACKGROUND TASK ============
+
+async def start_video_engine():
+    """Запустить видео-движок (должен быть запущен в фоне)"""
+    print("[VIDEO-ENGINE] ✅ Video engine started")
+    await queue.set_running(True)
+    # Запускаем обработчик очереди в фоне
+    asyncio.create_task(video_engine.process_queue())

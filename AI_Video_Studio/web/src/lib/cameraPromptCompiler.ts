@@ -1,0 +1,341 @@
+/**
+ * Camera Prompt Compiler - компилирует кинематографические промпты в MiniMax-совместимые с camera commands
+ *
+ * Это ФАЗА 2 двухфазной системы Prompt Engine для режима "Свободный сценарий".
+ *
+ * Фаза 1 (Smart Prompt Enhancer):
+ *   - Берет пользовательский текст
+ *   - Расширяет его кинематографическими деталями
+ *   - Результат: prompt_cinematic
+ *
+ * Фаза 2 (этот файл):
+ *   - Берет prompt_cinematic из Фазы 1
+ *   - Добавляет только ВАЛИДНЫЕ MiniMax camera commands
+ *   - Гарантирует что MiniMax поймет требуемые движения камеры
+ *   - Результат: prompt_director (готовый для MiniMax)
+ *   - Постобработка: sanitizeCameraCommands() удаляет невалидные команды
+ */
+
+import { notifyAdmin } from './telegramNotifier';
+
+/**
+ * Валидный список MiniMax camera commands (15 команд)
+ */
+const VALID_CAMERA_COMMANDS = [
+  'Truck left',
+  'Truck right',
+  'Pan left',
+  'Pan right',
+  'Push in',
+  'Pull out',
+  'Pedestal up',
+  'Pedestal down',
+  'Tilt up',
+  'Tilt down',
+  'Zoom in',
+  'Zoom out',
+  'Shake',
+  'Tracking shot',
+  'Static shot',
+];
+
+/**
+ * Санитайзер команд камеры - удаляет невалидные команды
+ * Проверяет каждую команду в квадратных скобках против белого списка
+ *
+ * @param text - промпт с возможно невалидными командами
+ * @returns промпт с только валидными командами
+ */
+function sanitizeCameraCommands(text: string): {
+  sanitized: string;
+  removedCommands: string[];
+} {
+  const removedCommands: string[] = [];
+
+  // Регулярное выражение для поиска всех [...] блоков
+  const commandRegex = /\[([^\]]+)\]/g;
+  let sanitized = text;
+  const matches = Array.from(text.matchAll(commandRegex));
+
+  for (const match of matches) {
+    const fullCommand = match[0]; // вся команда с скобками: "[Pan left]"
+    const innerText = match[1]; // текст внутри: "Pan left"
+
+    // Проверяем, является ли это комбинацией команд через запятую
+    const parts = innerText.split(',').map(p => p.trim());
+    const validParts = parts.filter(part => VALID_CAMERA_COMMANDS.includes(part));
+
+    if (validParts.length === 0) {
+      // Ни одна часть не валидна - удаляем всю команду
+      removedCommands.push(fullCommand);
+      sanitized = sanitized.replace(fullCommand, '');
+    } else if (validParts.length < parts.length) {
+      // Некоторые части невалидны - заменяем на только валидные части
+      const newCommand = `[${validParts.join(',')}]`;
+      const invalidParts = parts.filter(part => !VALID_CAMERA_COMMANDS.includes(part));
+      removedCommands.push(...invalidParts.map(p => `[${p}]`));
+      sanitized = sanitized.replace(fullCommand, newCommand);
+    }
+    // Если все части валидны - оставляем как есть
+  }
+
+  // Очищаем лишние пробелы
+  sanitized = sanitized.replace(/\s+/g, ' ').trim();
+
+  return { sanitized, removedCommands };
+}
+
+/**
+ * Скомпилировать cinematic промпт в MiniMax-совместимый Director Prompt
+ *
+ * Эта функция вызывает GPT второй раз (после Smart Prompt Enhancer)
+ * и добавляет только ВАЛИДНЫЕ MiniMax camera commands
+ *
+ * @param cinematicPrompt - результат ФАЗЫ 1 (prompt_cinematic)
+ * @returns MiniMax-совместимый промпт с camera commands (prompt_director)
+ */
+export async function compileCameraCommands(cinematicPrompt: string): Promise<string> {
+  try {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      console.warn('[DIRECTOR] OpenAI API key not configured, returning cinematic prompt');
+      return cinematicPrompt;
+    }
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a camera-control compiler for MiniMax Video.
+
+You MUST output a single English prompt enhanced with MiniMax camera commands.
+
+CRITICAL: You may use ONLY the following camera commands (exact spelling):
+[Truck left], [Truck right],
+[Pan left], [Pan right],
+[Push in], [Pull out],
+[Pedestal up], [Pedestal down],
+[Tilt up], [Tilt down],
+[Zoom in], [Zoom out],
+[Shake],
+[Tracking shot],
+[Static shot]
+
+⚠️ CRITICAL PRESERVATION RULES:
+If the input contains a "PRESERVE: ..." section, you MUST:
+- Copy it VERBATIM to the final output
+- Keep it at the VERY END of the prompt (after all camera commands)
+- DO NOT modify, translate, rephrase, or split it
+- DO NOT insert camera commands inside or near the PRESERVE section
+- DO NOT remove or shorten it
+
+Example:
+Input: "Professional scene with dynamic lighting. PRESERVE: all text elements unchanged, background stable
+NO_GENERATION:
+- no new text
+- no new labels
+- no new graphics
+- no new overlays
+- no new symbols
+- no new UI elements"
+WRONG: "[Static shot] Professional scene..., [Push in] highlighting details. PRESERVE: all text unchanged
+NO_GENERATION: ..." ← FORBIDDEN because [Push in] violates text/background PRESERVE
+CORRECT: "[Static shot] Professional scene with dynamic lighting and commercial atmosphere. PRESERVE: all text elements unchanged, background stable
+NO_GENERATION:
+- no new text
+- no new labels
+- no new graphics
+- no new overlays
+- no new symbols
+- no new UI elements"
+
+🚫 ABSOLUTE PRIORITY: PRESERVE OVERRIDES ALL CAMERA EFFECTS
+
+CRITICAL RULE - STATIC CAMERA ENFORCEMENT:
+If PRESERVE contains ANY of these keywords:
+- text, background, banner, price, overlay, typography, label, caption, inscription, marking
+
+Then you MUST use ONLY ONE camera command:
+[Static shot]
+
+ALL OTHER CAMERA COMMANDS ARE ABSOLUTELY FORBIDDEN:
+- [Push in] - FORBIDDEN (causes parallax and perspective shift)
+- [Pull out] - FORBIDDEN (causes parallax and perspective shift)
+- [Pan left] / [Pan right] - FORBIDDEN (moves background relative to text)
+- [Tilt up] / [Tilt down] - FORBIDDEN (distorts vertical elements)
+- [Truck left] / [Truck right] - FORBIDDEN (causes parallax)
+- [Pedestal up] / [Pedestal down] - FORBIDDEN (causes parallax)
+- [Zoom in] / [Zoom out] - FORBIDDEN (changes relative scale)
+- [Shake] - FORBIDDEN (motion blur and distortion)
+- [Tracking shot] - FORBIDDEN (causes parallax and motion blur)
+
+WHY: ANY camera movement (even smooth ones like Push in or Pan) causes:
+- Parallax between foreground and background layers
+- Perspective shifts that distort text geometry
+- Motion artifacts that blur text and banners
+- Relative position changes between overlay text and background
+
+This makes the video UNUSABLE for e-commerce product cards.
+
+REQUIRED behavior when PRESERVE contains text/background/banner/price:
+- Use ONLY: [Static shot]
+- Do NOT add any other camera commands
+- Do NOT describe any visual effect (blur, DOF, bokeh, soft focus) in the prompt text
+- The camera MUST be completely locked and stationary
+- Only the subject (person/product) may move naturally
+
+Example of CORRECT handling:
+Input: "Professional scene with text overlay. PRESERVE: all text unchanged, background stable
+NO_GENERATION:
+- no new text
+- no new labels
+- no new graphics
+- no new overlays
+- no new symbols
+- no new UI elements"
+CORRECT: "[Static shot] Professional scene with clear text overlay. PRESERVE: all text unchanged, background stable
+NO_GENERATION:
+- no new text
+- no new labels
+- no new graphics
+- no new overlays
+- no new symbols
+- no new UI elements"
+WRONG: "[Static shot] Professional scene, [Push in] camera moves closer. PRESERVE: text unchanged
+NO_GENERATION: ..." ← FORBIDDEN because [Push in] violates PRESERVE
+WRONG: "[Shake] Dynamic scene with text. PRESERVE: text unchanged
+NO_GENERATION: ..." ← FORBIDDEN because [Shake] violates PRESERVE
+
+Example of CORRECT handling (background preserved):
+Input: "Woman in coat on white background with price banner. PRESERVE: background unchanged, banner intact
+NO_GENERATION:
+- no new text
+- no new labels
+- no new graphics
+- no new overlays
+- no new symbols
+- no new UI elements"
+CORRECT: "[Static shot] Woman in coat against clean white background with price banner. PRESERVE: background unchanged, banner intact
+NO_GENERATION:
+- no new text
+- no new labels
+- no new graphics
+- no new overlays
+- no new symbols
+- no new UI elements"
+WRONG: "[Static shot] Woman in coat, [Pan right] smooth movement. PRESERVE: background unchanged
+NO_GENERATION: ..." ← FORBIDDEN because [Pan right] violates PRESERVE
+WRONG: "[Tracking shot] Woman in coat, soft background blur. PRESERVE: background unchanged
+NO_GENERATION: ..." ← FORBIDDEN because [Tracking shot] and "blur" violate PRESERVE
+
+CRITICAL: When PRESERVE exists with text/background/banner/price:
+1. The camera CANNOT move - it must be completely static ([Static shot] only)
+2. ONLY the subject (person/product) may have natural animation
+3. NEVER move the camera, background, text, banners, or typography
+
+This PRESERVE rule has ABSOLUTE PRIORITY over all cinematic and camera enhancement instructions.
+Static camera is NON-NEGOTIABLE when text or background must be preserved.
+
+⚠️ CRITICAL: NO_GENERATION CONSTRAINT - MUST BE PRESERVED
+If the input contains a "NO_GENERATION:" section, you MUST:
+- Copy it VERBATIM to the final output
+- Keep it at the VERY END of the prompt (after PRESERVE section)
+- DO NOT modify, translate, rephrase, split, or shorten it
+- DO NOT remove any lines from the NO_GENERATION block
+- Copy the EXACT format with bullet points and line breaks
+
+The NO_GENERATION section looks like this:
+NO_GENERATION:
+- no new text
+- no new labels
+- no new graphics
+- no new overlays
+- no new symbols
+- no new UI elements
+
+FORBIDDEN when NO_GENERATION section exists:
+- Removing the NO_GENERATION section
+- Modifying any part of the NO_GENERATION text
+- Adding camera or scene instructions that imply creation of new text, graphics, UI, overlays, symbols, labels
+- Translating, rephrasing, or shortening the constraint list
+- Changing the format or wording
+
+WHY: MiniMax sometimes "invents" new text, labels, UI overlays even when told to preserve existing ones. NO_GENERATION explicitly forbids AI from creating ANY new graphical elements.
+
+FORBIDDEN when PRESERVE section exists:
+- Removing the PRESERVE section
+- Modifying any part of "PRESERVE: ..." text
+- Adding camera commands that contradict preservation (e.g., [Shake] when "background stable" is preserved)
+- Describing any visual effects (blur, DOF, bokeh) that would modify preserved elements
+- Translating or rephrasing constraints
+
+Valid camera commands rules:
+- Insert camera commands inline exactly where motion happens
+- Use 2–6 total commands per prompt (not more)
+- Combine at most 3 commands in one bracket (e.g. [Pan right,Push in])
+- Prefer explicit commands over plain language camera descriptions
+
+Forbidden:
+- Any other bracket commands
+- Film terminology like [Close-up], [Mid-shot], [Low-angle], [Slow motion], [Soft focus]
+- Any explanation text
+
+Rules:
+- Preserve the original meaning and sequence of events
+- If input has "PRESERVE: ...", copy it unchanged to the end
+- If input has "NO_GENERATION:", copy it VERBATIM after PRESERVE (keep exact format with line breaks and bullet points)
+- Return ONLY the final prompt text
+
+Return ONLY the final prompt text.`,
+          },
+          {
+            role: 'user',
+            content: cinematicPrompt,
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 600,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('[DIRECTOR] OpenAI API error:', errorData);
+      console.warn('[DIRECTOR] Returning cinematic prompt due to API error');
+      return cinematicPrompt;
+    }
+
+    const data = (await response.json()) as any;
+    const directorPromptRaw = data.choices?.[0]?.message?.content?.trim() || cinematicPrompt;
+
+    // ПОСТОБРАБОТКА: Санитайзер удаляет невалидные команды
+    const { sanitized: directorPrompt, removedCommands } = sanitizeCameraCommands(directorPromptRaw);
+
+    console.log('[DIRECTOR] 🎥 Camera commands compiled');
+    console.log(`[DIRECTOR] cinematic:\n${cinematicPrompt}`);
+    console.log(`[DIRECTOR] camera-enhanced (raw):\n${directorPromptRaw}`);
+
+    if (removedCommands.length > 0) {
+      console.log(`[DIRECTOR] sanitize: removed_invalid=[${removedCommands.join(', ')}]`);
+    } else {
+      console.log('[DIRECTOR] sanitize: no invalid commands found');
+    }
+
+    console.log(`[DIRECTOR] final_prompt_to_minimax:\n${directorPrompt}`);
+
+    return directorPrompt;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('[DIRECTOR] Error compiling camera commands:', error);
+    console.warn('[DIRECTOR] Returning cinematic prompt due to error');
+    await notifyAdmin('GPT_CAMERA_COMPILER', errorMessage);
+    return cinematicPrompt;
+  }
+}

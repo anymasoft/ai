@@ -1,0 +1,95 @@
+---
+import MinimalLayout from '../layouts/MinimalLayout.astro';
+
+const error = Astro.url.searchParams.get('error');
+const provider = Astro.url.searchParams.get('provider');
+---
+
+<MinimalLayout title="Sign In - Beem">
+  <main class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-md">
+      <!-- Logo & Title -->
+      <div class="text-center mb-8">
+        <div class="flex items-center justify-center gap-2 mb-4">
+          <img src="/vr_logo_small.png" alt="Beem" class="h-8 w-8" />
+          <span class="text-2xl font-bold text-gray-900 dark:text-white">Beem</span>
+        </div>
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Добро пожаловать</h1>
+        <p class="text-gray-600 dark:text-gray-400">Войдите с помощью вашего аккаунта</p>
+      </div>
+
+      <!-- Error message -->
+      {
+        error && (
+          <div class="mb-6 p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+            <p class="text-sm text-red-700 dark:text-red-400">
+              {error === 'google_auth_failed' && 'Ошибка аутентификации Google. Пожалуйста, попробуйте снова.'}
+              {error === 'yandex_auth_failed' && 'Ошибка аутентификации Яндекс. Пожалуйста, попробуйте снова.'}
+              {error === 'missing_params' && 'Отсутствуют обязательные параметры. Пожалуйста, попробуйте снова.'}
+              {error === 'state_mismatch' && 'Ошибка проверки безопасности. Пожалуйста, попробуйте снова.'}
+              {error === 'callback_failed' && 'Не удалось завершить аутентификацию. Пожалуйста, попробуйте снова.'}
+              {error === 'user_already_exists' && 'Пользователь с таким аккаунтом уже существует. Пожалуйста, попробуйте войти заново.'}
+              {!['google_auth_failed', 'yandex_auth_failed', 'missing_params', 'state_mismatch', 'callback_failed', 'user_already_exists'].includes(
+                error
+              ) && 'Произошла ошибка. Пожалуйста, попробуйте снова.'}
+            </p>
+          </div>
+        )
+      }
+
+      <!-- Sign in card -->
+      <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-sm space-y-3">
+        <!-- Yandex Button (Primary) -->
+        <a
+          href="/api/auth/yandex"
+          onclick="trackAuthClick('yandex')"
+          class="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold transition-colors duration-200 cursor-pointer"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="h-5 w-5 fill-current">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2m0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8m3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5m-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11m3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z" />
+          </svg>
+          Войти через Яндекс
+        </a>
+
+        <!-- Google Button (Secondary) -->
+        <a
+          href="/api/auth/google"
+          onclick="trackAuthClick('google')"
+          class="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200 cursor-pointer"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="h-5 w-5">
+            <path
+              d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"
+              fill="currentColor"></path>
+          </svg>
+          Войти через Google
+        </a>
+      </div>
+
+      <!-- Footer -->
+      <p class="text-center text-sm text-gray-600 dark:text-gray-400 mt-6">
+        У вас нет аккаунта? Он будет создан автоматически при входе.
+      </p>
+    </div>
+  </main>
+
+  <script>
+    // Логирование клика на кнопку логина
+    function trackAuthClick(provider) {
+      console.log(`\n📊 AUTH_CHECKPOINT: AUTH_CLICK`);
+      console.log(`   - provider: ${provider}`);
+
+      // Отправляем событие в Яндекс.Метрику если доступна
+      if (typeof window !== 'undefined' && window.ym) {
+        try {
+          window.ym(window.__YANDEX_METRIKA_ID || 106161271, 'reachGoal', 'auth_click', {
+            provider: provider,
+          });
+        } catch (e) {
+          console.warn('[METRIKA] Failed to track auth_click:', e);
+        }
+      }
+    }
+  </script>
+</MinimalLayout>
+

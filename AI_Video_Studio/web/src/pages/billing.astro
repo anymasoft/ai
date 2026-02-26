@@ -1,0 +1,298 @@
+---
+import LiveBalance from '../components/LiveBalance.astro';
+import AppLayout from '../layouts/AppLayout.astro';
+import { getUserFromSession } from '../lib/auth';
+import { PRICING_PLANS, type PricingPlan } from '../lib/pricing';
+
+// Эта страница должна быть динамичной для работы с middleware и cookies
+export const prerender = false;
+
+// Получаем текущего пользователя из сессии
+const sessionToken = Astro.cookies.get('session_token')?.value;
+const user = sessionToken ? getUserFromSession(sessionToken) : null;
+
+// Если пользователь не авторизован, редиректим на главную
+if (!user) {
+  return Astro.redirect('/');
+}
+
+// Исключаем пробный план (Free) - он дается автоматически при регистрации
+const plans = PRICING_PLANS.filter(plan => plan.id !== 'free');
+---
+
+<AppLayout title="Billing - Beem">
+	<div class="w-full h-full flex flex-col overflow-hidden">
+		<div class="flex-1 flex flex-col overflow-hidden">
+			<div class="p-3 md:p-4 w-full h-full overflow-hidden flex flex-col">
+				<div class="max-w-6xl mx-auto w-full h-full flex flex-col">
+					<!-- Header with Back Button -->
+					<div class="flex items-center gap-3 mb-4">
+						<!-- Back Button - LEFT -->
+						<a href="/app" class="inline-flex items-center justify-center p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer flex-shrink-0">
+							<svg class="w-5 h-5 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+							</svg>
+						</a>
+
+						<!-- Title with Live Balance -->
+						<div class="text-center flex-1">
+							<LiveBalance size="large" />
+						</div>
+					</div>
+
+					<!-- Pricing Grid -->
+					<section class="relative flex-1 flex flex-col">
+						<!-- Pricing Cards Grid -->
+						<div class="grid gap-2 grid-cols-1 md:grid-cols-3 flex-1">
+							{plans.map((plan) => (
+								<div class={`border-2 rounded-xl p-5 flex flex-col h-full transition-all ${
+									plan.popular
+										? 'border-primary bg-gradient-to-br from-primary/5 to-primary/10 dark:from-primary/10 dark:to-primary/5'
+										: 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:shadow-lg hover:shadow-gray-600/10'
+								}`}>
+									{/* Header */}
+									<h3 class="text-lg font-bold text-gray-900 dark:text-white mb-1">
+										{plan.name}
+									</h3>
+
+									{/* Price Per Credit */}
+									<p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+										1 кредит = <span class="font-semibold text-gray-900 dark:text-white">{plan.pricePerCredit} ₽</span>
+									</p>
+
+									{/* Custom Input for One-Time Purchase */}
+									{plan.isCustom && (
+										<div class="mb-4 flex-1 flex flex-col">
+											<input
+												type="number"
+												id="custom-credits-input"
+												min="1"
+												max="10"
+												value="1"
+												class="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary mb-2"
+											/>
+											<p class="text-sm text-gray-600 dark:text-gray-400">
+												<span id="price-display">Цена: 1 × 89 ₽ = 89 ₽</span>
+											</p>
+										</div>
+									)}
+
+									{/* Fixed Plans - Show Credits and Price */}
+									{!plan.isCustom && (
+										<div class="mb-3 flex-1 flex flex-col justify-start">
+											<p class="text-2xl font-bold text-primary mb-1">
+												{plan.credits}
+											</p>
+											<p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+												кредитов
+											</p>
+											<p class="text-2xl font-bold text-gray-900 dark:text-white">
+												{plan.price.toLocaleString('ru-RU')} ₽
+											</p>
+										</div>
+									)}
+
+									{/* Button */}
+									<button
+										type="button"
+										{...(plan.isCustom ? { 'data-custom': 'true', 'id': 'custom-buy-btn' } : { 'data-buy': plan.id })}
+										class="w-full relative flex h-9 items-center justify-center px-4 before:absolute before:inset-0 before:rounded-lg before:bg-primary before:transition before:duration-300 hover:before:scale-105 active:before:scale-95 disabled:opacity-50 disabled:cursor-not-allowed purchase-btn"
+									>
+										<span class="relative text-sm font-semibold text-white" id={plan.isCustom ? 'btn-text-custom' : undefined}>
+											{plan.isCustom ? 'Купить 89 ₽' : `Купить ${plan.price.toLocaleString('ru-RU')} ₽`}
+										</span>
+									</button>
+								</div>
+							))}
+						</div>
+					</section>
+				</div>
+			</div>
+		</div>
+	</div>
+</AppLayout>
+
+<script>
+	const customInput = document.getElementById('custom-credits-input') as HTMLInputElement;
+	const customBuyBtn = document.getElementById('custom-buy-btn') as HTMLButtonElement;
+	const priceDisplay = document.getElementById('price-display') as HTMLSpanElement;
+	const btnText = document.getElementById('btn-text-custom') as HTMLSpanElement;
+	const purchaseButtons = document.querySelectorAll('.purchase-btn') as NodeListOf<HTMLButtonElement>;
+
+	const CREDIT_PRICE = 89;
+
+	function disableAllButtons() {
+		purchaseButtons.forEach(btn => {
+			btn.disabled = true;
+		});
+	}
+
+	function enableAllButtons() {
+		purchaseButtons.forEach(btn => {
+			btn.disabled = false;
+		});
+	}
+
+	// Обновление цены при изменении input для разовой покупки
+	if (customInput) {
+		customInput.addEventListener('input', () => {
+			let value = parseInt(customInput.value, 10);
+
+			// Валидация
+			if (isNaN(value) || value < 1) value = 1;
+			if (value > 10) value = 10;
+
+			customInput.value = value.toString();
+
+			const totalPrice = value * CREDIT_PRICE;
+			priceDisplay.textContent = `Цена: ${value} × ${CREDIT_PRICE} ₽ = ${totalPrice} ₽`;
+
+			// Обновляем текст кнопки
+			if (btnText) {
+				btnText.textContent = `Купить ${totalPrice} ₽`;
+			}
+		});
+	}
+
+	// Обработчики кнопок покупки
+	purchaseButtons.forEach(button => {
+		button.addEventListener('click', async (e: Event) => {
+			e.preventDefault();
+
+			let credits: number;
+			let amount: number;
+
+			// Определяем, какая кнопка нажата
+			if (button.id === 'custom-buy-btn') {
+				// Разовая покупка
+				credits = parseInt(customInput.value, 10);
+				if (isNaN(credits) || credits < 1 || credits > 10) {
+					return;
+				}
+				amount = credits * CREDIT_PRICE;
+			} else {
+				// Фиксированный тариф
+				const planId = button.getAttribute('data-buy');
+				if (planId === 'basic') {
+					credits = 50;
+					amount = 3950;
+				} else if (planId === 'professional') {
+					credits = 200;
+					amount = 13800;
+				} else {
+					return;
+				}
+			}
+
+			disableAllButtons();
+
+			try {
+				const response = await fetch('/api/payments/yookassa/create', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({ credits, amount })
+				});
+
+				if (!response.ok) {
+					enableAllButtons();
+					return;
+				}
+
+				const data = await response.json();
+
+				if (data.success && data.paymentUrl) {
+					window.beemGoal("payment_start");
+					setTimeout(() => {
+						window.location.href = data.paymentUrl;
+					}, 500);
+				} else {
+					enableAllButtons();
+				}
+			} catch (error) {
+				enableAllButtons();
+			}
+		});
+	});
+
+	// Проверка статуса платежа после возврата со страницы Yookassa
+	async function checkPaymentStatus() {
+		const params = new URLSearchParams(window.location.search);
+		const paymentId = params.get('paymentId');
+
+		// Сначала проверяем, есть ли pending платеж
+		try {
+			const checkUrl = paymentId
+				? `/api/payments/yookassa/check?paymentId=${paymentId}`
+				: `/api/payments/yookassa/check`;
+
+			const initialCheck = await fetch(checkUrl);
+			const initialData = await initialCheck.json();
+
+			// Если нет pending платежа - выходим без polling
+			if (!initialData.success && initialData.error?.includes('No pending payment')) {
+				console.log('[POLLING] No pending payment found');
+				return;
+			}
+		} catch (e) {
+			// Ошибка при проверке - выходим
+			console.log('[POLLING] Could not check for pending payment');
+			return;
+		}
+
+		// Платеж найден - запускаем polling
+		console.log(`[POLLING] Starting payment status check (paymentId: ${paymentId || 'auto-detect'})`);
+
+		try {
+			let attempts = 0;
+			const maxAttempts = 60; // Проверяем 60 раз с интервалом 1 сек = 60 сек всего
+
+			const checkInterval = setInterval(async () => {
+				attempts++;
+				console.log(`[POLLING] Attempt ${attempts}/${maxAttempts}: Checking payment status...`);
+
+				try {
+					const checkUrl = paymentId
+						? `/api/payments/yookassa/check?paymentId=${paymentId}`
+						: `/api/payments/yookassa/check`;
+
+					const response = await fetch(checkUrl);
+					const data = await response.json();
+
+					console.log(`[POLLING] Check response: status=${data.status}, success=${data.success}`);
+
+					if (data.status === 'succeeded') {
+						clearInterval(checkInterval);
+						console.log(`[POLLING] ✅ Payment succeeded!`);
+						window.beemGoal("payment_success");
+
+						// Очищаем параметр из URL
+						setTimeout(() => {
+							window.history.replaceState({}, document.title, '/billing');
+						}, 2000);
+
+						enableAllButtons();
+					} else if (data.status === 'failed' || data.status === 'cancelled') {
+						clearInterval(checkInterval);
+						console.error(`[POLLING] ❌ Payment ${data.status}`);
+						enableAllButtons();
+					} else if (attempts >= maxAttempts) {
+						clearInterval(checkInterval);
+						console.warn(`[POLLING] Max attempts reached (${maxAttempts})`);
+						enableAllButtons();
+					}
+				} catch (fetchError) {
+					console.error(`[POLLING] Error on attempt ${attempts}:`, fetchError);
+				}
+			}, 1000);
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+			console.error('[POLLING] Fatal error:', errorMessage);
+			enableAllButtons();
+		}
+	}
+
+	// Проверяем статус платежа при загрузке страницы
+	checkPaymentStatus();
+</script>

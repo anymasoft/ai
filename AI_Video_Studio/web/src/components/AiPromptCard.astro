@@ -1,0 +1,366 @@
+---
+// AiPromptCard.astro - Премиальный UI компонент для ввода промпта с селектором режимов
+// Реплицирует логику режимов Template/Prompt с glassmorphism эффектом
+
+interface Props {
+  mode?: "template" | "prompt";
+  initialPrompt?: string;
+  isVideoPresent?: boolean;
+}
+
+const {
+  mode = "template",
+  initialPrompt = "",
+  isVideoPresent = false
+} = Astro.props;
+---
+
+<div
+  id="ai-prompt-card"
+  class="ai-prompt-card-container"
+  data-mode={mode}
+  data-has-video={isVideoPresent}
+>
+  <!-- Основной контейнер (градиентная обводка + фон) -->
+  <div class="ai-prompt-outer">
+    <!-- Внутренний контейнер -->
+    <div class="ai-prompt-inner">
+      <!-- Селектор режимов (вкладки) -->
+      <div class="mode-selector-tabs">
+        <button
+          id="mode-tab-template"
+          class="mode-tab mode-tab-template"
+          data-mode="template"
+          aria-label="Рекламный шаблон"
+          aria-selected={mode === "template"}
+        >
+          <!-- Иконка: Sparkles/Clapperboard -->
+          <svg
+            class="mode-icon"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <polygon points="12 3 20 7 20 17 12 21 4 17 4 7 12 3"></polygon>
+          </svg>
+          <span class="mode-label">Рекламный шаблон</span>
+        </button>
+
+        <button
+          id="mode-tab-prompt"
+          class="mode-tab mode-tab-prompt"
+          data-mode="prompt"
+          aria-label="Свободный сценарий"
+          aria-selected={mode === "prompt"}
+        >
+          <!-- Иконка: Wand2/PencilLine -->
+          <svg
+            class="mode-icon"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+          </svg>
+          <span class="mode-label">Свободный сценарий</span>
+        </button>
+      </div>
+
+      <!-- Helper текст под селектором -->
+      <div id="mode-helper-text" class="mode-helper-text">
+        ИИ сам подберёт рекламный сценарий и сделает продающее видео для WB/Ozon
+      </div>
+
+      <!-- Textarea промпта -->
+      <textarea
+        id="prompt-textarea"
+        class="prompt-textarea"
+        placeholder="Красивая девушка с наушниками, стильный продукт, модный образ, для карточки WB"
+        rows="2"
+      ></textarea>
+    </div>
+  </div>
+</div>
+
+<style define:vars={{ isVideoPresent }}>
+  .ai-prompt-card-container {
+    width: 100%;
+    transition: all 0.3s ease;
+  }
+
+  /* Внешний контейнер с градиентной обводкой */
+  .ai-prompt-outer {
+    position: relative;
+    border-radius: 1rem;
+    padding: 1px;
+    background: linear-gradient(
+      135deg,
+      rgba(168, 85, 247, 0.4) 0%,
+      rgba(59, 130, 246, 0.4) 100%
+    );
+    box-shadow: 0 0 12px rgba(168, 85, 247, 0.3);
+  }
+
+  /* Внутренний контейнер - фон меняется в зависимости от видео */
+  .ai-prompt-inner {
+    position: relative;
+    border-radius: 1rem;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    /* По умолчанию светлый фон (нет видео) */
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+  }
+
+  /* Если видео присутствует - glassmorphism */
+  .ai-prompt-card-container[data-has-video="true"] .ai-prompt-inner {
+    background-color: rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+
+  /* Селектор режимов (вкладки) */
+  .mode-selector-tabs {
+    display: flex;
+    gap: 0.5rem;
+    background-color: rgba(0, 0, 0, 0.02);
+    border-radius: 0.75rem;
+    padding: 0.25rem;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+  }
+
+  .ai-prompt-card-container[data-has-video="true"] .mode-selector-tabs {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  /* Вкладка режима (кнопка) */
+  .mode-tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1rem;
+    border-radius: 0.5rem;
+    border: none;
+    background-color: transparent;
+    color: rgba(17, 24, 39, 0.6);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+  }
+
+  .mode-tab:hover:not([aria-selected="true"]) {
+    background-color: rgba(0, 0, 0, 0.05);
+    color: rgba(17, 24, 39, 0.8);
+  }
+
+  /* Активная вкладка */
+  .mode-tab[aria-selected="true"] {
+    background: linear-gradient(
+      135deg,
+      rgba(168, 85, 247, 0.2) 0%,
+      rgba(59, 130, 246, 0.2) 100%
+    );
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    color: rgb(17, 24, 39);
+    box-shadow: 0 0 8px rgba(168, 85, 247, 0.15);
+  }
+
+  .ai-prompt-card-container[data-has-video="true"] .mode-tab[aria-selected="true"] {
+    background: linear-gradient(
+      135deg,
+      rgba(168, 85, 247, 0.25) 0%,
+      rgba(59, 130, 246, 0.25) 100%
+    );
+    box-shadow: 0 0 12px rgba(168, 85, 247, 0.2);
+  }
+
+  .mode-icon {
+    flex-shrink: 0;
+  }
+
+  .mode-label {
+    display: none;
+  }
+
+  @media (min-width: 768px) {
+    .mode-label {
+      display: inline;
+    }
+  }
+
+  /* Helper текст */
+  .mode-helper-text {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: rgba(17, 24, 39, 0.7);
+    line-height: 1.4;
+    margin-top: 0.25rem;
+  }
+
+  .ai-prompt-card-container[data-has-video="true"] .mode-helper-text {
+    color: rgba(17, 24, 39, 0.75);
+  }
+
+  /* Textarea промпта */
+  .prompt-textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    background-color: rgba(255, 255, 255, 0.5);
+    color: rgba(17, 24, 39, 0.9);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    font-family: inherit;
+    resize: none;
+    transition: all 0.2s ease;
+    outline: none;
+  }
+
+  .prompt-textarea:placeholder {
+    color: rgba(17, 24, 39, 0.4);
+  }
+
+  .prompt-textarea:hover {
+    background-color: rgba(255, 255, 255, 0.6);
+  }
+
+  .prompt-textarea:focus {
+    background-color: rgba(255, 255, 255, 0.7);
+    border-color: rgba(59, 130, 246, 0.3);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+  }
+
+  .ai-prompt-card-container[data-has-video="true"] .prompt-textarea {
+    background-color: rgba(255, 255, 255, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: rgb(17, 24, 39);
+  }
+
+  .ai-prompt-card-container[data-has-video="true"] .prompt-textarea:focus {
+    background-color: rgba(255, 255, 255, 0.4);
+    border-color: rgba(59, 130, 246, 0.4);
+  }
+
+  /* Dark mode поддержка */
+  .dark .mode-tab {
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .dark .mode-tab:hover:not([aria-selected="true"]) {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  .dark .mode-tab[aria-selected="true"] {
+    color: rgb(255, 255, 255);
+  }
+
+  .dark .mode-helper-text {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .dark .prompt-textarea {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .dark .prompt-textarea:placeholder {
+    color: rgba(255, 255, 255, 0.3);
+  }
+
+  .dark .prompt-textarea:focus {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+</style>
+
+<script>
+  // Auto-resize textarea
+  function initAutoResizeTextarea() {
+    const textarea = document.getElementById("prompt-textarea") as HTMLTextAreaElement;
+    if (!textarea) return;
+
+    const minHeight = 48;
+    const maxHeight = 150;
+
+    function adjustHeight() {
+      textarea.style.height = `${minHeight}px`;
+      const newHeight = Math.max(minHeight, Math.min(textarea.scrollHeight, maxHeight));
+      textarea.style.height = `${newHeight}px`;
+    }
+
+    textarea.addEventListener("input", adjustHeight);
+    adjustHeight();
+  }
+
+  // Mode switching
+  function initModeSwitching() {
+    const tabs = document.querySelectorAll(".mode-tab") as NodeListOf<HTMLButtonElement>;
+    const helperText = document.getElementById("mode-helper-text") as HTMLElement;
+    const textarea = document.getElementById("prompt-textarea") as HTMLTextAreaElement;
+
+    const helpers = {
+      template: "ИИ сам подберёт рекламный сценарий и сделает продающее видео для WB/Ozon",
+      prompt: "Полный контроль над действиями и камерой. Можно задавать движения и camera commands."
+    };
+
+    const placeholders = {
+      template: "Красивая девушка с наушниками, стильный продукт, модный образ, для карточки WB",
+      prompt: "Идёт вперёд, поворачивается, снимает, улыбается… Камера [Tracking shot] затем [Push in]…"
+    };
+
+    tabs.forEach(tab => {
+      tab.addEventListener("click", () => {
+        const mode = tab.dataset.mode as "template" | "prompt";
+
+        // Обновляем selected атрибуты
+        tabs.forEach(t => t.setAttribute("aria-selected", "false"));
+        tab.setAttribute("aria-selected", "true");
+
+        // Обновляем контейнер
+        const container = document.getElementById("ai-prompt-card") as HTMLElement;
+        if (container) {
+          container.dataset.mode = mode;
+        }
+
+        // Обновляем helper текст
+        if (helperText) {
+          helperText.textContent = helpers[mode];
+        }
+
+        // Обновляем placeholder
+        if (textarea) {
+          textarea.placeholder = placeholders[mode];
+        }
+
+        // Логирование
+        console.log("[UI] mode switched:", mode);
+      });
+    });
+  }
+
+  // Инициализация при загрузке
+  document.addEventListener("DOMContentLoaded", () => {
+    initAutoResizeTextarea();
+    initModeSwitching();
+  });
+</script>

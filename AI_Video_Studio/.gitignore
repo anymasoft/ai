@@ -1,0 +1,45 @@
+# Переменные окружения — никогда не коммитить!
+.env
+*.env.local
+
+# SQLite базы данных
+*.db
+*.db-shm
+*.db-wal
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+env/
+*.egg-info/
+
+# Node.js
+node_modules/
+.npm
+
+# Astro build output
+web/dist/
+web/.astro/
+
+# Загруженные пользовательские файлы (медиа)
+web/uploads/
+bot/gallery/*.mp4
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ngrok.exe
+
+# Логи
+*.log
+logs/
+
+# Тестовые файлы
+test_*.py
