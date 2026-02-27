@@ -16,7 +16,7 @@ if (!user) {
 }
 
 // Проверяем, является ли пользователь админом
-if (!isAdmin(user)) {
+if (!isAdmin(user.email)) {
   return Astro.redirect('/app');
 }
 

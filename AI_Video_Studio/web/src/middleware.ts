@@ -72,7 +72,7 @@ export const onRequest = defineMiddleware((context, next) => {
       console.log(`   ✅ Сессия валидна: ${user.email}`);
 
       // Проверяем права админа для админ-маршрутов
-      if (isAdminRoute && !isAdmin(user)) {
+      if (isAdminRoute && !isAdmin(user.email)) {
         console.log(`   ❌ Нет прав админа`);
         console.log(`   - Возвращаем 404`);
         return new Response('Not Found', { status: 404 });

@@ -130,11 +130,7 @@ export function updateUserBalance(userId: string, newBalance: number): void {
 
 /**
  * Проверяет, является ли пользователь админом
- * Проверяет email (продакшн-аккаунт) ИЛИ role='admin' в БД (для локальной разработки)
  */
-export function isAdmin(emailOrUser: string | User): boolean {
-  if (typeof emailOrUser === 'string') {
-    return emailOrUser === 'nazarov.soft@gmail.com';
-  }
-  return emailOrUser.email === 'nazarov.soft@gmail.com' || emailOrUser.role === 'admin';
+export function isAdmin(email: string): boolean {
+  return email === 'nazarov.soft@gmail.com';
 }

@@ -13,7 +13,7 @@ export const GET: APIRoute = async (context) => {
 		const sessionToken = context.cookies.get('session_token')?.value;
 		const user = sessionToken ? getUserFromSession(sessionToken) : null;
 
-		if (!user || !isAdmin(user)) {
+		if (!user || !isAdmin(user.email)) {
 			return new Response(
 				JSON.stringify({ error: 'Требуются права администратора' }),
 				{ status: 403, headers: { 'Content-Type': 'application/json' } }
