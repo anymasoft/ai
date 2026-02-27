@@ -1,8 +1,5 @@
 ---
 import AppLayout from '../layouts/AppLayout.astro';
-import PromptInput from '../components/PromptInput.astro';
-import QuickActions from '../components/QuickActions.astro';
-import DurationSelector from '../components/DurationSelector.astro';
 import { getUserFromSession } from '../lib/auth';
 
 export const prerender = false;
@@ -29,83 +26,124 @@ const userBalance = user.generation_balance || 0;
 ---
 
 <AppLayout title="Create Video - Beem">
-  <div class="w-full h-full flex overflow-hidden" data-user-balance={userBalance}>
+  <!-- dark class: активирует Tailwind dark: на всей рабочей области -->
+  <div class="dark w-full h-full flex overflow-hidden bg-gray-900" data-user-balance={userBalance}>
 
-    <!-- LEFT SIDEBAR: All controls -->
-    <aside class="w-[380px] shrink-0 flex flex-col border-r border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 overflow-y-auto">
-      <div class="flex flex-col gap-5 p-5 flex-1">
+    <!-- ═══ LEFT SIDEBAR: Controls ══════════════════════════════════ -->
+    <aside
+      id="left-panel"
+      class="w-72 shrink-0 flex flex-col border-r border-gray-700 bg-gray-900 transition-all duration-200 overflow-hidden"
+    >
+      <!-- Panel Header -->
+      <div class="h-9 flex items-center justify-between px-3 border-b border-gray-700 shrink-0">
+        <span class="text-[11px] font-semibold text-gray-500 uppercase tracking-widest">Параметры</span>
+        <button id="toggle-left" class="w-5 h-5 flex items-center justify-center text-gray-600 hover:text-gray-300 transition-colors" title="Свернуть">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Controls -->
+      <div class="flex-1 overflow-y-auto p-4 space-y-5">
 
         <!-- Upload Zone -->
         <div class="space-y-1.5">
-          <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Фотография</label>
+          <label class="text-[11px] font-semibold text-gray-500 uppercase tracking-widest">Фотография</label>
           <div
-            class="relative rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700
-                   bg-white dark:bg-gray-800
-                   overflow-hidden cursor-pointer group
+            id="upload-area"
+            class="relative rounded-xl border-2 border-dashed border-gray-700
+                   bg-gray-800 overflow-hidden cursor-pointer group
                    transition-colors duration-150
-                   hover:border-indigo-400 dark:hover:border-indigo-500
-                   hover:bg-indigo-50/40 dark:hover:bg-indigo-900/10"
-            style="min-height: 200px;"
+                   hover:border-yellow-400/50"
+            style="min-height: 180px;"
           >
-            <input
-              type="file"
-              accept="image/jpeg"
-              class="absolute inset-0 opacity-0 cursor-pointer z-10"
-              id="image-upload"
-              title=""
-            />
-
-            <!-- Placeholder -->
-            <div id="upload-placeholder" class="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none">
-              <div class="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/30 transition-colors duration-150">
-                <svg class="w-6 h-6 text-gray-400 group-hover:text-indigo-500 transition-colors duration-150" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <input type="file" accept="image/jpeg" class="absolute inset-0 opacity-0 cursor-pointer z-10" id="image-upload" title="" />
+            <div id="upload-placeholder" class="absolute inset-0 flex flex-col items-center justify-center gap-2.5 pointer-events-none">
+              <div class="w-10 h-10 rounded-xl bg-gray-700 flex items-center justify-center group-hover:bg-yellow-400/10 transition-colors">
+                <svg class="w-5 h-5 text-gray-500 group-hover:text-yellow-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                 </svg>
               </div>
               <div class="text-center">
-                <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Загрузите фото</p>
-                <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">JPG · Перетащите или нажмите</p>
+                <p class="text-sm font-medium text-gray-400">Загрузите фото</p>
+                <p class="text-xs text-gray-600 mt-0.5">JPG · Перетащите или нажмите</p>
               </div>
             </div>
-
-            <!-- Image Preview -->
-            <img
-              id="image-preview"
-              class="hidden absolute inset-0 w-full h-full object-contain"
-              alt="Preview"
-            />
-
-            <!-- Change photo overlay -->
-            <div id="image-change-overlay" class="hidden absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-20">
-              <span class="text-white text-xs font-medium bg-black/60 px-2.5 py-1 rounded-full">Заменить фото</span>
+            <img id="image-preview" class="hidden absolute inset-0 w-full h-full object-contain" alt="Preview" />
+            <div id="image-change-overlay" class="hidden absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+              <span class="text-white text-xs font-medium bg-black/70 px-2.5 py-1 rounded-full">Заменить</span>
             </div>
           </div>
         </div>
 
         <!-- Mode Selector -->
-        <QuickActions />
+        <div class="space-y-1.5">
+          <label class="text-[11px] font-semibold text-gray-500 uppercase tracking-widest">Режим</label>
+          <div class="flex items-center gap-1 p-1 rounded-xl bg-gray-800">
+            <button id="mode-template" data-mode="template"
+              class="mode-btn mode-active flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150">
+              <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+              </svg>
+              Шаблон
+            </button>
+            <button id="mode-prompt" data-mode="prompt"
+              class="mode-btn flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150">
+              <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+              </svg>
+              Сценарий
+            </button>
+          </div>
+        </div>
 
         <!-- Duration Selector -->
-        <DurationSelector />
+        <div class="space-y-1.5">
+          <label class="text-[11px] font-semibold text-gray-500 uppercase tracking-widest">Длительность</label>
+          <div class="flex items-center gap-1 p-1 rounded-xl bg-gray-800">
+            <button id="duration-6" data-duration="6"
+              class="dur-btn dur-active flex-1 flex flex-col items-center py-2 rounded-lg transition-all duration-150">
+              <span class="text-sm font-semibold">6 сек</span>
+              <span class="dur-credit text-xs">1 кредит</span>
+            </button>
+            <button id="duration-10" data-duration="10"
+              class="dur-btn flex-1 flex flex-col items-center py-2 rounded-lg transition-all duration-150">
+              <span class="text-sm font-semibold">10 сек</span>
+              <span class="dur-credit text-xs">2 кредита</span>
+            </button>
+          </div>
+        </div>
 
-        <!-- Prompt Input -->
-        <PromptInput />
+        <!-- Prompt -->
+        <div class="space-y-1.5">
+          <label class="text-[11px] font-semibold text-gray-500 uppercase tracking-widest">Описание сцены</label>
+          <div class="relative">
+            <textarea
+              id="prompt"
+              placeholder="Опишите сцену..."
+              class="w-full px-3 py-2.5 rounded-lg bg-gray-800 border border-gray-700
+                     text-sm text-gray-100 placeholder:text-gray-600
+                     focus:outline-none focus:ring-2 focus:ring-yellow-400/30 focus:border-yellow-400/50
+                     resize-none transition-colors duration-150"
+              rows="4"
+            ></textarea>
+            <span id="char-count" class="absolute bottom-2 right-2.5 text-[10px] text-gray-600 pointer-events-none select-none">0/500</span>
+          </div>
+        </div>
 
-        <!-- Spacer -->
-        <div class="flex-1 min-h-4"></div>
+        <div class="flex-1 min-h-2"></div>
 
         <!-- Generate Button -->
         <div class="space-y-2">
           <button
             id="generate-btn"
             disabled
-            class="w-full h-12 rounded-xl
-                   bg-indigo-600 hover:bg-indigo-700
-                   text-white font-semibold text-sm
+            class="w-full h-11 rounded-xl bg-yellow-400 hover:bg-yellow-300
+                   text-gray-900 font-bold text-sm
                    transition-colors duration-150
-                   disabled:opacity-40 disabled:cursor-not-allowed
-                   flex items-center justify-center gap-2
-                   shadow-sm cursor-pointer"
+                   disabled:opacity-30 disabled:cursor-not-allowed
+                   flex items-center justify-center gap-2 cursor-pointer"
           >
             <svg id="generate-icon" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
@@ -117,36 +155,76 @@ const userBalance = user.generation_balance || 0;
             </svg>
             Создать видео
           </button>
-          <p class="text-xs text-center text-gray-400 dark:text-gray-600">
-            6 сек = 1 кредит · 10 сек = 2 кредита
-          </p>
+          <p class="text-[11px] text-center text-gray-700">6 сек = 1 кредит · 10 сек = 2 кредита</p>
         </div>
 
       </div>
     </aside>
 
-    <!-- RIGHT: Video Stage -->
-    <div class="flex-1 overflow-hidden" id="video-section">
-      <div class="h-full bg-gray-950 flex items-center justify-center relative">
+    <!-- ═══ CENTER: Video Workspace ══════════════════════════════════ -->
+    <div class="flex-1 flex flex-col overflow-hidden min-w-0">
 
-        <!-- Video Placeholder (before generation) -->
+      <!-- Toolbar -->
+      <div class="h-9 flex items-center gap-2 px-3 border-b border-gray-700 bg-gray-800 shrink-0">
+        <!-- Expand left (visible when collapsed) -->
+        <button id="expand-left" style="display:none;" class="w-6 h-6 flex items-center justify-center text-gray-600 hover:text-gray-300 transition-colors rounded" title="Параметры">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+
+        <div class="w-px h-4 bg-gray-700 shrink-0"></div>
+
+        <!-- Video controls -->
+        <div id="toolbar-controls" style="display:none;" class="flex items-center gap-1.5">
+          <button id="download-btn"
+            class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white text-xs font-medium transition-colors cursor-pointer">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+            </svg>
+            Скачать
+          </button>
+          <button id="clear-btn"
+            class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-400 hover:text-white text-xs transition-colors cursor-pointer">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+            Очистить
+          </button>
+        </div>
+
+        <!-- Center status -->
+        <div class="flex-1 flex items-center justify-center">
+          <span id="toolbar-status" class="text-xs text-gray-600">Готов к генерации</span>
+        </div>
+
+        <!-- Expand right (visible when collapsed) -->
+        <button id="expand-right" style="display:none;" class="w-6 h-6 flex items-center justify-center text-gray-600 hover:text-gray-300 transition-colors rounded" title="История">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Video Area -->
+      <div class="flex-1 overflow-hidden bg-gray-950 flex items-center justify-center relative">
+
         <div id="video-placeholder" class="text-center space-y-4 px-8">
-          <div class="w-20 h-20 mx-auto rounded-2xl bg-gray-900 border border-gray-800 flex items-center justify-center">
-            <svg class="w-10 h-10 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="w-16 h-16 mx-auto rounded-2xl bg-gray-900 border border-gray-800 flex items-center justify-center">
+            <svg class="w-8 h-8 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
           </div>
           <div>
-            <p class="text-gray-400 font-medium text-sm">Здесь появится ваше видео</p>
-            <p class="text-gray-600 text-xs mt-1">Загрузите фото и нажмите «Создать видео»</p>
+            <p class="text-gray-500 font-medium text-sm">Здесь появится ваше видео</p>
+            <p class="text-gray-700 text-xs mt-1">Загрузите фото и нажмите «Создать видео»</p>
           </div>
         </div>
 
-        <!-- Loading State (during generation) -->
         <div id="video-loading" class="hidden text-center space-y-5 px-8">
           <div class="flex justify-center">
-            <div class="w-12 h-12 rounded-full border-2 border-gray-800 border-t-indigo-500 animate-spin"></div>
+            <div class="w-10 h-10 rounded-full border-2 border-gray-800 border-t-yellow-400 animate-spin"></div>
           </div>
           <div>
             <p class="text-gray-300 font-medium text-sm">Создаём видео</p>
@@ -154,392 +232,437 @@ const userBalance = user.generation_balance || 0;
           </div>
         </div>
 
-        <!-- Video Player (after generation) -->
-        <video
-          id="video-output"
-          class="hidden w-full h-full object-contain"
-          controls
-          controlsList="nodownload"
-        >
+        <video id="video-output" class="hidden w-full h-full object-contain" controls controlsList="nodownload">
           Your browser does not support the video tag.
         </video>
 
-        <!-- Paywall Overlay -->
+        <!-- Paywall -->
         <div id="player-paywall" class="hidden absolute inset-0 flex flex-col items-center justify-center bg-gray-950/95 backdrop-blur-sm z-20">
           <div class="text-center space-y-4 px-8 max-w-sm">
-            <div class="w-14 h-14 mx-auto rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
-              <svg class="w-7 h-7 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="w-12 h-12 mx-auto rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+              <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
               </svg>
             </div>
             <div>
-              <p class="text-white font-semibold">Недостаточно кредитов</p>
-              <p class="text-gray-400 text-sm mt-1">Пополните баланс, чтобы создавать видео</p>
+              <p class="text-white font-semibold text-sm">Недостаточно кредитов</p>
+              <p class="text-gray-400 text-xs mt-1">Пополните баланс, чтобы создавать видео</p>
             </div>
-            <button id="paywall-topup" class="px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-colors duration-150">
+            <button id="paywall-topup" class="px-5 py-2 rounded-lg bg-yellow-400 hover:bg-yellow-300 text-gray-900 text-sm font-bold transition-colors cursor-pointer">
               Пополнить баланс
             </button>
           </div>
         </div>
 
-        <!-- Video Controls: Download + Clear (top right) -->
-        <div id="video-controls" class="hidden absolute top-4 right-4 flex gap-2 z-20">
-          <button
-            id="download-btn"
-            title="Скачать видео"
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-900/80 hover:bg-gray-800 border border-gray-700 text-gray-200 text-xs font-medium transition-colors duration-150 backdrop-blur-sm cursor-pointer"
-          >
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-            </svg>
-            Скачать
-          </button>
-          <button
-            id="clear-btn"
-            title="Очистить"
-            class="flex items-center justify-center w-7 h-7 rounded-lg bg-gray-900/80 hover:bg-gray-800 border border-gray-700 text-gray-400 hover:text-gray-200 transition-colors duration-150 backdrop-blur-sm cursor-pointer"
-          >
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-          </button>
-        </div>
-
       </div>
+
+      <!-- Status Bar -->
+      <div class="h-7 flex items-center justify-between px-3 border-t border-gray-700 bg-gray-800 shrink-0">
+        <span id="status-left" class="text-[11px] text-gray-600">Beem AI Video Studio</span>
+        <span class="text-[11px] text-gray-700">Powered by MiniMax · Оплата ЮКасса</span>
+      </div>
+
     </div>
+
+    <!-- ═══ RIGHT SIDEBAR: History ═══════════════════════════════════ -->
+    <aside
+      id="right-panel"
+      class="w-48 shrink-0 flex flex-col border-l border-gray-700 bg-gray-900 transition-all duration-200 overflow-hidden"
+    >
+      <div class="h-9 flex items-center justify-between px-3 border-b border-gray-700 shrink-0">
+        <span class="text-[11px] font-semibold text-gray-500 uppercase tracking-widest">История</span>
+        <button id="toggle-right" class="w-5 h-5 flex items-center justify-center text-gray-600 hover:text-gray-300 transition-colors" title="Свернуть">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+
+      <div id="history-scroll" class="flex-1 overflow-y-auto p-2">
+        <div id="history-grid" class="grid grid-cols-2 gap-1.5"></div>
+        <div id="history-empty" class="text-center pt-8 px-2">
+          <p class="text-xs text-gray-700">Нет генераций</p>
+          <p class="text-[10px] text-gray-800 mt-1">Создайте первое видео</p>
+        </div>
+      </div>
+    </aside>
 
   </div>
 </AppLayout>
 
+<style>
+  .mode-btn { color:#6b7280; cursor:pointer; border:none; background:transparent; }
+  .mode-btn:hover:not(.mode-active) { color:#d1d5db; }
+  .mode-active { background:#374151; color:#f9fafb; font-weight:600; box-shadow:0 1px 3px rgba(0,0,0,0.3); }
+
+  .dur-btn { color:#6b7280; cursor:pointer; border:none; background:transparent; }
+  .dur-btn:hover:not(.dur-active) { color:#d1d5db; }
+  .dur-active { background:#374151; color:#f9fafb; box-shadow:0 1px 3px rgba(0,0,0,0.3); }
+  .dur-credit { color:#6b7280; }
+  .dur-active .dur-credit { color:#fbbf24; }
+
+  .gen-card {
+    aspect-ratio:1; background:#1f2937; border-radius:8px;
+    border:2px solid transparent; cursor:pointer;
+    overflow:hidden; position:relative; transition:border-color 150ms;
+  }
+  .gen-card:hover { border-color:rgba(251,191,36,0.6); }
+  .gen-card.active { border-color:#fbbf24; }
+  .gen-card video { width:100%; height:100%; object-fit:cover; display:block; }
+
+  #prompt {
+    font-family:inherit; min-height:88px; max-height:200px;
+  }
+  #prompt::-webkit-scrollbar { width:4px; }
+  #prompt::-webkit-scrollbar-thumb { background:#374151; border-radius:2px; }
+
+  #left-panel.collapsed { width:0 !important; padding:0; border:none; }
+  #right-panel.collapsed { width:0 !important; border:none; }
+
+  #history-scroll::-webkit-scrollbar { width:4px; }
+  #history-scroll::-webkit-scrollbar-thumb { background:#374151; border-radius:2px; }
+  #left-panel .overflow-y-auto::-webkit-scrollbar { width:4px; }
+  #left-panel .overflow-y-auto::-webkit-scrollbar-thumb { background:#374151; border-radius:2px; }
+</style>
+
 <script>
-    // ========== Get User Balance ==========
-    const mainContainer = document.querySelector('[data-user-balance]') as HTMLElement;
-    const userBalance = parseInt(mainContainer?.dataset.userBalance || '0', 10);
+  const mainContainer = document.querySelector('[data-user-balance]') as HTMLElement;
+  const userBalance = parseInt(mainContainer?.dataset.userBalance || '0', 10);
 
-    // ========== Track successful auth ==========
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('auth') === '1') {
-        window.beemGoal("auth_success");
-        window.history.replaceState({}, document.title, '/app');
+  let selectedDuration: string | null = '6';
+  let selectedImage: File | null = null;
+  let selectedMode: 'template' | 'prompt' = 'template';
+  let currentVideoUrl: string | null = null;
+
+  // ── Auth tracking ──────────────────────────────────────
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('auth') === '1') {
+    (window as any).beemGoal?.("auth_success");
+    window.history.replaceState({}, document.title, '/app');
+  }
+
+  // ── Toast ──────────────────────────────────────────────
+  function showToast(message: string, type: 'error' | 'success' = 'error') {
+    const toast = document.createElement('div');
+    toast.className = `fixed top-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50 text-sm font-medium ${
+      type === 'error' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'
+    }`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transition = 'opacity 0.3s ease';
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
+  }
+
+  // ── Paywall ────────────────────────────────────────────
+  function showPaywallOverlay() {
+    const paywall = document.getElementById('player-paywall') as HTMLElement;
+    if (!paywall) return;
+    paywall.classList.remove('hidden');
+    (window as any).beemGoal?.("paywall_shown");
+    setTimeout(() => paywall.classList.add('hidden'), 4000);
+  }
+  document.getElementById('paywall-topup')?.addEventListener('click', () => {
+    window.location.href = '/billing';
+  });
+
+  // ── Refs ───────────────────────────────────────────────
+  const generateBtn     = document.getElementById('generate-btn') as HTMLButtonElement;
+  const generateIcon    = document.getElementById('generate-icon') as HTMLElement;
+  const generateSpinner = document.getElementById('generate-spinner') as HTMLElement;
+  const promptTextarea  = document.getElementById('prompt') as HTMLTextAreaElement;
+  const charCount       = document.getElementById('char-count');
+  const imageUpload     = document.getElementById('image-upload') as HTMLInputElement;
+  const imagePreview    = document.getElementById('image-preview') as HTMLImageElement;
+  const uploadPlaceholder    = document.getElementById('upload-placeholder') as HTMLElement;
+  const imageChangeOverlay   = document.getElementById('image-change-overlay') as HTMLElement;
+  const videoPlaceholder     = document.getElementById('video-placeholder') as HTMLElement;
+  const videoLoading         = document.getElementById('video-loading') as HTMLElement;
+  const videoOutput          = document.getElementById('video-output') as HTMLVideoElement;
+  const toolbarControls      = document.getElementById('toolbar-controls') as HTMLElement;
+  const toolbarStatus        = document.getElementById('toolbar-status') as HTMLElement;
+  const statusLeft           = document.getElementById('status-left') as HTMLElement;
+  const downloadBtn          = document.getElementById('download-btn') as HTMLButtonElement;
+  const clearBtn             = document.getElementById('clear-btn') as HTMLButtonElement;
+
+  // ── Generate button state ──────────────────────────────
+  function updateGenerateButtonState() {
+    const ok = promptTextarea?.value.trim().length > 0 && selectedDuration !== null && selectedImage !== null;
+    if (generateBtn) generateBtn.disabled = !ok;
+  }
+
+  // ── Prompt textarea ────────────────────────────────────
+  if (promptTextarea) {
+    promptTextarea.addEventListener('input', () => {
+      if (promptTextarea.value.length > 500) promptTextarea.value = promptTextarea.value.substring(0, 500);
+      promptTextarea.style.height = 'auto';
+      promptTextarea.style.height = Math.min(promptTextarea.scrollHeight, 200) + 'px';
+      const count = promptTextarea.value.length;
+      if (charCount) {
+        charCount.textContent = `${count}/500`;
+        charCount.style.color = count >= 500 ? '#ef4444' : count > 450 ? '#f59e0b' : '';
+      }
+      updateGenerateButtonState();
+    });
+  }
+
+  // ── Mode selector ──────────────────────────────────────
+  const modePlaceholders: Record<string, string> = {
+    template: 'Красивая девушка с наушниками, стильный продукт, модный образ, для карточки WB',
+    prompt: 'Девушка идёт вперёд, поворачивается к камере, улыбается, снимает наушники, плавное движение'
+  };
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('mode-active'));
+      btn.classList.add('mode-active');
+      selectedMode = (btn as HTMLElement).dataset.mode as 'template' | 'prompt';
+      if (promptTextarea) promptTextarea.placeholder = modePlaceholders[selectedMode] || '';
+    });
+  });
+  if (promptTextarea) promptTextarea.placeholder = modePlaceholders['template'];
+
+  // ── Duration selector ──────────────────────────────────
+  document.querySelectorAll('.dur-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.dur-btn').forEach(b => b.classList.remove('dur-active'));
+      btn.classList.add('dur-active');
+      selectedDuration = (btn as HTMLElement).dataset.duration || null;
+      updateGenerateButtonState();
+    });
+  });
+  // Auto-select 6s
+  (document.getElementById('duration-6') as HTMLButtonElement)?.click();
+
+  // ── Image upload ───────────────────────────────────────
+  async function uploadImageToServer(file: File): Promise<boolean> {
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const res = await fetch('/api/upload-image', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error || 'Ошибка загрузки изображения', 'error'); return false; }
+      (window as any).beemGoal?.("image_upload_success");
+      return true;
+    } catch (e) {
+      showToast(`Ошибка: ${e instanceof Error ? e.message : 'Unknown'}`, 'error');
+      return false;
     }
+  }
 
-    // ========== Toast Notification System ==========
-    function showToast(message: string, type: 'error' | 'success' = 'error') {
-        const toast = document.createElement('div');
-        toast.className = `fixed top-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50 text-sm font-medium ${
-            type === 'error' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'
-        }`;
-        toast.textContent = message;
-        document.body.appendChild(toast);
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transition = 'opacity 0.3s ease';
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
-    }
-
-    // ========== Paywall Overlay ==========
-    function showPaywallOverlay() {
-        const paywall = document.getElementById('player-paywall') as HTMLElement;
-        if (!paywall) return;
-        paywall.classList.remove('hidden');
-        window.beemGoal("paywall_shown");
-        setTimeout(() => { paywall.classList.add('hidden'); }, 4000);
-    }
-
-    const paywallTopupBtn = document.getElementById('paywall-topup') as HTMLButtonElement;
-    if (paywallTopupBtn) {
-        paywallTopupBtn.addEventListener('click', () => { window.location.href = '/billing'; });
-    }
-
-    // ========== Element Refs ==========
-    const generateBtn = document.getElementById('generate-btn') as HTMLButtonElement;
-    const generateIcon = document.getElementById('generate-icon') as HTMLElement;
-    const generateSpinner = document.getElementById('generate-spinner') as HTMLElement;
-    const promptTextarea = document.getElementById('prompt') as HTMLTextAreaElement;
-    const imageUpload = document.getElementById('image-upload') as HTMLInputElement;
-    const imagePreview = document.getElementById('image-preview') as HTMLImageElement;
-    const uploadPlaceholder = document.getElementById('upload-placeholder') as HTMLElement;
-    const imageChangeOverlay = document.getElementById('image-change-overlay') as HTMLElement;
-    const videoPlaceholder = document.getElementById('video-placeholder') as HTMLElement;
-    const videoLoading = document.getElementById('video-loading') as HTMLElement;
-    const videoOutput = document.getElementById('video-output') as HTMLVideoElement;
-    const videoControls = document.getElementById('video-controls') as HTMLElement;
-    const downloadBtn = document.getElementById('download-btn') as HTMLButtonElement;
-    const clearBtn = document.getElementById('clear-btn') as HTMLButtonElement;
-
-    let selectedDuration: string | null = null;
-    let selectedImage: File | null = null;
-    let selectedMode: 'template' | 'prompt' = 'template';
-
-    // ========== Button State ==========
-    function updateGenerateButtonState() {
-        const hasPrompt = promptTextarea?.value.trim().length > 0;
-        const hasDuration = selectedDuration !== null;
-        const hasImage = selectedImage !== null;
-        if (generateBtn) {
-            generateBtn.disabled = !(hasPrompt && hasDuration && hasImage);
-        }
-    }
-
-    if (promptTextarea) {
-        promptTextarea.addEventListener('input', () => {
-            if (promptTextarea.value.length > 500) {
-                promptTextarea.value = promptTextarea.value.substring(0, 500);
-            }
-            updateGenerateButtonState();
-        });
-    }
-
-    // ========== Duration Selection ==========
-    window.addEventListener('durationChanged', ((e: CustomEvent) => {
-        selectedDuration = e.detail.duration;
+  if (imageUpload) {
+    imageUpload.addEventListener('change', async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      if (!file.type.startsWith('image/jpeg')) {
+        showToast('Разрешены только JPEG изображения', 'error');
+        imageUpload.value = '';
+        return;
+      }
+      const ok = await uploadImageToServer(file);
+      if (!ok) { imageUpload.value = ''; return; }
+      selectedImage = file;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        imagePreview.src = ev.target?.result as string;
+        imagePreview.classList.remove('hidden');
+        uploadPlaceholder.classList.add('hidden');
+        if (imageChangeOverlay) imageChangeOverlay.classList.remove('hidden');
         updateGenerateButtonState();
-    }) as EventListener);
+      };
+      reader.readAsDataURL(file);
+    });
 
-    // ========== Mode Selection ==========
-    const modePlaceholders: Record<string, string> = {
-        template: 'Красивая девушка с наушниками, стильный продукт, модный образ, для карточки WB',
-        prompt: 'Девушка идёт вперёд, поворачивается к камере, улыбается, снимает наушники, плавное движение камеры'
-    };
+    const uploadArea = document.getElementById('upload-area') as HTMLElement;
+    if (uploadArea) {
+      uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.style.borderColor = '#fbbf24'; });
+      uploadArea.addEventListener('dragleave', () => { uploadArea.style.borderColor = ''; });
+      uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.style.borderColor = '';
+        const files = e.dataTransfer?.files;
+        if (files?.[0]) { imageUpload.files = files; imageUpload.dispatchEvent(new Event('change', { bubbles: true })); }
+      });
+    }
+  }
 
-    window.addEventListener('modeChanged', ((e: CustomEvent) => {
-        selectedMode = e.detail.mode;
-        if (promptTextarea) {
-            promptTextarea.placeholder = modePlaceholders[selectedMode] || '';
+  // ── Show video ─────────────────────────────────────────
+  function showVideo(videoUrl: string, generationId?: string) {
+    currentVideoUrl = videoUrl;
+    videoLoading.classList.add('hidden');
+    videoPlaceholder.classList.add('hidden');
+    videoOutput.src = videoUrl;
+    videoOutput.classList.remove('hidden');
+    toolbarControls.style.display = 'flex';
+    (downloadBtn as any).videoUrl = videoUrl;
+    if (toolbarStatus) toolbarStatus.textContent = 'Видео готово';
+    if (generationId) highlightHistoryCard(generationId);
+  }
+
+  // ── Generate ───────────────────────────────────────────
+  if (generateBtn) {
+    generateBtn.addEventListener('click', async () => {
+      if (!selectedImage || !selectedDuration || !promptTextarea?.value) return;
+      if (userBalance <= 0) { showPaywallOverlay(); return; }
+
+      videoOutput.classList.add('hidden');
+      toolbarControls.style.display = 'none';
+      videoOutput.src = '';
+      videoPlaceholder.classList.add('hidden');
+      videoLoading.classList.remove('hidden');
+      generateBtn.disabled = true;
+      generateIcon.classList.add('hidden');
+      generateSpinner.classList.remove('hidden');
+      if (toolbarStatus) toolbarStatus.textContent = 'Генерация...';
+      if (statusLeft) statusLeft.textContent = 'Отправляем запрос в MiniMax...';
+
+      try {
+        const res = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: promptTextarea.value,
+            duration: parseInt(selectedDuration || '6', 10),
+            mode: selectedMode,
+          }),
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          videoLoading.classList.add('hidden');
+          videoPlaceholder.classList.remove('hidden');
+          const msg = data.error || 'Ошибка при генерации';
+          if (/баланс|кредит|недостаточно/i.test(msg)) showPaywallOverlay(); else showToast(msg, 'error');
+          return;
         }
-    }) as EventListener);
 
-    if (promptTextarea) {
-        promptTextarea.placeholder = modePlaceholders['template'];
-    }
+        const generationId = data.generationId;
+        if (statusLeft) statusLeft.textContent = 'Ожидаем результат от MiniMax...';
 
-    // ========== Image Upload ==========
-    async function uploadImageToServer(file: File): Promise<boolean> {
-        try {
-            const formData = new FormData();
-            formData.append('image', file);
-            const response = await fetch('/api/upload-image', { method: 'POST', body: formData });
-            const data = await response.json();
-            if (!response.ok) {
-                showToast(data.error || 'Ошибка при загрузке изображения', 'error');
-                return false;
-            }
-            window.beemGoal("image_upload_success");
-            return true;
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            showToast(`Ошибка: ${errorMessage}`, 'error');
-            return false;
+        let done = false, videoUrl: string | null = null, attempts = 0;
+        while (!done && attempts < 300) {
+          await new Promise(r => setTimeout(r, 1000));
+          attempts++;
+          try {
+            const st = await fetch(`/api/generate?generationId=${generationId}`);
+            const sd = await st.json();
+            if (sd.status === 'success' && sd.charged) {
+              done = true; videoUrl = sd.videoUrl;
+              (window as any).beemGoal?.("generation_success");
+            } else if (sd.status === 'failed') throw new Error('Генерация видео не удалась');
+          } catch (e) {
+            if (e instanceof Error && e.message.includes('не удалась')) throw e;
+          }
         }
-    }
 
-    if (imageUpload) {
-        imageUpload.addEventListener('change', async (e) => {
-            const file = (e.target as HTMLInputElement).files?.[0];
-            if (!file) return;
+        if (!done || !videoUrl) throw new Error('Время ожидания истекло. Видео может быть готово позже.');
+        showVideo(videoUrl, generationId);
+        await loadHistory();
 
-            if (!file.type.startsWith('image/jpeg')) {
-                showToast('Разрешены только JPEG изображения', 'error');
-                imageUpload.value = '';
-                return;
-            }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Неизвестная ошибка';
+        videoLoading.classList.add('hidden');
+        if (/баланс|кредит|недостаточно/i.test(msg)) showPaywallOverlay();
+        else { videoPlaceholder.classList.remove('hidden'); showToast(`Ошибка: ${msg}`, 'error'); }
+      } finally {
+        generateIcon.classList.remove('hidden');
+        generateSpinner.classList.add('hidden');
+        generateBtn.disabled = false;
+        if (statusLeft) statusLeft.textContent = 'Beem AI Video Studio';
+        updateGenerateButtonState();
+      }
+    });
+  }
 
-            const uploadSuccess = await uploadImageToServer(file);
-            if (!uploadSuccess) {
-                imageUpload.value = '';
-                return;
-            }
+  // ── Download ───────────────────────────────────────────
+  downloadBtn?.addEventListener('click', () => {
+    const url = (downloadBtn as any).videoUrl || currentVideoUrl;
+    if (!url) return;
+    const link = document.createElement('a');
+    link.href = url; link.download = 'beem-video.mp4';
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+  });
 
-            selectedImage = file;
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                imagePreview.src = event.target?.result as string;
-                imagePreview.classList.remove('hidden');
-                uploadPlaceholder.classList.add('hidden');
-                if (imageChangeOverlay) imageChangeOverlay.classList.remove('hidden');
-                updateGenerateButtonState();
-            };
-            reader.readAsDataURL(file);
-        });
-
-        // Drag and drop
-        const uploadArea = imageUpload.parentElement as HTMLElement;
-        if (uploadArea) {
-            uploadArea.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                uploadArea.classList.add('border-indigo-400', '!bg-indigo-50/40');
-            });
-            uploadArea.addEventListener('dragleave', () => {
-                uploadArea.classList.remove('border-indigo-400', '!bg-indigo-50/40');
-            });
-            uploadArea.addEventListener('drop', (e) => {
-                e.preventDefault();
-                uploadArea.classList.remove('border-indigo-400', '!bg-indigo-50/40');
-                const files = e.dataTransfer?.files;
-                if (files && files[0]) {
-                    imageUpload.files = files;
-                    imageUpload.dispatchEvent(new Event('change', { bubbles: true }));
-                }
-            });
-        }
-    }
-
-    // ========== Generate Button ==========
-    if (generateBtn) {
-        generateBtn.addEventListener('click', async () => {
-            if (!selectedImage || !selectedDuration || !promptTextarea?.value) return;
-
-            if (userBalance <= 0) {
-                showPaywallOverlay();
-                return;
-            }
-
-            // Reset video area
-            videoOutput.classList.add('hidden');
-            videoControls.classList.add('hidden');
-            videoOutput.src = '';
-
-            // Show loading
-            generateBtn.disabled = true;
-            generateIcon.classList.add('hidden');
-            generateSpinner.classList.remove('hidden');
-            videoPlaceholder.classList.add('hidden');
-            videoLoading.classList.remove('hidden');
-
-            try {
-                const response = await fetch('/api/generate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        prompt: promptTextarea.value,
-                        duration: parseInt(selectedDuration || '6', 10),
-                        mode: selectedMode,
-                    }),
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    videoLoading.classList.add('hidden');
-                    videoPlaceholder.classList.remove('hidden');
-                    generateIcon.classList.remove('hidden');
-                    generateSpinner.classList.add('hidden');
-                    generateBtn.disabled = false;
-
-                    const errorMsg = data.error || 'Ошибка при генерации видео';
-                    const isBalanceError = errorMsg.toLowerCase().includes('баланс') ||
-                                          errorMsg.toLowerCase().includes('кредит') ||
-                                          errorMsg.toLowerCase().includes('недостаточно');
-                    if (isBalanceError) {
-                        showPaywallOverlay();
-                    } else {
-                        showToast(errorMsg, 'error');
-                    }
-                    return;
-                }
-
-                const generationId = data.generationId;
-
-                // Poll for completion
-                let generationComplete = false;
-                let videoUrl: string | null = null;
-                let checkAttempts = 0;
-                const maxAttempts = 300;
-
-                while (!generationComplete && checkAttempts < maxAttempts) {
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                    checkAttempts++;
-
-                    try {
-                        const statusResponse = await fetch(`/api/generate?generationId=${generationId}`);
-                        const statusData = await statusResponse.json();
-
-                        if (statusData.status === 'success' && statusData.charged) {
-                            generationComplete = true;
-                            videoUrl = statusData.videoUrl;
-                            window.beemGoal("generation_success");
-                        } else if (statusData.status === 'failed') {
-                            throw new Error('Генерация видео не удалась');
-                        }
-                    } catch (error) {
-                        if (!(error instanceof Error && error.message.includes('не удалась'))) {
-                            console.error('[APP] Error checking status:', error);
-                        } else {
-                            throw error;
-                        }
-                    }
-                }
-
-                if (!generationComplete || !videoUrl) {
-                    throw new Error('Время ожидания генерации истекло. Видео может быть готово позже.');
-                }
-
-                // Show video
-                videoLoading.classList.add('hidden');
-                videoOutput.src = videoUrl;
-                videoOutput.classList.remove('hidden');
-                videoControls.classList.remove('hidden');
-                (downloadBtn as any).videoUrl = videoUrl;
-
-            } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
-                videoLoading.classList.add('hidden');
-                const isBalanceError = errorMessage.toLowerCase().includes('баланс') ||
-                                      errorMessage.toLowerCase().includes('кредит') ||
-                                      errorMessage.toLowerCase().includes('недостаточно');
-                if (isBalanceError) {
-                    showPaywallOverlay();
-                } else {
-                    videoPlaceholder.classList.remove('hidden');
-                    showToast(`Ошибка: ${errorMessage}`, 'error');
-                }
-            } finally {
-                generateIcon.classList.remove('hidden');
-                generateSpinner.classList.add('hidden');
-                generateBtn.disabled = false;
-                updateGenerateButtonState();
-            }
-        });
-    }
-
-    // ========== Download Button ==========
-    if (downloadBtn) {
-        downloadBtn.addEventListener('click', () => {
-            const videoUrl = (downloadBtn as any).videoUrl || '/videos/output.mp4';
-            const link = document.createElement('a');
-            link.href = videoUrl;
-            link.download = 'beem-video.mp4';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        });
-    }
-
-    // ========== Clear Button ==========
-    if (clearBtn) {
-        clearBtn.addEventListener('click', () => {
-            videoOutput.classList.add('hidden');
-            videoControls.classList.add('hidden');
-            videoPlaceholder.classList.remove('hidden');
-            videoOutput.src = '';
-
-            imagePreview.classList.add('hidden');
-            imagePreview.src = '';
-            uploadPlaceholder.classList.remove('hidden');
-            if (imageChangeOverlay) imageChangeOverlay.classList.add('hidden');
-
-            selectedImage = null;
-            imageUpload.value = '';
-            updateGenerateButtonState();
-        });
-    }
-
-    // ========== Auto-select 6s on load ==========
-    const firstDurationBtn = document.querySelector('[data-duration="6"]') as HTMLButtonElement;
-    if (firstDurationBtn) {
-        firstDurationBtn.click();
-    }
-
+  // ── Clear ──────────────────────────────────────────────
+  clearBtn?.addEventListener('click', () => {
+    videoOutput.classList.add('hidden');
+    toolbarControls.style.display = 'none';
+    videoPlaceholder.classList.remove('hidden');
+    videoOutput.src = ''; currentVideoUrl = null;
+    imagePreview.classList.add('hidden'); imagePreview.src = '';
+    uploadPlaceholder.classList.remove('hidden');
+    if (imageChangeOverlay) imageChangeOverlay.classList.add('hidden');
+    selectedImage = null; imageUpload.value = '';
+    if (toolbarStatus) toolbarStatus.textContent = 'Готов к генерации';
+    document.querySelectorAll('.gen-card').forEach(c => c.classList.remove('active'));
     updateGenerateButtonState();
+  });
+
+  // ── Sidebar toggles ────────────────────────────────────
+  const leftPanel   = document.getElementById('left-panel')!;
+  const rightPanel  = document.getElementById('right-panel')!;
+  const expandLeft  = document.getElementById('expand-left')!;
+  const expandRight = document.getElementById('expand-right')!;
+
+  document.getElementById('toggle-left')?.addEventListener('click', () => {
+    leftPanel.classList.add('collapsed');
+    expandLeft.style.display = 'flex';
+  });
+  expandLeft?.addEventListener('click', () => {
+    leftPanel.classList.remove('collapsed');
+    expandLeft.style.display = 'none';
+  });
+
+  document.getElementById('toggle-right')?.addEventListener('click', () => {
+    rightPanel.classList.add('collapsed');
+    expandRight.style.display = 'flex';
+  });
+  expandRight?.addEventListener('click', () => {
+    rightPanel.classList.remove('collapsed');
+    expandRight.style.display = 'none';
+  });
+
+  // ── History ────────────────────────────────────────────
+  function highlightHistoryCard(generationId: string) {
+    document.querySelectorAll('.gen-card').forEach(c => c.classList.remove('active'));
+    document.querySelector(`.gen-card[data-gen-id="${generationId}"]`)?.classList.add('active');
+  }
+
+  async function loadHistory() {
+    try {
+      const res = await fetch('/api/generations');
+      if (!res.ok) return;
+      const { generations } = await res.json();
+      const grid  = document.getElementById('history-grid')!;
+      const empty = document.getElementById('history-empty')!;
+      const ok    = (generations as any[]).filter((g: any) => g.status === 'success' && g.video_url);
+
+      if (ok.length === 0) { grid.innerHTML = ''; empty.classList.remove('hidden'); return; }
+      empty.classList.add('hidden');
+
+      grid.innerHTML = ok.map((g: any, i: number) => `
+        <div class="gen-card${currentVideoUrl === g.video_url ? ' active' : ''}"
+             data-gen-id="${g.id}" data-video-url="${g.video_url}"
+             title="${(g.prompt || '').substring(0, 80)}">
+          <video preload="metadata" muted playsinline>
+            <source src="${g.video_url}#t=0.1" type="video/mp4">
+          </video>
+          <span style="position:absolute;top:3px;left:3px;font-size:9px;font-weight:700;color:#fff;background:rgba(0,0,0,0.75);padding:1px 4px;border-radius:4px;">#${ok.length - i}</span>
+          <span style="position:absolute;bottom:3px;right:3px;font-size:9px;color:#d1d5db;background:rgba(0,0,0,0.75);padding:1px 4px;border-radius:4px;">${g.duration}s</span>
+        </div>
+      `).join('');
+
+      grid.querySelectorAll('.gen-card').forEach(card => {
+        card.addEventListener('click', () => {
+          const url   = (card as HTMLElement).dataset.videoUrl;
+          const genId = (card as HTMLElement).dataset.genId;
+          if (url) showVideo(url, genId);
+        });
+      });
+    } catch (e) { console.error('[HISTORY]', e); }
+  }
+
+  loadHistory();
+  updateGenerateButtonState();
 </script>

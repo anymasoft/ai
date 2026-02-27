@@ -69,10 +69,29 @@ export function userVideoExists(userId: string): boolean {
 }
 
 /**
- * Прочитать видео файл пользователя
+ * Получить путь к видео конкретной генерации
+ */
+export function getGenerationVideoPath(userId: string, generationId: string): string {
+  const storageDir = getUserStoragePath(userId);
+  return path.join(storageDir, `${generationId}.mp4`);
+}
+
+/**
+ * Прочитать видео файл пользователя (текущий)
  */
 export function readUserVideo(userId: string): Buffer | null {
   const videoPath = getUserVideoPath(userId);
+  if (!fs.existsSync(videoPath)) {
+    return null;
+  }
+  return fs.readFileSync(videoPath);
+}
+
+/**
+ * Прочитать видео конкретной генерации
+ */
+export function readGenerationVideo(userId: string, generationId: string): Buffer | null {
+  const videoPath = getGenerationVideoPath(userId, generationId);
   if (!fs.existsSync(videoPath)) {
     return null;
   }

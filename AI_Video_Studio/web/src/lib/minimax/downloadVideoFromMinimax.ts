@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { getUserVideoPath, ensureUserStorageDir } from './storage';
+import { getUserVideoPath, getGenerationVideoPath, ensureUserStorageDir } from './storage';
 
 interface FileMetadata {
   file?: {
@@ -16,7 +16,8 @@ interface FileMetadata {
  */
 export async function downloadVideoFromMinimax(
   fileId: string,
-  userId: string
+  userId: string,
+  generationId?: string
 ): Promise<{ success: boolean; filePath?: string; error?: string }> {
   try {
     const apiKey = process.env.MINIMAX_API_KEY;
@@ -93,12 +94,17 @@ export async function downloadVideoFromMinimax(
     // Получаем путь сохранения (per-user)
     const outputPath = getUserVideoPath(userId);
 
-    // Сохраняем видео (перезаписываем старый файл)
+    // Сохраняем как output.mp4 (текущее видео пользователя)
     fs.writeFileSync(outputPath, Buffer.from(videoBuffer));
 
-    console.log(
-      `[DOWNLOAD] ✅ Видео сохранено: ${outputPath} (${videoBuffer.byteLength} байт)`
-    );
+    // Сохраняем по ID генерации для истории
+    if (generationId) {
+      const genPath = getGenerationVideoPath(userId, generationId);
+      fs.writeFileSync(genPath, Buffer.from(videoBuffer));
+      console.log(`[DOWNLOAD] ✅ Видео сохранено: ${genPath} (${videoBuffer.byteLength} байт)`);
+    } else {
+      console.log(`[DOWNLOAD] ✅ Видео сохранено: ${outputPath} (${videoBuffer.byteLength} байт)`);
+    }
 
     return {
       success: true,
