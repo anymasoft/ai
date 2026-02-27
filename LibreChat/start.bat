@@ -12,16 +12,45 @@ if not exist ".env" (
     exit /b 1
 )
 
-echo [1/2] Запускаю Backend в новом окне...
-start "LibreChat Backend" cmd /k "npm run backend:dev"
+:: Создаём librechat.yaml из примера если не существует
+if not exist "librechat.yaml" (
+    echo [*] Создаю librechat.yaml из примера...
+    copy "librechat.example.yaml" "librechat.yaml" > nul
+    echo [+] librechat.yaml создан
+)
 
-echo [2/2] Жду 3 секунды пока стартует backend...
-timeout /t 3 /nobreak > nul
+:: Добавляем SEARCH=false если ещё нет (MeiliSearch не нужен)
+findstr /c:"SEARCH=" .env > nul 2>&1
+if errorlevel 1 (
+    echo SEARCH=false >> .env
+    echo [*] Добавлено SEARCH=false в .env
+)
 
-echo [3/3] Запускаю Frontend...
+:: Собираем фронтенд если ещё не собран (занимает 3-7 минут, только первый раз)
+if not exist "client\dist\index.html" (
+    echo.
+    echo [*] Первый запуск: собираю frontend...
+    echo [*] Это займет 3-7 минут, подождите...
+    echo.
+    call npm run frontend
+    if errorlevel 1 (
+        echo.
+        echo [!] Ошибка при сборке frontend!
+        echo [!] Попробуй: npm install
+        pause
+        exit /b 1
+    )
+    echo.
+    echo [+] Frontend собран успешно!
+)
+
+echo.
+echo [*] Запускаю сервер...
 echo.
 echo ============================================
-echo   Открой браузер: http://localhost:3080
+echo   Откроется на: http://localhost:3080
+echo   Для остановки закрой это окно
 echo ============================================
 echo.
-npm run frontend:dev
+
+npm run backend:dev
