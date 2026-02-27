@@ -1,0 +1,16 @@
+{
+  "agentSelection.empty": "Brak dostępnych agentów",
+  "agentSelection.noAvailable": "Obecnie nie można dodać żadnych agentów",
+  "agentSelection.noSelected": "Nie wybrano żadnych agentów",
+  "agentSelection.search": "Nie znaleziono pasujących agentów",
+  "project.create": "Nowy projekt",
+  "project.deleteConfirm": "Ten projekt zostanie usunięty i nie będzie można go odzyskać. Potwierdź, aby kontynuować.",
+  "starter.createAgent": "Utwórz agenta",
+  "starter.createGroup": "Utwórz grupę",
+  "starter.deepResearch": "Dogłębne badania",
+  "starter.developing": "Wkrótce dostępne",
+  "starter.image": "Obraz",
+  "starter.nanoBanana2": "🍌 Nano Banan 2",
+  "starter.seedance": "Seedance 2.0",
+  "starter.write": "Pisz"
+}

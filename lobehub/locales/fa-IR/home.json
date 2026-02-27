@@ -1,0 +1,16 @@
+{
+  "agentSelection.empty": "هیچ عاملی در دسترس نیست",
+  "agentSelection.noAvailable": "در حال حاضر هیچ عاملی قابل افزودن نیست",
+  "agentSelection.noSelected": "هیچ عاملی انتخاب نشده است",
+  "agentSelection.search": "هیچ عاملی مطابق با جستجو یافت نشد",
+  "project.create": "پروژه جدید",
+  "project.deleteConfirm": "این پروژه حذف خواهد شد و قابل بازیابی نیست. برای ادامه تأیید کنید.",
+  "starter.createAgent": "ایجاد عامل",
+  "starter.createGroup": "ایجاد گروه",
+  "starter.deepResearch": "تحقیق عمیق",
+  "starter.developing": "به‌زودی",
+  "starter.image": "تصویر",
+  "starter.nanoBanana2": "🍌 نانو موز ۲",
+  "starter.seedance": "سیدنس ۲.۰",
+  "starter.write": "نوشتن"
+}

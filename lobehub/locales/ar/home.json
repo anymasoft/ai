@@ -1,0 +1,16 @@
+{
+  "agentSelection.empty": "لا يوجد وكلاء متاحون",
+  "agentSelection.noAvailable": "لا يمكن إضافة أي وكلاء في الوقت الحالي",
+  "agentSelection.noSelected": "لم يتم اختيار أي وكلاء",
+  "agentSelection.search": "لم يتم العثور على وكلاء مطابقين",
+  "project.create": "مشروع جديد",
+  "project.deleteConfirm": "سيتم حذف هذا المشروع ولا يمكن استعادته. يرجى التأكيد للمتابعة.",
+  "starter.createAgent": "إنشاء وكيل",
+  "starter.createGroup": "إنشاء مجموعة",
+  "starter.deepResearch": "بحث معمق",
+  "starter.developing": "قريبًا",
+  "starter.image": "صورة",
+  "starter.nanoBanana2": "🍌 نانو موزة 2",
+  "starter.seedance": "سيدانس 2.0",
+  "starter.write": "كتابة"
+}

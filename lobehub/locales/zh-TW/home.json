@@ -1,0 +1,16 @@
+{
+  "agentSelection.empty": "暫無可用助手",
+  "agentSelection.noAvailable": "目前沒有可新增的助手",
+  "agentSelection.noSelected": "尚未選擇任何助手",
+  "agentSelection.search": "未找到符合的助手",
+  "project.create": "新增專案",
+  "project.deleteConfirm": "即將刪除該專案，刪除後將無法恢復，請確認你的操作",
+  "starter.createAgent": "建立助理",
+  "starter.createGroup": "建立群組",
+  "starter.deepResearch": "深入研究",
+  "starter.developing": "開發中",
+  "starter.image": "繪圖",
+  "starter.nanoBanana2": "🍌 奈米香蕉 2",
+  "starter.seedance": "Seedance 2.0",
+  "starter.write": "寫作"
+}
