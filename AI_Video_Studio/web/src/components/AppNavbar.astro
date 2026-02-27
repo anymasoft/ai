@@ -3,6 +3,12 @@ import Container from "./Container.astro";
 import LiveBalance from "./LiveBalance.astro";
 import { getUserFromSession, isAdmin } from '../lib/auth';
 
+interface Props {
+  showBalance?: boolean;
+}
+
+const { showBalance = true } = Astro.props;
+
 const sessionToken = Astro.cookies.get('session_token')?.value;
 const user = sessionToken ? getUserFromSession(sessionToken) : null;
 
@@ -11,24 +17,24 @@ const userIsAdmin = user ? isAdmin(user.email) : false;
 ---
 
 <header class="shrink-0 relative z-10">
-    <nav class="border-b border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-gray-950/95 backdrop-blur-sm">
+    <nav class="border-b border-gray-700 bg-gray-900 backdrop-blur-sm">
         <Container>
             <div class="flex items-center justify-between h-14">
                 <!-- Logo -->
                 <a href="/" aria-label="logo" class="flex items-center gap-2 shrink-0">
                     <img src="/vr_logo_small.png" alt="Beem" class="h-7 w-7" />
-                    <span class="text-lg font-bold text-gray-900 dark:text-white tracking-tight">Beem</span>
+                    <span class="text-lg font-bold text-white tracking-tight">Beem</span>
                 </a>
 
                 <!-- Right side: Credits Badge + User Avatar Menu -->
                 {user && (
                     <div class="flex items-center gap-3">
-                        <LiveBalance size="badge" />
+                        {showBalance && <LiveBalance size="badge" />}
 
                         <div class="relative">
                             <button
                                 id="user-menu-trigger"
-                                class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-white font-semibold text-xs hover:bg-indigo-700 transition-colors duration-150 cursor-pointer shrink-0"
+                                class="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-400 text-gray-900 font-bold text-xs hover:bg-yellow-300 transition-colors duration-150 cursor-pointer shrink-0"
                                 aria-label="Меню пользователя"
                             >
                                 {initials}
@@ -36,21 +42,21 @@ const userIsAdmin = user ? isAdmin(user.email) : false;
 
                             <div
                                 id="user-menu-dropdown"
-                                class="hidden absolute right-0 top-full mt-2 w-52 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg shadow-gray-200/50 dark:shadow-black/30 z-50 overflow-hidden"
+                                class="hidden absolute right-0 top-full mt-2 w-52 rounded-xl border border-gray-700 bg-gray-800 shadow-lg shadow-black/40 z-50 overflow-hidden"
                             >
                                 <div class="px-4 py-3">
-                                    <p class="font-semibold text-sm text-gray-900 dark:text-white truncate">{user.name}</p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">{user.email}</p>
+                                    <p class="font-semibold text-sm text-white truncate">{user.name}</p>
+                                    <p class="text-xs text-gray-400 truncate mt-0.5">{user.email}</p>
                                 </div>
 
-                                <div class="h-px bg-gray-100 dark:bg-gray-800"></div>
+                                <div class="h-px bg-gray-700"></div>
 
                                 <div class="py-1">
                                     <a
                                         href="/billing"
-                                        class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-100"
+                                        class="flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-100"
                                     >
-                                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                                         </svg>
                                         Пополнить кредиты
@@ -58,7 +64,7 @@ const userIsAdmin = user ? isAdmin(user.email) : false;
                                     {userIsAdmin && (
                                         <a
                                             href="/admin"
-                                            class="flex items-center gap-2 px-4 py-2 text-sm text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors duration-100 font-medium"
+                                            class="flex items-center gap-2 px-4 py-2 text-sm text-yellow-400 hover:bg-gray-700 hover:text-yellow-300 transition-colors duration-100 font-medium"
                                         >
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
@@ -69,13 +75,13 @@ const userIsAdmin = user ? isAdmin(user.email) : false;
                                     )}
                                 </div>
 
-                                <div class="h-px bg-gray-100 dark:bg-gray-800"></div>
+                                <div class="h-px bg-gray-700"></div>
 
                                 <div class="py-1">
                                     <form method="POST" action="/api/auth/logout" class="w-full">
                                         <button
                                             type="submit"
-                                            class="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors duration-100 cursor-pointer"
+                                            class="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-gray-700 hover:text-red-300 transition-colors duration-100 cursor-pointer"
                                         >
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
