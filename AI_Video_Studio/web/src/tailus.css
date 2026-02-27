@@ -1,5 +1,8 @@
 @import 'tailwindcss';
 
+/* Class-based dark mode: dark: работает когда предок имеет class="dark" */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
     --color-primary : var(--color-indigo-600);
     --color-secondary : var(--color-orange-600);

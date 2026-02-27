@@ -151,8 +151,8 @@ export const POST: APIRoute = async (context) => {
       console.log(`[MINIMAX_CALLBACK] Received file_id: "${fileIdString}", type: ${typeof fileId}`);
       console.log(`[MINIMAX_CALLBACK] Скачиваем видео: fileId=${fileIdString}`);
 
-      // Скачиваем видео
-      const downloadResult = await downloadVideoFromMinimax(fileIdString, userId);
+      // Скачиваем видео (сохраняем по ID генерации для истории)
+      const downloadResult = await downloadVideoFromMinimax(fileIdString, userId, generationId);
 
       if (!downloadResult.success) {
         const downloadError = downloadResult.error || 'Unknown download error';
@@ -165,8 +165,8 @@ export const POST: APIRoute = async (context) => {
         );
       }
 
-      // Обновляем БД с уникальным timestamp-параметром чтобы избежать кеширования в браузере
-      updateGenerationVideoUrl(generationId, `/api/video/current?t=${Date.now()}`);
+      // Обновляем БД с URL конкретной генерации (для истории)
+      updateGenerationVideoUrl(generationId, `/api/video/${generationId}`);
       updateGenerationStatus(generationId, 'success');
 
       // Списываем кредиты
