@@ -5,9 +5,10 @@ import "./../tailus.css"
 
 interface Props {
     title?: string;
+    showBalance?: boolean;
 }
 
-const { title = "Beem - Create Videos" } = Astro.props;
+const { title = "Beem - Create Videos", showBalance = true } = Astro.props;
 ---
 
 <!DOCTYPE html>
@@ -74,7 +75,7 @@ const { title = "Beem - Create Videos" } = Astro.props;
         <!-- /Yandex.Metrika counter -->
     </head>
     <body class="bg-white dark:bg-gray-950 flex flex-col h-screen overflow-hidden">
-        <AppNavbar />
+        <AppNavbar showBalance={showBalance} />
         <main class="flex-1 overflow-hidden">
             <slot />
         </main>
