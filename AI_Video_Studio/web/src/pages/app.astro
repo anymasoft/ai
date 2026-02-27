@@ -25,7 +25,7 @@ if (!user) {
 const userBalance = user.generation_balance || 0;
 ---
 
-<AppLayout title="Create Video - Beem">
+<AppLayout title="Create Video - Beem" showBalance={false}>
   <!-- dark class: активирует Tailwind dark: на всей рабочей области -->
   <div class="dark w-full h-full flex overflow-hidden bg-gray-900" data-user-balance={userBalance}>
 
@@ -134,6 +134,26 @@ const userBalance = user.generation_balance || 0;
 
         <div class="flex-1 min-h-2"></div>
 
+        <!-- Credits Block -->
+        <div class="rounded-xl bg-gray-800 border border-gray-700 p-3 space-y-2.5 shrink-0">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-semibold text-gray-500 uppercase tracking-widest">Баланс</span>
+            <span id="panel-balance" class="text-sm font-bold text-yellow-400">-- кр.</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] text-gray-600">6с = 1 кр · 10с = 2 кр</span>
+            <a
+              href="/billing"
+              class="ml-auto flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white text-xs font-medium transition-colors"
+            >
+              <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+              </svg>
+              Пополнить
+            </a>
+          </div>
+        </div>
+
         <!-- Generate Button -->
         <div class="space-y-2">
           <button
@@ -155,7 +175,6 @@ const userBalance = user.generation_balance || 0;
             </svg>
             Создать видео
           </button>
-          <p class="text-[11px] text-center text-gray-700">6 сек = 1 кредит · 10 сек = 2 кредита</p>
         </div>
 
       </div>
@@ -333,6 +352,18 @@ const userBalance = user.generation_balance || 0;
   let selectedImage: File | null = null;
   let selectedMode: 'template' | 'prompt' = 'template';
   let currentVideoUrl: string | null = null;
+
+  // ── Panel balance ──────────────────────────────────────
+  async function updatePanelBalance() {
+    try {
+      const res = await fetch('/api/user/balance');
+      if (!res.ok) return;
+      const data = await res.json();
+      const el = document.getElementById('panel-balance');
+      if (el) el.textContent = `${data.generation_balance} кр.`;
+    } catch {}
+  }
+  updatePanelBalance();
 
   // ── Auth tracking ──────────────────────────────────────
   const urlParams = new URLSearchParams(window.location.search);
@@ -559,6 +590,7 @@ const userBalance = user.generation_balance || 0;
         if (!done || !videoUrl) throw new Error('Время ожидания истекло. Видео может быть готово позже.');
         showVideo(videoUrl, generationId);
         await loadHistory();
+        updatePanelBalance();
 
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Неизвестная ошибка';
