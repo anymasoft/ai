@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '~/hooks';
 
-function getTier(credits: number | null): { label: string; color: string } {
-  if (credits === null || credits === 0) return { label: 'Free', color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' };
-  if (credits >= 900_000) return { label: 'Business', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' };
-  if (credits >= 400_000) return { label: 'Pro', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' };
-  return { label: 'Starter', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' };
-}
+/** Отображение тарифов — соответствует computeTier() на сервере (free | pro | business) */
+const TIER_DISPLAY: Record<string, { label: string; color: string }> = {
+  free:     { label: 'Free',     color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
+  pro:      { label: 'Pro',      color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
+  business: { label: 'Business', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' },
+};
 
 const PRO_FEATURES = [
   { ok: true, text: 'GPT-4o Mini' },
@@ -84,6 +84,8 @@ export default function Pricing() {
   const navigate = useNavigate();
   const { token } = useAuthContext();
   const [credits, setCredits] = useState<number | null>(null);
+  // Тариф приходит с сервера — не вычисляется клиентом
+  const [tier, setTier] = useState(TIER_DISPLAY.free);
   // Состояние проверки платежа после редиректа с ?payment=success
   const [paymentCheck, setPaymentCheck] = useState<
     { status: 'checking' | 'ok' | 'error' | 'pending'; message?: string } | null
@@ -96,7 +98,10 @@ export default function Pricing() {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d?.tokenCredits != null) setCredits(d.tokenCredits); })
+      .then((d) => {
+        if (d?.tokenCredits != null) setCredits(d.tokenCredits);
+        if (d?.tier) setTier(TIER_DISPLAY[d.tier] ?? TIER_DISPLAY.free);
+      })
       .catch(() => undefined);
   };
 
@@ -136,8 +141,6 @@ export default function Pricing() {
       .catch(() => setPaymentCheck({ status: 'error', message: 'Ошибка соединения с сервером' }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
-
-  const tier = getTier(credits);
 
   const handleBuy = async (packageId: string) => {
     try {

@@ -30,7 +30,14 @@ interface UserRow {
   createdAt: string;
   tokenCredits: number;
   emailVerified: boolean;
+  tier: 'free' | 'pro' | 'business';
 }
+
+const TIER_DISPLAY: Record<string, { label: string; className: string }> = {
+  free:     { label: 'Free',     className: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' },
+  pro:      { label: 'Pro',      className: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' },
+  business: { label: 'Business', className: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300' },
+};
 
 interface UsersResponse {
   users: UserRow[];
@@ -319,13 +326,9 @@ export default function AdminPanel() {
                         </td>
                         <td className="px-4 py-3">
                           <span className={`rounded-full px-2 py-1 text-xs font-semibold ${
-                            u.tokenCredits >= 900_000
-                              ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'
-                              : u.tokenCredits >= 400_000
-                                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
-                                : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+                            (TIER_DISPLAY[u.tier] ?? TIER_DISPLAY.free).className
                           }`}>
-                            {u.tokenCredits >= 900_000 ? 'Business' : u.tokenCredits >= 400_000 ? 'Pro' : 'Free'}
+                            {(TIER_DISPLAY[u.tier] ?? TIER_DISPLAY.free).label}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right">

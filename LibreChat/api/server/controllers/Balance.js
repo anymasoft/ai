@@ -1,4 +1,5 @@
 const { Balance } = require('~/db/models');
+const { computeTier } = require('../utils/computeTier');
 
 async function balanceController(req, res) {
   const balanceData = await Balance.findOne(
@@ -18,7 +19,8 @@ async function balanceController(req, res) {
     delete balanceData.refillAmount;
   }
 
-  res.status(200).json(balanceData);
+  // Тариф вычисляется сервером — единственный источник истины
+  res.status(200).json({ ...balanceData, tier: computeTier(balanceData.tokenCredits) });
 }
 
 module.exports = balanceController;
