@@ -19,7 +19,7 @@ const { logoutController } = require('~/server/controllers/auth/LogoutController
 const { loginController } = require('~/server/controllers/auth/LoginController');
 const { getAppConfig } = require('~/server/services/Config');
 const middleware = require('~/server/middleware');
-const { Balance } = require('~/db/models');
+const { Balance, Subscription, Plan } = require('~/db/models');
 
 const setBalanceConfig = createSetBalanceConfig({
   getAppConfig,
@@ -71,5 +71,40 @@ router.post('/2fa/disable', middleware.requireJwtAuth, disable2FA);
 router.post('/2fa/backup/regenerate', middleware.requireJwtAuth, regenerateBackupCodes);
 
 router.get('/graph-token', middleware.requireJwtAuth, graphTokenController);
+
+/**
+ * GET /api/auth/plan
+ * Возвращает текущий план пользователя и его allowedModels
+ */
+router.get('/plan', middleware.requireJwtAuth, async (req, res) => {
+  try {
+    const userId = req.user?._id?.toString() || req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+
+    const subscription = await Subscription.findOne({ userId }).lean();
+    let plan = subscription?.plan || 'free';
+    let planExpiresAt = subscription?.planExpiresAt || null;
+
+    // Проверяем истёк ли план
+    if (plan !== 'free' && planExpiresAt && new Date(planExpiresAt) < new Date()) {
+      plan = 'free';
+      planExpiresAt = null;
+    }
+
+    // Получаем информацию о плане из коллекции Plan
+    await Plan.seedDefaults();
+    const planConfig = await Plan.findOne({ planId: plan }).lean();
+
+    res.json({
+      plan,
+      planExpiresAt,
+      allowedModels: planConfig?.allowedModels || [],
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to get user plan' });
+  }
+});
 
 module.exports = router;

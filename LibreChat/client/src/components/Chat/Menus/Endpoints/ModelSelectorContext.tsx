@@ -1,5 +1,6 @@
 import debounce from 'lodash/debounce';
 import React, { createContext, useContext, useState, useMemo, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { EModelEndpoint, isAgentsEndpoint, isAssistantsEndpoint } from 'librechat-data-provider';
 import type * as t from 'librechat-data-provider';
 import type { Endpoint, SelectedValues } from '~/common';
@@ -62,24 +63,50 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     useModelSelectorChatContext();
   const localize = useLocalize();
   const { announcePolite } = useLiveAnnouncer();
+
+  /**
+   * Загружаем план пользователя и его allowedModels
+   */
+  const { data: userPlanData } = useQuery({
+    queryKey: ['userPlan'],
+    queryFn: async (): Promise<{ plan: string; allowedModels: string[] } | null> => {
+      const res = await fetch('/api/auth/plan', {
+        credentials: 'include',
+      });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    staleTime: 60_000,
+    gcTime: 60_000,
+  });
+
   const modelSpecs = useMemo(() => {
     const specs = startupConfig?.modelSpecs?.list ?? [];
-    if (!agentsMap) {
-      return specs;
-    }
 
-    /**
-     * Filter modelSpecs to only include agents the user has access to.
-     * Use agentsMap which already contains permission-filtered agents (consistent with other components).
-     */
-    return specs.filter((spec) => {
+    // Фильтруем по агентам (если есть)
+    const filteredByAgents = specs.filter((spec) => {
+      if (!agentsMap) return true;
       if (spec.preset?.endpoint === EModelEndpoint.agents && spec.preset?.agent_id) {
         return spec.preset.agent_id in agentsMap;
       }
-      /** Keep non-agent modelSpecs */
       return true;
     });
-  }, [startupConfig, agentsMap]);
+
+    // Фильтруем по allowedModels текущего плана пользователя
+    if (!userPlanData?.allowedModels) return filteredByAgents;
+
+    const allowedModels = userPlanData.allowedModels;
+    if (allowedModels.length === 0) {
+      // Пустой список = все модели разрешены
+      return filteredByAgents;
+    }
+
+    // Фильтруем: модель разрешена если её имя содержит одно из allowedModels
+    return filteredByAgents.filter((spec) => {
+      const modelName = spec.name?.toLowerCase() || '';
+      return allowedModels.some((allowed) => modelName.includes(allowed.toLowerCase()));
+    });
+  }, [startupConfig, agentsMap, userPlanData]);
 
   const permissionLevel = useAgentDefaultPermissionLevel();
   const { data: agents = null } = useListAgentsQuery(

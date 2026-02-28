@@ -70,7 +70,7 @@ interface TokenPackageDoc {
 interface PlanEdit {
   priceRub: string;
   tokenCreditsOnPurchase: string;
-  allowedModels: string;    // модели — по одной на строку
+  allowedModels: string[];  // модели как массив
   isActive: boolean;
 }
 
@@ -111,6 +111,7 @@ export default function AdminPanel() {
   const [pkgSaving, setPkgSaving] = useState<Record<string, boolean>>({});
   const [planSaveMsg, setPlanSaveMsg] = useState<Record<string, { ok: boolean; text: string }>>({});
   const [pkgSaveMsg, setPkgSaveMsg] = useState<Record<string, { ok: boolean; text: string }>>({});
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
 
   const { navVisible, setNavVisible } = useOutletContext<ContextType>();
   const isAdmin = user?.role === SystemRoles.ADMIN;
@@ -187,7 +188,7 @@ export default function AdminPanel() {
         pe[p.planId] = {
           priceRub: String(p.priceRub),
           tokenCreditsOnPurchase: String(p.tokenCreditsOnPurchase),
-          allowedModels: (p.allowedModels ?? []).join('\n'),
+          allowedModels: p.allowedModels ?? [],
           isActive: p.isActive,
         };
       }
@@ -224,6 +225,25 @@ export default function AdminPanel() {
     }
   }, [isAdmin, tab, loadPayments, loadSettings]);
 
+  // Загружаем доступные YAML модели при монтировании
+  useEffect(() => {
+    const loadModels = async () => {
+      try {
+        const res = await fetch('/api/models/all', {
+          credentials: 'include',
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const modelNames = (data.models || []).map((m: { modelId: string }) => m.modelId);
+          setAvailableModels(modelNames);
+        }
+      } catch (err) {
+        console.error('Failed to load available models:', err);
+      }
+    };
+    loadModels();
+  }, []);
+
   const reconcilePayment = async () => {
     const id = reconcileId.trim();
     if (!id) return;
@@ -255,14 +275,10 @@ export default function AdminPanel() {
     setPlanSaving((p) => ({ ...p, [planId]: true }));
     setPlanSaveMsg((p) => ({ ...p, [planId]: { ok: false, text: '' } }));
     try {
-      const allowedModels = edit.allowedModels
-        .split(/[\n,]/)
-        .map((s) => s.trim())
-        .filter(Boolean);
       const body = {
         priceRub: parseFloat(edit.priceRub),
         tokenCreditsOnPurchase: parseInt(edit.tokenCreditsOnPurchase),
-        allowedModels,
+        allowedModels: edit.allowedModels,
         isActive: edit.isActive,
       };
       const res = await fetch(`/api/admin/mvp/plans/${planId}`, {
@@ -809,21 +825,34 @@ export default function AdminPanel() {
                           </div>
                         </div>
                         <div className="mb-3">
-                          <label className="mb-0.5 block text-xs text-gray-500 dark:text-gray-400">
-                            Разрешённые модели (по одной на строку; пусто = все)
+                          <label className="mb-1.5 block text-xs text-gray-500 dark:text-gray-400">
+                            Разрешённые модели (пусто = все модели)
                           </label>
-                          <textarea
-                            rows={3}
-                            value={edit.allowedModels}
-                            onChange={(e) =>
-                              setPlanEdits((prev) => ({
-                                ...prev,
-                                [plan.planId]: { ...prev[plan.planId], allowedModels: e.target.value },
-                              }))
-                            }
-                            placeholder="gpt-4o-mini"
-                            className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-xs font-mono dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                          />
+                          <div className="max-h-32 space-y-1.5 overflow-y-auto rounded border border-gray-300 bg-gray-50 p-2 dark:border-gray-600 dark:bg-gray-700">
+                            {availableModels.length === 0 ? (
+                              <p className="text-xs text-gray-500 dark:text-gray-400">Загрузка моделей...</p>
+                            ) : (
+                              availableModels.map((model) => (
+                                <label key={model} className="flex cursor-pointer items-center gap-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 px-1 py-0.5 rounded">
+                                  <input
+                                    type="checkbox"
+                                    checked={edit.allowedModels.includes(model)}
+                                    onChange={(e) => {
+                                      const updated = e.target.checked
+                                        ? [...edit.allowedModels, model]
+                                        : edit.allowedModels.filter((m) => m !== model);
+                                      setPlanEdits((prev) => ({
+                                        ...prev,
+                                        [plan.planId]: { ...prev[plan.planId], allowedModels: updated },
+                                      }));
+                                    }}
+                                    className="h-3.5 w-3.5 rounded"
+                                  />
+                                  <span>{model}</span>
+                                </label>
+                              ))
+                            )}
+                          </div>
                         </div>
                         <div className="flex items-center justify-between">
                           <button
