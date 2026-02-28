@@ -138,12 +138,14 @@ export default function Pricing() {
       .then((r) => r.json())
       .then((data) => {
         if (data.ok) {
-          setPaymentCheck({
-            status: 'ok',
-            message: data.alreadyDone
-              ? 'Платёж уже был зачислен ранее'
-              : `Подписка активирована. Зачислено ${data.tokenCredits?.toLocaleString('ru-RU')} токенов`,
-          });
+          const credits = data.tokenCredits?.toLocaleString('ru-RU');
+          const isPlan = !!data.plan;
+          const successMsg = data.alreadyDone
+            ? `Зачислено ${credits} токенов (зачисление прошло ранее)`
+            : isPlan
+              ? `Подписка активирована. Зачислено ${credits} токенов`
+              : `Токены зачислены: +${credits}`;
+          setPaymentCheck({ status: 'ok', message: successMsg });
           fetchBalance();
         } else if (data.status === 'not_found') {
           setPaymentCheck(null);

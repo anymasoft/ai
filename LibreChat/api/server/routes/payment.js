@@ -160,8 +160,9 @@ router.post('/create', requireJwtAuth, async (req, res) => {
 
     const amountStr = priceRub.toFixed(2);
     const idempotenceKey = `${userId}-${packageId}-${Date.now()}`;
-    const returnUrl = process.env.YOOKASSA_RETURN_URL ||
-      `${process.env.DOMAIN_CLIENT || 'http://localhost:3080'}/pricing?payment=success`;
+
+    const baseUrl = process.env.DOMAIN_CLIENT || `${req.protocol}://${req.get('host')}`;
+    const returnUrl = process.env.YOOKASSA_RETURN_URL || `${baseUrl}/pricing?payment=success`;
 
     const { data } = await axios.post(
       `${YUKASSA_API}/payments`,
@@ -216,6 +217,23 @@ router.get('/check', requireJwtAuth, async (req, res) => {
     ).lean();
 
     if (!pending) {
+      // Вебхук мог уже зачислить платёж — ищем недавно успешный (последние 30 минут)
+      const recentDone = await Payment.findOne(
+        { userId, status: 'succeeded', updatedAt: { $gte: new Date(Date.now() - 30 * 60 * 1000) } },
+        null,
+        { sort: { updatedAt: -1 } },
+      ).lean();
+      if (recentDone) {
+        return res.json({
+          ok: true,
+          status: 'succeeded',
+          alreadyDone: true,
+          tokenCredits: recentDone.tokenCredits,
+          newBalance: null,
+          plan: recentDone.planPurchased,
+          planExpiresAt: recentDone.expiresAt || null,
+        });
+      }
       return res.json({ ok: false, status: 'not_found', message: 'Нет ожидающих платежей' });
     }
 
