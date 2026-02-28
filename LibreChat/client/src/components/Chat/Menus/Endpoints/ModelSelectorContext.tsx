@@ -10,6 +10,7 @@ import {
   useKeyDialog,
   useEndpoints,
   useLocalize,
+  useAuthContext,
 } from '~/hooks';
 import { useAgentsMapContext, useAssistantsMapContext, useLiveAnnouncer } from '~/Providers';
 import { useGetEndpointsQuery, useListAgentsQuery } from '~/data-provider';
@@ -56,6 +57,7 @@ interface ModelSelectorProviderProps {
 }
 
 export function ModelSelectorProvider({ children, startupConfig }: ModelSelectorProviderProps) {
+  const { token } = useAuthContext();
   const agentsMap = useAgentsMapContext();
   const assistantsMap = useAssistantsMapContext();
   const { data: endpointsConfig } = useGetEndpointsQuery();
@@ -109,14 +111,19 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
    */
   type AllowedModel = { modelId: string; displayName: string; provider: string; endpointKey: string };
   const { data: allowedModelsData, isLoading: allowedLoading } = useQuery({
-    queryKey: ['allowedModels'],
+    queryKey: ['allowedModels', token],
     queryFn: async (): Promise<{ models: AllowedModel[]; plan: string } | null> => {
-      const res = await fetch('/api/models/allowed', { credentials: 'include' });
+      if (!token) return null;
+      const res = await fetch('/api/models/allowed', {
+        credentials: 'include',
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!res.ok) return null;
       return res.json();
     },
     staleTime: 60_000,
     gcTime: 60_000,
+    enabled: !!token,
   });
 
   /**

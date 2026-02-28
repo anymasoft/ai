@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { SystemRoles } from 'librechat-data-provider';
+import { OGDialog, OGDialogTemplate } from '@librechat/client';
 import { useAuthContext } from '~/hooks';
 import type { ContextType } from '~/common';
 import OpenSidebar from '~/components/Chat/Menus/OpenSidebar';
@@ -130,6 +131,8 @@ export default function AdminPanel() {
   const [newModelForm, setNewModelForm] = useState({ modelId: '', provider: '', endpointKey: '', displayName: '' });
   const [newModelSaving, setNewModelSaving] = useState(false);
   const [newModelMsg, setNewModelMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [deleteModelDialog, setDeleteModelDialog] = useState<{ open: boolean; modelId: string | null }>({ open: false, modelId: null });
+  const [deleteModelError, setDeleteModelError] = useState<string | null>(null);
 
   const { navVisible, setNavVisible } = useOutletContext<ContextType>();
   const isAdmin = user?.role === SystemRoles.ADMIN;
@@ -391,8 +394,10 @@ export default function AdminPanel() {
     }
   };
 
-  const deleteModel = async (modelId: string) => {
-    if (!confirm(`Удалить модель "${modelId}"? Она будет удалена из всех тарифных планов.`)) return;
+  const confirmDeleteModel = async () => {
+    const modelId = deleteModelDialog.modelId;
+    if (!modelId) return;
+    setDeleteModelError(null);
     try {
       const res = await fetch(`/api/admin/mvp/models/${encodeURIComponent(modelId)}`, {
         method: 'DELETE',
@@ -401,9 +406,10 @@ export default function AdminPanel() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `Ошибка ${res.status}`);
+      setDeleteModelDialog({ open: false, modelId: null });
       await loadSettings();
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : 'Ошибка удаления модели');
+      setDeleteModelError(e instanceof Error ? e.message : 'Ошибка удаления модели');
     }
   };
 
@@ -997,7 +1003,7 @@ export default function AdminPanel() {
                                     {modelSaving[m.modelId] ? '...' : 'Сохранить'}
                                   </button>
                                   <button
-                                    onClick={() => deleteModel(m.modelId)}
+                                    onClick={() => setDeleteModelDialog({ open: true, modelId: m.modelId })}
                                     className="rounded bg-red-500 px-2 py-0.5 text-xs text-white hover:bg-red-600 transition-colors"
                                   >
                                     Удалить
@@ -1217,6 +1223,38 @@ export default function AdminPanel() {
           </>
         )}
       </div>
+
+      {/* Диалог подтверждения удаления модели */}
+      <OGDialog
+        open={deleteModelDialog.open}
+        onOpenChange={(open) => {
+          setDeleteModelDialog((d) => ({ ...d, open }));
+          if (!open) setDeleteModelError(null);
+        }}
+      >
+        <OGDialogTemplate
+          showCloseButton={false}
+          title="Удалить модель"
+          className="w-11/12 max-w-md"
+          main={
+            <div className="space-y-2">
+              <p className="text-sm text-gray-700 dark:text-gray-300">
+                Удалить модель <span className="font-mono font-semibold">{deleteModelDialog.modelId}</span>?
+                Она будет автоматически удалена из всех тарифных планов.
+              </p>
+              {deleteModelError && (
+                <p className="text-sm text-red-600 dark:text-red-400">{deleteModelError}</p>
+              )}
+            </div>
+          }
+          selection={{
+            selectHandler: confirmDeleteModel,
+            selectClasses:
+              'bg-red-700 dark:bg-red-600 hover:bg-red-800 dark:hover:bg-red-800 text-white',
+            selectText: 'Удалить',
+          }}
+        />
+      </OGDialog>
     </div>
   );
 }
