@@ -127,7 +127,7 @@ export default function AdminPanel() {
   const [modelSaving, setModelSaving] = useState<Record<string, boolean>>({});
   const [modelSaveMsg, setModelSaveMsg] = useState<Record<string, { ok: boolean; text: string }>>({});
   const [modelEdits, setModelEdits] = useState<Record<string, { provider: string; displayName: string; isActive: boolean }>>({});
-  const [newModelForm, setNewModelForm] = useState({ modelId: '', provider: '', displayName: '' });
+  const [newModelForm, setNewModelForm] = useState({ modelId: '', provider: '', endpointKey: '', displayName: '' });
   const [newModelSaving, setNewModelSaving] = useState(false);
   const [newModelMsg, setNewModelMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -424,7 +424,7 @@ export default function AdminPanel() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `Ошибка ${res.status}`);
       setNewModelMsg({ ok: true, text: `Модель "${newModelForm.modelId}" создана` });
-      setNewModelForm({ modelId: '', provider: '', displayName: '' });
+      setNewModelForm({ modelId: '', provider: '', endpointKey: '', displayName: '' });
       await loadSettings();
     } catch (e: unknown) {
       setNewModelMsg({ ok: false, text: e instanceof Error ? e.message : 'Ошибка создания' });
@@ -881,7 +881,7 @@ export default function AdminPanel() {
                 {/* Форма добавления новой модели */}
                 <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950">
                   <p className="mb-3 text-sm font-semibold text-blue-800 dark:text-blue-300">Добавить модель</p>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
                     <div>
                       <label className="mb-0.5 block text-xs text-blue-700 dark:text-blue-400">modelId (точное имя)</label>
                       <input
@@ -900,6 +900,16 @@ export default function AdminPanel() {
                         value={newModelForm.provider}
                         onChange={(e) => setNewModelForm((f) => ({ ...f, provider: e.target.value }))}
                         className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-0.5 block text-xs text-blue-700 dark:text-blue-400">endpointKey (необяз.)</label>
+                      <input
+                        type="text"
+                        placeholder="openAI / anthropic / deepseek"
+                        value={newModelForm.endpointKey}
+                        onChange={(e) => setNewModelForm((f) => ({ ...f, endpointKey: e.target.value }))}
+                        className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm font-mono dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                       />
                     </div>
                     <div>

@@ -447,11 +447,15 @@ router.get('/models', requireJwtAuth, requireAdminRole, async (req, res) => {
 
 /**
  * POST /api/admin/mvp/models
- * Создать новую модель: { modelId, provider, displayName, isActive? }
+ * Создать новую модель: { modelId, provider, endpointKey, displayName, isActive? }
+ *
+ * endpointKey — имя LibreChat-эндпоинта ('openAI', 'anthropic', 'deepseek', …)
+ * Если не указан, выводится автоматически из provider:
+ *   'openai' → 'openAI', остальные — совпадают с provider.
  */
 router.post('/models', requireJwtAuth, requireAdminRole, async (req, res) => {
   try {
-    const { modelId, provider, displayName, isActive = true } = req.body;
+    const { modelId, provider, displayName, endpointKey, isActive = true } = req.body;
     if (!modelId || typeof modelId !== 'string' || !modelId.trim()) {
       return res.status(400).json({ error: 'modelId обязателен' });
     }
@@ -462,6 +466,10 @@ router.post('/models', requireJwtAuth, requireAdminRole, async (req, res) => {
       return res.status(400).json({ error: 'displayName обязателен' });
     }
 
+    // Выводим endpointKey из provider, если не задан явно
+    const resolvedEndpoint = endpointKey?.trim()
+      || (provider.trim().toLowerCase() === 'openai' ? 'openAI' : provider.trim());
+
     const exists = await AiModel.findOne({ modelId: modelId.trim() }).lean();
     if (exists) {
       return res.status(409).json({ error: `Модель с modelId "${modelId.trim()}" уже существует` });
@@ -470,11 +478,12 @@ router.post('/models', requireJwtAuth, requireAdminRole, async (req, res) => {
     const model = await AiModel.create({
       modelId: modelId.trim(),
       provider: provider.trim(),
+      endpointKey: resolvedEndpoint,
       displayName: displayName.trim(),
       isActive: Boolean(isActive),
     });
 
-    logger.info(`[admin/models] ${req.user.email} создал модель "${model.modelId}"`);
+    logger.info(`[admin/models] ${req.user.email} создал модель "${model.modelId}" (endpoint: ${resolvedEndpoint})`);
     res.status(201).json({ ok: true, model });
   } catch (err) {
     logger.error('[admin/models/create]', err);
@@ -484,18 +493,25 @@ router.post('/models', requireJwtAuth, requireAdminRole, async (req, res) => {
 
 /**
  * PATCH /api/admin/mvp/models/:modelId
- * Обновить модель: { provider?, displayName?, isActive? }
+ * Обновить модель: { provider?, endpointKey?, displayName?, isActive? }
  * modelId менять нельзя (это первичный ключ).
+ *
+ * Если isActive=false — модель каскадно удаляется из Plans.allowedModels
+ * и кэш планов инвалидируется немедленно.
  */
 router.patch('/models/:modelId', requireJwtAuth, requireAdminRole, async (req, res) => {
   try {
     const { modelId } = req.params;
-    const { provider, displayName, isActive } = req.body;
+    const { provider, endpointKey, displayName, isActive } = req.body;
     const update = {};
 
     if (provider !== undefined) {
       if (typeof provider !== 'string' || !provider.trim()) return res.status(400).json({ error: 'provider не может быть пустым' });
       update.provider = provider.trim();
+    }
+    if (endpointKey !== undefined) {
+      if (typeof endpointKey !== 'string' || !endpointKey.trim()) return res.status(400).json({ error: 'endpointKey не может быть пустым' });
+      update.endpointKey = endpointKey.trim();
     }
     if (displayName !== undefined) {
       if (typeof displayName !== 'string' || !displayName.trim()) return res.status(400).json({ error: 'displayName не может быть пустым' });
@@ -511,6 +527,18 @@ router.patch('/models/:modelId', requireJwtAuth, requireAdminRole, async (req, r
 
     const updated = await AiModel.findOneAndUpdate({ modelId }, update, { new: true }).lean();
     if (!updated) return res.status(404).json({ error: 'Модель не найдена' });
+
+    // Если модель деактивирована — каскадно убираем её из всех тарифных планов
+    if (update.isActive === false) {
+      const pullResult = await Plan.updateMany(
+        { allowedModels: modelId },
+        { $pull: { allowedModels: modelId } },
+      );
+      if (pullResult.modifiedCount > 0) {
+        invalidatePlanCache();
+        logger.info(`[admin/models] Модель "${modelId}" деактивирована и удалена из ${pullResult.modifiedCount} тарифных планов`);
+      }
+    }
 
     logger.info(`[admin/models] ${req.user.email} обновил модель "${modelId}": ${JSON.stringify(update)}`);
     res.json({ ok: true, model: updated });
