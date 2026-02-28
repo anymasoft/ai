@@ -3,20 +3,30 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '~/hooks';
 
 function getTier(credits: number | null): { label: string; color: string } {
-  if (credits === null) return { label: 'Free', color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' };
+  if (credits === null || credits === 0) return { label: 'Free', color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' };
   if (credits >= 900_000) return { label: 'Business', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' };
   if (credits >= 400_000) return { label: 'Pro', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' };
-  return { label: 'Free', color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' };
+  return { label: 'Starter', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' };
 }
+
+const PRO_FEATURES = [
+  { ok: true, text: 'GPT-4o Mini' },
+  { ok: true, text: 'Claude Sonnet 4' },
+  { ok: true, text: 'DeepSeek V3' },
+  { ok: true, text: 'Web-поиск (Tavily)' },
+  { ok: true, text: 'Code Interpreter' },
+  { ok: false, text: 'Приоритетная поддержка' },
+];
 
 const TIERS = [
   {
     id: 'free',
     label: 'Free',
     price: '0 ₽',
-    priceNote: 'навсегда',
+    tokens: null as number | null,
+    priceNote: 'стартовый баланс при регистрации',
     highlight: false,
-    badge: null,
+    badge: null as string | null,
     features: [
       { ok: true,  text: 'GPT-4o Mini' },
       { ok: true,  text: '~25 сообщений при регистрации' },
@@ -26,30 +36,36 @@ const TIERS = [
       { ok: false, text: 'Code Interpreter' },
       { ok: false, text: 'Приоритетная поддержка' },
     ],
-    cta: null,
+    cta: null as string | null,
+  },
+  {
+    id: 'starter',
+    label: 'Starter',
+    price: '990 ₽',
+    tokens: 400_000,
+    priceNote: '400 000 токенов на баланс',
+    highlight: false,
+    badge: null,
+    features: PRO_FEATURES,
+    cta: 'starter',
   },
   {
     id: 'pro',
     label: 'Pro',
-    price: 'от 990 ₽',
-    priceNote: 'за пакет токенов',
+    price: '1 990 ₽',
+    tokens: 900_000,
+    priceNote: '900 000 токенов на баланс',
     highlight: true,
     badge: 'РЕКОМЕНДУЕМ',
-    features: [
-      { ok: true, text: 'GPT-4o Mini' },
-      { ok: true, text: 'Claude Sonnet 4' },
-      { ok: true, text: 'DeepSeek V3' },
-      { ok: true, text: 'Web-поиск (Tavily)' },
-      { ok: true, text: 'Code Interpreter' },
-      { ok: false, text: 'Приоритетная поддержка' },
-    ],
+    features: PRO_FEATURES,
     cta: 'pro',
   },
   {
     id: 'business',
     label: 'Business',
-    price: 'от 3 990 ₽',
-    priceNote: 'максимальный пакет',
+    price: '3 990 ₽',
+    tokens: 2_000_000,
+    priceNote: '2 000 000 токенов на баланс',
     highlight: false,
     badge: null,
     features: [
@@ -128,8 +144,8 @@ export default function Pricing() {
           </div>
         </div>
 
-        {/* Tier cards: Free / Pro / Business */}
-        <div className="mb-14 grid grid-cols-1 gap-6 md:grid-cols-3">
+        {/* Tier cards: Free / Starter / Pro / Business */}
+        <div className="mb-14 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
           {TIERS.map((tier) => (
             <div
               key={tier.id}
@@ -149,7 +165,12 @@ export default function Pricing() {
                 {tier.label}
               </h2>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">{tier.price}</p>
-              <p className="mb-5 text-xs text-gray-500 dark:text-gray-400">{tier.priceNote}</p>
+              {tier.tokens != null && (
+                <p className="mt-0.5 text-sm font-semibold text-blue-600 dark:text-blue-400">
+                  {tier.tokens.toLocaleString('ru-RU')} токенов
+                </p>
+              )}
+              <p className="mb-5 mt-0.5 text-xs text-gray-500 dark:text-gray-400">{tier.priceNote}</p>
 
               <ul className="mb-6 space-y-2">
                 {tier.features.map((f) => (

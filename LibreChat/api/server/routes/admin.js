@@ -1,8 +1,17 @@
 'use strict';
 const express = require('express');
+const axios = require('axios');
 const { logger } = require('@librechat/data-schemas');
 const { requireJwtAuth } = require('../middleware/');
 const { User, Balance, Payment } = require('~/db/models');
+
+const YUKASSA_API = 'https://api.yookassa.ru/v3';
+function yukassaAuth() {
+  const shopId = process.env.YOOKASSA_SHOP_ID;
+  const secretKey = process.env.YOOKASSA_API_KEY;
+  if (!shopId || !secretKey) throw new Error('YOOKASSA_SHOP_ID и YOOKASSA_API_KEY не заданы');
+  return { username: shopId, password: secretKey };
+}
 
 const router = express.Router();
 
@@ -162,6 +171,60 @@ router.get('/payments', requireJwtAuth, requireAdminRole, async (req, res) => {
   } catch (err) {
     logger.error('[admin/payments]', err);
     res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+/**
+ * POST /api/admin/payments/:paymentId/reconcile
+ * Проверяет платёж в ЮKassa и зачисляет кредиты, если он успешен и ещё не обработан.
+ * Используется при пропаже вебхука (тест-среды, временные сбои).
+ */
+router.post('/payments/:paymentId/reconcile', requireJwtAuth, requireAdminRole, async (req, res) => {
+  const { paymentId } = req.params;
+  try {
+    // Уже обработан?
+    const existing = await Payment.findOne({ externalPaymentId: paymentId }).lean();
+    if (existing && existing.status === 'succeeded') {
+      return res.json({ ok: false, message: `Платёж уже обработан: +${existing.tokenCredits} токенов пользователю ${existing.userId}` });
+    }
+
+    // Запрашиваем статус в ЮKassa
+    const { data: payment } = await axios.get(`${YUKASSA_API}/payments/${paymentId}`, {
+      auth: yukassaAuth(),
+    });
+
+    if (payment.status !== 'succeeded') {
+      return res.json({ ok: false, message: `Платёж в статусе "${payment.status}", не succeeded — зачисление невозможно` });
+    }
+
+    const { userId, tokenCredits, packageId } = payment.metadata || {};
+    if (!userId || !tokenCredits) {
+      return res.status(400).json({ error: 'В metadata платежа нет userId или tokenCredits' });
+    }
+
+    const creditsNum = parseInt(tokenCredits);
+    if (!creditsNum || creditsNum <= 0) {
+      return res.status(400).json({ error: `Некорректное значение tokenCredits: ${tokenCredits}` });
+    }
+
+    const updatedBalance = await Balance.findOneAndUpdate(
+      { user: userId },
+      { $inc: { tokenCredits: creditsNum } },
+      { upsert: true, new: true },
+    );
+
+    await Payment.findOneAndUpdate(
+      { externalPaymentId: paymentId },
+      { userId, packageId, tokenCredits: creditsNum, amount: payment.amount?.value ?? '', status: 'succeeded' },
+      { upsert: true },
+    );
+
+    logger.info(`[admin/reconcile] ${req.user.email} вручную зачислил ${creditsNum} credits userId=${userId} paymentId=${paymentId}`);
+    res.json({ ok: true, message: `Зачислено ${creditsNum.toLocaleString('ru-RU')} токенов. Новый баланс: ${updatedBalance.tokenCredits.toLocaleString('ru-RU')}` });
+  } catch (err) {
+    const msg = err.response?.data?.description || err.message;
+    logger.error('[admin/reconcile]', msg);
+    res.status(500).json({ error: `Ошибка: ${msg}` });
   }
 });
 
