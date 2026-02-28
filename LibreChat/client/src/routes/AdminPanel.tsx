@@ -79,7 +79,7 @@ interface AiModelDoc {
 interface PlanEdit {
   priceRub: string;
   tokenCreditsOnPurchase: string;
-  allowedModels: string[];  // массив точных modelId из AiModel
+  allowedModels: string[];  // модели как массив
   isActive: boolean;
 }
 
@@ -120,6 +120,7 @@ export default function AdminPanel() {
   const [pkgSaving, setPkgSaving] = useState<Record<string, boolean>>({});
   const [planSaveMsg, setPlanSaveMsg] = useState<Record<string, { ok: boolean; text: string }>>({});
   const [pkgSaveMsg, setPkgSaveMsg] = useState<Record<string, { ok: boolean; text: string }>>({});
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
 
   // ── КАТАЛОГ МОДЕЛЕЙ ──
   const [aiModels, setAiModels] = useState<AiModelDoc[]>([]);
@@ -242,7 +243,7 @@ export default function AdminPanel() {
         pe[p.planId] = {
           priceRub: String(p.priceRub),
           tokenCreditsOnPurchase: String(p.tokenCreditsOnPurchase),
-          allowedModels: p.allowedModels ?? [],  // массив modelId, не строка
+          allowedModels: p.allowedModels ?? [],
           isActive: p.isActive,
         };
       }
@@ -306,6 +307,25 @@ export default function AdminPanel() {
     }
   }, [isAdmin, tab, loadPayments, loadSettings]);
 
+  // Загружаем доступные YAML модели при монтировании
+  useEffect(() => {
+    const loadModels = async () => {
+      try {
+        const res = await fetch('/api/models/all', {
+          credentials: 'include',
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const modelNames = (data.models || []).map((m: { modelId: string }) => m.modelId);
+          setAvailableModels(modelNames);
+        }
+      } catch (err) {
+        console.error('Failed to load available models:', err);
+      }
+    };
+    loadModels();
+  }, []);
+
   const reconcilePayment = async () => {
     const id = reconcileId.trim();
     if (!id) return;
@@ -340,7 +360,7 @@ export default function AdminPanel() {
       const body = {
         priceRub: parseFloat(edit.priceRub),
         tokenCreditsOnPurchase: parseInt(edit.tokenCreditsOnPurchase),
-        allowedModels: edit.allowedModels,  // уже массив modelId
+        allowedModels: edit.allowedModels,
         isActive: edit.isActive,
       };
       const res = await fetch(`/api/admin/mvp/plans/${planId}`, {
@@ -1143,40 +1163,34 @@ export default function AdminPanel() {
                           </div>
                         </div>
                         <div className="mb-3">
-                          <label className="mb-1 block text-xs text-gray-500 dark:text-gray-400">
+                          <label className="mb-1.5 block text-xs text-gray-500 dark:text-gray-400">
                             Разрешённые модели (пусто = все модели)
                           </label>
-                          {aiModels.length === 0 ? (
-                            <p className="text-xs text-gray-400 italic">Каталог моделей пуст — добавьте модели выше</p>
-                          ) : (
-                            <div className="max-h-40 overflow-y-auto rounded border border-gray-200 bg-gray-50 p-2 dark:border-gray-700 dark:bg-gray-750 space-y-1">
-                              {aiModels.map((m) => (
-                                <label
-                                  key={m.modelId}
-                                  className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 hover:bg-white dark:hover:bg-gray-700"
-                                >
+                          <div className="max-h-32 space-y-1.5 overflow-y-auto rounded border border-gray-300 bg-gray-50 p-2 dark:border-gray-600 dark:bg-gray-700">
+                            {availableModels.length === 0 ? (
+                              <p className="text-xs text-gray-500 dark:text-gray-400">Загрузка моделей...</p>
+                            ) : (
+                              availableModels.map((model) => (
+                                <label key={model} className="flex cursor-pointer items-center gap-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 px-1 py-0.5 rounded">
                                   <input
                                     type="checkbox"
+                                    checked={edit.allowedModels.includes(model)}
+                                    onChange={(e) => {
+                                      const updated = e.target.checked
+                                        ? [...edit.allowedModels, model]
+                                        : edit.allowedModels.filter((m) => m !== model);
+                                      setPlanEdits((prev) => ({
+                                        ...prev,
+                                        [plan.planId]: { ...prev[plan.planId], allowedModels: updated },
+                                      }));
+                                    }}
                                     className="h-3.5 w-3.5 rounded"
-                                    checked={edit.allowedModels.includes(m.modelId)}
-                                    onChange={(e) =>
-                                      setPlanEdits((prev) => {
-                                        const current = prev[plan.planId].allowedModels;
-                                        const next = e.target.checked
-                                          ? [...current, m.modelId]
-                                          : current.filter((id) => id !== m.modelId);
-                                        return { ...prev, [plan.planId]: { ...prev[plan.planId], allowedModels: next } };
-                                      })
-                                    }
                                   />
-                                  <span className="text-xs text-gray-700 dark:text-gray-300">
-                                    {m.displayName}
-                                    <span className="ml-1 font-mono text-gray-400">{m.modelId}</span>
-                                  </span>
+                                  <span>{model}</span>
                                 </label>
-                              ))}
-                            </div>
-                          )}
+                              ))
+                            )}
+                          </div>
                         </div>
                         <div className="flex items-center justify-between">
                           <button
