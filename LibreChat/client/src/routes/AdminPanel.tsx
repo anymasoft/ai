@@ -127,8 +127,8 @@ export default function AdminPanel() {
 
   const addCredits = async (userId: string) => {
     const credits = parseInt(creditInputs[userId] || '');
-    if (!credits || credits <= 0) {
-      alert('Введите корректное количество кредитов');
+    if (isNaN(credits) || credits === 0) {
+      alert('Введите ненулевое число (можно отрицательное для списания)');
       return;
     }
     try {

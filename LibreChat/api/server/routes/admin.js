@@ -80,14 +80,23 @@ router.patch('/users/:userId/role', requireJwtAuth, requireAdminRole, async (req
 
 /**
  * POST /api/admin/users/:userId/balance
- * Начислить баланс пользователю: { credits: number }
- * credits — количество tokenCredits (1000 = $0.001)
+ * Начислить или списать баланс: { credits: number }
+ * credits может быть отрицательным (списание). Итог не может быть < 0.
  */
 router.post('/users/:userId/balance', requireJwtAuth, requireAdminRole, async (req, res) => {
   try {
     const credits = parseInt(req.body.credits);
-    if (!credits || credits <= 0 || credits > 100_000_000) {
-      return res.status(400).json({ error: 'credits должен быть числом от 1 до 100000000' });
+    if (isNaN(credits) || credits === 0 || Math.abs(credits) > 100_000_000) {
+      return res.status(400).json({ error: 'credits должен быть ненулевым числом (от -100000000 до 100000000)' });
+    }
+
+    // Проверяем, что итоговый баланс не уйдёт в минус
+    const current = await Balance.findOne({ user: req.params.userId }, 'tokenCredits').lean();
+    const currentCredits = current?.tokenCredits ?? 0;
+    if (currentCredits + credits < 0) {
+      return res.status(400).json({
+        error: `Итоговый баланс не может быть отрицательным. Текущий: ${currentCredits}, изменение: ${credits}`,
+      });
     }
 
     const balance = await Balance.findOneAndUpdate(
@@ -96,7 +105,7 @@ router.post('/users/:userId/balance', requireJwtAuth, requireAdminRole, async (r
       { upsert: true, new: true },
     ).lean();
 
-    logger.info(`[admin] ${req.user.email} начислил ${credits} credits пользователю ${req.params.userId}`);
+    logger.info(`[admin] ${req.user.email} изменил баланс пользователя ${req.params.userId} на ${credits} (итого: ${balance.tokenCredits})`);
     res.json({ tokenCredits: balance.tokenCredits });
   } catch (err) {
     logger.error('[admin/balance]', err);
