@@ -9,7 +9,6 @@
  *
  * Пакеты: npm install uuid node-fetch (node-fetch уже есть в проекте через axios, используем axios)
  */
-const crypto = require('crypto');
 const express = require('express');
 const axios = require('axios');
 const { logger } = require('@librechat/data-schemas');
@@ -51,12 +50,8 @@ router.post('/create', requireJwtAuth, async (req, res) => {
     }
 
     const userId = req.user._id.toString();
-    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-    // Idempotence key: один платёж за пакет в день
-    const idempotenceKey = crypto
-      .createHash('sha256')
-      .update(`${userId}:${packageId}:${today}`)
-      .digest('hex');
+    // Idempotence key уникален для каждого запроса (как в YouTubeScripts)
+    const idempotenceKey = `${userId}-${packageId}-${Date.now()}`;
 
     const returnUrl =
       process.env.YOOKASSA_RETURN_URL ||

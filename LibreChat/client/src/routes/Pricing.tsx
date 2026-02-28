@@ -1,5 +1,4 @@
 import { useNavigate } from 'react-router-dom';
-import { SystemRoles } from 'librechat-data-provider';
 import { useAuthContext } from '~/hooks';
 
 const TIERS = [
@@ -59,8 +58,7 @@ const TIERS = [
 
 export default function Pricing() {
   const navigate = useNavigate();
-  const { user, token } = useAuthContext();
-  const isPro = user?.role === SystemRoles.ADMIN;
+  const { token } = useAuthContext();
 
   const handleBuy = async (packageId: string) => {
     try {
@@ -103,11 +101,6 @@ export default function Pricing() {
           <p className="text-gray-600 dark:text-gray-400">
             Доступ к лучшим AI-моделям в одном месте
           </p>
-          {isPro && (
-            <div className="mt-4 inline-block rounded-full bg-green-100 px-4 py-2 text-sm font-medium text-green-800 dark:bg-green-900 dark:text-green-200">
-              ✓ У вас активен Pro-доступ
-            </div>
-          )}
         </div>
 
         {/* Tier cards: Free / Pro / Business */}
@@ -162,7 +155,7 @@ export default function Pricing() {
                 </button>
               ) : (
                 <div className="w-full rounded-xl border border-gray-200 py-2.5 text-center text-sm text-gray-400 dark:border-gray-700 dark:text-gray-500">
-                  Текущий тариф
+                  Стартовый баланс при регистрации
                 </div>
               )}
             </div>
