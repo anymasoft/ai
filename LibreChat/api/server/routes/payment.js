@@ -15,15 +15,10 @@ const express = require('express');
 const axios = require('axios');
 const { logger } = require('@librechat/data-schemas');
 const { requireJwtAuth } = require('../middleware/');
-const { Balance, Payment } = require('~/db/models');
+const { Balance, Payment, Subscription } = require('~/db/models');
+const { PACKAGES, PLAN_CONFIGS } = require('../utils/subscriptionConfig');
 
 const router = express.Router();
-
-/** Пакеты: id → { amount в рублях, tokenCredits } */
-const PACKAGES = {
-  pro: { amount: '1990.00', tokenCredits: 900_000 },
-  max: { amount: '3990.00', tokenCredits: 2_000_000 },
-};
 
 const YUKASSA_API = 'https://api.yookassa.ru/v3';
 
@@ -37,53 +32,95 @@ function yukassaAuth() {
 }
 
 /**
+ * Обновляет подписку пользователя согласно правилам продления/апгрейда:
+ * - Продление (тот же план, ещё активен): planExpiresAt += durationDays
+ * - Апгрейд или новая подписка: planStartedAt = now, planExpiresAt = now + durationDays
+ */
+async function upsertSubscription(userId, plan, durationDays) {
+  const now = new Date();
+  const existing = await Subscription.findOne({ userId }).lean();
+
+  let baseDate = now; // по умолчанию отсчёт от сейчас
+  // Продление: тот же план, ещё не истёк → продлеваем от текущего planExpiresAt
+  if (
+    existing &&
+    existing.plan === plan &&
+    existing.planExpiresAt &&
+    new Date(existing.planExpiresAt) > now
+  ) {
+    baseDate = new Date(existing.planExpiresAt);
+  }
+
+  const planExpiresAt = new Date(baseDate);
+  planExpiresAt.setDate(planExpiresAt.getDate() + durationDays);
+
+  return Subscription.findOneAndUpdate(
+    { userId },
+    { plan, planStartedAt: now, planExpiresAt },
+    { upsert: true, new: true },
+  ).lean();
+}
+
+/**
  * Общая идемпотентная функция активации успешного платежа.
- * Вызывается и из webhook, и из /check (fallback для localhost).
- *
- * @param {string} externalPaymentId — ID платежа в ЮKassa
- * @returns {{ ok: boolean, message: string }}
+ * Вызывается из webhook И из /check (fallback для localhost).
  */
 async function applySuccessfulPayment(externalPaymentId) {
-  // Ищем запись о платеже в нашей БД
   const existing = await Payment.findOne({ externalPaymentId }).lean();
 
   if (existing && existing.status === 'succeeded') {
     return { ok: true, alreadyDone: true, message: 'Платёж уже был обработан ранее' };
   }
-
   if (!existing || existing.status !== 'pending') {
-    return { ok: false, message: `Платёж не найден в БД или имеет статус ${existing?.status}` };
+    return { ok: false, message: `Платёж не найден или статус: ${existing?.status}` };
   }
 
-  const { userId, tokenCredits: creditsRaw, packageId } = existing;
+  const { userId, tokenCredits: creditsRaw, planPurchased, type } = existing;
   const creditsNum = parseInt(creditsRaw);
   if (!creditsNum || creditsNum <= 0) {
     return { ok: false, message: `Некорректное значение tokenCredits: ${creditsRaw}` };
   }
 
+  // 1. Добавляем токены на баланс
   const updatedBalance = await Balance.findOneAndUpdate(
     { user: userId },
     { $inc: { tokenCredits: creditsNum } },
     { upsert: true, new: true },
   );
 
+  // 2. Обновляем подписку (если это subscription-тип)
+  let subscription = null;
+  if (type === 'subscription' && planPurchased) {
+    const cfg = PLAN_CONFIGS[planPurchased];
+    if (cfg?.durationDays) {
+      subscription = await upsertSubscription(userId, planPurchased, cfg.durationDays);
+    }
+  }
+
+  // 3. Помечаем платёж как succeeded
   await Payment.findOneAndUpdate(
     { externalPaymentId },
-    { status: 'succeeded' },
+    { status: 'succeeded', expiresAt: subscription?.planExpiresAt || null },
   );
 
   logger.info(
-    `[payment/apply] userId=${userId} packageId=${packageId} +${creditsNum} credits. ` +
-    `Новый баланс: ${updatedBalance.tokenCredits}`,
+    `[payment/apply] userId=${userId} plan=${planPurchased} +${creditsNum} TC. ` +
+    `Баланс: ${updatedBalance.tokenCredits}. Подписка до: ${subscription?.planExpiresAt || '—'}`,
   );
 
-  return { ok: true, alreadyDone: false, tokenCredits: creditsNum, newBalance: updatedBalance.tokenCredits };
+  return {
+    ok: true,
+    alreadyDone: false,
+    tokenCredits: creditsNum,
+    newBalance: updatedBalance.tokenCredits,
+    plan: planPurchased,
+    planExpiresAt: subscription?.planExpiresAt || null,
+  };
 }
 
 /**
  * POST /api/payment/create
- * Body: { packageId: 'starter' | 'pro' | 'max' }
- * Создаёт платёж в ЮKassa, сохраняет как 'pending' и возвращает URL для редиректа.
+ * Body: { packageId: 'pro' | 'max' }
  */
 router.post('/create', requireJwtAuth, async (req, res) => {
   try {
@@ -107,8 +144,8 @@ router.post('/create', requireJwtAuth, async (req, res) => {
         amount: { value: pkg.amount, currency: 'RUB' },
         confirmation: { type: 'redirect', return_url: returnUrl },
         capture: true,
-        description: `Пополнение баланса — пакет ${packageId}`,
-        metadata: { userId, packageId, tokenCredits: pkg.tokenCredits },
+        description: `Подписка ${pkg.plan} — ${pkg.amount} ₽/мес`,
+        metadata: { userId, packageId, tokenCredits: pkg.tokenCredits, plan: pkg.plan },
       },
       {
         auth,
@@ -116,13 +153,15 @@ router.post('/create', requireJwtAuth, async (req, res) => {
       },
     );
 
-    // Сохраняем как 'pending' — чтобы /check мог его найти (fallback для localhost)
+    // Сохраняем как 'pending' — /check найдёт его при необходимости
     await Payment.findOneAndUpdate(
       { externalPaymentId: data.id },
       {
         externalPaymentId: data.id,
         userId,
         packageId,
+        type: pkg.type,
+        planPurchased: pkg.plan,
         tokenCredits: pkg.tokenCredits,
         amount: pkg.amount,
         status: 'pending',
@@ -131,11 +170,7 @@ router.post('/create', requireJwtAuth, async (req, res) => {
     );
 
     logger.info(`[payment/create] userId=${userId} packageId=${packageId} paymentId=${data.id}`);
-
-    res.json({
-      paymentId: data.id,
-      confirmationUrl: data.confirmation?.confirmation_url,
-    });
+    res.json({ paymentId: data.id, confirmationUrl: data.confirmation?.confirmation_url });
   } catch (err) {
     const msg = err.response?.data?.description || err.message;
     logger.error('[payment/create]', msg);
@@ -145,19 +180,11 @@ router.post('/create', requireJwtAuth, async (req, res) => {
 
 /**
  * GET /api/payment/check
- * Fallback для localhost: frontend вызывает ОДИН РАЗ после редиректа с ?payment=success.
- * В PROD достаточно webhook; /check нужен только когда ЮKassa не может дотянуться до localhost.
- *
- * Алгоритм:
- *  1. Найти последний 'pending' платёж текущего пользователя в нашей БД
- *  2. Запросить его статус в ЮKassa
- *  3. Если 'succeeded' — вызвать applySuccessfulPayment
+ * Fallback для localhost: frontend вызывает ОДИН РАЗ после ?payment=success.
  */
 router.get('/check', requireJwtAuth, async (req, res) => {
   try {
     const userId = req.user._id.toString();
-
-    // Ищем последний pending-платёж пользователя
     const pending = await Payment.findOne(
       { userId, status: 'pending' },
       null,
@@ -168,7 +195,6 @@ router.get('/check', requireJwtAuth, async (req, res) => {
       return res.json({ ok: false, status: 'not_found', message: 'Нет ожидающих платежей' });
     }
 
-    // Проверяем статус в ЮKassa
     const { data: ykPayment } = await axios.get(
       `${YUKASSA_API}/payments/${pending.externalPaymentId}`,
       { auth: yukassaAuth() },
@@ -185,37 +211,32 @@ router.get('/check', requireJwtAuth, async (req, res) => {
           alreadyDone: result.alreadyDone,
           tokenCredits: result.tokenCredits,
           newBalance: result.newBalance,
+          plan: result.plan,
+          planExpiresAt: result.planExpiresAt,
         });
       }
       return res.json({ ok: false, status: 'error', message: result.message });
     }
 
     if (ykPayment.status === 'canceled') {
-      await Payment.findOneAndUpdate(
-        { externalPaymentId: pending.externalPaymentId },
-        { status: 'failed' },
-      );
+      await Payment.findOneAndUpdate({ externalPaymentId: pending.externalPaymentId }, { status: 'failed' });
       return res.json({ ok: false, status: 'canceled', message: 'Платёж отменён' });
     }
 
-    // Всё ещё в процессе (pending / waiting_for_capture)
     return res.json({ ok: false, status: ykPayment.status, message: 'Платёж ещё обрабатывается' });
   } catch (err) {
     const msg = err.response?.data?.description || err.message;
     logger.error('[payment/check]', msg);
-    res.status(500).json({ ok: false, error: `Ошибка проверки платежа: ${msg}` });
+    res.status(500).json({ ok: false, error: `Ошибка проверки: ${msg}` });
   }
 });
 
 /**
  * POST /api/payment/webhook
- * ЮKassa отправляет POST при изменении статуса платежа (только в PROD/staging).
- * Настройте в кабинете ЮKassa: https://ваш-домен.ru/api/payment/webhook
+ * ЮKassa отправляет при изменении статуса (только PROD/staging).
  */
 router.post('/webhook', express.json(), async (req, res) => {
-  // Отвечаем 200 сразу, чтобы ЮKassa не переотправляла при ошибках на нашей стороне
   res.sendStatus(200);
-
   try {
     const event = req.body;
     if (!event || event.type !== 'notification') return;
@@ -223,10 +244,9 @@ router.post('/webhook', express.json(), async (req, res) => {
     const payment = event.object;
     if (!payment || payment.status !== 'succeeded') return;
 
-    // Если платёж создавался через /create — запись уже есть в БД (pending)
-    // Если нет — создаём её (backward compat / ручные тесты)
-    const { userId, tokenCredits, packageId } = payment.metadata || {};
-    if (userId && tokenCredits) {
+    const { userId, tokenCredits, packageId, plan } = payment.metadata || {};
+    if (userId && tokenCredits && packageId) {
+      const pkg = PACKAGES[packageId] || {};
       await Payment.findOneAndUpdate(
         { externalPaymentId: payment.id },
         {
@@ -234,10 +254,12 @@ router.post('/webhook', express.json(), async (req, res) => {
             externalPaymentId: payment.id,
             userId,
             packageId,
+            type: pkg.type || 'subscription',
+            planPurchased: plan || pkg.plan || null,
             tokenCredits: parseInt(tokenCredits),
             amount: payment.amount?.value ?? '',
           },
-          $set: { status: 'pending' }, // убедимся что status=pending перед apply
+          $set: { status: 'pending' },
         },
         { upsert: true },
       );
@@ -245,7 +267,7 @@ router.post('/webhook', express.json(), async (req, res) => {
 
     const result = await applySuccessfulPayment(payment.id);
     if (!result.ok && !result.alreadyDone) {
-      logger.warn(`[payment/webhook] applySuccessfulPayment failed: ${result.message}`);
+      logger.warn(`[payment/webhook] apply failed: ${result.message}`);
     }
   } catch (err) {
     logger.error('[payment/webhook]', err);
@@ -254,22 +276,14 @@ router.post('/webhook', express.json(), async (req, res) => {
 
 /**
  * GET /api/payment/history
- * История платежей текущего пользователя
  */
 router.get('/history', requireJwtAuth, async (req, res) => {
   try {
     const userId = req.user._id.toString();
     const limit = Math.min(100, parseInt(req.query.limit) || 20);
     const offset = parseInt(req.query.offset) || 0;
-
-    const payments = await Payment.find({ userId })
-      .sort({ createdAt: -1 })
-      .skip(offset)
-      .limit(limit)
-      .lean();
-
+    const payments = await Payment.find({ userId }).sort({ createdAt: -1 }).skip(offset).limit(limit).lean();
     const total = await Payment.countDocuments({ userId });
-
     res.json({ payments, total, limit, offset });
   } catch (err) {
     logger.error('[payment/history]', err);

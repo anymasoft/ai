@@ -30,10 +30,11 @@ interface UserRow {
   createdAt: string;
   tokenCredits: number;
   emailVerified: boolean;
-  tier: 'free' | 'pro' | 'business';
+  plan: 'free' | 'pro' | 'business';
+  planExpiresAt: string | null;
 }
 
-const TIER_DISPLAY: Record<string, { label: string; className: string }> = {
+const PLAN_DISPLAY: Record<string, { label: string; className: string }> = {
   free:     { label: 'Free',     className: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' },
   pro:      { label: 'Pro',      className: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' },
   business: { label: 'Business', className: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300' },
@@ -326,17 +327,22 @@ export default function AdminPanel() {
                         </td>
                         <td className="px-4 py-3">
                           <span className={`rounded-full px-2 py-1 text-xs font-semibold ${
-                            (TIER_DISPLAY[u.tier] ?? TIER_DISPLAY.free).className
+                            (PLAN_DISPLAY[u.plan] ?? PLAN_DISPLAY.free).className
                           }`}>
-                            {(TIER_DISPLAY[u.tier] ?? TIER_DISPLAY.free).label}
+                            {(PLAN_DISPLAY[u.plan] ?? PLAN_DISPLAY.free).label}
                           </span>
+                          {u.planExpiresAt && (
+                            <div className="mt-0.5 text-xs text-gray-400">
+                              до {new Date(u.planExpiresAt).toLocaleDateString('ru-RU')}
+                            </div>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-right">
                           <span
                             className={`font-mono font-medium ${
-                              u.tokenCredits < 1000
+                              u.tokenCredits < 1_000_000
                                 ? 'text-red-500'
-                                : u.tokenCredits < 10_000
+                                : u.tokenCredits < 5_000_000
                                   ? 'text-amber-500'
                                   : 'text-gray-900 dark:text-white'
                             }`}
@@ -345,9 +351,7 @@ export default function AdminPanel() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right text-xs text-gray-500 dark:text-gray-400">
-                          {u.tokenCredits > 0
-                            ? creditsToUsd(15_000 - u.tokenCredits)
-                            : '—'}
+                          {creditsToUsd(u.tokenCredits)}
                         </td>
                         <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
                           {new Date(u.createdAt).toLocaleDateString('ru-RU')}

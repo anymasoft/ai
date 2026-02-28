@@ -2,21 +2,18 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '~/hooks';
 
-/** Отображение тарифов — соответствует computeTier() на сервере (free | pro | business) */
-const TIER_DISPLAY: Record<string, { label: string; color: string }> = {
+const AVG_MSG_CREDITS = 4_392;
+
+function creditsToMessages(credits: number): number {
+  return Math.max(0, Math.floor(credits / AVG_MSG_CREDITS));
+}
+
+/** Отображение плана — соответствует Subscription.plan на сервере */
+const PLAN_DISPLAY: Record<string, { label: string; color: string }> = {
   free:     { label: 'Free',     color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
   pro:      { label: 'Pro',      color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
   business: { label: 'Business', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' },
 };
-
-const PRO_FEATURES = [
-  { ok: true, text: 'GPT-4o Mini' },
-  { ok: true, text: 'Claude Sonnet 4' },
-  { ok: true, text: 'DeepSeek V3' },
-  { ok: true, text: 'Web-поиск (Tavily)' },
-  { ok: true, text: 'Code Interpreter' },
-  { ok: false, text: 'Приоритетная поддержка' },
-];
 
 const TIERS = [
   {
@@ -34,27 +31,33 @@ const TIERS = [
       { ok: false, text: 'DeepSeek V3' },
       { ok: false, text: 'Web-поиск' },
       { ok: false, text: 'Code Interpreter' },
-      { ok: false, text: 'Приоритетная поддержка' },
     ],
     cta: null as string | null,
   },
   {
     id: 'pro',
     label: 'Pro',
-    price: '1 990 ₽',
-    tokens: 900_000,
-    priceNote: '900 000 токенов на баланс',
+    price: '3 990 ₽/мес',
+    tokens: 22_000_000,
+    priceNote: '≈ 5 000 сообщений в месяц',
     highlight: true,
     badge: 'РЕКОМЕНДУЕМ',
-    features: PRO_FEATURES,
+    features: [
+      { ok: true, text: 'GPT-4o Mini' },
+      { ok: true, text: 'Claude Sonnet 4' },
+      { ok: true, text: 'DeepSeek V3' },
+      { ok: true, text: 'Web-поиск (Tavily)' },
+      { ok: true, text: 'Code Interpreter' },
+      { ok: false, text: 'Приоритетная поддержка' },
+    ],
     cta: 'pro',
   },
   {
     id: 'business',
     label: 'Business',
-    price: '3 990 ₽',
-    tokens: 2_000_000,
-    priceNote: '2 000 000 токенов на баланс',
+    price: '9 990 ₽/мес',
+    tokens: 55_000_000,
+    priceNote: '≈ 12 500 сообщений в месяц',
     highlight: false,
     badge: null,
     features: [
@@ -69,13 +72,16 @@ const TIERS = [
   },
 ];
 
+interface BalanceInfo {
+  tokenCredits: number;
+  plan: string;
+  planExpiresAt: string | null;
+}
+
 export default function Pricing() {
   const navigate = useNavigate();
   const { token } = useAuthContext();
-  const [credits, setCredits] = useState<number | null>(null);
-  // Тариф приходит с сервера — не вычисляется клиентом
-  const [tier, setTier] = useState(TIER_DISPLAY.free);
-  // Состояние проверки платежа после редиректа с ?payment=success
+  const [balance, setBalance] = useState<BalanceInfo | null>(null);
   const [paymentCheck, setPaymentCheck] = useState<
     { status: 'checking' | 'ok' | 'error' | 'pending'; message?: string } | null
   >(null);
@@ -88,8 +94,13 @@ export default function Pricing() {
     })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (d?.tokenCredits != null) setCredits(d.tokenCredits);
-        if (d?.tier) setTier(TIER_DISPLAY[d.tier] ?? TIER_DISPLAY.free);
+        if (d?.tokenCredits != null) {
+          setBalance({
+            tokenCredits: d.tokenCredits,
+            plan: d.plan || 'free',
+            planExpiresAt: d.planExpiresAt || null,
+          });
+        }
       })
       .catch(() => undefined);
   };
@@ -99,11 +110,10 @@ export default function Pricing() {
   }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fallback-поллинг для localhost: ONE-TIME check после редиректа с ?payment=success
-  // В PROD вебхук ЮKassa обрабатывает платёж сам; этот блок — запасной вариант.
   useEffect(() => {
     if (!token) return;
     const params = new URLSearchParams(window.location.search);
-    if (!params.get('payment')) return; // запускаем только если есть ?payment=success
+    if (!params.get('payment')) return;
 
     setPaymentCheck({ status: 'checking' });
 
@@ -118,9 +128,9 @@ export default function Pricing() {
             status: 'ok',
             message: data.alreadyDone
               ? 'Платёж уже был зачислен ранее'
-              : `Зачислено ${data.tokenCredits?.toLocaleString('ru-RU')} токенов`,
+              : `Подписка активирована. Зачислено ${data.tokenCredits?.toLocaleString('ru-RU')} токенов`,
           });
-          fetchBalance(); // обновляем баланс на странице
+          fetchBalance();
         } else if (data.status === 'pending' || data.status === 'waiting_for_capture') {
           setPaymentCheck({ status: 'pending', message: 'Платёж ещё обрабатывается — обновите страницу через минуту' });
         } else {
@@ -153,8 +163,22 @@ export default function Pricing() {
     }
   };
 
+  const plan = balance?.plan || 'free';
+  const planDisplay = PLAN_DISPLAY[plan] ?? PLAN_DISPLAY.free;
+  const credits = balance?.tokenCredits ?? 0;
+  const msgEstimate = creditsToMessages(credits);
+
+  // Предупреждение о низком балансе: < 10% от лимита плана
+  const planConfig: Record<string, number> = { pro: 22_000_000, business: 55_000_000 };
+  const planLimit = planConfig[plan];
+  const isLowBalance = plan !== 'free' && planLimit != null && credits < planLimit * 0.1;
+  const isZeroBalance = credits <= 0;
+
+  const planExpiresAt = balance?.planExpiresAt
+    ? new Date(balance.planExpiresAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
+    : null;
+
   return (
-    /* overflow-y-auto — ключевое исправление скролла внутри контейнера LibreChat */
     <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-900">
       <div className="mx-auto max-w-5xl px-4 py-10">
 
@@ -173,6 +197,18 @@ export default function Pricing() {
           </div>
         )}
 
+        {/* Предупреждение о низком балансе */}
+        {isZeroBalance && plan !== 'free' && (
+          <div className="mb-6 rounded-xl bg-red-50 px-5 py-4 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+            ⚠️ Баланс токенов исчерпан. Отправка сообщений заблокирована. Пополните подписку.
+          </div>
+        )}
+        {!isZeroBalance && isLowBalance && (
+          <div className="mb-6 rounded-xl bg-amber-50 px-5 py-4 text-sm text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+            ⚠️ Баланс токенов меньше 10% от месячного лимита. Осталось ~{msgEstimate.toLocaleString('ru-RU')} сообщений. Рекомендуем продлить подписку.
+          </div>
+        )}
+
         {/* Header */}
         <div className="mb-10 text-center">
           <button
@@ -187,12 +223,19 @@ export default function Pricing() {
           <p className="text-gray-600 dark:text-gray-400">
             Доступ к лучшим AI-моделям в одном месте
           </p>
-          <div className={`mt-4 inline-block rounded-full px-4 py-2 text-sm font-medium ${tier.color}`}>
-            ✓ Ваш текущий тариф: <strong>{tier.label}</strong>
+          <div className={`mt-4 inline-block rounded-full px-4 py-2 text-sm font-medium ${planDisplay.color}`}>
+            ✓ Ваш текущий тариф: <strong>{planDisplay.label}</strong>
+            {planExpiresAt && <span className="ml-2 opacity-75">· активен до {planExpiresAt}</span>}
           </div>
+          {balance && (
+            <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+              Баланс: {credits.toLocaleString('ru-RU')} токенов
+              {msgEstimate > 0 && <span> · ≈ {msgEstimate.toLocaleString('ru-RU')} сообщений</span>}
+            </div>
+          )}
         </div>
 
-        {/* Tier cards: Free / Starter / Pro / Business */}
+        {/* Карточки тарифов */}
         <div className="mb-14 grid grid-cols-1 gap-6 md:grid-cols-3">
           {TIERS.map((tier) => (
             <div
@@ -215,7 +258,7 @@ export default function Pricing() {
               <p className="text-2xl font-bold text-gray-900 dark:text-white">{tier.price}</p>
               {tier.tokens != null && (
                 <p className="mt-0.5 text-sm font-semibold text-blue-600 dark:text-blue-400">
-                  {tier.tokens.toLocaleString('ru-RU')} токенов
+                  {tier.tokens.toLocaleString('ru-RU')} токенов/мес
                 </p>
               )}
               <p className="mb-5 mt-0.5 text-xs text-gray-500 dark:text-gray-400">{tier.priceNote}</p>
@@ -245,7 +288,7 @@ export default function Pricing() {
                       : 'bg-gray-900 text-white hover:bg-gray-700 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200'
                   }`}
                 >
-                  Купить
+                  {plan === tier.id ? 'Продлить подписку' : 'Купить'}
                 </button>
               ) : (
                 <div className="w-full rounded-xl border border-gray-200 py-2.5 text-center text-sm text-gray-400 dark:border-gray-700 dark:text-gray-500">

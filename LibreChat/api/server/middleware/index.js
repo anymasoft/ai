@@ -1,3 +1,4 @@
+const checkSubscription = require('./checkSubscription');
 const validatePasswordReset = require('./validatePasswordReset');
 const validateRegistration = require('./validateRegistration');
 const buildEndpointOption = require('./buildEndpointOption');
@@ -46,4 +47,5 @@ module.exports = {
   buildEndpointOption,
   validateRegistration,
   validatePasswordReset,
+  checkSubscription,
 };

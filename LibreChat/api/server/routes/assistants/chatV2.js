@@ -6,6 +6,7 @@ const {
   handleAbort,
   validateModel,
   buildEndpointOption,
+  checkSubscription,
 } = require('~/server/middleware');
 const validateConvoAccess = require('~/server/middleware/validate/convoAccess');
 const validateAssistant = require('~/server/middleware/assistants/validate');
@@ -27,6 +28,7 @@ router.post(
   buildEndpointOption,
   validateAssistant,
   validateConvoAccess,
+  checkSubscription,
   setHeaders,
   chatController,
 );
