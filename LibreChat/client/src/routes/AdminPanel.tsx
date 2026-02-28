@@ -3,6 +3,25 @@ import { useNavigate } from 'react-router-dom';
 import { SystemRoles } from 'librechat-data-provider';
 import { useAuthContext } from '~/hooks';
 
+type Tab = 'users' | 'payments';
+
+interface PaymentRow {
+  _id: string;
+  email: string;
+  name: string;
+  packageId: string;
+  tokenCredits: number;
+  amount: string;
+  status: string;
+  createdAt: string;
+}
+
+interface PaymentsResponse {
+  payments: PaymentRow[];
+  total: number;
+  totalSum: number;
+}
+
 interface UserRow {
   _id: string;
   email: string;
@@ -22,14 +41,22 @@ interface UsersResponse {
 
 export default function AdminPanel() {
   const navigate = useNavigate();
-  const { user } = useAuthContext();
+  const { user, token } = useAuthContext();
+  const [tab, setTab] = useState<Tab>('users');
   const [data, setData] = useState<UsersResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
   const [creditInputs, setCreditInputs] = useState<Record<string, string>>({});
+  const [paymentsData, setPaymentsData] = useState<PaymentsResponse | null>(null);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
+  const [paymentsError, setPaymentsError] = useState('');
+  const [paymentEmailFilter, setPaymentEmailFilter] = useState('');
+  const [paymentFromFilter, setPaymentFromFilter] = useState('');
+  const [paymentToFilter, setPaymentToFilter] = useState('');
 
   const isAdmin = user?.role === SystemRoles.ADMIN;
+  const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
 
   const load = useCallback(async () => {
     if (!isAdmin) return;
@@ -38,6 +65,7 @@ export default function AdminPanel() {
     try {
       const res = await fetch(`/api/admin/mvp/users?page=${page}`, {
         credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...authHeader },
       });
       if (!res.ok) {
         const text = await res.text();
@@ -50,7 +78,33 @@ export default function AdminPanel() {
     } finally {
       setLoading(false);
     }
-  }, [isAdmin, page]);
+  }, [isAdmin, page, authHeader]);
+
+  const loadPayments = useCallback(async () => {
+    if (!isAdmin) return;
+    setPaymentsLoading(true);
+    setPaymentsError('');
+    try {
+      const params = new URLSearchParams();
+      if (paymentEmailFilter) params.append('email', paymentEmailFilter);
+      if (paymentFromFilter) params.append('from', paymentFromFilter);
+      if (paymentToFilter) params.append('to', paymentToFilter);
+      const res = await fetch(`/api/admin/mvp/payments?${params}`, {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...authHeader },
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`${res.status}: ${text}`);
+      }
+      const result: PaymentsResponse = await res.json();
+      setPaymentsData(result);
+    } catch (e: unknown) {
+      setPaymentsError(e instanceof Error ? e.message : 'Ошибка загрузки платежей');
+    } finally {
+      setPaymentsLoading(false);
+    }
+  }, [isAdmin, paymentEmailFilter, paymentFromFilter, paymentToFilter, authHeader]);
 
   useEffect(() => {
     if (user && !isAdmin) {
@@ -60,12 +114,18 @@ export default function AdminPanel() {
     }
   }, [user, isAdmin, load, navigate]);
 
+  useEffect(() => {
+    if (isAdmin && tab === 'payments') {
+      loadPayments();
+    }
+  }, [isAdmin, tab, loadPayments]);
+
   const changeRole = async (userId: string, role: string) => {
     try {
       const res = await fetch(`/api/admin/mvp/users/${userId}/role`, {
         method: 'PATCH',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeader },
         body: JSON.stringify({ role }),
       });
       if (!res.ok) throw new Error(await res.text());
@@ -85,7 +145,7 @@ export default function AdminPanel() {
       const res = await fetch(`/api/admin/mvp/users/${userId}/balance`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeader },
         body: JSON.stringify({ credits }),
       });
       if (!res.ok) throw new Error(await res.text());
@@ -131,14 +191,41 @@ export default function AdminPanel() {
             )}
           </div>
           <button
-            onClick={load}
-            disabled={loading}
+            onClick={tab === 'users' ? load : loadPayments}
+            disabled={tab === 'users' ? loading : paymentsLoading}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
-            {loading ? 'Загрузка...' : 'Обновить'}
+            {(tab === 'users' ? loading : paymentsLoading) ? 'Загрузка...' : 'Обновить'}
           </button>
         </div>
 
+        {/* Tabs */}
+        <div className="mb-6 flex gap-2 border-b border-gray-200 dark:border-gray-700">
+          <button
+            onClick={() => setTab('users')}
+            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              tab === 'users'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+            }`}
+          >
+            Пользователи
+          </button>
+          <button
+            onClick={() => setTab('payments')}
+            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              tab === 'payments'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+            }`}
+          >
+            Платежи
+          </button>
+        </div>
+
+        {/* ── USERS TAB ─────────────────────────────────────── */}
+        {tab === 'users' && (
+          <>
         {/* Error */}
         {error && (
           <div className="mb-4 rounded-lg bg-red-100 p-3 text-sm text-red-700 dark:bg-red-900 dark:text-red-200">
@@ -292,6 +379,116 @@ export default function AdminPanel() {
                   </button>
                 ))}
               </div>
+            )}
+          </>
+        )}
+          </> // users tab close
+        )}
+
+        {/* ── PAYMENTS TAB ───────────────────────────────────── */}
+        {tab === 'payments' && (
+          <>
+            {/* Filters */}
+            <div className="mb-4 flex flex-wrap gap-3">
+              <input
+                type="text"
+                placeholder="Фильтр по email..."
+                value={paymentEmailFilter}
+                onChange={(e) => setPaymentEmailFilter(e.target.value)}
+                className="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+              />
+              <input
+                type="date"
+                value={paymentFromFilter}
+                onChange={(e) => setPaymentFromFilter(e.target.value)}
+                className="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+              />
+              <input
+                type="date"
+                value={paymentToFilter}
+                onChange={(e) => setPaymentToFilter(e.target.value)}
+                className="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+              />
+              <button
+                onClick={loadPayments}
+                className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 transition-colors"
+              >
+                Применить
+              </button>
+            </div>
+
+            {paymentsError && (
+              <div className="mb-4 rounded-lg bg-red-100 p-3 text-sm text-red-700 dark:bg-red-900 dark:text-red-200">
+                {paymentsError}
+              </div>
+            )}
+
+            {paymentsData && !paymentsLoading && (
+              <>
+                <div className="mb-4 flex items-center justify-between">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Найдено платежей: <strong>{paymentsData.total}</strong>
+                  </p>
+                  {paymentsData.totalSum > 0 && (
+                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      Сумма: {paymentsData.totalSum.toLocaleString('ru-RU')} ₽
+                    </p>
+                  )}
+                </div>
+                <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-750">
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Email</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Пакет</th>
+                          <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Кредиты</th>
+                          <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Сумма (₽)</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Статус</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Дата</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                        {paymentsData.payments.map((p) => (
+                          <tr key={p._id} className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
+                            <td className="px-4 py-3 font-medium text-gray-900 dark:text-white truncate max-w-xs" title={p.email}>
+                              {p.email}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                                {p.packageId}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right font-mono">
+                              {formatCredits(p.tokenCredits)}
+                            </td>
+                            <td className="px-4 py-3 text-right font-medium">{p.amount || '—'}</td>
+                            <td className="px-4 py-3">
+                              <span className={`text-xs font-semibold ${
+                                p.status === 'succeeded' ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'
+                              }`}>
+                                {p.status === 'succeeded' ? '✓ Оплачен' : p.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
+                              {new Date(p.createdAt).toLocaleDateString('ru-RU')}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {paymentsData.payments.length === 0 && (
+                      <div className="py-10 text-center text-sm text-gray-400">
+                        Платежи не найдены
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {paymentsLoading && (
+              <div className="py-10 text-center text-sm text-gray-400">Загрузка платежей...</div>
             )}
           </>
         )}

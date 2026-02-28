@@ -14,7 +14,7 @@ const express = require('express');
 const axios = require('axios');
 const { logger } = require('@librechat/data-schemas');
 const { requireJwtAuth } = require('../middleware/');
-const { Balance } = require('~/db/models');
+const { Balance, Payment } = require('~/db/models');
 
 const router = express.Router();
 
@@ -140,10 +140,30 @@ router.post('/webhook', express.json(), async (req, res) => {
     // Полная идемпотентность: можно добавить отдельную коллекцию Payment,
     // но для MVP достаточно: ЮKassa гарантирует однократную доставку при 200.
 
+    // Идемпотентность: проверяем, не был ли этот платёж уже обработан
+    const existingPayment = await Payment.findOne({ externalPaymentId: payment.id });
+    if (existingPayment && existingPayment.status === 'succeeded') {
+      logger.info(`[payment/webhook] Платёж ${payment.id} уже обработан, пропускаем`);
+      return;
+    }
+
     const updatedBalance = await Balance.findOneAndUpdate(
       { user: userId },
       { $inc: { tokenCredits: creditsNum } },
       { upsert: true, new: true },
+    );
+
+    // Сохраняем запись о платеже
+    await Payment.findOneAndUpdate(
+      { externalPaymentId: payment.id },
+      {
+        userId,
+        packageId,
+        tokenCredits: creditsNum,
+        amount: payment.amount?.value ?? '',
+        status: 'succeeded',
+      },
+      { upsert: true },
     );
 
     logger.info(
@@ -152,6 +172,31 @@ router.post('/webhook', express.json(), async (req, res) => {
     );
   } catch (err) {
     logger.error('[payment/webhook]', err);
+  }
+});
+
+/**
+ * GET /api/billing/history
+ * История платежей текущего пользователя
+ */
+router.get('/history', requireJwtAuth, async (req, res) => {
+  try {
+    const userId = req.user._id.toString();
+    const limit = Math.min(100, parseInt(req.query.limit) || 20);
+    const offset = parseInt(req.query.offset) || 0;
+
+    const payments = await Payment.find({ userId })
+      .sort({ createdAt: -1 })
+      .skip(offset)
+      .limit(limit)
+      .lean();
+
+    const total = await Payment.countDocuments({ userId });
+
+    res.json({ payments, total, limit, offset });
+  } catch (err) {
+    logger.error('[billing/history]', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
 
