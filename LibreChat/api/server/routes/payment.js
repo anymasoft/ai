@@ -25,7 +25,7 @@ const PACKAGES = {
   max:     { amount: '3990.00', tokenCredits: 2_000_000 },
 };
 
-const YUKASSA_API = 'https://api.yookassa.ru/v2';
+const YUKASSA_API = 'https://api.yookassa.ru/v3';
 
 function yukassaAuth() {
   const shopId = process.env.YOOKASSA_SHOP_ID;
