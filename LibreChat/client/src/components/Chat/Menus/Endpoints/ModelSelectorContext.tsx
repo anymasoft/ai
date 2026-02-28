@@ -146,25 +146,31 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     if (allowedLoading) return null;          // ещё грузится — не трогаем YAML-спеки
     if (!allowedModelsData) return null;      // ошибка — используем YAML-спеки как fallback
     if (!endpointsConfig) return null;        // эндпоинты ещё не загружены — ждём, чтобы не показывать пустой список
-    return allowedModelsData.models
+
+    // Создаём синтетические TModelSpec из моделей БД
+    const dbModels = allowedModelsData.models
       .filter((m) => endpointsConfig[m.endpointKey] != null) // показываем только модели с реально настроенным эндпоинтом
       .map((m) => ({
         name: m.modelId,
         label: m.displayName,
-        // Встроенные эндпоинты: используем сам ключ (openAI → GPTIcon, anthropic → AnthropicIcon)
-        // Кастомные (deepseek и т.д.): используем 'custom' → CustomMinimalIcon
         iconURL: builtinEndpoints.has(m.endpointKey) ? m.endpointKey : 'custom',
         preset: {
           endpoint: m.endpointKey,
           model: m.modelId,
         },
       } as unknown as t.TModelSpec));
-  }, [allowedModelsData, allowedLoading, endpointsConfig]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Итоговые modelSpecs: из БД (если загружены) или из YAML (пока грузятся / ошибка)
+    // Объединяем YAML модели с БД моделями, избегая дубликатов
+    const dbModelNames = new Set(dbModels.map(m => m.name));
+    const yamlModelsNotInDb = modelSpecs.filter(spec => !dbModelNames.has(spec.name));
+
+    return [...yamlModelsNotInDb, ...dbModels];
+  }, [allowedModelsData, allowedLoading, endpointsConfig, modelSpecs]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Итоговые modelSpecs: объединение YAML + БД, или только YAML если БД ещё грузятся
   const effectiveModelSpecs = dynamicModelSpecs ?? modelSpecs;
-  // Когда БД-модели загружены — скрываем весь стандартный список LibreChat-эндпоинтов
-  const mappedEndpoints = dynamicModelSpecs !== null ? [] : rawMappedEndpoints;
+  // Когда БД-модели загружены — показываем стандартные эндпоинты из YAML, плюс БД модели
+  const mappedEndpoints = dynamicModelSpecs !== null ? rawMappedEndpoints : rawMappedEndpoints;
 
   const getModelDisplayName = useCallback(
     (endpoint: Endpoint, model: string): string => {

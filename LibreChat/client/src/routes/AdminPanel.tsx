@@ -296,12 +296,8 @@ export default function AdminPanel() {
             const data = await res.json();
             const endpoints = Object.keys(data).sort();
             setAvailableEndpoints(endpoints);
-            // Извлекаем провайдеры из конфига эндпоинтов
-            const providers = new Set<string>();
-            Object.values(data as Record<string, any>).forEach((config) => {
-              if (config?.type) providers.add(config.type);
-            });
-            setAvailableProviders(Array.from(providers).sort());
+            // Провайдеры - это просто ключи эндпоинтов
+            setAvailableProviders(endpoints);
           }
         } catch (err) {
           console.error('Ошибка при загрузке эндпоинтов:', err);
