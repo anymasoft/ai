@@ -2,28 +2,83 @@ import { useNavigate } from 'react-router-dom';
 import { SystemRoles } from 'librechat-data-provider';
 import { useAuthContext } from '~/hooks';
 
-const FREE_FEATURES = [
-  '✓ GPT-4o Mini',
-  '✓ ~25 сообщений бесплатно',
-  '✗ Claude Sonnet',
-  '✗ DeepSeek V3',
-  '✗ Web-поиск',
-  '✗ Code Interpreter',
-];
-
-const PRO_FEATURES = [
-  '✓ GPT-4o Mini',
-  '✓ Claude Sonnet 4',
-  '✓ DeepSeek V3',
-  '✓ Web-поиск (Tavily)',
-  '✓ Code Interpreter',
-  '✓ Приоритетный доступ',
+const TIERS = [
+  {
+    id: 'free',
+    label: 'Free',
+    price: '0 ₽',
+    priceNote: 'навсегда',
+    highlight: false,
+    badge: null,
+    features: [
+      { ok: true,  text: 'GPT-4o Mini' },
+      { ok: true,  text: '~25 сообщений при регистрации' },
+      { ok: false, text: 'Claude Sonnet' },
+      { ok: false, text: 'DeepSeek V3' },
+      { ok: false, text: 'Web-поиск' },
+      { ok: false, text: 'Code Interpreter' },
+      { ok: false, text: 'Приоритетная поддержка' },
+    ],
+    cta: null,
+  },
+  {
+    id: 'pro',
+    label: 'Pro',
+    price: 'от 990 ₽',
+    priceNote: 'за пакет токенов',
+    highlight: true,
+    badge: 'РЕКОМЕНДУЕМ',
+    features: [
+      { ok: true, text: 'GPT-4o Mini' },
+      { ok: true, text: 'Claude Sonnet 4' },
+      { ok: true, text: 'DeepSeek V3' },
+      { ok: true, text: 'Web-поиск (Tavily)' },
+      { ok: true, text: 'Code Interpreter' },
+      { ok: false, text: 'Приоритетная поддержка' },
+    ],
+    cta: 'pro',
+  },
+  {
+    id: 'business',
+    label: 'Business',
+    price: 'от 3 990 ₽',
+    priceNote: 'максимальный пакет',
+    highlight: false,
+    badge: null,
+    features: [
+      { ok: true, text: 'GPT-4o Mini' },
+      { ok: true, text: 'Claude Sonnet 4' },
+      { ok: true, text: 'DeepSeek V3' },
+      { ok: true, text: 'Web-поиск (Tavily)' },
+      { ok: true, text: 'Code Interpreter' },
+      { ok: true, text: 'Приоритетная поддержка (email)' },
+    ],
+    cta: 'max',
+  },
 ];
 
 const PACKAGES = [
-  { id: 'starter', label: 'Старт', price: '990 ₽', credits: 400_000, desc: '~600 сообщений GPT-4o Mini или ~130 Claude' },
-  { id: 'pro', label: 'Pro', price: '1 990 ₽', credits: 900_000, desc: '~1300 сообщений GPT-4o Mini или ~300 Claude', popular: true },
-  { id: 'max', label: 'Max', price: '3 990 ₽', credits: 2_000_000, desc: '~3000 сообщений GPT-4o Mini или ~660 Claude' },
+  {
+    id: 'starter',
+    label: 'Старт',
+    price: '990 ₽',
+    desc: '~600 сообщений GPT-4o Mini или ~130 Claude',
+    popular: false,
+  },
+  {
+    id: 'pro',
+    label: 'Pro',
+    price: '1 990 ₽',
+    desc: '~1 300 сообщений GPT-4o Mini или ~300 Claude',
+    popular: true,
+  },
+  {
+    id: 'max',
+    label: 'Business Max',
+    price: '3 990 ₽',
+    desc: '~3 000 сообщений GPT-4o Mini или ~660 Claude + приоритет',
+    popular: false,
+  },
 ];
 
 export default function Pricing() {
@@ -51,102 +106,128 @@ export default function Pricing() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4">
-      <div className="max-w-4xl mx-auto">
+    /* overflow-y-auto — ключевое исправление скролла внутри контейнера LibreChat */
+    <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-900">
+      <div className="mx-auto max-w-5xl px-4 py-10">
+
         {/* Header */}
-        <div className="text-center mb-10">
+        <div className="mb-10 text-center">
           <button
             onClick={() => navigate('/c/new')}
-            className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mb-4 inline-block"
+            className="mb-4 inline-block text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
           >
             ← Вернуться в чат
           </button>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+          <h1 className="mb-3 text-3xl font-bold text-gray-900 dark:text-white">
             Выберите тариф
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
             Доступ к лучшим AI-моделям в одном месте
           </p>
           {isPro && (
-            <div className="mt-4 inline-block bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 px-4 py-2 rounded-full text-sm font-medium">
+            <div className="mt-4 inline-block rounded-full bg-green-100 px-4 py-2 text-sm font-medium text-green-800 dark:bg-green-900 dark:text-green-200">
               ✓ У вас активен Pro-доступ
             </div>
           )}
         </div>
 
-        {/* Free vs Pro */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-          {/* Free */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">Free</h2>
-            <p className="text-3xl font-bold text-gray-900 dark:text-white mb-6">0 ₽</p>
-            <ul className="space-y-2">
-              {FREE_FEATURES.map((f) => (
-                <li
-                  key={f}
-                  className={`text-sm ${f.startsWith('✗') ? 'text-gray-400 dark:text-gray-600' : 'text-gray-700 dark:text-gray-300'}`}
-                >
-                  {f}
-                </li>
-              ))}
-            </ul>
-          </div>
+        {/* Tier cards: Free / Pro / Business */}
+        <div className="mb-14 grid grid-cols-1 gap-6 md:grid-cols-3">
+          {TIERS.map((tier) => (
+            <div
+              key={tier.id}
+              className={`relative rounded-2xl p-6 ${
+                tier.highlight
+                  ? 'border-2 border-blue-500 bg-white shadow-lg dark:bg-gray-800'
+                  : 'border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800'
+              }`}
+            >
+              {tier.badge && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-blue-500 px-3 py-1 text-xs font-semibold text-white">
+                  {tier.badge}
+                </div>
+              )}
 
-          {/* Pro */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl border-2 border-blue-500 p-6 relative">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-xs font-semibold px-3 py-1 rounded-full">
-              РЕКОМЕНДУЕМ
+              <h2 className="mb-0.5 text-xl font-semibold text-gray-900 dark:text-white">
+                {tier.label}
+              </h2>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{tier.price}</p>
+              <p className="mb-5 text-xs text-gray-500 dark:text-gray-400">{tier.priceNote}</p>
+
+              <ul className="mb-6 space-y-2">
+                {tier.features.map((f) => (
+                  <li
+                    key={f.text}
+                    className={`flex items-start gap-2 text-sm ${
+                      f.ok
+                        ? 'text-gray-700 dark:text-gray-300'
+                        : 'text-gray-400 dark:text-gray-600'
+                    }`}
+                  >
+                    <span className="mt-0.5 shrink-0">{f.ok ? '✓' : '✗'}</span>
+                    <span>{f.text}</span>
+                  </li>
+                ))}
+              </ul>
+
+              {tier.cta ? (
+                <button
+                  onClick={() => handleBuy(tier.cta!)}
+                  className={`w-full rounded-xl py-2.5 text-sm font-semibold transition-colors ${
+                    tier.highlight
+                      ? 'bg-blue-600 text-white hover:bg-blue-700'
+                      : 'bg-gray-900 text-white hover:bg-gray-700 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200'
+                  }`}
+                >
+                  Купить
+                </button>
+              ) : (
+                <div className="w-full rounded-xl border border-gray-200 py-2.5 text-center text-sm text-gray-400 dark:border-gray-700 dark:text-gray-500">
+                  Текущий тариф
+                </div>
+              )}
             </div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">Pro</h2>
-            <p className="text-3xl font-bold text-gray-900 dark:text-white mb-6">
-              от 990 ₽
-            </p>
-            <ul className="space-y-2">
-              {PRO_FEATURES.map((f) => (
-                <li key={f} className="text-sm text-gray-700 dark:text-gray-300">
-                  {f}
-                </li>
-              ))}
-            </ul>
-          </div>
+          ))}
         </div>
 
         {/* Packages */}
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white text-center mb-6">
+        <h2 className="mb-6 text-center text-xl font-semibold text-gray-900 dark:text-white">
           Пополните баланс
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="mb-10 grid grid-cols-1 gap-4 md:grid-cols-3">
           {PACKAGES.map((pkg) => (
             <div
               key={pkg.id}
-              className={`bg-white dark:bg-gray-800 rounded-2xl p-6 border ${
+              className={`rounded-2xl p-6 ${
                 pkg.popular
-                  ? 'border-blue-500 shadow-lg'
-                  : 'border-gray-200 dark:border-gray-700'
+                  ? 'border-2 border-blue-500 bg-white shadow-lg dark:bg-gray-800'
+                  : 'border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800'
               }`}
             >
               {pkg.popular && (
-                <div className="text-xs font-semibold text-blue-500 uppercase mb-2">Популярный</div>
+                <div className="mb-2 text-xs font-semibold uppercase text-blue-500">
+                  Популярный
+                </div>
               )}
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{pkg.label}</h3>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white my-2">{pkg.price}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">{pkg.desc}</p>
+              <p className="my-2 text-2xl font-bold text-gray-900 dark:text-white">{pkg.price}</p>
+              <p className="mb-4 text-xs text-gray-500 dark:text-gray-400">{pkg.desc}</p>
               <button
                 onClick={() => handleBuy(pkg.id)}
-                className={`w-full py-2 rounded-xl text-sm font-medium transition-colors ${
+                className={`w-full rounded-xl py-2 text-sm font-medium transition-colors ${
                   pkg.popular
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                    : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white'
+                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    : 'bg-gray-100 text-gray-900 hover:bg-gray-200 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600'
                 }`}
               >
-                Купить
+                Пополнить
               </button>
             </div>
           ))}
         </div>
 
-        <p className="text-center text-xs text-gray-400 dark:text-gray-600 mt-8">
-          Оплата через ЮKassa. Безопасно. Поддерживаются карты РФ.
+        <p className="pb-10 text-center text-xs text-gray-400 dark:text-gray-600">
+          Оплата через ЮKassa · Безопасно · Поддерживаются карты РФ и СБП
         </p>
       </div>
     </div>
