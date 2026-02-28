@@ -3,7 +3,8 @@ const express = require('express');
 const axios = require('axios');
 const { logger } = require('@librechat/data-schemas');
 const { requireJwtAuth } = require('../middleware/');
-const { User, Balance, Payment, Subscription } = require('~/db/models');
+const { User, Balance, Payment, Subscription, Plan, TokenPackage } = require('~/db/models');
+const { invalidatePlanCache } = require('../middleware/checkSubscription');
 
 const YUKASSA_API = 'https://api.yookassa.ru/v3';
 function yukassaAuth() {
@@ -276,6 +277,138 @@ router.post('/payments/:paymentId/reconcile', requireJwtAuth, requireAdminRole, 
     const msg = err.response?.data?.description || err.message;
     logger.error('[admin/reconcile]', msg);
     res.status(500).json({ error: `Ошибка: ${msg}` });
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+// УПРАВЛЕНИЕ ТАРИФАМИ
+// ═══════════════════════════════════════════════════════
+
+/**
+ * GET /api/admin/mvp/plans
+ * Список всех тарифных планов.
+ */
+router.get('/plans', requireJwtAuth, requireAdminRole, async (req, res) => {
+  try {
+    await Plan.seedDefaults();
+    await TokenPackage.seedDefaults();
+    const [plans, tokenPackages] = await Promise.all([
+      Plan.find({}).sort({ priceRub: 1 }).lean(),
+      TokenPackage.find({}).lean(),
+    ]);
+    res.json({ plans, tokenPackages });
+  } catch (err) {
+    logger.error('[admin/plans]', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+/**
+ * PATCH /api/admin/mvp/plans/:planId
+ * Обновить тарифный план: { priceRub?, tokenCreditsOnPurchase?, allowedModels?, isActive? }
+ *
+ * Валидация:
+ *  - Нельзя деактивировать free план
+ *  - priceRub >= 0 (для free — должен быть 0)
+ *  - tokenCreditsOnPurchase >= 0
+ *  - Для free: allowedModels должен содержать хотя бы 1 модель
+ */
+router.patch('/plans/:planId', requireJwtAuth, requireAdminRole, async (req, res) => {
+  try {
+    const { planId } = req.params;
+    if (!['free', 'pro', 'business'].includes(planId)) {
+      return res.status(400).json({ error: 'Недопустимый planId' });
+    }
+
+    const { priceRub, tokenCreditsOnPurchase, allowedModels, isActive } = req.body;
+    const update = {};
+
+    if (priceRub !== undefined) {
+      const price = parseFloat(priceRub);
+      if (isNaN(price) || price < 0) return res.status(400).json({ error: 'priceRub должен быть >= 0' });
+      if (planId === 'free' && price !== 0) return res.status(400).json({ error: 'Тариф free должен стоить 0 ₽' });
+      if (planId !== 'free' && price < 100) return res.status(400).json({ error: 'Минимальная цена для платного тарифа — 100 ₽' });
+      update.priceRub = price;
+    }
+
+    if (tokenCreditsOnPurchase !== undefined) {
+      const tc = parseInt(tokenCreditsOnPurchase);
+      if (isNaN(tc) || tc < 0) return res.status(400).json({ error: 'tokenCreditsOnPurchase должен быть >= 0' });
+      update.tokenCreditsOnPurchase = tc;
+    }
+
+    if (allowedModels !== undefined) {
+      if (!Array.isArray(allowedModels)) return res.status(400).json({ error: 'allowedModels должен быть массивом строк' });
+      if (planId === 'free' && allowedModels.length === 0) {
+        return res.status(400).json({ error: 'Для тарифа free нельзя оставлять список моделей пустым' });
+      }
+      update.allowedModels = allowedModels.map((m) => String(m).trim()).filter(Boolean);
+    }
+
+    if (isActive !== undefined) {
+      if (planId === 'free' && isActive === false) {
+        return res.status(400).json({ error: 'Нельзя деактивировать тариф free' });
+      }
+      update.isActive = Boolean(isActive);
+    }
+
+    if (Object.keys(update).length === 0) {
+      return res.status(400).json({ error: 'Нет полей для обновления' });
+    }
+
+    const updated = await Plan.findOneAndUpdate({ planId }, update, { new: true }).lean();
+    if (!updated) return res.status(404).json({ error: 'Тариф не найден' });
+
+    invalidatePlanCache(); // Немедленно применяем изменение allowedModels
+
+    logger.info(`[admin/plans] ${req.user.email} обновил тариф "${planId}": ${JSON.stringify(update)}`);
+    res.json({ ok: true, plan: updated });
+  } catch (err) {
+    logger.error('[admin/plans/update]', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+/**
+ * PATCH /api/admin/mvp/token-packages/:packageId
+ * Обновить пакет токенов: { priceRub?, tokenCredits?, isActive? }
+ */
+router.patch('/token-packages/:packageId', requireJwtAuth, requireAdminRole, async (req, res) => {
+  try {
+    const { packageId } = req.params;
+    await TokenPackage.seedDefaults();
+
+    const { priceRub, tokenCredits, isActive } = req.body;
+    const update = {};
+
+    if (priceRub !== undefined) {
+      const price = parseFloat(priceRub);
+      if (isNaN(price) || price < 100) return res.status(400).json({ error: 'Минимальная цена пакета — 100 ₽' });
+      update.priceRub = price;
+    }
+
+    if (tokenCredits !== undefined) {
+      const tc = parseInt(tokenCredits);
+      if (isNaN(tc) || tc <= 0) return res.status(400).json({ error: 'tokenCredits должен быть > 0' });
+      update.tokenCredits = tc;
+    }
+
+    if (isActive !== undefined) {
+      update.isActive = Boolean(isActive);
+    }
+
+    if (Object.keys(update).length === 0) {
+      return res.status(400).json({ error: 'Нет полей для обновления' });
+    }
+
+    const updated = await TokenPackage.findOneAndUpdate({ packageId }, update, { new: true }).lean();
+    if (!updated) return res.status(404).json({ error: 'Пакет не найден' });
+
+    logger.info(`[admin/token-packages] ${req.user.email} обновил пакет "${packageId}": ${JSON.stringify(update)}`);
+    res.json({ ok: true, package: updated });
+  } catch (err) {
+    logger.error('[admin/token-packages/update]', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
 
