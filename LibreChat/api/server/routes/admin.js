@@ -1,6 +1,7 @@
 'use strict';
 const express = require('express');
 const axios = require('axios');
+const { computeTier } = require('../utils/computeTier');
 const { logger } = require('@librechat/data-schemas');
 const { requireJwtAuth } = require('../middleware/');
 const { User, Balance, Payment } = require('~/db/models');
@@ -46,10 +47,10 @@ router.get('/users', requireJwtAuth, requireAdminRole, async (req, res) => {
     const balances = await Balance.find({ user: { $in: userIds } }, 'user tokenCredits').lean();
     const balanceMap = Object.fromEntries(balances.map((b) => [b.user.toString(), b.tokenCredits]));
 
-    const result = users.map((u) => ({
-      ...u,
-      tokenCredits: balanceMap[u._id.toString()] ?? 0,
-    }));
+    const result = users.map((u) => {
+      const tokenCredits = balanceMap[u._id.toString()] ?? 0;
+      return { ...u, tokenCredits, tier: computeTier(tokenCredits) };
+    });
 
     res.json({ users: result, total, page, pages: Math.ceil(total / limit) });
   } catch (err) {
