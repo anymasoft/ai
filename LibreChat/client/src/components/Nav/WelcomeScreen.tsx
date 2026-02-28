@@ -68,9 +68,9 @@ export default function WelcomeScreen({ onPromptSelect }: WelcomeScreenProps) {
 
       <button
         onClick={() => navigate('/pricing')}
-        className="text-xs text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors underline underline-offset-2"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"
       >
-        Посмотреть тарифы →
+        💳 Тарифы и оплата →
       </button>
     </div>
   );

@@ -1,6 +1,7 @@
 import { useState, memo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import * as Select from '@ariakit/react/select';
-import { FileText, LogOut } from 'lucide-react';
+import { FileText, LogOut, CreditCard, ShieldCheck } from 'lucide-react';
 import { LinkIcon, GearIcon, DropdownMenuSeparator, Avatar } from '@librechat/client';
 import { MyFilesModal } from '~/components/Chat/Input/Files/MyFilesModal';
 import { useGetStartupConfig, useGetUserBalance } from '~/data-provider';
@@ -10,6 +11,7 @@ import Settings from './Settings';
 
 function AccountSettings() {
   const localize = useLocalize();
+  const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuthContext();
   const { data: startupConfig } = useGetStartupConfig();
   const balanceQuery = useGetUserBalance({
@@ -59,6 +61,25 @@ function AccountSettings() {
             <DropdownMenuSeparator />
           </>
         )}
+        <Select.SelectItem
+          value=""
+          onClick={() => navigate('/pricing')}
+          className="select-item text-sm font-medium text-blue-600 dark:text-blue-400"
+        >
+          <CreditCard className="icon-md" aria-hidden="true" />
+          {user?.role === 'ADMIN' ? 'Тарифы и баланс' : '⚡ Купить Pro'}
+        </Select.SelectItem>
+        {user?.role === 'ADMIN' && (
+          <Select.SelectItem
+            value=""
+            onClick={() => navigate('/admin')}
+            className="select-item text-sm"
+          >
+            <ShieldCheck className="icon-md" aria-hidden="true" />
+            Панель администратора
+          </Select.SelectItem>
+        )}
+        <DropdownMenuSeparator />
         <Select.SelectItem
           value=""
           onClick={() => setShowFiles(true)}
