@@ -101,6 +101,44 @@ router.patch('/users/:userId/role', requireJwtAuth, requireAdminRole, async (req
 });
 
 /**
+ * PATCH /api/admin/users/:userId/plan
+ * Вручную переключить тариф: { plan: 'free' | 'pro' | 'business', durationDays?: number }
+ * durationDays по умолчанию 30.
+ */
+router.patch('/users/:userId/plan', requireJwtAuth, requireAdminRole, async (req, res) => {
+  try {
+    const { plan, durationDays } = req.body;
+    if (!['free', 'pro', 'business'].includes(plan)) {
+      return res.status(400).json({ error: 'Недопустимый тариф. Используйте free, pro или business' });
+    }
+    const userId = req.params.userId;
+    const days = parseInt(durationDays) || 30;
+
+    let planStartedAt = null;
+    let planExpiresAt = null;
+
+    if (plan !== 'free') {
+      const now = new Date();
+      planStartedAt = now;
+      planExpiresAt = new Date(now);
+      planExpiresAt.setDate(planExpiresAt.getDate() + days);
+    }
+
+    await Subscription.findOneAndUpdate(
+      { userId },
+      { plan, planStartedAt, planExpiresAt },
+      { upsert: true, new: true },
+    );
+
+    logger.info(`[admin] ${req.user.email} переключил план userId=${userId} → ${plan} (до ${planExpiresAt || 'бессрочно'})`);
+    res.json({ ok: true, plan, planExpiresAt });
+  } catch (err) {
+    logger.error('[admin/plan]', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+/**
  * POST /api/admin/users/:userId/balance
  * Начислить или списать баланс: { credits: number }
  * credits может быть отрицательным (списание). Итог не может быть < 0.

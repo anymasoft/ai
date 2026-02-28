@@ -35,8 +35,8 @@ export default function ProBanner() {
   const lowBalance = balanceEnabled && credits !== null && credits < 5000;
 
   const message = lowBalance
-    ? `⚡ Баланс почти на нуле (${credits?.toLocaleString('ru')} кр.). Пополните для продолжения.`
-    : '🚀 GPT-4o Mini — бесплатно. Claude Sonnet, DeepSeek, Web-поиск — в Pro';
+    ? `Баланс почти на нуле (${credits?.toLocaleString('ru')} кр.). Пополните для продолжения.`
+    : 'GPT-4o Mini — бесплатно. Claude Sonnet, DeepSeek, Web-поиск — в Pro';
 
   const handleDismiss = () => {
     try {

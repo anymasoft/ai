@@ -65,6 +65,7 @@ export default function AdminPanel() {
   const [reconcileId, setReconcileId] = useState('');
   const [reconcileResult, setReconcileResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [reconcileLoading, setReconcileLoading] = useState(false);
+  const [planChanging, setPlanChanging] = useState<Record<string, boolean>>({});
 
   const isAdmin = user?.role === SystemRoles.ADMIN;
 
@@ -158,6 +159,27 @@ export default function AdminPanel() {
       setReconcileResult({ ok: false, message: e instanceof Error ? e.message : 'Ошибка' });
     } finally {
       setReconcileLoading(false);
+    }
+  };
+
+  const changePlan = async (userId: string, plan: string) => {
+    setPlanChanging((prev) => ({ ...prev, [userId]: true }));
+    try {
+      const res = await fetch(`/api/admin/mvp/users/${userId}/plan`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ plan }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      await load();
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'Ошибка смены тарифа');
+    } finally {
+      setPlanChanging((prev) => ({ ...prev, [userId]: false }));
     }
   };
 
@@ -326,11 +348,18 @@ export default function AdminPanel() {
                           )}
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`rounded-full px-2 py-1 text-xs font-semibold ${
-                            (PLAN_DISPLAY[u.plan] ?? PLAN_DISPLAY.free).className
-                          }`}>
-                            {(PLAN_DISPLAY[u.plan] ?? PLAN_DISPLAY.free).label}
-                          </span>
+                          <select
+                            value={u.plan}
+                            disabled={planChanging[u._id]}
+                            onChange={(e) => changePlan(u._id, e.target.value)}
+                            className={`rounded-full px-2 py-1 text-xs font-semibold cursor-pointer border-0 outline-none ${
+                              (PLAN_DISPLAY[u.plan] ?? PLAN_DISPLAY.free).className
+                            } ${planChanging[u._id] ? 'opacity-50' : ''}`}
+                          >
+                            <option value="free">Free</option>
+                            <option value="pro">Pro</option>
+                            <option value="business">Business</option>
+                          </select>
                           {u.planExpiresAt && (
                             <div className="mt-0.5 text-xs text-gray-400">
                               до {new Date(u.planExpiresAt).toLocaleDateString('ru-RU')}
@@ -431,7 +460,7 @@ export default function AdminPanel() {
               </div>
               {reconcileResult && (
                 <p className={`mt-2 text-sm ${reconcileResult.ok ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
-                  {reconcileResult.ok ? '✓ ' : '✗ '}{reconcileResult.message}
+                  {reconcileResult.message}
                 </p>
               )}
             </div>

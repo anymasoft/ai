@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
+import { QueryKeys } from 'librechat-data-provider';
+import { Check, X, AlertTriangle, Loader2, CheckCircle, Clock } from 'lucide-react';
 import { useAuthContext } from '~/hooks';
 
 const AVG_MSG_CREDITS = 4_392;
@@ -8,7 +11,6 @@ function creditsToMessages(credits: number): number {
   return Math.max(0, Math.floor(credits / AVG_MSG_CREDITS));
 }
 
-/** Отображение плана — соответствует Subscription.plan на сервере */
 const PLAN_DISPLAY: Record<string, { label: string; color: string }> = {
   free:     { label: 'Free',     color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
   pro:      { label: 'Pro',      color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
@@ -81,6 +83,7 @@ interface BalanceInfo {
 export default function Pricing() {
   const navigate = useNavigate();
   const { token } = useAuthContext();
+  const queryClient = useQueryClient();
   const [balance, setBalance] = useState<BalanceInfo | null>(null);
   const [paymentCheck, setPaymentCheck] = useState<
     { status: 'checking' | 'ok' | 'error' | 'pending'; message?: string } | null
@@ -100,6 +103,8 @@ export default function Pricing() {
             plan: d.plan || 'free',
             planExpiresAt: d.planExpiresAt || null,
           });
+          // Обновляем кэш React Query — аватарка отобразит новый баланс сразу
+          queryClient.invalidateQueries([QueryKeys.balance]);
         }
       })
       .catch(() => undefined);
@@ -130,6 +135,10 @@ export default function Pricing() {
               ? 'Платёж уже был зачислен ранее'
               : `Подписка активирована. Зачислено ${data.tokenCredits?.toLocaleString('ru-RU')} токенов`,
           });
+          fetchBalance();
+        } else if (data.status === 'not_found') {
+          // Нет ожидающих платежей — вебхук уже обработал, просто скрываем баннер
+          setPaymentCheck(null);
           fetchBalance();
         } else if (data.status === 'pending' || data.status === 'waiting_for_capture') {
           setPaymentCheck({ status: 'pending', message: 'Платёж ещё обрабатывается — обновите страницу через минуту' });
@@ -168,7 +177,6 @@ export default function Pricing() {
   const credits = balance?.tokenCredits ?? 0;
   const msgEstimate = creditsToMessages(credits);
 
-  // Предупреждение о низком балансе: < 10% от лимита плана
   const planConfig: Record<string, number> = { pro: 22_000_000, business: 55_000_000 };
   const planLimit = planConfig[plan];
   const isLowBalance = plan !== 'free' && planLimit != null && credits < planLimit * 0.1;
@@ -184,28 +192,36 @@ export default function Pricing() {
 
         {/* Статус платежа после возврата из ЮKassa */}
         {paymentCheck && (
-          <div className={`mb-6 rounded-xl px-5 py-4 text-sm ${
+          <div className={`mb-6 flex items-start gap-3 rounded-xl px-5 py-4 text-sm ${
             paymentCheck.status === 'checking' ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300' :
             paymentCheck.status === 'ok'       ? 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300' :
             paymentCheck.status === 'pending'  ? 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300' :
                                                  'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300'
           }`}>
-            {paymentCheck.status === 'checking' && '⏳ Проверяем статус платежа...'}
-            {paymentCheck.status === 'ok'       && `✓ ${paymentCheck.message}`}
-            {paymentCheck.status === 'pending'  && `⏳ ${paymentCheck.message}`}
-            {paymentCheck.status === 'error'    && `✗ ${paymentCheck.message}`}
+            {paymentCheck.status === 'checking' && <Loader2 className="mt-0.5 size-4 shrink-0 animate-spin" />}
+            {paymentCheck.status === 'ok'       && <CheckCircle className="mt-0.5 size-4 shrink-0" />}
+            {paymentCheck.status === 'pending'  && <Clock className="mt-0.5 size-4 shrink-0" />}
+            {paymentCheck.status === 'error'    && <X className="mt-0.5 size-4 shrink-0" />}
+            <span>
+              {paymentCheck.status === 'checking' && 'Проверяем статус платежа...'}
+              {paymentCheck.status === 'ok'       && paymentCheck.message}
+              {paymentCheck.status === 'pending'  && paymentCheck.message}
+              {paymentCheck.status === 'error'    && paymentCheck.message}
+            </span>
           </div>
         )}
 
         {/* Предупреждение о низком балансе */}
         {isZeroBalance && plan !== 'free' && (
-          <div className="mb-6 rounded-xl bg-red-50 px-5 py-4 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
-            ⚠️ Баланс токенов исчерпан. Отправка сообщений заблокирована. Пополните подписку.
+          <div className="mb-6 flex items-start gap-3 rounded-xl bg-red-50 px-5 py-4 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+            <span>Баланс токенов исчерпан. Отправка сообщений заблокирована. Пополните подписку.</span>
           </div>
         )}
         {!isZeroBalance && isLowBalance && (
-          <div className="mb-6 rounded-xl bg-amber-50 px-5 py-4 text-sm text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-            ⚠️ Баланс токенов меньше 10% от месячного лимита. Осталось ~{msgEstimate.toLocaleString('ru-RU')} сообщений. Рекомендуем продлить подписку.
+          <div className="mb-6 flex items-start gap-3 rounded-xl bg-amber-50 px-5 py-4 text-sm text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+            <span>Баланс токенов меньше 10% от месячного лимита. Осталось ~{msgEstimate.toLocaleString('ru-RU')} сообщений. Рекомендуем продлить подписку.</span>
           </div>
         )}
 
@@ -223,9 +239,10 @@ export default function Pricing() {
           <p className="text-gray-600 dark:text-gray-400">
             Доступ к лучшим AI-моделям в одном месте
           </p>
-          <div className={`mt-4 inline-block rounded-full px-4 py-2 text-sm font-medium ${planDisplay.color}`}>
-            ✓ Ваш текущий тариф: <strong>{planDisplay.label}</strong>
-            {planExpiresAt && <span className="ml-2 opacity-75">· активен до {planExpiresAt}</span>}
+          <div className={`mt-4 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium ${planDisplay.color}`}>
+            <Check className="size-3.5" />
+            Ваш текущий тариф: <strong>{planDisplay.label}</strong>
+            {planExpiresAt && <span className="opacity-75">· активен до {planExpiresAt}</span>}
           </div>
           {balance && (
             <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
@@ -268,12 +285,13 @@ export default function Pricing() {
                   <li
                     key={f.text}
                     className={`flex items-start gap-2 text-sm ${
-                      f.ok
-                        ? 'text-gray-700 dark:text-gray-300'
-                        : 'text-gray-400 dark:text-gray-600'
+                      f.ok ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400 dark:text-gray-600'
                     }`}
                   >
-                    <span className="mt-0.5 shrink-0">{f.ok ? '✓' : '✗'}</span>
+                    {f.ok
+                      ? <Check className="mt-0.5 size-3.5 shrink-0 text-green-500" />
+                      : <X className="mt-0.5 size-3.5 shrink-0 text-gray-300 dark:text-gray-600" />
+                    }
                     <span>{f.text}</span>
                   </li>
                 ))}
