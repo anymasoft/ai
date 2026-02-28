@@ -2,7 +2,7 @@
 const express = require('express');
 const { logger } = require('@librechat/data-schemas');
 const { requireJwtAuth } = require('../middleware/');
-const { User, Balance } = require('~/db/models');
+const { User, Balance, Payment } = require('~/db/models');
 
 const router = express.Router();
 
@@ -100,6 +100,58 @@ router.post('/users/:userId/balance', requireJwtAuth, requireAdminRole, async (r
     res.json({ tokenCredits: balance.tokenCredits });
   } catch (err) {
     logger.error('[admin/balance]', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+/**
+ * GET /api/admin/payments
+ * Список всех платежей (ЮKassa) с фильтрами по email и дате
+ */
+router.get('/payments', requireJwtAuth, requireAdminRole, async (req, res) => {
+  try {
+    const { email, from, to } = req.query;
+    const paymentFilter = {};
+
+    if (from || to) {
+      paymentFilter.createdAt = {};
+      if (from) paymentFilter.createdAt.$gte = new Date(from);
+      if (to) paymentFilter.createdAt.$lte = new Date(`${to}T23:59:59.999Z`);
+    }
+
+    if (email) {
+      const matchedUsers = await User.find(
+        { email: { $regex: email, $options: 'i' } },
+        '_id',
+      ).lean();
+      paymentFilter.userId = { $in: matchedUsers.map((u) => u._id) };
+    }
+
+    const payments = await Payment.find(paymentFilter)
+      .sort({ createdAt: -1 })
+      .limit(500)
+      .populate('userId', 'email name')
+      .lean();
+
+    const result = payments.map((p) => ({
+      _id: p._id,
+      email: p.userId?.email || '—',
+      name: p.userId?.name || '',
+      packageId: p.packageId,
+      tokenCredits: p.tokenCredits,
+      amount: p.amount,
+      status: p.status,
+      createdAt: p.createdAt,
+    }));
+
+    const totalSum = payments.reduce((sum, p) => {
+      const val = parseFloat(p.amount || '0');
+      return sum + (isNaN(val) ? 0 : val);
+    }, 0);
+
+    res.json({ payments: result, total: result.length, totalSum });
+  } catch (err) {
+    logger.error('[admin/payments]', err);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });

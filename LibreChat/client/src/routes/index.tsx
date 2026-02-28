@@ -20,6 +20,7 @@ import ShareRoute from './ShareRoute';
 import ChatRoute from './ChatRoute';
 import Pricing from './Pricing';
 import AdminPanel from './AdminPanel';
+import Billing from './Billing';
 import Search from './Search';
 import Root from './Root';
 
@@ -116,6 +117,10 @@ export const router = createBrowserRouter(
             {
               path: 'pricing',
               element: <Pricing />,
+            },
+            {
+              path: 'billing',
+              element: <Billing />,
             },
             {
               path: 'admin',
