@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import { SystemRoles } from 'librechat-data-provider';
 import { useAuthContext } from '~/hooks';
+import type { ContextType } from '~/common';
+import OpenSidebar from '~/components/Chat/Menus/OpenSidebar';
 
 type Tab = 'users' | 'payments' | 'settings';
 
@@ -110,6 +112,7 @@ export default function AdminPanel() {
   const [planSaveMsg, setPlanSaveMsg] = useState<Record<string, { ok: boolean; text: string }>>({});
   const [pkgSaveMsg, setPkgSaveMsg] = useState<Record<string, { ok: boolean; text: string }>>({});
 
+  const { navVisible, setNavVisible } = useOutletContext<ContextType>();
   const isAdmin = user?.role === SystemRoles.ADMIN;
 
   const load = useCallback(async () => {
@@ -363,6 +366,12 @@ export default function AdminPanel() {
 
   return (
     <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-900">
+      {/* Кнопка открытия боковой панели — десктоп, только когда панель закрыта */}
+      {!navVisible && (
+        <div className="sticky top-0 z-10 hidden items-center bg-gray-50 px-3 py-2 dark:bg-gray-900 md:flex">
+          <OpenSidebar setNavVisible={setNavVisible} />
+        </div>
+      )}
       <div className="mx-auto max-w-6xl px-4 py-8">
 
         {/* Header */}

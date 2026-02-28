@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { QueryKeys } from 'librechat-data-provider';
 import { Check, X, AlertTriangle, Loader2, CheckCircle, Clock, Plus } from 'lucide-react';
 import { useAuthContext } from '~/hooks';
+import type { ContextType } from '~/common';
+import OpenSidebar from '~/components/Chat/Menus/OpenSidebar';
 
 const AVG_MSG_CREDITS = 4_392;
 
@@ -76,6 +78,7 @@ export default function Pricing() {
   const navigate = useNavigate();
   const { token } = useAuthContext();
   const queryClient = useQueryClient();
+  const { navVisible, setNavVisible } = useOutletContext<ContextType>();
 
   const [plans, setPlans] = useState<PlanDoc[]>([]);
   const [tokenPackages, setTokenPackages] = useState<TokenPackageDoc[]>([]);
@@ -193,6 +196,12 @@ export default function Pricing() {
 
   return (
     <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-900">
+      {/* Кнопка открытия боковой панели — десктоп, только когда панель закрыта */}
+      {!navVisible && (
+        <div className="sticky top-0 z-10 hidden items-center bg-gray-50 px-3 py-2 dark:bg-gray-900 md:flex">
+          <OpenSidebar setNavVisible={setNavVisible} />
+        </div>
+      )}
       <div className="mx-auto max-w-5xl px-4 py-10">
 
         {/* Статус платежа после возврата из ЮKassa */}
