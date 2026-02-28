@@ -152,11 +152,7 @@ export default function AdminPanel() {
   if (!user) return null;
 
   const formatCredits = (n: number) =>
-    n >= 1_000_000
-      ? `${(n / 1_000_000).toFixed(1)}M`
-      : n >= 1_000
-        ? `${(n / 1_000).toFixed(0)}K`
-        : n.toString();
+    n.toLocaleString('ru-RU');
 
   // 1 tokenCredit = $0.000001; показываем приблизительный расход в центах
   const creditsToUsd = (n: number) => `$${(n * 0.000001).toFixed(3)}`;
