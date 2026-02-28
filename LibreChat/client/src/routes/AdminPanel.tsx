@@ -54,6 +54,9 @@ export default function AdminPanel() {
   const [paymentEmailFilter, setPaymentEmailFilter] = useState('');
   const [paymentFromFilter, setPaymentFromFilter] = useState('');
   const [paymentToFilter, setPaymentToFilter] = useState('');
+  const [reconcileId, setReconcileId] = useState('');
+  const [reconcileResult, setReconcileResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [reconcileLoading, setReconcileLoading] = useState(false);
 
   const isAdmin = user?.role === SystemRoles.ADMIN;
 
@@ -124,6 +127,31 @@ export default function AdminPanel() {
       loadPayments();
     }
   }, [isAdmin, tab, loadPayments]);
+
+  const reconcilePayment = async () => {
+    const id = reconcileId.trim();
+    if (!id) return;
+    setReconcileLoading(true);
+    setReconcileResult(null);
+    try {
+      const res = await fetch(`/api/admin/mvp/payments/${encodeURIComponent(id)}/reconcile`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Ошибка ${res.status}`);
+      setReconcileResult(data);
+      if (data.ok) { setReconcileId(''); loadPayments(); }
+    } catch (e: unknown) {
+      setReconcileResult({ ok: false, message: e instanceof Error ? e.message : 'Ошибка' });
+    } finally {
+      setReconcileLoading(false);
+    }
+  };
 
   const addCredits = async (userId: string) => {
     const credits = parseInt(creditInputs[userId] || '');
@@ -373,6 +401,34 @@ export default function AdminPanel() {
         {/* ── PAYMENTS TAB ───────────────────────────────────── */}
         {tab === 'payments' && (
           <>
+            {/* Reconcile — ручная проверка платежа */}
+            <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950">
+              <p className="mb-2 text-sm font-semibold text-amber-800 dark:text-amber-300">
+                Проверить платёж вручную (вебхук не дошёл)
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="paymentId из ЮKassa (UUID)"
+                  value={reconcileId}
+                  onChange={(e) => { setReconcileId(e.target.value); setReconcileResult(null); }}
+                  className="flex-1 min-w-[260px] rounded border border-gray-300 bg-white px-3 py-1.5 text-sm font-mono dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                />
+                <button
+                  onClick={reconcilePayment}
+                  disabled={reconcileLoading || !reconcileId.trim()}
+                  className="rounded bg-amber-600 px-3 py-1.5 text-sm text-white hover:bg-amber-700 disabled:opacity-50 transition-colors"
+                >
+                  {reconcileLoading ? 'Проверяю...' : 'Проверить и зачислить'}
+                </button>
+              </div>
+              {reconcileResult && (
+                <p className={`mt-2 text-sm ${reconcileResult.ok ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                  {reconcileResult.ok ? '✓ ' : '✗ '}{reconcileResult.message}
+                </p>
+              )}
+            </div>
+
             {/* Filters */}
             <div className="mb-4 flex flex-wrap gap-3">
               <input

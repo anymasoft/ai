@@ -3,20 +3,30 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '~/hooks';
 
 function getTier(credits: number | null): { label: string; color: string } {
-  if (credits === null) return { label: 'Free', color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' };
+  if (credits === null || credits === 0) return { label: 'Free', color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' };
   if (credits >= 900_000) return { label: 'Business', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' };
   if (credits >= 400_000) return { label: 'Pro', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' };
-  return { label: 'Free', color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' };
+  return { label: 'Starter', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' };
 }
+
+const PRO_FEATURES = [
+  { ok: true, text: 'GPT-4o Mini' },
+  { ok: true, text: 'Claude Sonnet 4' },
+  { ok: true, text: 'DeepSeek V3' },
+  { ok: true, text: 'Web-поиск (Tavily)' },
+  { ok: true, text: 'Code Interpreter' },
+  { ok: false, text: 'Приоритетная поддержка' },
+];
 
 const TIERS = [
   {
     id: 'free',
     label: 'Free',
     price: '0 ₽',
-    priceNote: 'навсегда',
+    tokens: null as number | null,
+    priceNote: 'стартовый баланс при регистрации',
     highlight: false,
-    badge: null,
+    badge: null as string | null,
     features: [
       { ok: true,  text: 'GPT-4o Mini' },
       { ok: true,  text: '~25 сообщений при регистрации' },
@@ -26,30 +36,36 @@ const TIERS = [
       { ok: false, text: 'Code Interpreter' },
       { ok: false, text: 'Приоритетная поддержка' },
     ],
-    cta: null,
+    cta: null as string | null,
+  },
+  {
+    id: 'starter',
+    label: 'Starter',
+    price: '990 ₽',
+    tokens: 400_000,
+    priceNote: '400 000 токенов на баланс',
+    highlight: false,
+    badge: null,
+    features: PRO_FEATURES,
+    cta: 'starter',
   },
   {
     id: 'pro',
     label: 'Pro',
-    price: 'от 990 ₽',
-    priceNote: 'за пакет токенов',
+    price: '1 990 ₽',
+    tokens: 900_000,
+    priceNote: '900 000 токенов на баланс',
     highlight: true,
     badge: 'РЕКОМЕНДУЕМ',
-    features: [
-      { ok: true, text: 'GPT-4o Mini' },
-      { ok: true, text: 'Claude Sonnet 4' },
-      { ok: true, text: 'DeepSeek V3' },
-      { ok: true, text: 'Web-поиск (Tavily)' },
-      { ok: true, text: 'Code Interpreter' },
-      { ok: false, text: 'Приоритетная поддержка' },
-    ],
+    features: PRO_FEATURES,
     cta: 'pro',
   },
   {
     id: 'business',
     label: 'Business',
-    price: 'от 3 990 ₽',
-    priceNote: 'максимальный пакет',
+    price: '3 990 ₽',
+    tokens: 2_000_000,
+    priceNote: '2 000 000 токенов на баланс',
     highlight: false,
     badge: null,
     features: [
@@ -68,8 +84,12 @@ export default function Pricing() {
   const navigate = useNavigate();
   const { token } = useAuthContext();
   const [credits, setCredits] = useState<number | null>(null);
+  // Состояние проверки платежа после редиректа с ?payment=success
+  const [paymentCheck, setPaymentCheck] = useState<
+    { status: 'checking' | 'ok' | 'error' | 'pending'; message?: string } | null
+  >(null);
 
-  useEffect(() => {
+  const fetchBalance = () => {
     if (!token) return;
     fetch('/api/balance', {
       credentials: 'include',
@@ -78,6 +98,43 @@ export default function Pricing() {
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (d?.tokenCredits != null) setCredits(d.tokenCredits); })
       .catch(() => undefined);
+  };
+
+  useEffect(() => {
+    fetchBalance();
+  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fallback-поллинг для localhost: ONE-TIME check после редиректа с ?payment=success
+  // В PROD вебхук ЮKassa обрабатывает платёж сам; этот блок — запасной вариант.
+  useEffect(() => {
+    if (!token) return;
+    const params = new URLSearchParams(window.location.search);
+    if (!params.get('payment')) return; // запускаем только если есть ?payment=success
+
+    setPaymentCheck({ status: 'checking' });
+
+    fetch('/api/payment/check', {
+      credentials: 'include',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.ok) {
+          setPaymentCheck({
+            status: 'ok',
+            message: data.alreadyDone
+              ? 'Платёж уже был зачислен ранее'
+              : `Зачислено ${data.tokenCredits?.toLocaleString('ru-RU')} токенов`,
+          });
+          fetchBalance(); // обновляем баланс на странице
+        } else if (data.status === 'pending' || data.status === 'waiting_for_capture') {
+          setPaymentCheck({ status: 'pending', message: 'Платёж ещё обрабатывается — обновите страницу через минуту' });
+        } else {
+          setPaymentCheck({ status: 'error', message: data.message || data.error || 'Не удалось подтвердить платёж' });
+        }
+      })
+      .catch(() => setPaymentCheck({ status: 'error', message: 'Ошибка соединения с сервером' }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const tier = getTier(credits);
@@ -109,6 +166,21 @@ export default function Pricing() {
     <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-900">
       <div className="mx-auto max-w-5xl px-4 py-10">
 
+        {/* Статус платежа после возврата из ЮKassa */}
+        {paymentCheck && (
+          <div className={`mb-6 rounded-xl px-5 py-4 text-sm ${
+            paymentCheck.status === 'checking' ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300' :
+            paymentCheck.status === 'ok'       ? 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300' :
+            paymentCheck.status === 'pending'  ? 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300' :
+                                                 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300'
+          }`}>
+            {paymentCheck.status === 'checking' && '⏳ Проверяем статус платежа...'}
+            {paymentCheck.status === 'ok'       && `✓ ${paymentCheck.message}`}
+            {paymentCheck.status === 'pending'  && `⏳ ${paymentCheck.message}`}
+            {paymentCheck.status === 'error'    && `✗ ${paymentCheck.message}`}
+          </div>
+        )}
+
         {/* Header */}
         <div className="mb-10 text-center">
           <button
@@ -128,8 +200,8 @@ export default function Pricing() {
           </div>
         </div>
 
-        {/* Tier cards: Free / Pro / Business */}
-        <div className="mb-14 grid grid-cols-1 gap-6 md:grid-cols-3">
+        {/* Tier cards: Free / Starter / Pro / Business */}
+        <div className="mb-14 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
           {TIERS.map((tier) => (
             <div
               key={tier.id}
@@ -149,7 +221,12 @@ export default function Pricing() {
                 {tier.label}
               </h2>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">{tier.price}</p>
-              <p className="mb-5 text-xs text-gray-500 dark:text-gray-400">{tier.priceNote}</p>
+              {tier.tokens != null && (
+                <p className="mt-0.5 text-sm font-semibold text-blue-600 dark:text-blue-400">
+                  {tier.tokens.toLocaleString('ru-RU')} токенов
+                </p>
+              )}
+              <p className="mb-5 mt-0.5 text-xs text-gray-500 dark:text-gray-400">{tier.priceNote}</p>
 
               <ul className="mb-6 space-y-2">
                 {tier.features.map((f) => (
