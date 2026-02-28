@@ -127,12 +127,14 @@ export default function AdminPanel() {
   const [modelsError, setModelsError] = useState('');
   const [modelSaving, setModelSaving] = useState<Record<string, boolean>>({});
   const [modelSaveMsg, setModelSaveMsg] = useState<Record<string, { ok: boolean; text: string }>>({});
-  const [modelEdits, setModelEdits] = useState<Record<string, { provider: string; displayName: string; isActive: boolean }>>({});
+  const [modelEdits, setModelEdits] = useState<Record<string, { provider: string; displayName: string; isActive: boolean; endpointKey?: string }>>({});
   const [newModelForm, setNewModelForm] = useState({ modelId: '', provider: '', endpointKey: '', displayName: '' });
   const [newModelSaving, setNewModelSaving] = useState(false);
   const [newModelMsg, setNewModelMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [deleteModelDialog, setDeleteModelDialog] = useState<{ open: boolean; modelId: string | null }>({ open: false, modelId: null });
   const [deleteModelError, setDeleteModelError] = useState<string | null>(null);
+  const [availableEndpoints, setAvailableEndpoints] = useState<string[]>([]);
+  const [availableProviders, setAvailableProviders] = useState<string[]>([]);
 
   const { navVisible, setNavVisible } = useOutletContext<ContextType>();
   const isAdmin = user?.role === SystemRoles.ADMIN;
@@ -204,9 +206,9 @@ export default function AdminPanel() {
       const result = await res.json();
       const models: AiModelDoc[] = result.models ?? [];
       setAiModels(models);
-      const me: Record<string, { provider: string; displayName: string; isActive: boolean }> = {};
+      const me: Record<string, { provider: string; displayName: string; isActive: boolean; endpointKey?: string }> = {};
       for (const m of models) {
-        me[m.modelId] = { provider: m.provider, displayName: m.displayName, isActive: m.isActive };
+        me[m.modelId] = { provider: m.provider, displayName: m.displayName, isActive: m.isActive, endpointKey: (m as any).endpointKey };
       }
       setModelEdits(me);
     } catch (e: unknown) {
@@ -286,6 +288,25 @@ export default function AdminPanel() {
       loadPayments();
     } else if (isAdmin && tab === 'settings') {
       loadSettings();
+      // Загружаем список доступных эндпоинтов и провайдеров
+      (async () => {
+        try {
+          const res = await fetch('/api/endpoints', { credentials: 'include' });
+          if (res.ok) {
+            const data = await res.json();
+            const endpoints = Object.keys(data).sort();
+            setAvailableEndpoints(endpoints);
+            // Извлекаем провайдеры из конфига эндпоинтов
+            const providers = new Set<string>();
+            Object.values(data as Record<string, any>).forEach((config) => {
+              if (config?.type) providers.add(config.type);
+            });
+            setAvailableProviders(Array.from(providers).sort());
+          }
+        } catch (err) {
+          console.error('Ошибка при загрузке эндпоинтов:', err);
+        }
+      })();
     }
   }, [isAdmin, tab, loadPayments, loadSettings]);
 
@@ -381,12 +402,13 @@ export default function AdminPanel() {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ provider: edit.provider, displayName: edit.displayName, isActive: edit.isActive }),
+        body: JSON.stringify({ provider: edit.provider, displayName: edit.displayName, isActive: edit.isActive, ...(edit.endpointKey ? { endpointKey: edit.endpointKey } : {}) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `Ошибка ${res.status}`);
       setModelSaveMsg((p) => ({ ...p, [modelId]: { ok: true, text: 'Сохранено' } }));
       await loadSettings();
+      await loadModels();
     } catch (e: unknown) {
       setModelSaveMsg((p) => ({ ...p, [modelId]: { ok: false, text: e instanceof Error ? e.message : 'Ошибка' } }));
     } finally {
@@ -408,6 +430,7 @@ export default function AdminPanel() {
       if (!res.ok) throw new Error(data.error || `Ошибка ${res.status}`);
       setDeleteModelDialog({ open: false, modelId: null });
       await loadSettings();
+      await loadModels();
     } catch (e: unknown) {
       setDeleteModelError(e instanceof Error ? e.message : 'Ошибка удаления модели');
     }
@@ -432,6 +455,7 @@ export default function AdminPanel() {
       setNewModelMsg({ ok: true, text: `Модель "${newModelForm.modelId}" создана` });
       setNewModelForm({ modelId: '', provider: '', endpointKey: '', displayName: '' });
       await loadSettings();
+      await loadModels();
     } catch (e: unknown) {
       setNewModelMsg({ ok: false, text: e instanceof Error ? e.message : 'Ошибка создания' });
     } finally {
@@ -900,23 +924,43 @@ export default function AdminPanel() {
                     </div>
                     <div>
                       <label className="mb-0.5 block text-xs text-blue-700 dark:text-blue-400">provider</label>
-                      <input
-                        type="text"
-                        placeholder="openai / anthropic / deepseek"
+                      <select
                         value={newModelForm.provider}
                         onChange={(e) => setNewModelForm((f) => ({ ...f, provider: e.target.value }))}
                         className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                      />
+                      >
+                        <option value="">-- Выбрать провайдер --</option>
+                        {availableProviders.map((prov) => (
+                          <option key={prov} value={prov}>
+                            {prov}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label className="mb-0.5 block text-xs text-blue-700 dark:text-blue-400">endpointKey (необяз.)</label>
-                      <input
-                        type="text"
-                        placeholder="openAI / anthropic / deepseek"
-                        value={newModelForm.endpointKey}
-                        onChange={(e) => setNewModelForm((f) => ({ ...f, endpointKey: e.target.value }))}
-                        className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm font-mono dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                      />
+                      {availableEndpoints.length > 0 ? (
+                        <select
+                          value={newModelForm.endpointKey}
+                          onChange={(e) => setNewModelForm((f) => ({ ...f, endpointKey: e.target.value }))}
+                          className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                        >
+                          <option value="">-- Выбрать из конфига --</option>
+                          {availableEndpoints.map((ep) => (
+                            <option key={ep} value={ep}>
+                              {ep}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type="text"
+                          placeholder="openAI / anthropic / deepseek"
+                          value={newModelForm.endpointKey}
+                          onChange={(e) => setNewModelForm((f) => ({ ...f, endpointKey: e.target.value }))}
+                          className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm font-mono dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                        />
+                      )}
                     </div>
                     <div>
                       <label className="mb-0.5 block text-xs text-blue-700 dark:text-blue-400">displayName</label>
@@ -970,12 +1014,32 @@ export default function AdminPanel() {
                             <tr key={m.modelId} className="hover:bg-gray-50 dark:hover:bg-gray-750">
                               <td className="px-4 py-2 font-mono text-xs text-gray-700 dark:text-gray-300">{m.modelId}</td>
                               <td className="px-4 py-2">
-                                <input
-                                  type="text"
+                                <select
                                   value={edit.provider}
                                   onChange={(e) => setModelEdits((prev) => ({ ...prev, [m.modelId]: { ...prev[m.modelId], provider: e.target.value } }))}
                                   className="w-24 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                                />
+                                >
+                                  <option value="">—</option>
+                                  {availableProviders.map((prov) => (
+                                    <option key={prov} value={prov}>
+                                      {prov}
+                                    </option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td className="px-4 py-2">
+                                <select
+                                  value={edit.endpointKey || ''}
+                                  onChange={(e) => setModelEdits((prev) => ({ ...prev, [m.modelId]: { ...prev[m.modelId], endpointKey: e.target.value } }))}
+                                  className="w-24 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                >
+                                  <option value="">—</option>
+                                  {availableEndpoints.map((ep) => (
+                                    <option key={ep} value={ep}>
+                                      {ep}
+                                    </option>
+                                  ))}
+                                </select>
                               </td>
                               <td className="px-4 py-2">
                                 <input
