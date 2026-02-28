@@ -57,30 +57,6 @@ const TIERS = [
   },
 ];
 
-const PACKAGES = [
-  {
-    id: 'starter',
-    label: 'Старт',
-    price: '990 ₽',
-    desc: '~600 сообщений GPT-4o Mini или ~130 Claude',
-    popular: false,
-  },
-  {
-    id: 'pro',
-    label: 'Pro',
-    price: '1 990 ₽',
-    desc: '~1 300 сообщений GPT-4o Mini или ~300 Claude',
-    popular: true,
-  },
-  {
-    id: 'max',
-    label: 'Business Max',
-    price: '3 990 ₽',
-    desc: '~3 000 сообщений GPT-4o Mini или ~660 Claude + приоритет',
-    popular: false,
-  },
-];
-
 export default function Pricing() {
   const navigate = useNavigate();
   const { user } = useAuthContext();
@@ -186,42 +162,6 @@ export default function Pricing() {
                   Текущий тариф
                 </div>
               )}
-            </div>
-          ))}
-        </div>
-
-        {/* Packages */}
-        <h2 className="mb-6 text-center text-xl font-semibold text-gray-900 dark:text-white">
-          Пополните баланс
-        </h2>
-        <div className="mb-10 grid grid-cols-1 gap-4 md:grid-cols-3">
-          {PACKAGES.map((pkg) => (
-            <div
-              key={pkg.id}
-              className={`rounded-2xl p-6 ${
-                pkg.popular
-                  ? 'border-2 border-blue-500 bg-white shadow-lg dark:bg-gray-800'
-                  : 'border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800'
-              }`}
-            >
-              {pkg.popular && (
-                <div className="mb-2 text-xs font-semibold uppercase text-blue-500">
-                  Популярный
-                </div>
-              )}
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{pkg.label}</h3>
-              <p className="my-2 text-2xl font-bold text-gray-900 dark:text-white">{pkg.price}</p>
-              <p className="mb-4 text-xs text-gray-500 dark:text-gray-400">{pkg.desc}</p>
-              <button
-                onClick={() => handleBuy(pkg.id)}
-                className={`w-full rounded-xl py-2 text-sm font-medium transition-colors ${
-                  pkg.popular
-                    ? 'bg-blue-600 text-white hover:bg-blue-700'
-                    : 'bg-gray-100 text-gray-900 hover:bg-gray-200 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600'
-                }`}
-              >
-                Пополнить
-              </button>
             </div>
           ))}
         </div>

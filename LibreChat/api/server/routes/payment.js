@@ -13,7 +13,7 @@ const crypto = require('crypto');
 const express = require('express');
 const axios = require('axios');
 const { logger } = require('@librechat/data-schemas');
-const { requireJwtAuth } = require('~/server/middleware');
+const { requireJwtAuth } = require('../middleware/');
 const { Balance } = require('~/db/models');
 
 const router = express.Router();

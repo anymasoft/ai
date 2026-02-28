@@ -9,7 +9,6 @@ import {
   useRef,
   startTransition,
 } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useRecoilValue } from 'recoil';
 import { motion } from 'framer-motion';
 import { Skeleton, useMediaQuery } from '@librechat/client';
@@ -76,8 +75,7 @@ const Nav = memo(
     setNavVisible: React.Dispatch<React.SetStateAction<boolean>>;
   }) => {
     const localize = useLocalize();
-    const { isAuthenticated, user } = useAuthContext();
-    const navigate = useNavigate();
+    const { isAuthenticated } = useAuthContext();
     useTitleGeneration(isAuthenticated);
 
     const isSmallScreen = useMediaQuery('(max-width: 768px)');
@@ -249,23 +247,6 @@ const Nav = memo(
               />
             </div>
           </div>
-          {/* Кнопка тарифов */}
-          <button
-            onClick={() => navigate('/pricing')}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-text-primary transition-colors hover:bg-surface-active-alt mb-1"
-          >
-            <span className="text-base">💳</span>
-            <span>{user?.role === 'ADMIN' ? 'Тарифы и баланс' : '⚡ Купить Pro'}</span>
-          </button>
-          {user?.role === 'ADMIN' && (
-            <button
-              onClick={() => navigate('/admin')}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-text-primary transition-colors hover:bg-surface-active-alt mb-1"
-            >
-              <span className="text-base">🛠</span>
-              <span>Панель администратора</span>
-            </button>
-          )}
           <Suspense fallback={<Skeleton className="mt-1 h-12 w-full rounded-xl" />}>
             <AccountSettings />
           </Suspense>
