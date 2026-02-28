@@ -84,8 +84,12 @@ export default function Pricing() {
   const navigate = useNavigate();
   const { token } = useAuthContext();
   const [credits, setCredits] = useState<number | null>(null);
+  // Состояние проверки платежа после редиректа с ?payment=success
+  const [paymentCheck, setPaymentCheck] = useState<
+    { status: 'checking' | 'ok' | 'error' | 'pending'; message?: string } | null
+  >(null);
 
-  useEffect(() => {
+  const fetchBalance = () => {
     if (!token) return;
     fetch('/api/balance', {
       credentials: 'include',
@@ -94,6 +98,43 @@ export default function Pricing() {
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (d?.tokenCredits != null) setCredits(d.tokenCredits); })
       .catch(() => undefined);
+  };
+
+  useEffect(() => {
+    fetchBalance();
+  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fallback-поллинг для localhost: ONE-TIME check после редиректа с ?payment=success
+  // В PROD вебхук ЮKassa обрабатывает платёж сам; этот блок — запасной вариант.
+  useEffect(() => {
+    if (!token) return;
+    const params = new URLSearchParams(window.location.search);
+    if (!params.get('payment')) return; // запускаем только если есть ?payment=success
+
+    setPaymentCheck({ status: 'checking' });
+
+    fetch('/api/payment/check', {
+      credentials: 'include',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.ok) {
+          setPaymentCheck({
+            status: 'ok',
+            message: data.alreadyDone
+              ? 'Платёж уже был зачислен ранее'
+              : `Зачислено ${data.tokenCredits?.toLocaleString('ru-RU')} токенов`,
+          });
+          fetchBalance(); // обновляем баланс на странице
+        } else if (data.status === 'pending' || data.status === 'waiting_for_capture') {
+          setPaymentCheck({ status: 'pending', message: 'Платёж ещё обрабатывается — обновите страницу через минуту' });
+        } else {
+          setPaymentCheck({ status: 'error', message: data.message || data.error || 'Не удалось подтвердить платёж' });
+        }
+      })
+      .catch(() => setPaymentCheck({ status: 'error', message: 'Ошибка соединения с сервером' }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const tier = getTier(credits);
@@ -124,6 +165,21 @@ export default function Pricing() {
     /* overflow-y-auto — ключевое исправление скролла внутри контейнера LibreChat */
     <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-900">
       <div className="mx-auto max-w-5xl px-4 py-10">
+
+        {/* Статус платежа после возврата из ЮKassa */}
+        {paymentCheck && (
+          <div className={`mb-6 rounded-xl px-5 py-4 text-sm ${
+            paymentCheck.status === 'checking' ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300' :
+            paymentCheck.status === 'ok'       ? 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300' :
+            paymentCheck.status === 'pending'  ? 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300' :
+                                                 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300'
+          }`}>
+            {paymentCheck.status === 'checking' && '⏳ Проверяем статус платежа...'}
+            {paymentCheck.status === 'ok'       && `✓ ${paymentCheck.message}`}
+            {paymentCheck.status === 'pending'  && `⏳ ${paymentCheck.message}`}
+            {paymentCheck.status === 'error'    && `✗ ${paymentCheck.message}`}
+          </div>
+        )}
 
         {/* Header */}
         <div className="mb-10 text-center">
