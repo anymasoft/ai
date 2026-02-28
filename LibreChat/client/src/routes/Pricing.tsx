@@ -59,14 +59,17 @@ const TIERS = [
 
 export default function Pricing() {
   const navigate = useNavigate();
-  const { user } = useAuthContext();
+  const { user, token } = useAuthContext();
   const isPro = user?.role === SystemRoles.ADMIN;
 
   const handleBuy = async (packageId: string) => {
     try {
       const res = await fetch('/api/payment/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ packageId }),
         credentials: 'include',
       });
