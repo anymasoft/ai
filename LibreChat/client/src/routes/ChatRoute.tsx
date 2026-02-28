@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
+import { useSetRecoilState } from 'recoil';
 import { useRecoilCallback, useRecoilValue } from 'recoil';
 import { Spinner, useToastContext } from '@librechat/client';
 import { Constants, EModelEndpoint } from 'librechat-data-provider';
@@ -16,6 +17,7 @@ import { useGetConvoIdQuery, useGetStartupConfig, useGetEndpointsQuery } from '~
 import { getDefaultModelSpec, getModelSpecPreset, logger, isNotFoundError } from '~/utils';
 import { ToolCallsMapProvider } from '~/Providers';
 import ChatView from '~/components/Chat/ChatView';
+import WelcomeScreen from '~/components/Nav/WelcomeScreen';
 import { NotificationSeverity } from '~/common';
 import useAuthRedirect from './useAuthRedirect';
 import temporaryStore from '~/store/temporary';
@@ -24,6 +26,14 @@ import store from '~/store';
 export default function ChatRoute() {
   const { data: startupConfig } = useGetStartupConfig();
   const { isAuthenticated, user, roles } = useAuthRedirect();
+  const setInputText = useSetRecoilState(store.textByIndex(0));
+
+  const handleWelcomePrompt = useCallback(
+    (prompt: string) => {
+      setInputText(prompt);
+    },
+    [setInputText],
+  );
 
   const defaultTemporaryChat = useRecoilValue(temporaryStore.defaultTemporaryChat);
   const setIsTemporary = useRecoilCallback(
@@ -188,9 +198,16 @@ export default function ChatRoute() {
     return null;
   }
 
+  const isNewEmptyConvo =
+    conversationId === Constants.NEW_CONVO && !conversation?.messages?.length;
+
   return (
     <ToolCallsMapProvider conversationId={conversation.conversationId ?? ''}>
-      <ChatView index={index} />
+      {isNewEmptyConvo ? (
+        <WelcomeScreen onPromptSelect={handleWelcomePrompt} />
+      ) : (
+        <ChatView index={index} />
+      )}
     </ToolCallsMapProvider>
   );
 }

@@ -31,8 +31,11 @@ const configureSocialLogins = require('./socialLogins');
 const { getAppConfig } = require('./services/Config');
 const staticCache = require('./utils/staticCache');
 const noIndex = require('./middleware/noIndex');
-const { seedDatabase } = require('~/models');
+const { seedDatabase, findUser, updateUser } = require('~/models');
+const { promoteAdminByEmail } = require('./utils/promoteAdmin');
 const routes = require('./routes');
+const paymentRoutes = require('./routes/payment');
+const adminRoutes = require('./routes/admin');
 
 const { PORT, HOST, ALLOW_SOCIAL_LOGIN, DISABLE_COMPRESSION, TRUST_PROXY } = process.env ?? {};
 
@@ -62,6 +65,7 @@ const startServer = async () => {
   initializeFileStorage(appConfig);
   await performStartupChecks(appConfig);
   await updateInterfacePermissions(appConfig);
+  await promoteAdminByEmail({ findUser, updateUser });
 
   const indexPath = path.join(appConfig.paths.dist, 'index.html');
   let indexHTML = fs.readFileSync(indexPath, 'utf8');
@@ -162,6 +166,8 @@ const startServer = async () => {
 
   app.use('/api/tags', routes.tags);
   app.use('/api/mcp', routes.mcp);
+  app.use('/api/payment', paymentRoutes);
+  app.use('/api/admin/mvp', adminRoutes);
 
   app.use(ErrorController);
 
