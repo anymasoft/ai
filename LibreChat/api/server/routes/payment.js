@@ -3,9 +3,9 @@
  * ЮKassa payment integration
  *
  * Env vars required (добавить в .env):
- *   YUKASSA_SHOP_ID=<ваш shopId из кабинета ЮKassa>
- *   YUKASSA_SECRET_KEY=<секретный ключ магазина>
- *   YUKASSA_RETURN_URL=https://ваш-домен.ru/pricing?payment=success
+ *   YOOKASSA_SHOP_ID=<ваш shopId из кабинета ЮKassa>
+ *   YOOKASSA_API_KEY=<секретный ключ магазина>
+ *   YOOKASSA_RETURN_URL=https://ваш-домен.ru/pricing?payment=success
  *
  * Пакеты: npm install uuid node-fetch (node-fetch уже есть в проекте через axios, используем axios)
  */
@@ -28,10 +28,10 @@ const PACKAGES = {
 const YUKASSA_API = 'https://api.yookassa.ru/v2';
 
 function yukassaAuth() {
-  const shopId = process.env.YUKASSA_SHOP_ID;
-  const secretKey = process.env.YUKASSA_SECRET_KEY;
+  const shopId = process.env.YOOKASSA_SHOP_ID;
+  const secretKey = process.env.YOOKASSA_API_KEY;
   if (!shopId || !secretKey) {
-    throw new Error('YUKASSA_SHOP_ID и YUKASSA_SECRET_KEY должны быть заданы в .env');
+    throw new Error('YOOKASSA_SHOP_ID и YOOKASSA_API_KEY должны быть заданы в .env');
   }
   return { username: shopId, password: secretKey };
 }
@@ -59,7 +59,7 @@ router.post('/create', requireJwtAuth, async (req, res) => {
       .digest('hex');
 
     const returnUrl =
-      process.env.YUKASSA_RETURN_URL ||
+      process.env.YOOKASSA_RETURN_URL ||
       `${process.env.DOMAIN_CLIENT || 'http://localhost:3080'}/pricing?payment=success`;
 
     const auth = yukassaAuth();
