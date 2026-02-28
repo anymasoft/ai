@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { QueryKeys } from 'librechat-data-provider';
@@ -19,32 +19,33 @@ const PLAN_STYLE: Record<string, { color: string; highlight: boolean }> = {
   business: { color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200', highlight: false },
 };
 
-const PLAN_FEATURES: Record<string, Array<{ ok: boolean; text: string }>> = {
+/**
+ * Нединамические фичи каждого тарифа (не названия моделей — они берутся из API).
+ * Ключ — planId, значение — список фич с признаком доступности.
+ */
+const PLAN_EXTRA_FEATURES: Record<string, Array<{ ok: boolean; text: string }>> = {
   free: [
-    { ok: true,  text: 'GPT-4o Mini' },
     { ok: true,  text: '~25 сообщений при регистрации' },
-    { ok: false, text: 'Claude Sonnet' },
-    { ok: false, text: 'DeepSeek V3' },
     { ok: false, text: 'Web-поиск' },
     { ok: false, text: 'Code Interpreter' },
   ],
   pro: [
-    { ok: true, text: 'GPT-4o Mini' },
-    { ok: true, text: 'Claude Sonnet 4' },
-    { ok: true, text: 'DeepSeek V3' },
     { ok: true, text: 'Web-поиск (Tavily)' },
     { ok: true, text: 'Code Interpreter' },
     { ok: false, text: 'Приоритетная поддержка' },
   ],
   business: [
-    { ok: true, text: 'GPT-4o Mini' },
-    { ok: true, text: 'Claude Sonnet 4' },
-    { ok: true, text: 'DeepSeek V3' },
     { ok: true, text: 'Web-поиск (Tavily)' },
     { ok: true, text: 'Code Interpreter' },
     { ok: true, text: 'Приоритетная поддержка (email)' },
   ],
 };
+
+interface AiModelDoc {
+  modelId: string;
+  provider: string;
+  displayName: string;
+}
 
 interface PlanDoc {
   planId: string;
@@ -83,6 +84,7 @@ export default function Pricing() {
   const [plans, setPlans] = useState<PlanDoc[]>([]);
   const [tokenPackages, setTokenPackages] = useState<TokenPackageDoc[]>([]);
   const [balance, setBalance] = useState<BalanceInfo | null>(null);
+  const [allModels, setAllModels] = useState<AiModelDoc[]>([]);
   const [paymentCheck, setPaymentCheck] = useState<
     { status: 'checking' | 'ok' | 'error' | 'pending'; message?: string } | null
   >(null);
@@ -94,6 +96,16 @@ export default function Pricing() {
         const data = await res.json();
         setPlans(data.plans ?? []);
         setTokenPackages(data.tokenPackages ?? []);
+      }
+    } catch { /* ignore */ }
+  };
+
+  const fetchAllModels = async () => {
+    try {
+      const res = await fetch('/api/models/all');
+      if (res.ok) {
+        const data = await res.json();
+        setAllModels(data.models ?? []);
       }
     } catch { /* ignore */ }
   };
@@ -120,6 +132,7 @@ export default function Pricing() {
 
   useEffect(() => {
     fetchPlans();
+    fetchAllModels();
     fetchBalance();
   }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -186,6 +199,12 @@ export default function Pricing() {
       alert('Ошибка соединения с сервером');
     }
   };
+
+  // Словарь modelId → displayName для быстрого поиска
+  const modelsMap = useMemo(
+    () => Object.fromEntries(allModels.map((m) => [m.modelId, m])),
+    [allModels],
+  );
 
   const currentPlan = balance?.plan || 'free';
   const currentPlanStyle = PLAN_STYLE[currentPlan] ?? PLAN_STYLE.free;
@@ -279,7 +298,15 @@ export default function Pricing() {
           <div className={`mb-10 grid grid-cols-1 gap-6 md:grid-cols-${Math.min(plans.length, 3)}`}>
             {plans.map((plan) => {
               const style = PLAN_STYLE[plan.planId] ?? PLAN_STYLE.free;
-              const features = PLAN_FEATURES[plan.planId] ?? [];
+              // Модели из БД: resolveем displayName через каталог AiModel
+              const modelFeatures: Array<{ ok: boolean; text: string }> = (plan.allowedModels ?? [])
+                .map((modelId) => ({
+                  ok: true,
+                  text: modelsMap[modelId]?.displayName ?? modelId,
+                }));
+              // Нединамические фичи (web-поиск, code interpreter и т.д.)
+              const extraFeatures = PLAN_EXTRA_FEATURES[plan.planId] ?? [];
+              const features = [...modelFeatures, ...extraFeatures];
               const msgEst = plan.tokenCreditsOnPurchase > 0
                 ? Math.floor(plan.tokenCreditsOnPurchase / AVG_MSG_CREDITS)
                 : null;

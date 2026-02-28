@@ -4,6 +4,7 @@ const Payment = require('~/models/Payment');
 const Subscription = require('~/models/Subscription');
 const Plan = require('~/models/Plan');
 const TokenPackage = require('~/models/TokenPackage');
+const AiModel = require('~/models/AiModel');
 const models = createModels(mongoose);
 
-module.exports = { ...models, Payment, Subscription, Plan, TokenPackage };
+module.exports = { ...models, Payment, Subscription, Plan, TokenPackage, AiModel };
