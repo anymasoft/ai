@@ -1,10 +1,9 @@
 'use strict';
 const express = require('express');
 const axios = require('axios');
-const { computeTier } = require('../utils/computeTier');
 const { logger } = require('@librechat/data-schemas');
 const { requireJwtAuth } = require('../middleware/');
-const { User, Balance, Payment } = require('~/db/models');
+const { User, Balance, Payment, Subscription } = require('~/db/models');
 
 const YUKASSA_API = 'https://api.yookassa.ru/v3';
 function yukassaAuth() {
@@ -44,12 +43,25 @@ router.get('/users', requireJwtAuth, requireAdminRole, async (req, res) => {
     ]);
 
     const userIds = users.map((u) => u._id);
-    const balances = await Balance.find({ user: { $in: userIds } }, 'user tokenCredits').lean();
+    const [balances, subscriptions] = await Promise.all([
+      Balance.find({ user: { $in: userIds } }, 'user tokenCredits').lean(),
+      Subscription.find({ userId: { $in: userIds } }, 'userId plan planExpiresAt').lean(),
+    ]);
     const balanceMap = Object.fromEntries(balances.map((b) => [b.user.toString(), b.tokenCredits]));
+    const subMap = Object.fromEntries(subscriptions.map((s) => [s.userId.toString(), s]));
 
+    const now = new Date();
     const result = users.map((u) => {
       const tokenCredits = balanceMap[u._id.toString()] ?? 0;
-      return { ...u, tokenCredits, tier: computeTier(tokenCredits) };
+      const sub = subMap[u._id.toString()];
+      let plan = sub?.plan || 'free';
+      let planExpiresAt = sub?.planExpiresAt || null;
+      // Учитываем истёкшую подписку
+      if (plan !== 'free' && planExpiresAt && new Date(planExpiresAt) < now) {
+        plan = 'free';
+        planExpiresAt = null;
+      }
+      return { ...u, tokenCredits, plan, planExpiresAt };
     });
 
     res.json({ users: result, total, page, pages: Math.ceil(total / limit) });
