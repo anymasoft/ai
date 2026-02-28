@@ -143,14 +143,22 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
   const builtinEndpoints = new Set(['openAI', 'anthropic', 'google', 'azureOpenAI', 'bedrock', 'agents', 'assistants', 'azureAssistants']);
 
   const dynamicModelSpecs = useMemo((): t.TModelSpec[] | null => {
-    if (allowedLoading) return null;          // ещё грузится — не трогаем YAML-спеки
-    if (!allowedModelsData) return null;      // ошибка — используем YAML-спеки как fallback
-    if (!endpointsConfig) return null;        // эндпоинты ещё не загружены — ждём
+    // allowedLoading = true: запрос ещё в полёте → возвращаем null (показываем loading/empty)
+    if (allowedLoading) return null;
 
-    // Создаём синтетические TModelSpec ТОЛЬКО из разрешённых моделей (БД)
-    // Никакого объединения с YAML моделями!
+    // allowedModelsData = null: ошибка запроса → возвращаем null (показываем ошибку)
+    if (allowedModelsData === null) return null;
+
+    // !allowedModelsData: данные ещё не загружены → возвращаем null
+    if (!allowedModelsData) return null;
+
+    // !endpointsConfig: конфиг эндпоинтов ещё не загружен → возвращаем null
+    if (!endpointsConfig) return null;
+
+    // Создаём синтетические TModelSpec ТОЛЬКО из разрешённых моделей
+    // Без YAML моделей - ТОЛЬКО /api/models/allowed!
     return allowedModelsData.models
-      .filter((m) => endpointsConfig[m.endpointKey] != null) // показываем только модели с реально настроенным эндпоинтом
+      .filter((m) => endpointsConfig[m.endpointKey] != null)
       .map((m) => ({
         name: m.modelId,
         label: m.displayName,
@@ -162,10 +170,13 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
       } as unknown as t.TModelSpec));
   }, [allowedModelsData, allowedLoading, endpointsConfig]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Итоговые modelSpecs: из /api/models/allowed если загружены, иначе YAML как временный fallback
-  const effectiveModelSpecs = dynamicModelSpecs ?? modelSpecs;
-  // Эндпоинты: когда БД-модели загружены, показываем оригинальные эндпоинты
-  const mappedEndpoints = rawMappedEndpoints;
+  // НИКАКОГО ФОЛБЭКА НА YAML МОДЕЛИ!
+  // effectiveModelSpecs = dynamicModelSpecs (или пусто если загружается)
+  const effectiveModelSpecs = dynamicModelSpecs ?? [];
+
+  // Эндпоинты показываются ТОЛЬКО если нет dynamicModelSpecs
+  // (это значит, что либо загружаются, либо ошибка - не показываем YAML эндпоинты)
+  const mappedEndpoints = dynamicModelSpecs !== null ? [] : rawMappedEndpoints;
 
   const getModelDisplayName = useCallback(
     (endpoint: Endpoint, model: string): string => {
