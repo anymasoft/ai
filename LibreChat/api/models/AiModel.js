@@ -49,45 +49,18 @@ const aiModelSchema = new mongoose.Schema(
 
 /**
  * Дефолтные модели согласно требованиям сегментации тарифов.
- * ВАЖНО: modelId должен точно совпадать с идентификатором API провайдера:
- *   Anthropic: claude-sonnet-4-6, claude-opus-4-6
- *   OpenAI:    gpt-4.1-mini
- *   DeepSeek:  deepseek-chat, deepseek-reasoner
+ * seedDefaults идемпотентен — не перезаписывает существующие записи.
  */
 const SEED_DEFAULTS = [
   { modelId: 'gpt-4.1-mini',      provider: 'openai',    endpointKey: 'openAI',    displayName: 'GPT-4.1 Mini'      },
   { modelId: 'gpt-5.2',           provider: 'openai',    endpointKey: 'openAI',    displayName: 'GPT-5.2'           },
-  { modelId: 'claude-sonnet-4-6', provider: 'anthropic', endpointKey: 'anthropic', displayName: 'Claude Sonnet 4.6' },
-  { modelId: 'claude-opus-4-6',   provider: 'anthropic', endpointKey: 'anthropic', displayName: 'Claude Opus 4.6'   },
+  { modelId: 'claude-4-6-sonnet', provider: 'anthropic', endpointKey: 'anthropic', displayName: 'Claude 4.6 Sonnet' },
+  { modelId: 'claude-4-6-opus',   provider: 'anthropic', endpointKey: 'anthropic', displayName: 'Claude 4.6 Opus'   },
   { modelId: 'deepseek-chat',     provider: 'deepseek',  endpointKey: 'deepseek',  displayName: 'DeepSeek V3'       },
   { modelId: 'deepseek-reasoner', provider: 'deepseek',  endpointKey: 'deepseek',  displayName: 'DeepSeek R2'       },
 ];
 
-/**
- * Неверные modelId (перепутан порядок слов) → правильные.
- * Выполняется автоматически при каждом вызове seedDefaults() — идемпотентно.
- */
-const LEGACY_RENAMES = [
-  { from: 'claude-4-6-sonnet', to: 'claude-sonnet-4-6', provider: 'anthropic', endpointKey: 'anthropic', displayName: 'Claude Sonnet 4.6' },
-  { from: 'claude-4-6-opus',   to: 'claude-opus-4-6',   provider: 'anthropic', endpointKey: 'anthropic', displayName: 'Claude Opus 4.6'   },
-];
-
 aiModelSchema.statics.seedDefaults = async function () {
-  // 1. Мигрируем старые неверные modelId на правильные
-  for (const { from, to, ...fields } of LEGACY_RENAMES) {
-    const old = await this.findOne({ modelId: from }).lean();
-    if (!old) continue;
-    // Создаём запись с правильным ID (только если ещё не существует)
-    await this.findOneAndUpdate(
-      { modelId: to },
-      { $setOnInsert: { modelId: to, ...fields, isActive: old.isActive } },
-      { upsert: true },
-    );
-    // Удаляем старую запись с неверным ID
-    await this.deleteOne({ modelId: from });
-  }
-
-  // 2. Добавляем дефолтные модели (только если не существуют)
   for (const def of SEED_DEFAULTS) {
     await this.findOneAndUpdate(
       { modelId: def.modelId },
