@@ -5,6 +5,7 @@ const { logger } = require('@librechat/data-schemas');
 const { requireJwtAuth } = require('../middleware/');
 const { User, Balance, Payment, Subscription, Plan, TokenPackage, AiModel } = require('~/db/models');
 const { invalidatePlanCache } = require('../middleware/checkSubscription');
+const { getEndpointsConfig } = require('~/server/services/Config');
 
 const YUKASSA_API = 'https://api.yookassa.ru/v3';
 function yukassaAuth() {
@@ -469,6 +470,15 @@ router.post('/models', requireJwtAuth, requireAdminRole, async (req, res) => {
     const resolvedEndpoint = endpointKey?.trim()
       || (provider.trim().toLowerCase() === 'openai' ? 'openAI' : provider.trim());
 
+    // Валидация: проверяем, что эндпоинт настроен в конфиге
+    const endpointsConfig = await getEndpointsConfig(req);
+    if (!endpointsConfig || !endpointsConfig[resolvedEndpoint]) {
+      const availableEndpoints = Object.keys(endpointsConfig || {}).join(', ');
+      return res.status(400).json({
+        error: `Эндпоинт "${resolvedEndpoint}" не настроен. Доступные эндпоинты: ${availableEndpoints || 'нет'}`,
+      });
+    }
+
     const exists = await AiModel.findOne({ modelId: modelId.trim() }).lean();
     if (exists) {
       return res.status(409).json({ error: `Модель с modelId "${modelId.trim()}" уже существует` });
@@ -510,7 +520,18 @@ router.patch('/models/:modelId', requireJwtAuth, requireAdminRole, async (req, r
     }
     if (endpointKey !== undefined) {
       if (typeof endpointKey !== 'string' || !endpointKey.trim()) return res.status(400).json({ error: 'endpointKey не может быть пустым' });
-      update.endpointKey = endpointKey.trim();
+      const newEndpoint = endpointKey.trim();
+
+      // Валидация: проверяем, что новый эндпоинт настроен в конфиге
+      const endpointsConfig = await getEndpointsConfig(req);
+      if (!endpointsConfig || !endpointsConfig[newEndpoint]) {
+        const availableEndpoints = Object.keys(endpointsConfig || {}).join(', ');
+        return res.status(400).json({
+          error: `Эндпоинт "${newEndpoint}" не настроен. Доступные эндпоинты: ${availableEndpoints || 'нет'}`,
+        });
+      }
+
+      update.endpointKey = newEndpoint;
     }
     if (displayName !== undefined) {
       if (typeof displayName !== 'string' || !displayName.trim()) return res.status(400).json({ error: 'displayName не может быть пустым' });
