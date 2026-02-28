@@ -387,6 +387,7 @@ export default function AdminPanel() {
       if (!res.ok) throw new Error(data.error || `Ошибка ${res.status}`);
       setModelSaveMsg((p) => ({ ...p, [modelId]: { ok: true, text: 'Сохранено' } }));
       await loadSettings();
+      await loadModels();
     } catch (e: unknown) {
       setModelSaveMsg((p) => ({ ...p, [modelId]: { ok: false, text: e instanceof Error ? e.message : 'Ошибка' } }));
     } finally {
@@ -408,6 +409,7 @@ export default function AdminPanel() {
       if (!res.ok) throw new Error(data.error || `Ошибка ${res.status}`);
       setDeleteModelDialog({ open: false, modelId: null });
       await loadSettings();
+      await loadModels();
     } catch (e: unknown) {
       setDeleteModelError(e instanceof Error ? e.message : 'Ошибка удаления модели');
     }
@@ -432,6 +434,7 @@ export default function AdminPanel() {
       setNewModelMsg({ ok: true, text: `Модель "${newModelForm.modelId}" создана` });
       setNewModelForm({ modelId: '', provider: '', endpointKey: '', displayName: '' });
       await loadSettings();
+      await loadModels();
     } catch (e: unknown) {
       setNewModelMsg({ ok: false, text: e instanceof Error ? e.message : 'Ошибка создания' });
     } finally {
