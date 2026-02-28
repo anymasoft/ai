@@ -76,7 +76,7 @@ function AccountSettings() {
               className="select-item text-sm text-blue-600 dark:text-blue-400"
             >
               <CreditCard className="icon-md" aria-hidden="true" />
-              {user?.role === 'ADMIN' ? 'Тарифы и баланс' : '⚡ Купить Pro'}
+              {user?.role === 'ADMIN' ? 'Тарифы и баланс' : 'Купить Pro'}
             </Select.SelectItem>
             <DropdownMenuSeparator />
           </>
