@@ -210,11 +210,10 @@ router.post('/create', requireJwtAuth, async (req, res) => {
 router.get('/check', requireJwtAuth, async (req, res) => {
   try {
     const userId = req.user._id.toString();
-    const pending = await Payment.findOne(
-      { userId, status: 'pending' },
-      null,
-      { sort: { createdAt: -1 } },
-    ).lean();
+    const { id: paymentId } = req.query;
+    const pending = paymentId
+      ? await Payment.findOne({ externalPaymentId: paymentId, userId, status: 'pending' }).lean()
+      : await Payment.findOne({ userId, status: 'pending' }, null, { sort: { createdAt: -1 } }).lean();
 
     if (!pending) {
       // Вебхук мог уже зачислить платёж — ищем недавно успешный (последние 30 минут)

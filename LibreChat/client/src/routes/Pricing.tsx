@@ -131,7 +131,11 @@ export default function Pricing() {
 
     setPaymentCheck({ status: 'checking' });
 
-    fetch('/api/payment/check', {
+    const savedPaymentId = sessionStorage.getItem('pendingPaymentId');
+    sessionStorage.removeItem('pendingPaymentId');
+    const checkUrl = savedPaymentId ? `/api/payment/check?id=${savedPaymentId}` : '/api/payment/check';
+
+    fetch(checkUrl, {
       credentials: 'include',
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -173,6 +177,7 @@ export default function Pricing() {
       });
       const data = await res.json();
       if (data.confirmationUrl) {
+        if (data.paymentId) sessionStorage.setItem('pendingPaymentId', data.paymentId);
         window.location.href = data.confirmationUrl;
       } else {
         alert(data.error || 'Ошибка создания платежа');
