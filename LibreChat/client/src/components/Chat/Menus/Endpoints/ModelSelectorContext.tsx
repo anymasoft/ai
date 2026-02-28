@@ -1,5 +1,6 @@
 import debounce from 'lodash/debounce';
 import React, { createContext, useContext, useState, useMemo, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { EModelEndpoint, isAgentsEndpoint, isAssistantsEndpoint } from 'librechat-data-provider';
 import type * as t from 'librechat-data-provider';
 import type { Endpoint, SelectedValues } from '~/common';
@@ -96,10 +97,45 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     endpointsConfig,
   });
 
-  // Когда enforce: true — скрываем все эндпоинты из селектора,
-  // показываем только modelSpecs (уже отрендерены выше в ModelSelector)
-  const enforceSpecs = startupConfig?.modelSpecs?.enforce ?? false;
-  const mappedEndpoints = enforceSpecs ? [] : rawMappedEndpoints;
+  // Загружаем список разрешённых моделей для текущего пользователя.
+  // Кэш: 60 секунд (staleTime). Это заменяет enforce-логику из librechat.yaml.
+  const { data: allowedModelsData } = useQuery({
+    queryKey: ['allowedModels'],
+    queryFn: async () => {
+      const res = await fetch('/api/models/allowed', { credentials: 'include' });
+      if (!res.ok) return null;
+      return res.json() as Promise<{ models: Array<{ modelId: string; displayName: string; provider: string }>; plan: string }>;
+    },
+    staleTime: 60_000,
+    gcTime: 60_000,
+  });
+
+  // Множество разрешённых modelId для быстрого поиска
+  const allowedModelIds = useMemo(
+    () => new Set((allowedModelsData?.models ?? []).map((m) => m.modelId)),
+    [allowedModelsData],
+  );
+
+  // Фильтруем эндпоинты: оставляем только модели из allowedModels.
+  // Agents и Assistants не фильтруются — у них своя система доступа.
+  const filteredMappedEndpoints = useMemo(() => {
+    if (allowedModelIds.size === 0) return rawMappedEndpoints;
+    return rawMappedEndpoints
+      .map((ep) => {
+        if (isAgentsEndpoint(ep.value) || isAssistantsEndpoint(ep.value)) return ep;
+        return {
+          ...ep,
+          models: (ep.models ?? []).filter((m) => allowedModelIds.has(m.name)),
+        };
+      })
+      .filter((ep) => {
+        if (isAgentsEndpoint(ep.value) || isAssistantsEndpoint(ep.value)) return true;
+        return !ep.hasModels || (ep.models?.length ?? 0) > 0;
+      });
+  }, [rawMappedEndpoints, allowedModelIds]);
+
+  // enforce-логика из YAML отключена: доступность определяется через Plans + AiModel.
+  const mappedEndpoints = filteredMappedEndpoints;
 
   const getModelDisplayName = useCallback(
     (endpoint: Endpoint, model: string): string => {
