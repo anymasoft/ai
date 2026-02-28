@@ -37,6 +37,10 @@ function ModelSelectorContent() {
     keyDialogEndpoint,
   } = useModelSelectorContext();
 
+  // Проверяем, есть ли вообще модели для отображения
+  const hasModels = (modelSpecs?.length ?? 0) > 0 || (mappedEndpoints?.length ?? 0) > 0;
+  const isEmpty = !hasModels && modelSpecs !== undefined;
+
   const selectedIcon = useMemo(
     () =>
       getSelectedIcon({
@@ -95,7 +99,11 @@ function ModelSelectorContent() {
         comboboxLabel={localize('com_endpoint_search_models')}
         trigger={trigger}
       >
-        {searchResults ? (
+        {isEmpty ? (
+          <div className="px-3 py-4 text-sm text-text-secondary">
+            {localize('com_ui_no_models_available') || 'Нет доступных моделей для вашего тарифа'}
+          </div>
+        ) : searchResults ? (
           renderSearchResults(searchResults, localize, searchValue)
         ) : (
           <>

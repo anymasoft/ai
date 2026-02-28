@@ -145,10 +145,11 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
   const dynamicModelSpecs = useMemo((): t.TModelSpec[] | null => {
     if (allowedLoading) return null;          // ещё грузится — не трогаем YAML-спеки
     if (!allowedModelsData) return null;      // ошибка — используем YAML-спеки как fallback
-    if (!endpointsConfig) return null;        // эндпоинты ещё не загружены — ждём, чтобы не показывать пустой список
+    if (!endpointsConfig) return null;        // эндпоинты ещё не загружены — ждём
 
-    // Создаём синтетические TModelSpec из моделей БД
-    const dbModels = allowedModelsData.models
+    // Создаём синтетические TModelSpec ТОЛЬКО из разрешённых моделей (БД)
+    // Никакого объединения с YAML моделями!
+    return allowedModelsData.models
       .filter((m) => endpointsConfig[m.endpointKey] != null) // показываем только модели с реально настроенным эндпоинтом
       .map((m) => ({
         name: m.modelId,
@@ -159,18 +160,12 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
           model: m.modelId,
         },
       } as unknown as t.TModelSpec));
+  }, [allowedModelsData, allowedLoading, endpointsConfig]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Объединяем YAML модели с БД моделями, избегая дубликатов
-    const dbModelNames = new Set(dbModels.map(m => m.name));
-    const yamlModelsNotInDb = modelSpecs.filter(spec => !dbModelNames.has(spec.name));
-
-    return [...yamlModelsNotInDb, ...dbModels];
-  }, [allowedModelsData, allowedLoading, endpointsConfig, modelSpecs]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Итоговые modelSpecs: объединение YAML + БД, или только YAML если БД ещё грузятся
+  // Итоговые modelSpecs: из /api/models/allowed если загружены, иначе YAML как временный fallback
   const effectiveModelSpecs = dynamicModelSpecs ?? modelSpecs;
-  // Когда БД-модели загружены — показываем стандартные эндпоинты из YAML, плюс БД модели
-  const mappedEndpoints = dynamicModelSpecs !== null ? rawMappedEndpoints : rawMappedEndpoints;
+  // Эндпоинты: когда БД-модели загружены, показываем оригинальные эндпоинты
+  const mappedEndpoints = rawMappedEndpoints;
 
   const getModelDisplayName = useCallback(
     (endpoint: Endpoint, model: string): string => {
