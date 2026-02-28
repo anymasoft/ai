@@ -21,9 +21,8 @@ const router = express.Router();
 
 /** Пакеты: id → { amount в рублях, tokenCredits } */
 const PACKAGES = {
-  starter: { amount: '990.00',  tokenCredits: 400_000 },
-  pro:     { amount: '1990.00', tokenCredits: 900_000 },
-  max:     { amount: '3990.00', tokenCredits: 2_000_000 },
+  pro: { amount: '1990.00', tokenCredits: 900_000 },
+  max: { amount: '3990.00', tokenCredits: 2_000_000 },
 };
 
 const YUKASSA_API = 'https://api.yookassa.ru/v3';

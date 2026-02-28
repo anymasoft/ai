@@ -39,17 +39,6 @@ const TIERS = [
     cta: null as string | null,
   },
   {
-    id: 'starter',
-    label: 'Starter',
-    price: '990 ₽',
-    tokens: 400_000,
-    priceNote: '400 000 токенов на баланс',
-    highlight: false,
-    badge: null,
-    features: PRO_FEATURES,
-    cta: 'starter',
-  },
-  {
     id: 'pro',
     label: 'Pro',
     price: '1 990 ₽',
@@ -204,7 +193,7 @@ export default function Pricing() {
         </div>
 
         {/* Tier cards: Free / Starter / Pro / Business */}
-        <div className="mb-14 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mb-14 grid grid-cols-1 gap-6 md:grid-cols-3">
           {TIERS.map((tier) => (
             <div
               key={tier.id}
