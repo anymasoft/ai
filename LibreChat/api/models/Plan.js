@@ -41,7 +41,7 @@ const SEED_DEFAULTS = [
     priceRub: 3_990,
     tokenCreditsOnPurchase: 5_000_000,
     durationDays: 30,
-    allowedModels: ['gpt-4.1-mini', 'claude-4-6-sonnet', 'deepseek-chat'],
+    allowedModels: ['gpt-4.1-mini', 'claude-sonnet-4-6', 'deepseek-chat'],
     isActive: true,
   },
   {
@@ -50,13 +50,26 @@ const SEED_DEFAULTS = [
     priceRub: 9_990,
     tokenCreditsOnPurchase: 12_000_000,
     durationDays: 30,
-    allowedModels: ['gpt-4.1-mini', 'gpt-5.2', 'claude-4-6-sonnet', 'claude-4-6-opus', 'deepseek-chat', 'deepseek-reasoner'],
+    allowedModels: ['gpt-4.1-mini', 'gpt-5.2', 'claude-sonnet-4-6', 'claude-opus-4-6', 'deepseek-chat', 'deepseek-reasoner'],
     isActive: true,
   },
 ];
 
 /** Инициализирует дефолтные планы при первом запуске (идемпотентно). */
 planSchema.statics.seedDefaults = async function () {
+  // Мигрируем старые неверные modelId в allowedModels всех планов
+  const modelIdMigrations = [
+    { from: 'claude-4-6-sonnet', to: 'claude-sonnet-4-6' },
+    { from: 'claude-4-6-opus',   to: 'claude-opus-4-6' },
+  ];
+  for (const { from, to } of modelIdMigrations) {
+    // Добавляем новый ID, затем удаляем старый — атомарно для каждого плана
+    await this.updateMany(
+      { allowedModels: from },
+      { $addToSet: { allowedModels: to }, $pull: { allowedModels: from } },
+    );
+  }
+
   for (const def of SEED_DEFAULTS) {
     await this.findOneAndUpdate({ planId: def.planId }, { $setOnInsert: def }, { upsert: true });
   }
