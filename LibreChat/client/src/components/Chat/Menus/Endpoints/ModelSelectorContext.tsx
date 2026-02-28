@@ -89,12 +89,17 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     },
   );
 
-  const { mappedEndpoints, endpointRequiresUserKey } = useEndpoints({
+  const { mappedEndpoints: rawMappedEndpoints, endpointRequiresUserKey } = useEndpoints({
     agents,
     assistantsMap,
     startupConfig,
     endpointsConfig,
   });
+
+  // Когда enforce: true — скрываем все эндпоинты из селектора,
+  // показываем только modelSpecs (уже отрендерены выше в ModelSelector)
+  const enforceSpecs = startupConfig?.modelSpecs?.enforce ?? false;
+  const mappedEndpoints = enforceSpecs ? [] : rawMappedEndpoints;
 
   const getModelDisplayName = useCallback(
     (endpoint: Endpoint, model: string): string => {

@@ -52,34 +52,48 @@ function AccountSettings() {
           {user?.email ?? localize('com_nav_user')}
         </div>
         <DropdownMenuSeparator />
+        {/* Баланс — кликабельный, ведёт на /pricing */}
         {startupConfig?.balance?.enabled === true && balanceQuery.data != null && (
           <>
-            <div className="text-token-text-secondary ml-3 mr-2 py-2 text-sm" role="note">
+            <Select.SelectItem
+              value=""
+              onClick={() => navigate('/pricing')}
+              className="select-item text-sm text-blue-600 dark:text-blue-400"
+            >
+              <CreditCard className="icon-md" aria-hidden="true" />
               {localize('com_nav_balance')}:{' '}
               {new Intl.NumberFormat().format(Math.round(balanceQuery.data.tokenCredits))}
-            </div>
+            </Select.SelectItem>
             <DropdownMenuSeparator />
           </>
         )}
-        <Select.SelectItem
-          value=""
-          onClick={() => navigate('/pricing')}
-          className="select-item text-sm font-medium text-blue-600 dark:text-blue-400"
-        >
-          <CreditCard className="icon-md" aria-hidden="true" />
-          {user?.role === 'ADMIN' ? 'Тарифы и баланс' : '⚡ Купить Pro'}
-        </Select.SelectItem>
-        {user?.role === 'ADMIN' && (
-          <Select.SelectItem
-            value=""
-            onClick={() => navigate('/admin')}
-            className="select-item text-sm"
-          >
-            <ShieldCheck className="icon-md" aria-hidden="true" />
-            Панель администратора
-          </Select.SelectItem>
+        {/* Если баланс выключен — просто кнопка тарифов */}
+        {(startupConfig?.balance?.enabled !== true || balanceQuery.data == null) && (
+          <>
+            <Select.SelectItem
+              value=""
+              onClick={() => navigate('/pricing')}
+              className="select-item text-sm text-blue-600 dark:text-blue-400"
+            >
+              <CreditCard className="icon-md" aria-hidden="true" />
+              {user?.role === 'ADMIN' ? 'Тарифы и баланс' : '⚡ Купить Pro'}
+            </Select.SelectItem>
+            <DropdownMenuSeparator />
+          </>
         )}
-        <DropdownMenuSeparator />
+        {user?.role === 'ADMIN' && (
+          <>
+            <Select.SelectItem
+              value=""
+              onClick={() => navigate('/admin')}
+              className="select-item text-sm"
+            >
+              <ShieldCheck className="icon-md" aria-hidden="true" />
+              Панель администратора
+            </Select.SelectItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
         <Select.SelectItem
           value=""
           onClick={() => setShowFiles(true)}

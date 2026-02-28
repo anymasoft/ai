@@ -1,7 +1,7 @@
 'use strict';
 const express = require('express');
 const { logger } = require('@librechat/data-schemas');
-const { requireJwtAuth } = require('~/server/middleware');
+const { requireJwtAuth } = require('../middleware/');
 const { User, Balance } = require('~/db/models');
 
 const router = express.Router();
