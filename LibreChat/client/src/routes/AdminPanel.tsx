@@ -125,24 +125,6 @@ export default function AdminPanel() {
     }
   }, [isAdmin, tab, loadPayments]);
 
-  const changeRole = async (userId: string, role: string) => {
-    try {
-      const res = await fetch(`/api/admin/mvp/users/${userId}/role`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ role }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      await load();
-    } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : 'Ошибка смены роли');
-    }
-  };
-
   const addCredits = async (userId: string) => {
     const credits = parseInt(creditInputs[userId] || '');
     if (!credits || credits <= 0) {
@@ -312,19 +294,15 @@ export default function AdminPanel() {
                           )}
                         </td>
                         <td className="px-4 py-3">
-                          <select
-                            value={u.role}
-                            onChange={(e) => changeRole(u._id, e.target.value)}
-                            disabled={u._id === user?.id}
-                            className={`cursor-pointer rounded-full border-0 px-2 py-1 text-xs font-semibold ${
-                              u.role === 'ADMIN'
+                          <span className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                            u.tokenCredits >= 900_000
+                              ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'
+                              : u.tokenCredits >= 400_000
                                 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
                                 : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
-                            }`}
-                          >
-                            <option value="USER">Free</option>
-                            <option value="ADMIN">Pro / Admin</option>
-                          </select>
+                          }`}>
+                            {u.tokenCredits >= 900_000 ? 'Business' : u.tokenCredits >= 400_000 ? 'Pro' : 'Free'}
+                          </span>
                         </td>
                         <td className="px-4 py-3 text-right">
                           <span

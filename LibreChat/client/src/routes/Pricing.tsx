@@ -1,6 +1,13 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SystemRoles } from 'librechat-data-provider';
 import { useAuthContext } from '~/hooks';
+
+function getTier(credits: number | null): { label: string; color: string } {
+  if (credits === null) return { label: 'Free', color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' };
+  if (credits >= 900_000) return { label: 'Business', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' };
+  if (credits >= 400_000) return { label: 'Pro', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' };
+  return { label: 'Free', color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' };
+}
 
 const TIERS = [
   {
@@ -59,8 +66,21 @@ const TIERS = [
 
 export default function Pricing() {
   const navigate = useNavigate();
-  const { user, token } = useAuthContext();
-  const isPro = user?.role === SystemRoles.ADMIN;
+  const { token } = useAuthContext();
+  const [credits, setCredits] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!token) return;
+    fetch('/api/balance', {
+      credentials: 'include',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.tokenCredits != null) setCredits(d.tokenCredits); })
+      .catch(() => undefined);
+  }, [token]);
+
+  const tier = getTier(credits);
 
   const handleBuy = async (packageId: string) => {
     try {
@@ -103,11 +123,9 @@ export default function Pricing() {
           <p className="text-gray-600 dark:text-gray-400">
             Доступ к лучшим AI-моделям в одном месте
           </p>
-          {isPro && (
-            <div className="mt-4 inline-block rounded-full bg-green-100 px-4 py-2 text-sm font-medium text-green-800 dark:bg-green-900 dark:text-green-200">
-              ✓ У вас активен Pro-доступ
-            </div>
-          )}
+          <div className={`mt-4 inline-block rounded-full px-4 py-2 text-sm font-medium ${tier.color}`}>
+            ✓ Ваш текущий тариф: <strong>{tier.label}</strong>
+          </div>
         </div>
 
         {/* Tier cards: Free / Pro / Business */}
@@ -162,7 +180,7 @@ export default function Pricing() {
                 </button>
               ) : (
                 <div className="w-full rounded-xl border border-gray-200 py-2.5 text-center text-sm text-gray-400 dark:border-gray-700 dark:text-gray-500">
-                  Текущий тариф
+                  Стартовый баланс при регистрации
                 </div>
               )}
             </div>
