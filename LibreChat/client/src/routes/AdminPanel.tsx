@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { SystemRoles } from 'librechat-data-provider';
 import { useAuthContext } from '~/hooks';
 
-type Tab = 'users' | 'payments';
+type Tab = 'users' | 'payments' | 'settings';
 
 interface PaymentRow {
   _id: string;
@@ -47,6 +47,37 @@ interface UsersResponse {
   pages: number;
 }
 
+interface PlanDoc {
+  planId: string;
+  label: string;
+  priceRub: number;
+  tokenCreditsOnPurchase: number;
+  durationDays: number | null;
+  allowedModels: string[];
+  isActive: boolean;
+}
+
+interface TokenPackageDoc {
+  packageId: string;
+  label: string;
+  priceRub: number;
+  tokenCredits: number;
+  isActive: boolean;
+}
+
+interface PlanEdit {
+  priceRub: string;
+  tokenCreditsOnPurchase: string;
+  allowedModels: string;    // модели — по одной на строку
+  isActive: boolean;
+}
+
+interface PkgEdit {
+  priceRub: string;
+  tokenCredits: string;
+  isActive: boolean;
+}
+
 export default function AdminPanel() {
   const navigate = useNavigate();
   const { user, token } = useAuthContext();
@@ -65,6 +96,19 @@ export default function AdminPanel() {
   const [reconcileId, setReconcileId] = useState('');
   const [reconcileResult, setReconcileResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [reconcileLoading, setReconcileLoading] = useState(false);
+  const [planChanging, setPlanChanging] = useState<Record<string, boolean>>({});
+
+  // ── НАСТРОЙКИ ──
+  const [settingsPlans, setSettingsPlans] = useState<PlanDoc[]>([]);
+  const [settingsPkgs, setSettingsPkgs] = useState<TokenPackageDoc[]>([]);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsError, setSettingsError] = useState('');
+  const [planEdits, setPlanEdits] = useState<Record<string, PlanEdit>>({});
+  const [pkgEdits, setPkgEdits] = useState<Record<string, PkgEdit>>({});
+  const [planSaving, setPlanSaving] = useState<Record<string, boolean>>({});
+  const [pkgSaving, setPkgSaving] = useState<Record<string, boolean>>({});
+  const [planSaveMsg, setPlanSaveMsg] = useState<Record<string, { ok: boolean; text: string }>>({});
+  const [pkgSaveMsg, setPkgSaveMsg] = useState<Record<string, { ok: boolean; text: string }>>({});
 
   const isAdmin = user?.role === SystemRoles.ADMIN;
 
@@ -133,8 +177,10 @@ export default function AdminPanel() {
   useEffect(() => {
     if (isAdmin && tab === 'payments') {
       loadPayments();
+    } else if (isAdmin && tab === 'settings') {
+      loadSettings();
     }
-  }, [isAdmin, tab, loadPayments]);
+  }, [isAdmin, tab, loadPayments, loadSettings]);
 
   const reconcilePayment = async () => {
     const id = reconcileId.trim();
@@ -158,6 +204,128 @@ export default function AdminPanel() {
       setReconcileResult({ ok: false, message: e instanceof Error ? e.message : 'Ошибка' });
     } finally {
       setReconcileLoading(false);
+    }
+  };
+
+  const loadSettings = useCallback(async () => {
+    if (!isAdmin) return;
+    setSettingsLoading(true);
+    setSettingsError('');
+    try {
+      const res = await fetch('/api/admin/mvp/plans', {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      });
+      if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+      const result = await res.json();
+      setSettingsPlans(result.plans ?? []);
+      setSettingsPkgs(result.tokenPackages ?? []);
+      // Инициализируем черновики
+      const pe: Record<string, PlanEdit> = {};
+      for (const p of result.plans ?? []) {
+        pe[p.planId] = {
+          priceRub: String(p.priceRub),
+          tokenCreditsOnPurchase: String(p.tokenCreditsOnPurchase),
+          allowedModels: (p.allowedModels ?? []).join('\n'),
+          isActive: p.isActive,
+        };
+      }
+      setPlanEdits(pe);
+      const pke: Record<string, PkgEdit> = {};
+      for (const pk of result.tokenPackages ?? []) {
+        pke[pk.packageId] = {
+          priceRub: String(pk.priceRub),
+          tokenCredits: String(pk.tokenCredits),
+          isActive: pk.isActive,
+        };
+      }
+      setPkgEdits(pke);
+    } catch (e: unknown) {
+      setSettingsError(e instanceof Error ? e.message : 'Ошибка загрузки настроек');
+    } finally {
+      setSettingsLoading(false);
+    }
+  }, [isAdmin, token]);
+
+  const savePlan = async (planId: string) => {
+    const edit = planEdits[planId];
+    if (!edit) return;
+    setPlanSaving((p) => ({ ...p, [planId]: true }));
+    setPlanSaveMsg((p) => ({ ...p, [planId]: { ok: false, text: '' } }));
+    try {
+      const allowedModels = edit.allowedModels
+        .split(/[\n,]/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const body = {
+        priceRub: parseFloat(edit.priceRub),
+        tokenCreditsOnPurchase: parseInt(edit.tokenCreditsOnPurchase),
+        allowedModels,
+        isActive: edit.isActive,
+      };
+      const res = await fetch(`/api/admin/mvp/plans/${planId}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Ошибка ${res.status}`);
+      setPlanSaveMsg((p) => ({ ...p, [planId]: { ok: true, text: 'Сохранено' } }));
+      await loadSettings();
+    } catch (e: unknown) {
+      setPlanSaveMsg((p) => ({ ...p, [planId]: { ok: false, text: e instanceof Error ? e.message : 'Ошибка' } }));
+    } finally {
+      setPlanSaving((p) => ({ ...p, [planId]: false }));
+    }
+  };
+
+  const savePkg = async (packageId: string) => {
+    const edit = pkgEdits[packageId];
+    if (!edit) return;
+    setPkgSaving((p) => ({ ...p, [packageId]: true }));
+    setPkgSaveMsg((p) => ({ ...p, [packageId]: { ok: false, text: '' } }));
+    try {
+      const body = {
+        priceRub: parseFloat(edit.priceRub),
+        tokenCredits: parseInt(edit.tokenCredits),
+        isActive: edit.isActive,
+      };
+      const res = await fetch(`/api/admin/mvp/token-packages/${packageId}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Ошибка ${res.status}`);
+      setPkgSaveMsg((p) => ({ ...p, [packageId]: { ok: true, text: 'Сохранено' } }));
+      await loadSettings();
+    } catch (e: unknown) {
+      setPkgSaveMsg((p) => ({ ...p, [packageId]: { ok: false, text: e instanceof Error ? e.message : 'Ошибка' } }));
+    } finally {
+      setPkgSaving((p) => ({ ...p, [packageId]: false }));
+    }
+  };
+
+  const changePlan = async (userId: string, plan: string) => {
+    setPlanChanging((prev) => ({ ...prev, [userId]: true }));
+    try {
+      const res = await fetch(`/api/admin/mvp/users/${userId}/plan`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ plan }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      await load();
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'Ошибка смены тарифа');
+    } finally {
+      setPlanChanging((prev) => ({ ...prev, [userId]: false }));
     }
   };
 
@@ -216,11 +384,13 @@ export default function AdminPanel() {
             )}
           </div>
           <button
-            onClick={tab === 'users' ? load : loadPayments}
-            disabled={tab === 'users' ? loading : paymentsLoading}
+            onClick={tab === 'users' ? load : tab === 'payments' ? loadPayments : loadSettings}
+            disabled={tab === 'users' ? loading : tab === 'payments' ? paymentsLoading : settingsLoading}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
-            {(tab === 'users' ? loading : paymentsLoading) ? 'Загрузка...' : 'Обновить'}
+            {(tab === 'users' ? loading : tab === 'payments' ? paymentsLoading : settingsLoading)
+              ? 'Загрузка...'
+              : 'Обновить'}
           </button>
         </div>
 
@@ -245,6 +415,16 @@ export default function AdminPanel() {
             }`}
           >
             Платежи
+          </button>
+          <button
+            onClick={() => setTab('settings')}
+            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              tab === 'settings'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+            }`}
+          >
+            Настройки
           </button>
         </div>
 
@@ -326,11 +506,18 @@ export default function AdminPanel() {
                           )}
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`rounded-full px-2 py-1 text-xs font-semibold ${
-                            (PLAN_DISPLAY[u.plan] ?? PLAN_DISPLAY.free).className
-                          }`}>
-                            {(PLAN_DISPLAY[u.plan] ?? PLAN_DISPLAY.free).label}
-                          </span>
+                          <select
+                            value={u.plan}
+                            disabled={planChanging[u._id]}
+                            onChange={(e) => changePlan(u._id, e.target.value)}
+                            className={`rounded-full px-2 py-1 text-xs font-semibold cursor-pointer border-0 outline-none ${
+                              (PLAN_DISPLAY[u.plan] ?? PLAN_DISPLAY.free).className
+                            } ${planChanging[u._id] ? 'opacity-50' : ''}`}
+                          >
+                            <option value="free">Free</option>
+                            <option value="pro">Pro</option>
+                            <option value="business">Business</option>
+                          </select>
                           {u.planExpiresAt && (
                             <div className="mt-0.5 text-xs text-gray-400">
                               до {new Date(u.planExpiresAt).toLocaleDateString('ru-RU')}
@@ -431,7 +618,7 @@ export default function AdminPanel() {
               </div>
               {reconcileResult && (
                 <p className={`mt-2 text-sm ${reconcileResult.ok ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
-                  {reconcileResult.ok ? '✓ ' : '✗ '}{reconcileResult.message}
+                  {reconcileResult.message}
                 </p>
               )}
             </div>
@@ -515,7 +702,7 @@ export default function AdminPanel() {
                               <span className={`text-xs font-semibold ${
                                 p.status === 'succeeded' ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'
                               }`}>
-                                {p.status === 'succeeded' ? '✓ Оплачен' : p.status}
+                                {p.status === 'succeeded' ? 'Оплачен' : p.status}
                               </span>
                             </td>
                             <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
@@ -537,6 +724,200 @@ export default function AdminPanel() {
 
             {paymentsLoading && (
               <div className="py-10 text-center text-sm text-gray-400">Загрузка платежей...</div>
+            )}
+          </>
+        )}
+
+        {/* ── SETTINGS TAB ───────────────────────────────────── */}
+        {tab === 'settings' && (
+          <>
+            {settingsError && (
+              <div className="mb-4 rounded-lg bg-red-100 p-3 text-sm text-red-700 dark:bg-red-900 dark:text-red-200">
+                {settingsError}
+              </div>
+            )}
+            {settingsLoading && (
+              <div className="py-10 text-center text-sm text-gray-400">Загрузка настроек...</div>
+            )}
+            {!settingsLoading && settingsPlans.length > 0 && (
+              <>
+                {/* ── Тарифные планы ── */}
+                <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Тарифные планы</h2>
+                <div className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {settingsPlans.map((plan) => {
+                    const edit = planEdits[plan.planId];
+                    if (!edit) return null;
+                    const msg = planSaveMsg[plan.planId];
+                    return (
+                      <div
+                        key={plan.planId}
+                        className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
+                      >
+                        <div className="mb-3 flex items-center justify-between">
+                          <span className="text-base font-semibold text-gray-900 dark:text-white">{plan.label}</span>
+                          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                            <input
+                              type="checkbox"
+                              checked={edit.isActive}
+                              onChange={(e) =>
+                                setPlanEdits((prev) => ({
+                                  ...prev,
+                                  [plan.planId]: { ...prev[plan.planId], isActive: e.target.checked },
+                                }))
+                              }
+                              className="h-3.5 w-3.5 rounded"
+                            />
+                            Активен
+                          </label>
+                        </div>
+                        <div className="mb-2 grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="mb-0.5 block text-xs text-gray-500 dark:text-gray-400">Цена (₽)</label>
+                            <input
+                              type="number"
+                              value={edit.priceRub}
+                              onChange={(e) =>
+                                setPlanEdits((prev) => ({
+                                  ...prev,
+                                  [plan.planId]: { ...prev[plan.planId], priceRub: e.target.value },
+                                }))
+                              }
+                              className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-0.5 block text-xs text-gray-500 dark:text-gray-400">Кредитов</label>
+                            <input
+                              type="number"
+                              value={edit.tokenCreditsOnPurchase}
+                              onChange={(e) =>
+                                setPlanEdits((prev) => ({
+                                  ...prev,
+                                  [plan.planId]: { ...prev[plan.planId], tokenCreditsOnPurchase: e.target.value },
+                                }))
+                              }
+                              className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                            />
+                          </div>
+                        </div>
+                        <div className="mb-3">
+                          <label className="mb-0.5 block text-xs text-gray-500 dark:text-gray-400">
+                            Разрешённые модели (по одной на строку; пусто = все)
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={edit.allowedModels}
+                            onChange={(e) =>
+                              setPlanEdits((prev) => ({
+                                ...prev,
+                                [plan.planId]: { ...prev[plan.planId], allowedModels: e.target.value },
+                              }))
+                            }
+                            placeholder="gpt-4o-mini"
+                            className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-xs font-mono dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <button
+                            onClick={() => savePlan(plan.planId)}
+                            disabled={planSaving[plan.planId]}
+                            className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                          >
+                            {planSaving[plan.planId] ? 'Сохранение...' : 'Сохранить'}
+                          </button>
+                          {msg?.text && (
+                            <span
+                              className={`text-xs ${msg.ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                            >
+                              {msg.text}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* ── Пакеты токенов ── */}
+                <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Пакеты токенов</h2>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {settingsPkgs.map((pkg) => {
+                    const edit = pkgEdits[pkg.packageId];
+                    if (!edit) return null;
+                    const msg = pkgSaveMsg[pkg.packageId];
+                    return (
+                      <div
+                        key={pkg.packageId}
+                        className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
+                      >
+                        <div className="mb-3 flex items-center justify-between">
+                          <span className="text-base font-semibold text-gray-900 dark:text-white">{pkg.label}</span>
+                          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                            <input
+                              type="checkbox"
+                              checked={edit.isActive}
+                              onChange={(e) =>
+                                setPkgEdits((prev) => ({
+                                  ...prev,
+                                  [pkg.packageId]: { ...prev[pkg.packageId], isActive: e.target.checked },
+                                }))
+                              }
+                              className="h-3.5 w-3.5 rounded"
+                            />
+                            Активен
+                          </label>
+                        </div>
+                        <div className="mb-3 grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="mb-0.5 block text-xs text-gray-500 dark:text-gray-400">Цена (₽)</label>
+                            <input
+                              type="number"
+                              value={edit.priceRub}
+                              onChange={(e) =>
+                                setPkgEdits((prev) => ({
+                                  ...prev,
+                                  [pkg.packageId]: { ...prev[pkg.packageId], priceRub: e.target.value },
+                                }))
+                              }
+                              className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-0.5 block text-xs text-gray-500 dark:text-gray-400">Кредитов</label>
+                            <input
+                              type="number"
+                              value={edit.tokenCredits}
+                              onChange={(e) =>
+                                setPkgEdits((prev) => ({
+                                  ...prev,
+                                  [pkg.packageId]: { ...prev[pkg.packageId], tokenCredits: e.target.value },
+                                }))
+                              }
+                              className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <button
+                            onClick={() => savePkg(pkg.packageId)}
+                            disabled={pkgSaving[pkg.packageId]}
+                            className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                          >
+                            {pkgSaving[pkg.packageId] ? 'Сохранение...' : 'Сохранить'}
+                          </button>
+                          {msg?.text && (
+                            <span
+                              className={`text-xs ${msg.ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                            >
+                              {msg.text}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </>
         )}

@@ -3,48 +3,46 @@
  * ЮKassa payment integration
  *
  * Env vars (.env):
- *   YOOKASSA_SHOP_ID   — shopId из кабинета ЮKassa
- *   YOOKASSA_API_KEY   — секретный ключ магазина
+ *   YOOKASSA_SHOP_ID    — shopId из кабинета ЮKassa
+ *   YOOKASSA_API_KEY    — секретный ключ магазина
  *   YOOKASSA_RETURN_URL — URL возврата (по умолчанию /pricing?payment=success)
  *
  * Поллинг для localhost:
- *   PROD → webhook /api/payment/webhook (ЮKassa отправляет сама)
+ *   PROD  → webhook /api/payment/webhook (ЮKassa отправляет сама)
  *   LOCAL → GET /api/payment/check (frontend вызывает после редиректа с ?payment=success)
+ *
+ * Типы платежей:
+ *   'subscription' — меняет plan и plan_expires_at
+ *   'token_pack'   — только пополняет баланс, plan не трогает
  */
 const express = require('express');
 const axios = require('axios');
 const { logger } = require('@librechat/data-schemas');
 const { requireJwtAuth } = require('../middleware/');
-const { Balance, Payment, Subscription } = require('~/db/models');
-const { PACKAGES, PLAN_CONFIGS } = require('../utils/subscriptionConfig');
+const { Balance, Payment, Subscription, Plan, TokenPackage } = require('~/db/models');
 
 const router = express.Router();
-
 const YUKASSA_API = 'https://api.yookassa.ru/v3';
 
 function yukassaAuth() {
   const shopId = process.env.YOOKASSA_SHOP_ID;
   const secretKey = process.env.YOOKASSA_API_KEY;
-  if (!shopId || !secretKey) {
-    throw new Error('YOOKASSA_SHOP_ID и YOOKASSA_API_KEY должны быть заданы в .env');
-  }
+  if (!shopId || !secretKey) throw new Error('YOOKASSA_SHOP_ID и YOOKASSA_API_KEY должны быть заданы в .env');
   return { username: shopId, password: secretKey };
 }
 
-/**
- * Обновляет подписку пользователя согласно правилам продления/апгрейда:
- * - Продление (тот же план, ещё активен): planExpiresAt += durationDays
- * - Апгрейд или новая подписка: planStartedAt = now, planExpiresAt = now + durationDays
- */
-async function upsertSubscription(userId, plan, durationDays) {
+async function ensureSeeded() {
+  await Promise.all([Plan.seedDefaults(), TokenPackage.seedDefaults()]);
+}
+
+async function upsertSubscription(userId, planId, durationDays) {
   const now = new Date();
   const existing = await Subscription.findOne({ userId }).lean();
 
-  let baseDate = now; // по умолчанию отсчёт от сейчас
-  // Продление: тот же план, ещё не истёк → продлеваем от текущего planExpiresAt
+  let baseDate = now;
   if (
     existing &&
-    existing.plan === plan &&
+    existing.plan === planId &&
     existing.planExpiresAt &&
     new Date(existing.planExpiresAt) > now
   ) {
@@ -56,15 +54,11 @@ async function upsertSubscription(userId, plan, durationDays) {
 
   return Subscription.findOneAndUpdate(
     { userId },
-    { plan, planStartedAt: now, planExpiresAt },
+    { plan: planId, planStartedAt: now, planExpiresAt },
     { upsert: true, new: true },
   ).lean();
 }
 
-/**
- * Общая идемпотентная функция активации успешного платежа.
- * Вызывается из webhook И из /check (fallback для localhost).
- */
 async function applySuccessfulPayment(externalPaymentId) {
   const existing = await Payment.findOne({ externalPaymentId }).lean();
 
@@ -81,30 +75,27 @@ async function applySuccessfulPayment(externalPaymentId) {
     return { ok: false, message: `Некорректное значение tokenCredits: ${creditsRaw}` };
   }
 
-  // 1. Добавляем токены на баланс
   const updatedBalance = await Balance.findOneAndUpdate(
     { user: userId },
     { $inc: { tokenCredits: creditsNum } },
     { upsert: true, new: true },
   );
 
-  // 2. Обновляем подписку (если это subscription-тип)
   let subscription = null;
   if (type === 'subscription' && planPurchased) {
-    const cfg = PLAN_CONFIGS[planPurchased];
-    if (cfg?.durationDays) {
-      subscription = await upsertSubscription(userId, planPurchased, cfg.durationDays);
+    const planDoc = await Plan.findOne({ planId: planPurchased }).lean();
+    if (planDoc?.durationDays) {
+      subscription = await upsertSubscription(userId, planPurchased, planDoc.durationDays);
     }
   }
 
-  // 3. Помечаем платёж как succeeded
   await Payment.findOneAndUpdate(
     { externalPaymentId },
     { status: 'succeeded', expiresAt: subscription?.planExpiresAt || null },
   );
 
   logger.info(
-    `[payment/apply] userId=${userId} plan=${planPurchased} +${creditsNum} TC. ` +
+    `[payment/apply] userId=${userId} type=${type} plan=${planPurchased || '—'} +${creditsNum} TC. ` +
     `Баланс: ${updatedBalance.tokenCredits}. Подписка до: ${subscription?.planExpiresAt || '—'}`,
   );
 
@@ -119,57 +110,90 @@ async function applySuccessfulPayment(externalPaymentId) {
 }
 
 /**
+ * GET /api/payment/plans
+ * Публичный эндпоинт — возвращает активные тарифы и пакеты токенов.
+ * Авторизация НЕ требуется.
+ */
+router.get('/plans', async (req, res) => {
+  try {
+    await ensureSeeded();
+    const [plans, tokenPackages] = await Promise.all([
+      Plan.find({ isActive: true }).sort({ priceRub: 1 }).lean(),
+      TokenPackage.find({ isActive: true }).lean(),
+    ]);
+    res.json({ plans, tokenPackages });
+  } catch (err) {
+    logger.error('[payment/plans]', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+/**
  * POST /api/payment/create
- * Body: { packageId: 'pro' | 'max' }
+ * Body: { packageId: string }
+ *   Для подписки:   packageId = planId ('pro' | 'business')
+ *   Для токен-пака: packageId = 'token_pack'
  */
 router.post('/create', requireJwtAuth, async (req, res) => {
   try {
+    await ensureSeeded();
     const { packageId } = req.body;
-    const pkg = PACKAGES[packageId];
-    if (!pkg) {
-      return res.status(400).json({ error: `Неизвестный пакет: ${packageId}` });
+    const userId = req.user._id.toString();
+
+    const tokenPkg = await TokenPackage.findOne({ packageId, isActive: true }).lean();
+    const planDoc  = tokenPkg ? null : await Plan.findOne({ planId: packageId, isActive: true }).lean();
+
+    if (!tokenPkg && !planDoc) {
+      return res.status(400).json({ error: `Неизвестный или неактивный пакет: ${packageId}` });
+    }
+    if (planDoc && planDoc.priceRub <= 0) {
+      return res.status(400).json({ error: 'Этот тариф не требует оплаты' });
     }
 
-    const userId = req.user._id.toString();
-    const idempotenceKey = `${userId}-${packageId}-${Date.now()}`;
+    const priceRub     = tokenPkg ? tokenPkg.priceRub    : planDoc.priceRub;
+    const tokenCredits = tokenPkg ? tokenPkg.tokenCredits : planDoc.tokenCreditsOnPurchase;
+    const type         = tokenPkg ? 'token_pack'          : 'subscription';
+    const planId       = tokenPkg ? null                  : planDoc.planId;
+    const description  = tokenPkg
+      ? `${tokenPkg.label} — ${priceRub} ₽`
+      : `Подписка ${planDoc.label} — ${priceRub} ₽/мес`;
 
-    const returnUrl =
-      process.env.YOOKASSA_RETURN_URL ||
+    const amountStr = priceRub.toFixed(2);
+    const idempotenceKey = `${userId}-${packageId}-${Date.now()}`;
+    const returnUrl = process.env.YOOKASSA_RETURN_URL ||
       `${process.env.DOMAIN_CLIENT || 'http://localhost:3080'}/pricing?payment=success`;
 
-    const auth = yukassaAuth();
     const { data } = await axios.post(
       `${YUKASSA_API}/payments`,
       {
-        amount: { value: pkg.amount, currency: 'RUB' },
+        amount: { value: amountStr, currency: 'RUB' },
         confirmation: { type: 'redirect', return_url: returnUrl },
         capture: true,
-        description: `Подписка ${pkg.plan} — ${pkg.amount} ₽/мес`,
-        metadata: { userId, packageId, tokenCredits: pkg.tokenCredits, plan: pkg.plan },
+        description,
+        metadata: { userId, packageId, tokenCredits, plan: planId, type },
       },
       {
-        auth,
+        auth: yukassaAuth(),
         headers: { 'Idempotence-Key': idempotenceKey, 'Content-Type': 'application/json' },
       },
     );
 
-    // Сохраняем как 'pending' — /check найдёт его при необходимости
     await Payment.findOneAndUpdate(
       { externalPaymentId: data.id },
       {
         externalPaymentId: data.id,
         userId,
         packageId,
-        type: pkg.type,
-        planPurchased: pkg.plan,
-        tokenCredits: pkg.tokenCredits,
-        amount: pkg.amount,
+        type,
+        planPurchased: planId,
+        tokenCredits,
+        amount: amountStr,
         status: 'pending',
       },
       { upsert: true },
     );
 
-    logger.info(`[payment/create] userId=${userId} packageId=${packageId} paymentId=${data.id}`);
+    logger.info(`[payment/create] userId=${userId} packageId=${packageId} type=${type} paymentId=${data.id}`);
     res.json({ paymentId: data.id, confirmationUrl: data.confirmation?.confirmation_url });
   } catch (err) {
     const msg = err.response?.data?.description || err.message;
@@ -244,9 +268,8 @@ router.post('/webhook', express.json(), async (req, res) => {
     const payment = event.object;
     if (!payment || payment.status !== 'succeeded') return;
 
-    const { userId, tokenCredits, packageId, plan } = payment.metadata || {};
+    const { userId, tokenCredits, packageId, plan, type } = payment.metadata || {};
     if (userId && tokenCredits && packageId) {
-      const pkg = PACKAGES[packageId] || {};
       await Payment.findOneAndUpdate(
         { externalPaymentId: payment.id },
         {
@@ -254,8 +277,8 @@ router.post('/webhook', express.json(), async (req, res) => {
             externalPaymentId: payment.id,
             userId,
             packageId,
-            type: pkg.type || 'subscription',
-            planPurchased: plan || pkg.plan || null,
+            type: type || 'subscription',
+            planPurchased: plan || null,
             tokenCredits: parseInt(tokenCredits),
             amount: payment.amount?.value ?? '',
           },
