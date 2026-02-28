@@ -169,6 +169,45 @@ export default function AdminPanel() {
     }
   }, [isAdmin, paymentEmailFilter, paymentFromFilter, paymentToFilter, token]);
 
+  const loadSettings = useCallback(async () => {
+    if (!isAdmin) return;
+    setSettingsLoading(true);
+    setSettingsError('');
+    try {
+      const res = await fetch('/api/admin/mvp/plans', {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      });
+      if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+      const result = await res.json();
+      setSettingsPlans(result.plans ?? []);
+      setSettingsPkgs(result.tokenPackages ?? []);
+      const pe: Record<string, PlanEdit> = {};
+      for (const p of result.plans ?? []) {
+        pe[p.planId] = {
+          priceRub: String(p.priceRub),
+          tokenCreditsOnPurchase: String(p.tokenCreditsOnPurchase),
+          allowedModels: (p.allowedModels ?? []).join('\n'),
+          isActive: p.isActive,
+        };
+      }
+      setPlanEdits(pe);
+      const pke: Record<string, PkgEdit> = {};
+      for (const pk of result.tokenPackages ?? []) {
+        pke[pk.packageId] = {
+          priceRub: String(pk.priceRub),
+          tokenCredits: String(pk.tokenCredits),
+          isActive: pk.isActive,
+        };
+      }
+      setPkgEdits(pke);
+    } catch (e: unknown) {
+      setSettingsError(e instanceof Error ? e.message : 'Ошибка загрузки настроек');
+    } finally {
+      setSettingsLoading(false);
+    }
+  }, [isAdmin, token]);
+
   useEffect(() => {
     if (user && !isAdmin) {
       navigate('/c/new');
@@ -209,46 +248,6 @@ export default function AdminPanel() {
       setReconcileLoading(false);
     }
   };
-
-  const loadSettings = useCallback(async () => {
-    if (!isAdmin) return;
-    setSettingsLoading(true);
-    setSettingsError('');
-    try {
-      const res = await fetch('/api/admin/mvp/plans', {
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-      });
-      if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
-      const result = await res.json();
-      setSettingsPlans(result.plans ?? []);
-      setSettingsPkgs(result.tokenPackages ?? []);
-      // Инициализируем черновики
-      const pe: Record<string, PlanEdit> = {};
-      for (const p of result.plans ?? []) {
-        pe[p.planId] = {
-          priceRub: String(p.priceRub),
-          tokenCreditsOnPurchase: String(p.tokenCreditsOnPurchase),
-          allowedModels: (p.allowedModels ?? []).join('\n'),
-          isActive: p.isActive,
-        };
-      }
-      setPlanEdits(pe);
-      const pke: Record<string, PkgEdit> = {};
-      for (const pk of result.tokenPackages ?? []) {
-        pke[pk.packageId] = {
-          priceRub: String(pk.priceRub),
-          tokenCredits: String(pk.tokenCredits),
-          isActive: pk.isActive,
-        };
-      }
-      setPkgEdits(pke);
-    } catch (e: unknown) {
-      setSettingsError(e instanceof Error ? e.message : 'Ошибка загрузки настроек');
-    } finally {
-      setSettingsLoading(false);
-    }
-  }, [isAdmin, token]);
 
   const savePlan = async (planId: string) => {
     const edit = planEdits[planId];
