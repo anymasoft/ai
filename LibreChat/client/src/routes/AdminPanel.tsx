@@ -56,7 +56,6 @@ export default function AdminPanel() {
   const [paymentToFilter, setPaymentToFilter] = useState('');
 
   const isAdmin = user?.role === SystemRoles.ADMIN;
-  const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
 
   const load = useCallback(async () => {
     if (!isAdmin) return;
@@ -65,7 +64,10 @@ export default function AdminPanel() {
     try {
       const res = await fetch(`/api/admin/mvp/users?page=${page}`, {
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json', ...authHeader },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
       });
       if (!res.ok) {
         const text = await res.text();
@@ -78,7 +80,7 @@ export default function AdminPanel() {
     } finally {
       setLoading(false);
     }
-  }, [isAdmin, page, authHeader]);
+  }, [isAdmin, page, token]);
 
   const loadPayments = useCallback(async () => {
     if (!isAdmin) return;
@@ -91,7 +93,10 @@ export default function AdminPanel() {
       if (paymentToFilter) params.append('to', paymentToFilter);
       const res = await fetch(`/api/admin/mvp/payments?${params}`, {
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json', ...authHeader },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
       });
       if (!res.ok) {
         const text = await res.text();
@@ -104,7 +109,7 @@ export default function AdminPanel() {
     } finally {
       setPaymentsLoading(false);
     }
-  }, [isAdmin, paymentEmailFilter, paymentFromFilter, paymentToFilter, authHeader]);
+  }, [isAdmin, paymentEmailFilter, paymentFromFilter, paymentToFilter, token]);
 
   useEffect(() => {
     if (user && !isAdmin) {
@@ -125,7 +130,10 @@ export default function AdminPanel() {
       const res = await fetch(`/api/admin/mvp/users/${userId}/role`, {
         method: 'PATCH',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json', ...authHeader },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ role }),
       });
       if (!res.ok) throw new Error(await res.text());
@@ -145,7 +153,10 @@ export default function AdminPanel() {
       const res = await fetch(`/api/admin/mvp/users/${userId}/balance`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json', ...authHeader },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ credits }),
       });
       if (!res.ok) throw new Error(await res.text());

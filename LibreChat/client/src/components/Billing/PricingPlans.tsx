@@ -7,6 +7,7 @@
  */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuthContext } from '~/hooks';
 
 export interface PricingPlan {
   id: string;
@@ -81,6 +82,7 @@ const PLANS: PricingPlan[] = [
 
 export default function PricingPlans({ mode = 'pricing', onPaymentStart }: PricingPlansProps) {
   const navigate = useNavigate();
+  const { token } = useAuthContext();
   const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -96,7 +98,10 @@ export default function PricingPlans({ mode = 'pricing', onPaymentStart }: Prici
 
       const res = await fetch('/api/payment/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ packageId }),
         credentials: 'include',
       });
