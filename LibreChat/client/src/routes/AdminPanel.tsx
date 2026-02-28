@@ -133,6 +133,7 @@ export default function AdminPanel() {
   const [newModelMsg, setNewModelMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [deleteModelDialog, setDeleteModelDialog] = useState<{ open: boolean; modelId: string | null }>({ open: false, modelId: null });
   const [deleteModelError, setDeleteModelError] = useState<string | null>(null);
+  const [availableEndpoints, setAvailableEndpoints] = useState<string[]>([]);
 
   const { navVisible, setNavVisible } = useOutletContext<ContextType>();
   const isAdmin = user?.role === SystemRoles.ADMIN;
@@ -286,6 +287,19 @@ export default function AdminPanel() {
       loadPayments();
     } else if (isAdmin && tab === 'settings') {
       loadSettings();
+      // Загружаем список доступных эндпоинтов
+      (async () => {
+        try {
+          const res = await fetch('/api/endpoints', { credentials: 'include' });
+          if (res.ok) {
+            const data = await res.json();
+            const endpoints = Object.keys(data).sort();
+            setAvailableEndpoints(endpoints);
+          }
+        } catch (err) {
+          console.error('Ошибка при загрузке эндпоинтов:', err);
+        }
+      })();
     }
   }, [isAdmin, tab, loadPayments, loadSettings]);
 
@@ -913,13 +927,28 @@ export default function AdminPanel() {
                     </div>
                     <div>
                       <label className="mb-0.5 block text-xs text-blue-700 dark:text-blue-400">endpointKey (необяз.)</label>
-                      <input
-                        type="text"
-                        placeholder="openAI / anthropic / deepseek"
-                        value={newModelForm.endpointKey}
-                        onChange={(e) => setNewModelForm((f) => ({ ...f, endpointKey: e.target.value }))}
-                        className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm font-mono dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                      />
+                      {availableEndpoints.length > 0 ? (
+                        <select
+                          value={newModelForm.endpointKey}
+                          onChange={(e) => setNewModelForm((f) => ({ ...f, endpointKey: e.target.value }))}
+                          className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                        >
+                          <option value="">-- Выбрать из конфига --</option>
+                          {availableEndpoints.map((ep) => (
+                            <option key={ep} value={ep}>
+                              {ep}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type="text"
+                          placeholder="openAI / anthropic / deepseek"
+                          value={newModelForm.endpointKey}
+                          onChange={(e) => setNewModelForm((f) => ({ ...f, endpointKey: e.target.value }))}
+                          className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm font-mono dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                        />
+                      )}
                     </div>
                     <div>
                       <label className="mb-0.5 block text-xs text-blue-700 dark:text-blue-400">displayName</label>
