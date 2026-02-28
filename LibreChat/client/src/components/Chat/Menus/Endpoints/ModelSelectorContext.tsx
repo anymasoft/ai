@@ -97,45 +97,57 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     endpointsConfig,
   });
 
-  // Загружаем список разрешённых моделей для текущего пользователя.
-  // Кэш: 60 секунд (staleTime). Это заменяет enforce-логику из librechat.yaml.
-  const { data: allowedModelsData } = useQuery({
+  /**
+   * Загружаем разрешённые модели из БД (Plans + AiModel).
+   * Каждая запись содержит { modelId, displayName, endpointKey } — достаточно для
+   * генерации синтетического TModelSpec без привязки к LibreChat-конфигу.
+   *
+   * Состояния allowedModelsData:
+   *   undefined  — запрос ещё в полёте (isLoading)
+   *   null       — запрос вернул ошибку (res.ok === false)
+   *   { models } — успешный ответ (models может быть пустым массивом)
+   */
+  type AllowedModel = { modelId: string; displayName: string; provider: string; endpointKey: string };
+  const { data: allowedModelsData, isLoading: allowedLoading } = useQuery({
     queryKey: ['allowedModels'],
-    queryFn: async () => {
+    queryFn: async (): Promise<{ models: AllowedModel[]; plan: string } | null> => {
       const res = await fetch('/api/models/allowed', { credentials: 'include' });
       if (!res.ok) return null;
-      return res.json() as Promise<{ models: Array<{ modelId: string; displayName: string; provider: string }>; plan: string }>;
+      return res.json();
     },
     staleTime: 60_000,
     gcTime: 60_000,
   });
 
-  // Множество разрешённых modelId для быстрого поиска
-  const allowedModelIds = useMemo(
-    () => new Set((allowedModelsData?.models ?? []).map((m) => m.modelId)),
-    [allowedModelsData],
-  );
+  /**
+   * Преобразуем список разрешённых моделей в синтетические TModelSpec.
+   *
+   * Возвращает:
+   *   null     — запрос ещё не завершён (показываем YAML-спеки как запасной вариант)
+   *   []       — запрос завершён, но моделей нет (показываем пустой список)
+   *   [...]    — список синтетических спеков для отображения
+   *
+   * Когда dynamicModelSpecs !== null:
+   *   - mappedEndpoints = [] (скрываем все эндпоинт-модели LibreChat)
+   *   - modelSpecs      = dynamicModelSpecs (только модели из БД)
+   */
+  const dynamicModelSpecs = useMemo((): t.TModelSpec[] | null => {
+    if (allowedLoading) return null;          // ещё грузится — не трогаем YAML-спеки
+    if (!allowedModelsData) return null;      // ошибка — используем YAML-спеки как fallback
+    return allowedModelsData.models.map((m) => ({
+      name: m.modelId,
+      label: m.displayName,
+      preset: {
+        endpoint: m.endpointKey,
+        model: m.modelId,
+      },
+    } as unknown as t.TModelSpec));
+  }, [allowedModelsData, allowedLoading]);
 
-  // Фильтруем эндпоинты: оставляем только модели из allowedModels.
-  // Agents и Assistants не фильтруются — у них своя система доступа.
-  const filteredMappedEndpoints = useMemo(() => {
-    if (allowedModelIds.size === 0) return rawMappedEndpoints;
-    return rawMappedEndpoints
-      .map((ep) => {
-        if (isAgentsEndpoint(ep.value) || isAssistantsEndpoint(ep.value)) return ep;
-        return {
-          ...ep,
-          models: (ep.models ?? []).filter((m) => allowedModelIds.has(m.name)),
-        };
-      })
-      .filter((ep) => {
-        if (isAgentsEndpoint(ep.value) || isAssistantsEndpoint(ep.value)) return true;
-        return !ep.hasModels || (ep.models?.length ?? 0) > 0;
-      });
-  }, [rawMappedEndpoints, allowedModelIds]);
-
-  // enforce-логика из YAML отключена: доступность определяется через Plans + AiModel.
-  const mappedEndpoints = filteredMappedEndpoints;
+  // Итоговые modelSpecs: из БД (если загружены) или из YAML (пока грузятся / ошибка)
+  const effectiveModelSpecs = dynamicModelSpecs ?? modelSpecs;
+  // Когда БД-модели загружены — скрываем весь стандартный список LibreChat-эндпоинтов
+  const mappedEndpoints = dynamicModelSpecs !== null ? [] : rawMappedEndpoints;
 
   const getModelDisplayName = useCallback(
     (endpoint: Endpoint, model: string): string => {
@@ -201,9 +213,9 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     if (!searchValue) {
       return null;
     }
-    const allItems = [...modelSpecs, ...mappedEndpoints];
+    const allItems = [...effectiveModelSpecs, ...mappedEndpoints];
     return filterItems(allItems, searchValue, agentsMap, assistantsMap || {});
-  }, [searchValue, modelSpecs, mappedEndpoints, agentsMap, assistantsMap]);
+  }, [searchValue, effectiveModelSpecs, mappedEndpoints, agentsMap, assistantsMap]);
 
   const setDebouncedSearchValue = useMemo(
     () =>
@@ -280,7 +292,7 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     endpointSearchValues,
     // LibreChat
     agentsMap,
-    modelSpecs,
+    modelSpecs: effectiveModelSpecs,
     assistantsMap,
     mappedEndpoints,
     endpointsConfig,

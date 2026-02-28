@@ -32,7 +32,7 @@ const SEED_DEFAULTS = [
     priceRub: 0,
     tokenCreditsOnPurchase: 0,
     durationDays: null,
-    allowedModels: ['gpt-4o-mini'],
+    allowedModels: ['gpt-4.1-mini'],
     isActive: true,
   },
   {
@@ -41,7 +41,7 @@ const SEED_DEFAULTS = [
     priceRub: 3_990,
     tokenCreditsOnPurchase: 5_000_000,
     durationDays: 30,
-    allowedModels: [],
+    allowedModels: ['gpt-4.1-mini', 'claude-4-6-sonnet', 'deepseek-chat'],
     isActive: true,
   },
   {
@@ -50,7 +50,7 @@ const SEED_DEFAULTS = [
     priceRub: 9_990,
     tokenCreditsOnPurchase: 12_000_000,
     durationDays: 30,
-    allowedModels: [],
+    allowedModels: ['gpt-4.1-mini', 'gpt-5.2', 'claude-4-6-sonnet', 'claude-4-6-opus', 'deepseek-chat', 'deepseek-reasoner'],
     isActive: true,
   },
 ];

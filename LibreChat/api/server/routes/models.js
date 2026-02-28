@@ -17,7 +17,7 @@ router.get('/all', async (req, res) => {
     await AiModel.seedDefaults();
     const models = await AiModel.find({ isActive: true })
       .sort({ provider: 1, displayName: 1 })
-      .select('modelId provider displayName -_id')
+      .select('modelId provider endpointKey displayName -_id')
       .lean();
     res.json({ models });
   } catch (err) {
@@ -54,7 +54,7 @@ router.get('/allowed', requireJwtAuth, async (req, res) => {
 
     const models = await AiModel.find(query)
       .sort({ provider: 1, displayName: 1 })
-      .select('modelId provider displayName -_id')
+      .select('modelId provider endpointKey displayName -_id')
       .lean();
 
     res.set('Cache-Control', 'private, max-age=60');
