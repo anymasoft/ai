@@ -168,7 +168,7 @@ export default function Pricing() {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ packageId, returnUrl: `${window.location.origin}/pricing?payment=success` }),
+        body: JSON.stringify({ packageId }),
         credentials: 'include',
       });
       const data = await res.json();

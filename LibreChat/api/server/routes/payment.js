@@ -161,14 +161,8 @@ router.post('/create', requireJwtAuth, async (req, res) => {
     const amountStr = priceRub.toFixed(2);
     const idempotenceKey = `${userId}-${packageId}-${Date.now()}`;
 
-    // returnUrl: 1) env YOOKASSA_RETURN_URL; 2) frontend передаёт из req.body;
-    // 3) хост запроса; 4) DOMAIN_CLIENT; 5) localhost fallback
-    const clientReturnUrl = req.body.returnUrl; // клиент передаёт window.location.origin
-    const baseUrl = process.env.DOMAIN_CLIENT ||
-      (clientReturnUrl ? new URL(clientReturnUrl).origin : null) ||
-      `${req.protocol}://${req.get('host')}`;
+    const baseUrl = process.env.DOMAIN_CLIENT || `${req.protocol}://${req.get('host')}`;
     const returnUrl = process.env.YOOKASSA_RETURN_URL || `${baseUrl}/pricing?payment=success`;
-    logger.info(`[payment/create] returnUrl=${returnUrl}`);
 
     const { data } = await axios.post(
       `${YUKASSA_API}/payments`,
