@@ -282,7 +282,7 @@ export default function Pricing() {
           </p>
           <div className={`mt-4 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium ${currentPlanStyle.color}`}>
             <Check className="size-3.5" />
-            Ваш текущий тариф: <strong>{currentPlanDoc?.label ?? currentPlan}</strong>
+            Ваш текущий тариф: <strong>{currentPlanDoc?.label ?? (currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1))}</strong>
             {planExpiresAt && <span className="opacity-75">· активен до {planExpiresAt}</span>}
           </div>
           {balance && (

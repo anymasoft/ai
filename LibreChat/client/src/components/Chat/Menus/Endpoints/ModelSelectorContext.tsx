@@ -138,18 +138,28 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
    *   - mappedEndpoints = [] (скрываем все эндпоинт-модели LibreChat)
    *   - modelSpecs      = dynamicModelSpecs (только модели из БД)
    */
+  /** Встроенные эндпоинты LibreChat — иконки берутся из icons map по ключу.
+   *  Кастомные эндпоинты (deepseek и др.) используют 'custom' → CustomMinimalIcon */
+  const builtinEndpoints = new Set(['openAI', 'anthropic', 'google', 'azureOpenAI', 'bedrock', 'agents', 'assistants', 'azureAssistants']);
+
   const dynamicModelSpecs = useMemo((): t.TModelSpec[] | null => {
     if (allowedLoading) return null;          // ещё грузится — не трогаем YAML-спеки
     if (!allowedModelsData) return null;      // ошибка — используем YAML-спеки как fallback
-    return allowedModelsData.models.map((m) => ({
-      name: m.modelId,
-      label: m.displayName,
-      preset: {
-        endpoint: m.endpointKey,
-        model: m.modelId,
-      },
-    } as unknown as t.TModelSpec));
-  }, [allowedModelsData, allowedLoading]);
+    if (!endpointsConfig) return null;        // эндпоинты ещё не загружены — ждём, чтобы не показывать пустой список
+    return allowedModelsData.models
+      .filter((m) => endpointsConfig[m.endpointKey] != null) // показываем только модели с реально настроенным эндпоинтом
+      .map((m) => ({
+        name: m.modelId,
+        label: m.displayName,
+        // Встроенные эндпоинты: используем сам ключ (openAI → GPTIcon, anthropic → AnthropicIcon)
+        // Кастомные (deepseek и т.д.): используем 'custom' → CustomMinimalIcon
+        iconURL: builtinEndpoints.has(m.endpointKey) ? m.endpointKey : 'custom',
+        preset: {
+          endpoint: m.endpointKey,
+          model: m.modelId,
+        },
+      } as unknown as t.TModelSpec));
+  }, [allowedModelsData, allowedLoading, endpointsConfig]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Итоговые modelSpecs: из БД (если загружены) или из YAML (пока грузятся / ошибка)
   const effectiveModelSpecs = dynamicModelSpecs ?? modelSpecs;

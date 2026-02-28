@@ -1,6 +1,7 @@
 import { useState, memo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as Select from '@ariakit/react/select';
+import { useQuery } from '@tanstack/react-query';
 import { FileText, LogOut, CreditCard, ShieldCheck } from 'lucide-react';
 import { LinkIcon, GearIcon, DropdownMenuSeparator, Avatar } from '@librechat/client';
 import { MyFilesModal } from '~/components/Chat/Input/Files/MyFilesModal';
@@ -9,10 +10,16 @@ import { useAuthContext } from '~/hooks/AuthContext';
 import { useLocalize } from '~/hooks';
 import Settings from './Settings';
 
+const PLAN_BADGE: Record<string, { label: string; className: string }> = {
+  free:     { label: 'Free',     className: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' },
+  pro:      { label: 'Pro',      className: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' },
+  business: { label: 'Business', className: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300' },
+};
+
 function AccountSettings() {
   const localize = useLocalize();
   const navigate = useNavigate();
-  const { user, isAuthenticated, logout } = useAuthContext();
+  const { user, token, isAuthenticated, logout } = useAuthContext();
   const { data: startupConfig } = useGetStartupConfig();
   const balanceQuery = useGetUserBalance({
     enabled: !!isAuthenticated && startupConfig?.balance?.enabled,
@@ -20,6 +27,24 @@ function AccountSettings() {
   const [showSettings, setShowSettings] = useState(false);
   const [showFiles, setShowFiles] = useState(false);
   const accountSettingsButtonRef = useRef<HTMLButtonElement>(null);
+
+  /** Получаем план из того же кэша что и ModelSelectorContext */
+  const { data: planData } = useQuery({
+    queryKey: ['allowedModels', token],
+    queryFn: async (): Promise<{ models: unknown[]; plan: string } | null> => {
+      if (!token) return null;
+      const res = await fetch('/api/models/allowed', {
+        credentials: 'include',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    staleTime: 60_000,
+    gcTime: 60_000,
+    enabled: !!token,
+  });
+  const planBadge = PLAN_BADGE[planData?.plan ?? ''] ?? null;
 
   return (
     <Select.SelectProvider>
@@ -61,8 +86,17 @@ function AccountSettings() {
               className="select-item text-sm text-blue-600 dark:text-blue-400"
             >
               <CreditCard className="icon-md" aria-hidden="true" />
-              {localize('com_nav_balance')}:{' '}
-              {new Intl.NumberFormat().format(Math.round(balanceQuery.data.tokenCredits))}
+              <span className="flex flex-1 items-center justify-between gap-2">
+                <span>
+                  {localize('com_nav_balance')}:{' '}
+                  {new Intl.NumberFormat().format(Math.round(balanceQuery.data.tokenCredits))}
+                </span>
+                {planBadge && (
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
+                    {planBadge.label}
+                  </span>
+                )}
+              </span>
             </Select.SelectItem>
             <DropdownMenuSeparator />
           </>
@@ -76,7 +110,14 @@ function AccountSettings() {
               className="select-item text-sm text-blue-600 dark:text-blue-400"
             >
               <CreditCard className="icon-md" aria-hidden="true" />
-              {user?.role === 'ADMIN' ? 'Тарифы и баланс' : 'Купить Pro'}
+              <span className="flex flex-1 items-center justify-between gap-2">
+                <span>{user?.role === 'ADMIN' ? 'Тарифы и баланс' : 'Купить Pro'}</span>
+                {planBadge && (
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
+                    {planBadge.label}
+                  </span>
+                )}
+              </span>
             </Select.SelectItem>
             <DropdownMenuSeparator />
           </>
