@@ -37,6 +37,11 @@ function ModelSelectorContent() {
     keyDialogEndpoint,
   } = useModelSelectorContext();
 
+  // Проверяем состояние загрузки и пустоту
+  const hasModels = (modelSpecs?.length ?? 0) > 0 || (mappedEndpoints?.length ?? 0) > 0;
+  const isLoading = modelSpecs === undefined; // undefined = ещё загружается
+  const isEmpty = !hasModels && !isLoading;   // пусто когда загружена но нет моделей
+
   const selectedIcon = useMemo(
     () =>
       getSelectedIcon({
@@ -95,7 +100,15 @@ function ModelSelectorContent() {
         comboboxLabel={localize('com_endpoint_search_models')}
         trigger={trigger}
       >
-        {searchResults ? (
+        {isLoading ? (
+          <div className="px-3 py-4 text-sm text-text-secondary">
+            {localize('com_ui_loading') || 'Загрузка моделей...'}
+          </div>
+        ) : isEmpty ? (
+          <div className="px-3 py-4 text-sm text-text-secondary">
+            {localize('com_ui_no_models_available') || 'Нет доступных моделей для вашего тарифа'}
+          </div>
+        ) : searchResults ? (
           renderSearchResults(searchResults, localize, searchValue)
         ) : (
           <>

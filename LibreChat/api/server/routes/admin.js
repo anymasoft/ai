@@ -3,8 +3,9 @@ const express = require('express');
 const axios = require('axios');
 const { logger } = require('@librechat/data-schemas');
 const { requireJwtAuth } = require('../middleware/');
-const { User, Balance, Payment, Subscription, Plan, TokenPackage } = require('~/db/models');
+const { User, Balance, Payment, Subscription, Plan, TokenPackage, AiModel } = require('~/db/models');
 const { invalidatePlanCache } = require('../middleware/checkSubscription');
+const { getEndpointsConfig } = require('~/server/services/Config');
 
 const YUKASSA_API = 'https://api.yookassa.ru/v3';
 function yukassaAuth() {
@@ -342,7 +343,19 @@ router.patch('/plans/:planId', requireJwtAuth, requireAdminRole, async (req, res
       if (planId === 'free' && allowedModels.length === 0) {
         return res.status(400).json({ error: 'Для тарифа free нельзя оставлять список моделей пустым' });
       }
-      update.allowedModels = allowedModels.map((m) => String(m).trim()).filter(Boolean);
+      const cleanedModels = allowedModels.map((m) => String(m).trim()).filter(Boolean);
+      // Валидация: все modelId должны существовать в коллекции AiModel
+      if (cleanedModels.length > 0) {
+        const existingModels = await AiModel.find({ modelId: { $in: cleanedModels } }, 'modelId').lean();
+        const existingIds = new Set(existingModels.map((m) => m.modelId));
+        const unknown = cleanedModels.filter((id) => !existingIds.has(id));
+        if (unknown.length > 0) {
+          return res.status(400).json({
+            error: `Неизвестные modelId: ${unknown.join(', ')}. Сначала добавьте модели в каталог.`,
+          });
+        }
+      }
+      update.allowedModels = cleanedModels;
     }
 
     if (isActive !== undefined) {
@@ -408,6 +421,186 @@ router.patch('/token-packages/:packageId', requireJwtAuth, requireAdminRole, asy
     res.json({ ok: true, package: updated });
   } catch (err) {
     logger.error('[admin/token-packages/update]', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+// УПРАВЛЕНИЕ КАТАЛОГОМ МОДЕЛЕЙ (AiModel)
+// ═══════════════════════════════════════════════════════
+
+/**
+ * GET /api/admin/mvp/models
+ * Список всех моделей из каталога (активных и неактивных).
+ */
+router.get('/models', requireJwtAuth, requireAdminRole, async (req, res) => {
+  try {
+    const models = await AiModel.find({})
+      .sort({ provider: 1, displayName: 1 })
+      .lean();
+    res.json({ models });
+  } catch (err) {
+    logger.error('[admin/models]', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+/**
+ * POST /api/admin/mvp/models
+ * Создать новую модель: { modelId, provider, endpointKey, displayName, isActive? }
+ *
+ * endpointKey — имя LibreChat-эндпоинта ('openAI', 'anthropic', 'deepseek', …)
+ * Если не указан, выводится автоматически из provider:
+ *   'openai' → 'openAI', остальные — совпадают с provider.
+ */
+router.post('/models', requireJwtAuth, requireAdminRole, async (req, res) => {
+  try {
+    const { modelId, provider, displayName, endpointKey, isActive = true } = req.body;
+    if (!modelId || typeof modelId !== 'string' || !modelId.trim()) {
+      return res.status(400).json({ error: 'modelId обязателен' });
+    }
+    if (!provider || typeof provider !== 'string' || !provider.trim()) {
+      return res.status(400).json({ error: 'provider обязателен' });
+    }
+    if (!displayName || typeof displayName !== 'string' || !displayName.trim()) {
+      return res.status(400).json({ error: 'displayName обязателен' });
+    }
+
+    // Выводим endpointKey из provider, если не задан явно
+    const resolvedEndpoint = endpointKey?.trim()
+      || (provider.trim().toLowerCase() === 'openai' ? 'openAI' : provider.trim());
+
+    // Валидация: проверяем, что эндпоинт настроен в конфиге
+    const endpointsConfig = await getEndpointsConfig(req);
+    if (!endpointsConfig || !endpointsConfig[resolvedEndpoint]) {
+      const availableEndpoints = Object.keys(endpointsConfig || {}).join(', ');
+      return res.status(400).json({
+        error: `Эндпоинт "${resolvedEndpoint}" не настроен. Доступные эндпоинты: ${availableEndpoints || 'нет'}`,
+      });
+    }
+
+    const exists = await AiModel.findOne({ modelId: modelId.trim() }).lean();
+    if (exists) {
+      return res.status(409).json({ error: `Модель с modelId "${modelId.trim()}" уже существует` });
+    }
+
+    const model = await AiModel.create({
+      modelId: modelId.trim(),
+      provider: provider.trim(),
+      endpointKey: resolvedEndpoint,
+      displayName: displayName.trim(),
+      isActive: Boolean(isActive),
+    });
+
+    logger.info(`[admin/models] ${req.user.email} создал модель "${model.modelId}" (endpoint: ${resolvedEndpoint})`);
+    res.status(201).json({ ok: true, model });
+  } catch (err) {
+    logger.error('[admin/models/create]', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+/**
+ * PATCH /api/admin/mvp/models/:modelId
+ * Обновить модель: { provider?, endpointKey?, displayName?, isActive? }
+ * modelId менять нельзя (это первичный ключ).
+ *
+ * Если isActive=false — модель каскадно удаляется из Plans.allowedModels
+ * и кэш планов инвалидируется немедленно.
+ */
+router.patch('/models/:modelId', requireJwtAuth, requireAdminRole, async (req, res) => {
+  try {
+    const { modelId } = req.params;
+    const { provider, endpointKey, displayName, isActive } = req.body;
+    const update = {};
+
+    if (provider !== undefined) {
+      if (typeof provider !== 'string' || !provider.trim()) return res.status(400).json({ error: 'provider не может быть пустым' });
+      update.provider = provider.trim();
+    }
+    if (endpointKey !== undefined) {
+      if (typeof endpointKey !== 'string' || !endpointKey.trim()) return res.status(400).json({ error: 'endpointKey не может быть пустым' });
+      const newEndpoint = endpointKey.trim();
+
+      // Валидация: проверяем, что новый эндпоинт настроен в конфиге
+      const endpointsConfig = await getEndpointsConfig(req);
+      if (!endpointsConfig || !endpointsConfig[newEndpoint]) {
+        const availableEndpoints = Object.keys(endpointsConfig || {}).join(', ');
+        return res.status(400).json({
+          error: `Эндпоинт "${newEndpoint}" не настроен. Доступные эндпоинты: ${availableEndpoints || 'нет'}`,
+        });
+      }
+
+      update.endpointKey = newEndpoint;
+    }
+    if (displayName !== undefined) {
+      if (typeof displayName !== 'string' || !displayName.trim()) return res.status(400).json({ error: 'displayName не может быть пустым' });
+      update.displayName = displayName.trim();
+    }
+    if (isActive !== undefined) {
+      update.isActive = Boolean(isActive);
+    }
+
+    if (Object.keys(update).length === 0) {
+      return res.status(400).json({ error: 'Нет полей для обновления' });
+    }
+
+    const updated = await AiModel.findOneAndUpdate({ modelId }, update, { new: true }).lean();
+    if (!updated) return res.status(404).json({ error: 'Модель не найдена' });
+
+    // Если модель деактивирована — каскадно убираем её из всех тарифных планов
+    if (update.isActive === false) {
+      const pullResult = await Plan.updateMany(
+        { allowedModels: modelId },
+        { $pull: { allowedModels: modelId } },
+      );
+      if (pullResult.modifiedCount > 0) {
+        invalidatePlanCache();
+        logger.info(`[admin/models] Модель "${modelId}" деактивирована и удалена из ${pullResult.modifiedCount} тарифных планов`);
+      }
+    }
+
+    logger.info(`[admin/models] ${req.user.email} обновил модель "${modelId}": ${JSON.stringify(update)}`);
+    res.json({ ok: true, model: updated });
+  } catch (err) {
+    logger.error('[admin/models/update]', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+/**
+ * DELETE /api/admin/mvp/models/:modelId
+ * Удалить модель.
+ * Каскадно удаляет modelId из allowedModels всех тарифных планов.
+ * После удаления инвалидирует кэш планов.
+ */
+router.delete('/models/:modelId', requireJwtAuth, requireAdminRole, async (req, res) => {
+  try {
+    const { modelId } = req.params;
+
+    const model = await AiModel.findOne({ modelId }).lean();
+    if (!model) return res.status(404).json({ error: 'Модель не найдена' });
+
+    // Каскадное удаление из всех планов
+    const pullResult = await Plan.updateMany(
+      { allowedModels: modelId },
+      { $pull: { allowedModels: modelId } },
+    );
+
+    await AiModel.deleteOne({ modelId });
+
+    // Инвалидируем кэш планов, если модель была в каком-либо плане
+    if (pullResult.modifiedCount > 0) {
+      invalidatePlanCache();
+    }
+
+    logger.info(
+      `[admin/models] ${req.user.email} удалил модель "${modelId}". ` +
+      `Удалена из ${pullResult.modifiedCount} тарифных планов.`,
+    );
+    res.json({ ok: true, removedFromPlans: pullResult.modifiedCount });
+  } catch (err) {
+    logger.error('[admin/models/delete]', err);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });

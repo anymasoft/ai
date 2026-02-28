@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { SystemRoles } from 'librechat-data-provider';
+import { OGDialog, OGDialogTemplate } from '@librechat/client';
 import { useAuthContext } from '~/hooks';
 import type { ContextType } from '~/common';
 import OpenSidebar from '~/components/Chat/Menus/OpenSidebar';
@@ -67,6 +68,14 @@ interface TokenPackageDoc {
   isActive: boolean;
 }
 
+interface AiModelDoc {
+  _id?: string;
+  modelId: string;
+  provider: string;
+  displayName: string;
+  isActive: boolean;
+}
+
 interface PlanEdit {
   priceRub: string;
   tokenCreditsOnPurchase: string;
@@ -112,6 +121,21 @@ export default function AdminPanel() {
   const [planSaveMsg, setPlanSaveMsg] = useState<Record<string, { ok: boolean; text: string }>>({});
   const [pkgSaveMsg, setPkgSaveMsg] = useState<Record<string, { ok: boolean; text: string }>>({});
   const [availableModels, setAvailableModels] = useState<string[]>([]);
+
+  // ── КАТАЛОГ МОДЕЛЕЙ ──
+  const [aiModels, setAiModels] = useState<AiModelDoc[]>([]);
+  const [modelsLoading, setModelsLoading] = useState(false);
+  const [modelsError, setModelsError] = useState('');
+  const [modelSaving, setModelSaving] = useState<Record<string, boolean>>({});
+  const [modelSaveMsg, setModelSaveMsg] = useState<Record<string, { ok: boolean; text: string }>>({});
+  const [modelEdits, setModelEdits] = useState<Record<string, { provider: string; displayName: string; isActive: boolean; endpointKey?: string }>>({});
+  const [newModelForm, setNewModelForm] = useState({ modelId: '', provider: '', endpointKey: '', displayName: '' });
+  const [newModelSaving, setNewModelSaving] = useState(false);
+  const [newModelMsg, setNewModelMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [deleteModelDialog, setDeleteModelDialog] = useState<{ open: boolean; modelId: string | null }>({ open: false, modelId: null });
+  const [deleteModelError, setDeleteModelError] = useState<string | null>(null);
+  const [availableEndpoints, setAvailableEndpoints] = useState<string[]>([]);
+  const [availableProviders, setAvailableProviders] = useState<string[]>([]);
 
   const { navVisible, setNavVisible } = useOutletContext<ContextType>();
   const isAdmin = user?.role === SystemRoles.ADMIN;
@@ -170,17 +194,48 @@ export default function AdminPanel() {
     }
   }, [isAdmin, paymentEmailFilter, paymentFromFilter, paymentToFilter, token]);
 
-  const loadSettings = useCallback(async () => {
+  const loadModels = useCallback(async () => {
     if (!isAdmin) return;
-    setSettingsLoading(true);
-    setSettingsError('');
+    setModelsLoading(true);
+    setModelsError('');
     try {
-      const res = await fetch('/api/admin/mvp/plans', {
+      const res = await fetch('/api/admin/mvp/models', {
         credentials: 'include',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       });
       if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
       const result = await res.json();
+      const models: AiModelDoc[] = result.models ?? [];
+      setAiModels(models);
+      const me: Record<string, { provider: string; displayName: string; isActive: boolean; endpointKey?: string }> = {};
+      for (const m of models) {
+        me[m.modelId] = { provider: m.provider, displayName: m.displayName, isActive: m.isActive, endpointKey: (m as any).endpointKey };
+      }
+      setModelEdits(me);
+    } catch (e: unknown) {
+      setModelsError(e instanceof Error ? e.message : 'Ошибка загрузки моделей');
+    } finally {
+      setModelsLoading(false);
+    }
+  }, [isAdmin, token]);
+
+  const loadSettings = useCallback(async () => {
+    if (!isAdmin) return;
+    setSettingsLoading(true);
+    setSettingsError('');
+    try {
+      const [plansRes, modelsRes] = await Promise.all([
+        fetch('/api/admin/mvp/plans', {
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        }),
+        fetch('/api/admin/mvp/models', {
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        }),
+      ]);
+      if (!plansRes.ok) throw new Error(`${plansRes.status}: ${await plansRes.text()}`);
+      const result = await plansRes.json();
       setSettingsPlans(result.plans ?? []);
       setSettingsPkgs(result.tokenPackages ?? []);
       const pe: Record<string, PlanEdit> = {};
@@ -202,6 +257,18 @@ export default function AdminPanel() {
         };
       }
       setPkgEdits(pke);
+
+      // Параллельно загружаем каталог моделей для multi-select
+      if (modelsRes.ok) {
+        const modelsResult = await modelsRes.json();
+        const models: AiModelDoc[] = modelsResult.models ?? [];
+        setAiModels(models);
+        const me: Record<string, { provider: string; displayName: string; isActive: boolean }> = {};
+        for (const m of models) {
+          me[m.modelId] = { provider: m.provider, displayName: m.displayName, isActive: m.isActive };
+        }
+        setModelEdits(me);
+      }
     } catch (e: unknown) {
       setSettingsError(e instanceof Error ? e.message : 'Ошибка загрузки настроек');
     } finally {
@@ -222,6 +289,21 @@ export default function AdminPanel() {
       loadPayments();
     } else if (isAdmin && tab === 'settings') {
       loadSettings();
+      // Загружаем список доступных эндпоинтов и провайдеров
+      (async () => {
+        try {
+          const res = await fetch('/api/endpoints', { credentials: 'include' });
+          if (res.ok) {
+            const data = await res.json();
+            const endpoints = Object.keys(data).sort();
+            setAvailableEndpoints(endpoints);
+            // Провайдеры - это просто ключи эндпоинтов
+            setAvailableProviders(endpoints);
+          }
+        } catch (err) {
+          console.error('Ошибка при загрузке эндпоинтов:', err);
+        }
+      })();
     }
   }, [isAdmin, tab, loadPayments, loadSettings]);
 
@@ -323,6 +405,77 @@ export default function AdminPanel() {
       setPkgSaveMsg((p) => ({ ...p, [packageId]: { ok: false, text: e instanceof Error ? e.message : 'Ошибка' } }));
     } finally {
       setPkgSaving((p) => ({ ...p, [packageId]: false }));
+    }
+  };
+
+  const saveModel = async (modelId: string) => {
+    const edit = modelEdits[modelId];
+    if (!edit) return;
+    setModelSaving((p) => ({ ...p, [modelId]: true }));
+    setModelSaveMsg((p) => ({ ...p, [modelId]: { ok: false, text: '' } }));
+    try {
+      const res = await fetch(`/api/admin/mvp/models/${encodeURIComponent(modelId)}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ provider: edit.provider, displayName: edit.displayName, isActive: edit.isActive, ...(edit.endpointKey ? { endpointKey: edit.endpointKey } : {}) }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Ошибка ${res.status}`);
+      setModelSaveMsg((p) => ({ ...p, [modelId]: { ok: true, text: 'Сохранено' } }));
+      await loadSettings();
+      await loadModels();
+    } catch (e: unknown) {
+      setModelSaveMsg((p) => ({ ...p, [modelId]: { ok: false, text: e instanceof Error ? e.message : 'Ошибка' } }));
+    } finally {
+      setModelSaving((p) => ({ ...p, [modelId]: false }));
+    }
+  };
+
+  const confirmDeleteModel = async () => {
+    const modelId = deleteModelDialog.modelId;
+    if (!modelId) return;
+    setDeleteModelError(null);
+    try {
+      const res = await fetch(`/api/admin/mvp/models/${encodeURIComponent(modelId)}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Ошибка ${res.status}`);
+      setDeleteModelDialog({ open: false, modelId: null });
+      await loadSettings();
+      await loadModels();
+    } catch (e: unknown) {
+      setDeleteModelError(e instanceof Error ? e.message : 'Ошибка удаления модели');
+    }
+  };
+
+  const createModel = async () => {
+    if (!newModelForm.modelId.trim() || !newModelForm.provider.trim() || !newModelForm.displayName.trim()) {
+      setNewModelMsg({ ok: false, text: 'Заполните все поля' });
+      return;
+    }
+    setNewModelSaving(true);
+    setNewModelMsg(null);
+    try {
+      const res = await fetch('/api/admin/mvp/models', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify(newModelForm),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Ошибка ${res.status}`);
+      setNewModelMsg({ ok: true, text: `Модель "${newModelForm.modelId}" создана` });
+      setNewModelForm({ modelId: '', provider: '', endpointKey: '', displayName: '' });
+      await loadSettings();
+      await loadModels();
+    } catch (e: unknown) {
+      setNewModelMsg({ ok: false, text: e instanceof Error ? e.message : 'Ошибка создания' });
+    } finally {
+      setNewModelSaving(false);
     }
   };
 
@@ -763,8 +916,193 @@ export default function AdminPanel() {
             {settingsLoading && (
               <div className="py-10 text-center text-sm text-gray-400">Загрузка настроек...</div>
             )}
-            {!settingsLoading && settingsPlans.length > 0 && (
+            {!settingsLoading && (
               <>
+                {/* ── Каталог моделей ── */}
+                <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Каталог моделей (AiModel)</h2>
+                <p className="mb-4 text-xs text-gray-500 dark:text-gray-400">
+                  Единственный источник истины для списка моделей. Только точные modelId используются в тарифах.
+                </p>
+
+                {/* Форма добавления новой модели */}
+                <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950">
+                  <p className="mb-3 text-sm font-semibold text-blue-800 dark:text-blue-300">Добавить модель</p>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
+                    <div>
+                      <label className="mb-0.5 block text-xs text-blue-700 dark:text-blue-400">modelId (точное имя)</label>
+                      <input
+                        type="text"
+                        placeholder="gpt-4o-mini"
+                        value={newModelForm.modelId}
+                        onChange={(e) => setNewModelForm((f) => ({ ...f, modelId: e.target.value }))}
+                        className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm font-mono dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-0.5 block text-xs text-blue-700 dark:text-blue-400">provider</label>
+                      <select
+                        value={newModelForm.provider}
+                        onChange={(e) => setNewModelForm((f) => ({ ...f, provider: e.target.value }))}
+                        className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                      >
+                        <option value="">-- Выбрать провайдер --</option>
+                        {availableProviders.map((prov) => (
+                          <option key={prov} value={prov}>
+                            {prov}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-0.5 block text-xs text-blue-700 dark:text-blue-400">endpointKey (необяз.)</label>
+                      {availableEndpoints.length > 0 ? (
+                        <select
+                          value={newModelForm.endpointKey}
+                          onChange={(e) => setNewModelForm((f) => ({ ...f, endpointKey: e.target.value }))}
+                          className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                        >
+                          <option value="">-- Выбрать из конфига --</option>
+                          {availableEndpoints.map((ep) => (
+                            <option key={ep} value={ep}>
+                              {ep}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type="text"
+                          placeholder="openAI / anthropic / deepseek"
+                          value={newModelForm.endpointKey}
+                          onChange={(e) => setNewModelForm((f) => ({ ...f, endpointKey: e.target.value }))}
+                          className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm font-mono dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                        />
+                      )}
+                    </div>
+                    <div>
+                      <label className="mb-0.5 block text-xs text-blue-700 dark:text-blue-400">displayName</label>
+                      <input
+                        type="text"
+                        placeholder="GPT-4o Mini"
+                        value={newModelForm.displayName}
+                        onChange={(e) => setNewModelForm((f) => ({ ...f, displayName: e.target.value }))}
+                        className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-center gap-3">
+                    <button
+                      onClick={createModel}
+                      disabled={newModelSaving}
+                      className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                    >
+                      {newModelSaving ? 'Создание...' : '+ Добавить модель'}
+                    </button>
+                    {newModelMsg && (
+                      <span className={`text-xs ${newModelMsg.ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {newModelMsg.text}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Список моделей */}
+                {modelsError && (
+                  <div className="mb-3 rounded-lg bg-red-100 p-3 text-sm text-red-700 dark:bg-red-900 dark:text-red-200">{modelsError}</div>
+                )}
+                {aiModels.length > 0 && (
+                  <div className="mb-8 overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200 bg-gray-50 dark:border-gray-700">
+                          <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">modelId</th>
+                          <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">provider</th>
+                          <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">displayName</th>
+                          <th className="px-4 py-2 text-center text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Активна</th>
+                          <th className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Действия</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                        {aiModels.map((m) => {
+                          const edit = modelEdits[m.modelId];
+                          const msg = modelSaveMsg[m.modelId];
+                          if (!edit) return null;
+                          return (
+                            <tr key={m.modelId} className="hover:bg-gray-50 dark:hover:bg-gray-750">
+                              <td className="px-4 py-2 font-mono text-xs text-gray-700 dark:text-gray-300">{m.modelId}</td>
+                              <td className="px-4 py-2">
+                                <select
+                                  value={edit.provider}
+                                  onChange={(e) => setModelEdits((prev) => ({ ...prev, [m.modelId]: { ...prev[m.modelId], provider: e.target.value } }))}
+                                  className="w-24 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                >
+                                  <option value="">—</option>
+                                  {availableProviders.map((prov) => (
+                                    <option key={prov} value={prov}>
+                                      {prov}
+                                    </option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td className="px-4 py-2">
+                                <select
+                                  value={edit.endpointKey || ''}
+                                  onChange={(e) => setModelEdits((prev) => ({ ...prev, [m.modelId]: { ...prev[m.modelId], endpointKey: e.target.value } }))}
+                                  className="w-24 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                >
+                                  <option value="">—</option>
+                                  {availableEndpoints.map((ep) => (
+                                    <option key={ep} value={ep}>
+                                      {ep}
+                                    </option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td className="px-4 py-2">
+                                <input
+                                  type="text"
+                                  value={edit.displayName}
+                                  onChange={(e) => setModelEdits((prev) => ({ ...prev, [m.modelId]: { ...prev[m.modelId], displayName: e.target.value } }))}
+                                  className="w-36 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                />
+                              </td>
+                              <td className="px-4 py-2 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={edit.isActive}
+                                  onChange={(e) => setModelEdits((prev) => ({ ...prev, [m.modelId]: { ...prev[m.modelId], isActive: e.target.checked } }))}
+                                  className="h-3.5 w-3.5 rounded"
+                                />
+                              </td>
+                              <td className="px-4 py-2">
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    onClick={() => saveModel(m.modelId)}
+                                    disabled={modelSaving[m.modelId]}
+                                    className="rounded bg-blue-600 px-2 py-0.5 text-xs text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                                  >
+                                    {modelSaving[m.modelId] ? '...' : 'Сохранить'}
+                                  </button>
+                                  <button
+                                    onClick={() => setDeleteModelDialog({ open: true, modelId: m.modelId })}
+                                    className="rounded bg-red-500 px-2 py-0.5 text-xs text-white hover:bg-red-600 transition-colors"
+                                  >
+                                    Удалить
+                                  </button>
+                                  {msg?.text && (
+                                    <span className={`text-xs ${msg.ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                      {msg.text}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
                 {/* ── Тарифные планы ── */}
                 <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Тарифные планы</h2>
                 <div className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -959,6 +1297,38 @@ export default function AdminPanel() {
           </>
         )}
       </div>
+
+      {/* Диалог подтверждения удаления модели */}
+      <OGDialog
+        open={deleteModelDialog.open}
+        onOpenChange={(open) => {
+          setDeleteModelDialog((d) => ({ ...d, open }));
+          if (!open) setDeleteModelError(null);
+        }}
+      >
+        <OGDialogTemplate
+          showCloseButton={false}
+          title="Удалить модель"
+          className="w-11/12 max-w-md"
+          main={
+            <div className="space-y-2">
+              <p className="text-sm text-gray-700 dark:text-gray-300">
+                Удалить модель <span className="font-mono font-semibold">{deleteModelDialog.modelId}</span>?
+                Она будет автоматически удалена из всех тарифных планов.
+              </p>
+              {deleteModelError && (
+                <p className="text-sm text-red-600 dark:text-red-400">{deleteModelError}</p>
+              )}
+            </div>
+          }
+          selection={{
+            selectHandler: confirmDeleteModel,
+            selectClasses:
+              'bg-red-700 dark:bg-red-600 hover:bg-red-800 dark:hover:bg-red-800 text-white',
+            selectText: 'Удалить',
+          }}
+        />
+      </OGDialog>
     </div>
   );
 }

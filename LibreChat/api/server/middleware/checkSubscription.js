@@ -7,8 +7,11 @@
  * 3. Прикрепляет req.subscription = { plan, planExpiresAt } для downstream.
  *
  * allowedModels:
- *   []               = все модели разрешены
- *   ['gpt-4o-mini']  = только модели, чьё имя содержит 'gpt-4o-mini'
+ *   []                       = все модели разрешены
+ *   ['gpt-4o-mini', '...']   = строгое совпадение по полному modelId (exact match)
+ *
+ * allowedModels хранит точные modelId из коллекции AiModel.
+ * Substring-matching ЗАПРЕЩЁН — только includes() для exact match.
  */
 const { Subscription, Plan } = require('~/db/models');
 
@@ -34,8 +37,8 @@ function invalidatePlanCache() {
 function isModelAllowed(planConfig, modelName) {
   if (!planConfig || !modelName) return true;
   const allowed = planConfig.allowedModels || [];
-  if (allowed.length === 0) return true;                                          // пустой = все модели
-  return allowed.some((m) => modelName.toLowerCase().includes(m.toLowerCase())); // substring match
+  if (allowed.length === 0) return true;       // пустой = все модели разрешены
+  return allowed.includes(modelName);          // exact match по полному modelId
 }
 
 async function checkSubscription(req, res, next) {
