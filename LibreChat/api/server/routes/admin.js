@@ -434,7 +434,6 @@ router.patch('/token-packages/:packageId', requireJwtAuth, requireAdminRole, asy
  */
 router.get('/models', requireJwtAuth, requireAdminRole, async (req, res) => {
   try {
-    await AiModel.seedDefaults();
     const models = await AiModel.find({})
       .sort({ provider: 1, displayName: 1 })
       .lean();
