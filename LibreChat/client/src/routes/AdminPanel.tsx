@@ -115,6 +115,12 @@ export default function AdminPanel() {
   const [pkgSaveMsg, setPkgSaveMsg] = useState<Record<string, { ok: boolean; text: string }>>({});
   const [availableModels, setAvailableModels] = useState<string[]>([]);
 
+  // Debug Mode
+  const [debugModelUsage, setDebugModelUsage] = useState(false);
+  const [debugLoading, setDebugLoading] = useState(false);
+  const [debugSaving, setDebugSaving] = useState(false);
+  const [debugSaveMsg, setDebugSaveMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
   const { navVisible, setNavVisible } = useOutletContext<ContextType>();
   const isAdmin = user?.role === SystemRoles.ADMIN;
 
@@ -177,6 +183,7 @@ export default function AdminPanel() {
     setSettingsLoading(true);
     setSettingsError('');
     try {
+      // Загружаем планы и пакеты
       const plansRes = await fetch('/api/admin/mvp/plans', {
         credentials: 'include',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
@@ -204,8 +211,21 @@ export default function AdminPanel() {
         };
       }
       setPkgEdits(pke);
+
+      // Загружаем debug mode
+      setDebugLoading(true);
+      const debugRes = await fetch('/api/admin/settings/debug-mode', {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      });
+      if (debugRes.ok) {
+        const debugData = await debugRes.json();
+        setDebugModelUsage(debugData.debugModelUsage ?? false);
+      }
+      setDebugLoading(false);
     } catch (e: unknown) {
       setSettingsError(e instanceof Error ? e.message : 'Ошибка загрузки настроек');
+      setDebugLoading(false);
     } finally {
       setSettingsLoading(false);
     }
@@ -346,6 +366,30 @@ export default function AdminPanel() {
       alert(e instanceof Error ? e.message : 'Ошибка смены тарифа');
     } finally {
       setPlanChanging((prev) => ({ ...prev, [userId]: false }));
+    }
+  };
+
+  const saveDebugMode = async () => {
+    setDebugSaving(true);
+    setDebugSaveMsg(null);
+    try {
+      const res = await fetch('/api/admin/settings/debug-mode', {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ debugModelUsage }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Ошибка ${res.status}`);
+      setDebugSaveMsg({ ok: true, text: 'Debug Mode сохранён' });
+      setTimeout(() => setDebugSaveMsg(null), 3000);
+    } catch (e: unknown) {
+      setDebugSaveMsg({ ok: false, text: e instanceof Error ? e.message : 'Ошибка' });
+    } finally {
+      setDebugSaving(false);
     }
   };
 
@@ -770,6 +814,45 @@ export default function AdminPanel() {
             )}
             {!settingsLoading && (
               <>
+                {/* ── Debug Mode ── */}
+                <div className="mb-8 rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
+                  <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Debug Mode</h2>
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-2">
+                      <label className="flex cursor-pointer items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={debugModelUsage}
+                          onChange={(e) => {
+                            setDebugModelUsage(e.target.checked);
+                            setDebugSaveMsg(null);
+                          }}
+                          disabled={debugSaving}
+                          className="h-4 w-4 rounded cursor-pointer disabled:opacity-50"
+                        />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          Показывать фактическую модель и расход токенов
+                        </span>
+                      </label>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Добавляет debug информацию под каждым сообщением (только для тестирования)
+                      </p>
+                    </div>
+                    <button
+                      onClick={saveDebugMode}
+                      disabled={debugSaving}
+                      className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50 transition-colors ml-4"
+                    >
+                      {debugSaving ? 'Сохранение...' : 'Сохранить'}
+                    </button>
+                  </div>
+                  {debugSaveMsg?.text && (
+                    <div className={`mt-3 text-sm ${debugSaveMsg.ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {debugSaveMsg.text}
+                    </div>
+                  )}
+                </div>
+
                 {/* ── Тарифные планы ── */}
                 <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Тарифные планы</h2>
                 <div className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">

@@ -3,7 +3,7 @@ const express = require('express');
 const axios = require('axios');
 const { logger } = require('@librechat/data-schemas');
 const { requireJwtAuth } = require('../middleware/');
-const { User, Balance, Payment, Subscription, Plan, TokenPackage, AiModel } = require('~/db/models');
+const { User, Balance, Payment, Subscription, Plan, TokenPackage, AiModel, SystemSettings } = require('~/db/models');
 const { invalidatePlanCache } = require('../middleware/checkSubscription');
 const { getEndpointsConfig } = require('~/server/services/Config');
 
@@ -601,6 +601,46 @@ router.delete('/models/:modelId', requireJwtAuth, requireAdminRole, async (req, 
     res.json({ ok: true, removedFromPlans: pullResult.modifiedCount });
   } catch (err) {
     logger.error('[admin/models/delete]', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+/**
+ * GET /api/admin/settings/debug-mode
+ * Получить текущее значение debugModelUsage
+ */
+router.get('/settings/debug-mode', requireJwtAuth, requireAdminRole, async (req, res) => {
+  try {
+    const debugModelUsage = await SystemSettings.getValue('debugModelUsage', false);
+    res.json({ debugModelUsage });
+  } catch (err) {
+    logger.error('[admin/settings/debug-mode/get]', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+/**
+ * PATCH /api/admin/settings/debug-mode
+ * Установить debugModelUsage: { debugModelUsage: boolean }
+ */
+router.patch('/settings/debug-mode', requireJwtAuth, requireAdminRole, async (req, res) => {
+  try {
+    const { debugModelUsage } = req.body;
+
+    if (typeof debugModelUsage !== 'boolean') {
+      return res.status(400).json({ error: 'debugModelUsage должен быть boolean' });
+    }
+
+    await SystemSettings.setValue(
+      'debugModelUsage',
+      debugModelUsage,
+      'Debug Mode: показывать информацию о реальной модели и расходе токенов',
+    );
+
+    logger.info(`[admin/settings] ${req.user.email} установил debugModelUsage = ${debugModelUsage}`);
+    res.json({ ok: true, debugModelUsage });
+  } catch (err) {
+    logger.error('[admin/settings/debug-mode/set]', err);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });

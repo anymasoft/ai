@@ -13,6 +13,7 @@ const { disposeClient, clientRegistry, requestDataMap } = require('~/server/clea
 const { handleAbortError } = require('~/server/middleware');
 const { logViolation } = require('~/cache');
 const { saveMessage } = require('~/models');
+const { enrichWithDebugInfo } = require('~/server/services/DebugMode');
 
 function createCloseHandler(abortController) {
   return function (manual) {
@@ -305,6 +306,14 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
         }
 
         if (!wasAbortedBeforeComplete) {
+          // Обогащаем response debug информацией (если включен debug mode)
+          const requestedModel = req.body?.endpointOption?.model || req.body?.model;
+          await enrichWithDebugInfo({
+            response,
+            requestedModel,
+            userId,
+          });
+
           const finalEvent = {
             final: true,
             conversation,
@@ -325,6 +334,14 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
           GenerationJobManager.completeJob(streamId);
           await decrementPendingRequest(userId);
         } else {
+          // Обогащаем response debug информацией (если включен debug mode)
+          const requestedModel = req.body?.endpointOption?.model || req.body?.model;
+          await enrichWithDebugInfo({
+            response,
+            requestedModel,
+            userId,
+          });
+
           const finalEvent = {
             final: true,
             conversation,
