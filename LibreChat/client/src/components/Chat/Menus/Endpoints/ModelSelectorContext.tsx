@@ -85,9 +85,6 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
 
   const modelSpecs = useMemo(() => {
     const specs = startupConfig?.modelSpecs?.list ?? [];
-    if (!agentsMap) {
-      return specs;
-    }
 
     /**
      * Filter modelSpecs by:
@@ -96,7 +93,7 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
      */
     return specs.filter((spec) => {
       if (spec.preset?.endpoint === EModelEndpoint.agents && spec.preset?.agent_id) {
-        return spec.preset.agent_id in agentsMap;
+        return agentsMap && spec.preset.agent_id in agentsMap;
       }
 
       /**
