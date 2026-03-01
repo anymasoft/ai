@@ -4,6 +4,7 @@ import { SystemRoles } from 'librechat-data-provider';
 import { useAuthContext } from '~/hooks';
 import type { ContextType } from '~/common';
 import OpenSidebar from '~/components/Chat/Menus/OpenSidebar';
+import store from '~/store';
 
 type Tab = 'users' | 'payments' | 'settings';
 
@@ -83,6 +84,7 @@ interface PkgEdit {
 export default function AdminPanel() {
   const navigate = useNavigate();
   const { user, token } = useAuthContext();
+  const clearAllConversations = store.useClearConvoState();
   const [tab, setTab] = useState<Tab>('users');
   const [data, setData] = useState<UsersResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -393,7 +395,10 @@ export default function AdminPanel() {
         <div className="mb-6 flex items-start justify-between">
           <div>
             <button
-              onClick={() => navigate('/c/new')}
+              onClick={() => {
+                clearAllConversations(true);
+                navigate('/c/new');
+              }}
               className="mb-1 block text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
             >
               ← Вернуться в чат
