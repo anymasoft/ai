@@ -693,19 +693,22 @@ export function ChatActions(props: {
             onClose={() => setShowModelSelector(false)}
             onSelection={(s) => {
               if (s.length === 0) return;
-              const [model, providerName] = getModelProvider(s[0]);
+              const [model, providerId] = getModelProvider(s[0]);
+              // Find the actual model object to get the correct providerName
+              const selectedModel = models.find(
+                (m) =>
+                  m.name == model &&
+                  m?.provider?.id == providerId,
+              );
+              const correctProviderName = selectedModel?.provider?.providerName || providerId;
+
               chatStore.updateTargetSession(session, (session) => {
                 session.mask.modelConfig.model = model as ModelType;
                 session.mask.modelConfig.providerName =
-                  providerName as ServiceProvider;
+                  correctProviderName as ServiceProvider;
                 session.mask.syncGlobalConfig = false;
               });
-              if (providerName == "ByteDance") {
-                const selectedModel = models.find(
-                  (m) =>
-                    m.name == model &&
-                    m?.provider?.providerName == providerName,
-                );
+              if (correctProviderName == "ByteDance") {
                 showToast(selectedModel?.displayName ?? "");
               } else {
                 showToast(model);
