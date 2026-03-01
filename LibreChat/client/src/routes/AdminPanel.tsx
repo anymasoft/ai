@@ -240,13 +240,21 @@ export default function AdminPanel() {
 
       // Загружаем debug mode
       setDebugLoading(true);
-      const debugRes = await fetch('/api/admin/settings/debug-mode', {
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-      });
-      if (debugRes.ok) {
-        const debugData = await debugRes.json();
-        setDebugModelUsage(debugData.debugModelUsage ?? false);
+      try {
+        const debugRes = await fetch('/api/admin/settings/debug-mode', {
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        });
+        if (debugRes.ok) {
+          const debugData = await debugRes.json();
+          setDebugModelUsage(debugData.debugModelUsage ?? false);
+        } else {
+          // Если эндпоинт не существует или ошибка - просто используем default
+          setDebugModelUsage(false);
+        }
+      } catch (debugErr) {
+        // Silent fail для debug mode
+        setDebugModelUsage(false);
       }
       setDebugLoading(false);
     } catch (e: unknown) {

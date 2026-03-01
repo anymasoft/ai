@@ -13,6 +13,9 @@ const { SystemSettings, Balance } = require('~/db/models');
  */
 async function isDebugModeEnabled() {
   try {
+    if (!SystemSettings || typeof SystemSettings.getValue !== 'function') {
+      return false;
+    }
     const value = await SystemSettings.getValue('debugModelUsage', false);
     return Boolean(value);
   } catch (err) {
