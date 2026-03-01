@@ -52,7 +52,7 @@ const SEED_DEFAULTS = [
       'gpt-4.1-mini',         // OpenAI (альтернатива)
       'gpt-4-turbo',          // OpenAI
       'claude-sonnet-4-6',    // Anthropic
-      'claude-haiku-3.5',     // Anthropic (бюджетная)
+      'claude-haiku-4-5',     // Anthropic (бюджетная) - ИСП. ИСТИНА: AiModel.js
       'deepseek-chat',        // DeepSeek
     ],
     isActive: true,
@@ -71,9 +71,10 @@ const SEED_DEFAULTS = [
       'gpt-4-turbo',                  // OpenAI
       'gpt-4',                        // OpenAI
       'gpt-3.5-turbo',                // OpenAI
+      'gpt-5.2',                      // OpenAI
       'claude-sonnet-4-6',            // Anthropic
       'claude-opus-4-6',              // Anthropic
-      'claude-haiku-3.5',             // Anthropic
+      'claude-haiku-4-5',             // Anthropic - ИСП. ИСТИНА: AiModel.js
       'deepseek-chat',                // DeepSeek
       'deepseek-reasoner',            // DeepSeek
       'gemini-2.0-flash',             // Google
