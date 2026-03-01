@@ -278,6 +278,15 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
           throw new Error(balanceCheck.errorMessage);
         }
 
+        // Anthropic restriction:
+        // temperature cannot be used together with thinking
+        if (endpointOption.endpoint === 'anthropic' && client.options?.thinking) {
+          if (client.options?.temperature !== undefined) {
+            logger.info(`[ResumableAgentController] Removing temperature for Anthropic thinking mode (model: ${endpointOption.model})`);
+            delete client.options.temperature;
+          }
+        }
+
         const messageOptions = {
           user: userId,
           onStart,
@@ -758,6 +767,15 @@ const _LegacyAgentController = async (req, res, next, initializeClient, addTitle
         },
       });
     };
+
+    // Anthropic restriction:
+    // temperature cannot be used together with thinking
+    if (endpointOption.endpoint === 'anthropic' && client.options?.thinking) {
+      if (client.options?.temperature !== undefined) {
+        logger.info(`[AgentController] Removing temperature for Anthropic thinking mode (model: ${endpointOption.model})`);
+        delete client.options.temperature;
+      }
+    }
 
     const messageOptions = {
       user: userId,
