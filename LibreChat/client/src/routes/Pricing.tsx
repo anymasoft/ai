@@ -213,7 +213,12 @@ export default function Pricing() {
 
   const currentPlanDoc = plans.find((p) => p.planId === currentPlan);
   const planLimit = currentPlanDoc?.tokenCreditsOnPurchase || 0;
-  const isLowBalance = currentPlan !== 'free' && planLimit > 0 && credits < planLimit * 0.1;
+  // Показываем плашку "низкий баланс" если:
+  // 1. План не Free И (10% от лимита плана ИЛИ абсолютное значение < 100 токенов)
+  const isLowBalance = currentPlan !== 'free' && (
+    (planLimit > 0 && credits < planLimit * 0.1) ||  // Менее 10% от лимита
+    credits < 100  // ИЛИ абсолютно менее 100 токенов
+  );
   const isZeroBalance = credits <= 0 && currentPlan !== 'free';
 
   const planExpiresAt = balance?.planExpiresAt
