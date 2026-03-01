@@ -18,38 +18,134 @@ interface:
   # runCode:   НЕ указан → USER=false, ADMIN=true (автоматически)
 
 # =============================================================================
-# ТОЛЬКО 3 МОДЕЛИ
-# enforce: true — строго только эти модели в UI
+# МОДЕЛИ (СТАНДАРТНЫЕ БЕЗ ОПИСАНИЙ)
+# enforce: false — фильтрация по тарифному плану через /api/models/allowed
 # =============================================================================
 modelSpecs:
-  enforce: true
+  enforce: false
   list:
-    # --- FREE + PRO ---
+    # --- OpenAI ---
+    - name: "gpt-4o"
+      label: "GPT-4o"
+      preset:
+        endpoint: "openAI"
+        model: "gpt-4o"
+        temperature: 0.7
+        max_tokens: 4096
+
     - name: "gpt-4o-mini"
       label: "GPT-4o Mini"
-      description: "Быстрый и экономичный — для ежедневных задач"
       preset:
         endpoint: "openAI"
         model: "gpt-4o-mini"
         temperature: 0.7
         max_tokens: 4096
 
-    # --- PRO ONLY (дорогие — free баланс кончится за 2-3 сообщения) ---
-    - name: "claude-sonnet"
-      label: "Claude Sonnet"
-      description: "Лучший для анализа, кода и длинных текстов"
+    - name: "gpt-4.1-mini"
+      label: "GPT-4.1 Mini"
+      preset:
+        endpoint: "openAI"
+        model: "gpt-4.1-mini"
+        temperature: 0.7
+        max_tokens: 4096
+
+    - name: "gpt-4-turbo"
+      label: "GPT-4 Turbo"
+      preset:
+        endpoint: "openAI"
+        model: "gpt-4-turbo"
+        temperature: 0.7
+        max_tokens: 4096
+
+    - name: "gpt-4"
+      label: "GPT-4"
+      preset:
+        endpoint: "openAI"
+        model: "gpt-4"
+        temperature: 0.7
+        max_tokens: 4096
+
+    - name: "gpt-3.5-turbo"
+      label: "GPT-3.5 Turbo"
+      preset:
+        endpoint: "openAI"
+        model: "gpt-3.5-turbo"
+        temperature: 0.7
+        max_tokens: 4096
+
+    # --- Anthropic ---
+    - name: "claude-sonnet-4-6"
+      label: "Claude Sonnet 4.6"
       preset:
         endpoint: "anthropic"
         model: "claude-sonnet-4-6"
         temperature: 0.7
         max_tokens: 8192
 
-    - name: "deepseek-v3"
-      label: "DeepSeek V3"
-      description: "Мощный и дешёвый — альтернатива GPT"
+    - name: "claude-opus-4-6"
+      label: "Claude Opus 4.6"
+      preset:
+        endpoint: "anthropic"
+        model: "claude-opus-4-6"
+        temperature: 0.7
+        max_tokens: 8192
+
+    - name: "claude-haiku-3-5"
+      label: "Claude Haiku 3.5"
+      preset:
+        endpoint: "anthropic"
+        model: "claude-haiku-3-5"
+        temperature: 0.7
+        max_tokens: 8192
+
+    # --- DeepSeek ---
+    - name: "deepseek-chat"
+      label: "DeepSeek Chat"
       preset:
         endpoint: "deepseek"
         model: "deepseek-chat"
+        temperature: 0.7
+        max_tokens: 8192
+
+    - name: "deepseek-reasoner"
+      label: "DeepSeek Reasoner"
+      preset:
+        endpoint: "deepseek"
+        model: "deepseek-reasoner"
+        temperature: 0.7
+        max_tokens: 8192
+
+    # --- Google ---
+    - name: "gemini-2.0-flash"
+      label: "Gemini 2.0 Flash"
+      preset:
+        endpoint: "google"
+        model: "gemini-2.0-flash"
+        temperature: 0.7
+        max_tokens: 8192
+
+    - name: "gemini-1.5-pro"
+      label: "Gemini 1.5 Pro"
+      preset:
+        endpoint: "google"
+        model: "gemini-1.5-pro"
+        temperature: 0.7
+        max_tokens: 8192
+
+    # --- Groq ---
+    - name: "llama-3.1-70b-versatile"
+      label: "Llama 3.1 70B Versatile"
+      preset:
+        endpoint: "groq"
+        model: "llama-3.1-70b-versatile"
+        temperature: 0.7
+        max_tokens: 8192
+
+    - name: "mixtral-8x7b-32768"
+      label: "Mixtral 8x7B"
+      preset:
+        endpoint: "groq"
+        model: "mixtral-8x7b-32768"
         temperature: 0.7
         max_tokens: 8192
 
