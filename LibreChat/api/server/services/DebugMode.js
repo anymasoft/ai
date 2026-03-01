@@ -58,6 +58,11 @@ async function enrichWithDebugInfo(params) {
     // Извлекаем информацию о модели из response
     const actualModel = response.model || requestedModel;
 
+    // Логируем структуру response для диагностики
+    logger.debug(`[DebugMode] response структура: model=${response.model}, usage=${JSON.stringify(response.usage)}`);
+    logger.debug(`[DebugMode] response.usage.prompt_tokens=${response.usage?.prompt_tokens}, input_tokens=${response.usage?.input_tokens}`);
+    logger.debug(`[DebugMode] response.usage.completion_tokens=${response.usage?.completion_tokens}, output_tokens=${response.usage?.output_tokens}`);
+
     // Извлекаем информацию о токенах
     let promptTokens = 0;
     let completionTokens = 0;
