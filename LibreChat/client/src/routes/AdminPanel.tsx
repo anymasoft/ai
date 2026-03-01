@@ -215,7 +215,7 @@ export default function AdminPanel() {
 
       // Загружаем debug mode
       setDebugLoading(true);
-      const debugRes = await fetch('/api/admin/mvp/settings/debug-mode', {
+      const debugRes = await fetch('/api/admin/settings/debug-mode', {
         credentials: 'include',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       });
@@ -374,7 +374,7 @@ export default function AdminPanel() {
     setDebugSaving(true);
     setDebugSaveMsg(null);
     try {
-      const res = await fetch('/api/admin/mvp/settings/debug-mode', {
+      const res = await fetch('/api/admin/settings/debug-mode', {
         method: 'PATCH',
         credentials: 'include',
         headers: {
