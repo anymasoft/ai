@@ -85,9 +85,6 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
 
   const modelSpecs = useMemo(() => {
     const specs = startupConfig?.modelSpecs?.list ?? [];
-    if (!agentsMap) {
-      return specs;
-    }
 
     /**
      * Filter modelSpecs by:
@@ -96,7 +93,7 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
      */
     return specs.filter((spec) => {
       if (spec.preset?.endpoint === EModelEndpoint.agents && spec.preset?.agent_id) {
-        return spec.preset.agent_id in agentsMap;
+        return agentsMap && spec.preset.agent_id in agentsMap;
       }
 
       /**
@@ -126,6 +123,49 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     startupConfig,
     endpointsConfig,
   });
+
+  /**
+   * Filter endpoints to only show those that have models in the user's allowed models.
+   * This prevents showing empty endpoint sections for models the user doesn't have access to.
+   */
+  const filteredMappedEndpoints = useMemo(() => {
+    if (!mappedEndpoints) {
+      return mappedEndpoints;
+    }
+
+    // If no allowed models restriction, show all endpoints
+    if (allowedModelIds.size === 0) {
+      return mappedEndpoints;
+    }
+
+    return mappedEndpoints
+      .map((endpoint) => {
+        // Keep agents and assistants endpoints as-is (they're not restricted by models)
+        if (isAgentsEndpoint(endpoint.value) || isAssistantsEndpoint(endpoint.value)) {
+          return endpoint;
+        }
+
+        // For regular endpoints, filter models to only allowed ones
+        if (endpoint.models && Array.isArray(endpoint.models)) {
+          const filteredModels = endpoint.models.filter((model: string) =>
+            allowedModelIds.has(model),
+          );
+
+          // Only return endpoint if it has at least one allowed model
+          if (filteredModels.length > 0) {
+            return {
+              ...endpoint,
+              models: filteredModels,
+            };
+          }
+
+          return null;
+        }
+
+        return endpoint;
+      })
+      .filter((ep): ep is Endpoint => ep !== null);
+  }, [mappedEndpoints, allowedModelIds]);
 
   const getModelDisplayName = useCallback(
     (endpoint: Endpoint, model: string): string => {
@@ -272,7 +312,7 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     agentsMap,
     modelSpecs,
     assistantsMap,
-    mappedEndpoints,
+    mappedEndpoints: filteredMappedEndpoints,
     endpointsConfig,
 
     // Functions
