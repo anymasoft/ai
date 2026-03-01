@@ -364,9 +364,15 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
         // This prevents race conditions where the client sends a follow-up message
         // before the response is saved to the database, causing orphaned parentMessageIds.
         if (client.savedMessageIds && !client.savedMessageIds.has(messageId)) {
+          const messageToDB = { ...response, user: userId, unfinished: wasAbortedBeforeComplete };
+          // Явно копируем debug информацию для сохранения в БД
+          if (response?.debug && !messageToDB?.debug) {
+            messageToDB.debug = response.debug;
+            logger.info(`[ResumableAgentController] Explicitly assigned debug to message for DB save`);
+          }
           await saveMessage(
             req,
-            { ...response, user: userId, unfinished: wasAbortedBeforeComplete },
+            messageToDB,
             { context: 'api/server/controllers/agents/request.js - resumable response end' },
           );
         }
@@ -391,6 +397,12 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
           // Debug информация уже добавлена выше перед сохранением в БД
 
           const responseCopy = { ...response };
+          // Явно копируем debug информацию чтобы убедиться что она попадет в responseMessage
+          if (response?.debug && !responseCopy?.debug) {
+            responseCopy.debug = response.debug;
+            logger.info(`[ResumableAgentController] Explicitly assigned debug to responseCopy`);
+          }
+
           logger.info(`[ResumableAgentController] Creating finalEvent - response has debug? ${!!response?.debug}`);
           logger.info(`[ResumableAgentController] Creating finalEvent - responseCopy has debug? ${!!responseCopy?.debug}`);
 
@@ -428,6 +440,12 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
           // Debug информация уже добавлена выше перед сохранением в БД
 
           const responseCopy = { ...response, unfinished: true };
+          // Явно копируем debug информацию чтобы убедиться что она попадет в responseMessage
+          if (response?.debug && !responseCopy?.debug) {
+            responseCopy.debug = response.debug;
+            logger.info(`[ResumableAgentController] Explicitly assigned debug to ABORTED responseCopy`);
+          }
+
           logger.info(`[ResumableAgentController] Creating ABORTED finalEvent - response has debug? ${!!response?.debug}`);
           logger.info(`[ResumableAgentController] Creating ABORTED finalEvent - responseCopy has debug? ${!!responseCopy?.debug}`);
 
