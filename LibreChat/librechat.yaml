@@ -73,6 +73,14 @@ modelSpecs:
         temperature: 0.7
         max_tokens: 4096
 
+    - name: "gpt-5.2"
+      label: "GPT-5.2"
+      preset:
+        endpoint: "openAI"
+        model: "gpt-5.2"
+        temperature: 0.7
+        max_tokens: 8000
+
     # --- Anthropic ---
     - name: "claude-sonnet-4-6"
       label: "Claude Sonnet 4.6"
@@ -90,11 +98,11 @@ modelSpecs:
         temperature: 0.7
         max_tokens: 8192
 
-    - name: "claude-haiku-3-5"
-      label: "Claude Haiku 3.5"
+    - name: "claude-haiku-4-5"
+      label: "Claude Haiku 4.5"
       preset:
         endpoint: "anthropic"
-        model: "claude-haiku-3-5"
+        model: "claude-haiku-4-5"
         temperature: 0.7
         max_tokens: 8192
 
