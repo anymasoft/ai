@@ -264,11 +264,11 @@ router.get('/check', requireJwtAuth, async (req, res) => {
       `[payment/check] userId=${userId} paymentId=${pending.externalPaymentId} ykStatus=${ykPayment.status} paid=${ykPayment.paid}`,
     );
 
-    // Платеж считается успешным если:
-    // 1. Статус 'succeeded' ИЛИ
-    // 2. Платеж помечен как оплаченный (paid === true)
-    // Используем OR (||) вместо AND (&&) чтобы обработать оба случая
-    if (ykPayment.status === 'succeeded' || ykPayment.paid === true) {
+    // Платеж успешен ТОЛЬКО если:
+    // 1. status === 'succeeded' (при capture: true это гарантирует что деньги списаны)
+    // 2. AND paid === true (деньги действительно списаны)
+    // Оба условия ДОЛЖНЫ быть верны одновременно!
+    if (ykPayment.status === 'succeeded' && ykPayment.paid === true) {
       const result = await applySuccessfulPayment(pending.externalPaymentId);
       if (result.ok) {
         return res.json({
