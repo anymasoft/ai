@@ -53,6 +53,9 @@ const aiModelSchema = new mongoose.Schema(
  *
  * Доступные модели в каждом плане определяются в Plan.js (allowedModels).
  * Селектор фильтрует эти модели по плану пользователя.
+ *
+ * ИСТОЧНИК ИСТИНЫ: librechat.yaml
+ * Этот список должен совпадать с modelSpecs.list в librechat.yaml
  */
 const SEED_DEFAULTS = [
   // ═══════════════════════════════════════════════════════
@@ -64,13 +67,14 @@ const SEED_DEFAULTS = [
   { modelId: 'gpt-4-turbo',               provider: 'openai',    endpointKey: 'openAI',    displayName: 'GPT-4 Turbo'                 },
   { modelId: 'gpt-4',                     provider: 'openai',    endpointKey: 'openAI',    displayName: 'GPT-4'                       },
   { modelId: 'gpt-3.5-turbo',             provider: 'openai',    endpointKey: 'openAI',    displayName: 'GPT-3.5 Turbo'               },
+  { modelId: 'gpt-5.2',                   provider: 'openai',    endpointKey: 'openAI',    displayName: 'GPT-5.2'                     },
 
   // ═══════════════════════════════════════════════════════
   // Anthropic Models
   // ═══════════════════════════════════════════════════════
   { modelId: 'claude-sonnet-4-6',         provider: 'anthropic', endpointKey: 'anthropic', displayName: 'Claude Sonnet 4.6'            },
   { modelId: 'claude-opus-4-6',           provider: 'anthropic', endpointKey: 'anthropic', displayName: 'Claude Opus 4.6'              },
-  { modelId: 'claude-haiku-3-5',          provider: 'anthropic', endpointKey: 'anthropic', displayName: 'Claude Haiku 3.5'             },
+  { modelId: 'claude-haiku-4-5',          provider: 'anthropic', endpointKey: 'anthropic', displayName: 'Claude Haiku 4.5'             },
 
   // ═══════════════════════════════════════════════════════
   // DeepSeek Models
@@ -92,6 +96,7 @@ const SEED_DEFAULTS = [
 ];
 
 aiModelSchema.statics.seedDefaults = async function () {
+  // Добавляем или обновляем модели из SEED_DEFAULTS
   for (const def of SEED_DEFAULTS) {
     await this.findOneAndUpdate(
       { modelId: def.modelId },
@@ -99,6 +104,11 @@ aiModelSchema.statics.seedDefaults = async function () {
       { upsert: true },
     );
   }
+
+  // Удаляем старые модели которых больше нет в SEED_DEFAULTS
+  // (например: claude-haiku-3-5 → claude-haiku-4-5)
+  const validModelIds = SEED_DEFAULTS.map((m) => m.modelId);
+  await this.deleteMany({ modelId: { $nin: validModelIds } });
 };
 
 module.exports = mongoose.model('AiModel', aiModelSchema);
