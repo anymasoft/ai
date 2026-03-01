@@ -14,6 +14,63 @@ const { handleAbortError } = require('~/server/middleware');
 const { logViolation } = require('~/cache');
 const { saveMessage } = require('~/models');
 const { enrichWithDebugInfo } = require('~/server/services/DebugMode');
+const { Balance } = require('~/db/models');
+
+/**
+ * Проверить баланс токенов пользователя и вернуть информативное сообщение если его недостаточно
+ * @returns {Promise<{hasTokens: boolean, errorMessage?: string, balance?: number}>}
+ */
+async function checkUserTokenBalance(userId) {
+  try {
+    const balance = await Balance.findOne({ user: userId }).lean();
+    const tokenCredits = balance?.tokenCredits || 0;
+
+    if (tokenCredits <= 0) {
+      return {
+        hasTokens: false,
+        errorMessage: `Недостаточно токенов для генерации ответа. Текущий баланс: ${tokenCredits} кредитов. Пополните баланс в разделе "Пополнение баланса".`,
+        balance: tokenCredits,
+      };
+    }
+
+    // Предупреждение если мало токенов (менее 1 млн)
+    if (tokenCredits < 1_000_000) {
+      logger.warn(`[TokenBalance] User ${userId} has low token balance: ${tokenCredits}`);
+    }
+
+    return { hasTokens: true, balance: tokenCredits };
+  } catch (err) {
+    logger.error('[TokenBalance] Error checking user balance:', err);
+    // Если ошибка при проверке - разрешаем продолжать (безопасный fallback)
+    return { hasTokens: true };
+  }
+}
+
+/**
+ * Получить информативное сообщение об ошибке с контекстом
+ */
+function getErrorMessage(error, errorContext = {}) {
+  const { code, message } = error;
+  const errorMsg = message || error.toString();
+
+  // ECONNRESET - соединение разорвано (может быть проблема с сервером модели или сетью)
+  if (code === 'ECONNRESET' || errorMsg.includes('ECONNRESET')) {
+    return `Ошибка соединения с сервером модели (ECONNRESET). Пожалуйста, попробуйте ещё раз.`;
+  }
+
+  // ETIMEDOUT - timeout
+  if (code === 'ETIMEDOUT' || errorMsg.includes('ETIMEDOUT') || errorMsg.includes('timeout')) {
+    return `Истекло время ожидания ответа от модели. Пожалуйста, попробуйте ещё раз или выберите другую модель.`;
+  }
+
+  // Недостаток токенов
+  if (errorMsg.includes('insufficient') || errorMsg.includes('token')) {
+    return `Недостаточно токенов для генерации полного ответа. Пополните баланс.`;
+  }
+
+  // Общая ошибка
+  return `Ошибка при генерации ответа: ${errorMsg.substring(0, 150)}`;
+}
 
 function createCloseHandler(abortController) {
   return function (manual) {
@@ -215,6 +272,12 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
           });
         };
 
+        // Проверяем баланс токенов перед отправкой
+        const balanceCheck = await checkUserTokenBalance(userId);
+        if (!balanceCheck.hasTokens) {
+          throw new Error(balanceCheck.errorMessage);
+        }
+
         const messageOptions = {
           user: userId,
           onStart,
@@ -278,6 +341,15 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
           });
         }
 
+        // Обогащаем response debug информацией (если включен debug mode)
+        // ВАЖНО: это должно быть ДО сохранения в БД, чтобы debug информация сохранилась
+        const requestedModel = req.body?.endpointOption?.model || req.body?.model;
+        await enrichWithDebugInfo({
+          response,
+          requestedModel,
+          userId,
+        });
+
         // CRITICAL: Save response message BEFORE emitting final event.
         // This prevents race conditions where the client sends a follow-up message
         // before the response is saved to the database, causing orphaned parentMessageIds.
@@ -306,13 +378,7 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
         }
 
         if (!wasAbortedBeforeComplete) {
-          // Обогащаем response debug информацией (если включен debug mode)
-          const requestedModel = req.body?.endpointOption?.model || req.body?.model;
-          await enrichWithDebugInfo({
-            response,
-            requestedModel,
-            userId,
-          });
+          // Debug информация уже добавлена выше перед сохранением в БД
 
           const finalEvent = {
             final: true,
@@ -334,13 +400,7 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
           GenerationJobManager.completeJob(streamId);
           await decrementPendingRequest(userId);
         } else {
-          // Обогащаем response debug информацией (если включен debug mode)
-          const requestedModel = req.body?.endpointOption?.model || req.body?.model;
-          await enrichWithDebugInfo({
-            response,
-            requestedModel,
-            userId,
-          });
+          // Debug информация уже добавлена выше перед сохранением в БД
 
           const finalEvent = {
             final: true,
@@ -391,8 +451,12 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
           // abortJob already handled emitDone and completeJob
         } else {
           logger.error(`[ResumableAgentController] Generation error for ${streamId}:`, error);
-          await GenerationJobManager.emitError(streamId, error.message || 'Generation failed');
-          GenerationJobManager.completeJob(streamId, error.message);
+
+          // Получаем информативное сообщение об ошибке
+          const userFriendlyMessage = getErrorMessage(error);
+
+          await GenerationJobManager.emitError(streamId, userFriendlyMessage);
+          GenerationJobManager.completeJob(streamId, userFriendlyMessage);
         }
 
         await decrementPendingRequest(userId);
