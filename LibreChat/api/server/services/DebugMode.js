@@ -5,6 +5,7 @@
  * Отвечает за добавление debug информации о реальной модели и расходе токенов
  * в ответ API, если debugModelUsage включен в SystemSettings.
  */
+const { logger } = require('@librechat/data-schemas');
 const { SystemSettings, Balance } = require('~/db/models');
 
 /**
@@ -14,12 +15,15 @@ const { SystemSettings, Balance } = require('~/db/models');
 async function isDebugModeEnabled() {
   try {
     if (!SystemSettings || typeof SystemSettings.getValue !== 'function') {
+      logger.warn('[DebugMode] SystemSettings модель недоступна');
       return false;
     }
     const value = await SystemSettings.getValue('debugModelUsage', false);
+    logger.debug(`[DebugMode] debugModelUsage значение из БД: ${value}`);
     return Boolean(value);
   } catch (err) {
     // Если ошибка при чтении - вернуть false (безопасный fallback)
+    logger.error('[DebugMode] Ошибка при проверке debugModelUsage:', err);
     return false;
   }
 }
@@ -37,6 +41,7 @@ async function enrichWithDebugInfo(params) {
   const { response, requestedModel, userId } = params;
 
   if (!response) {
+    logger.warn('[DebugMode] response объект пустой');
     return;
   }
 
@@ -44,8 +49,11 @@ async function enrichWithDebugInfo(params) {
     // Проверяем включен ли debug mode
     const debugEnabled = await isDebugModeEnabled();
     if (!debugEnabled) {
+      logger.debug(`[DebugMode] Debug Mode отключен для пользователя ${userId}`);
       return;
     }
+
+    logger.debug(`[DebugMode] Обогащаем response debug информацией для пользователя ${userId}`);
 
     // Извлекаем информацию о модели из response
     const actualModel = response.model || requestedModel;
@@ -86,11 +94,11 @@ async function enrichWithDebugInfo(params) {
       tokenCreditsCharged,
       remainingTokenCredits,
     };
+    logger.info(`[DebugMode] SUCCESS: Добавлена debug информация для пользователя ${userId}: model=${actualModel}, tokens=${totalTokens}, balance=${remainingTokenCredits}`);
   } catch (err) {
     // Если ошибка при обогащении debug информацией - просто не добавляем (не ломаем основной функционал)
     // Логируем ошибку для диагностики
-    const { logger } = require('@librechat/data-schemas');
-    logger.warn('[DebugMode] Error enriching debug info:', err);
+    logger.error('[DebugMode] Ошибка при обогащении debug информацией:', err);
   }
 }
 
