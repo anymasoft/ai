@@ -9,27 +9,11 @@ import {
   Button,
   Input,
   Checkbox,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  Alert,
-  AlertDescription,
-  AlertTitle,
   Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
   Label,
   Badge,
   Separator,
-  ScrollArea,
+  Switch,
 } from '@librechat/client';
 
 type Tab = 'users' | 'payments' | 'settings';
@@ -516,10 +500,10 @@ export default function AdminPanel() {
           <>
         {/* Error */}
         {error && (
-          <Alert variant="destructive" className="mb-4">
-            <AlertTitle>Ошибка</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/50 dark:text-red-400">
+            <p className="font-semibold">Ошибка</p>
+            <p>{error}</p>
+          </div>
         )}
 
         {/* Stats */}
@@ -816,10 +800,10 @@ export default function AdminPanel() {
         {tab === 'settings' && (
           <>
             {settingsError && (
-              <Alert variant="destructive" className="mb-4">
-                <AlertTitle>Ошибка загрузки настроек</AlertTitle>
-                <AlertDescription>{settingsError}</AlertDescription>
-              </Alert>
+              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/50 dark:text-red-400">
+                <p className="font-semibold">Ошибка загрузки настроек</p>
+                <p>{settingsError}</p>
+              </div>
             )}
             {settingsLoading && (
               <div className="py-10 text-center">
@@ -832,14 +816,14 @@ export default function AdminPanel() {
             {!settingsLoading && (
               <>
                 {/* ── Debug Mode ── */}
-                <Card className="mb-8">
-                  <CardHeader>
-                    <CardTitle>Debug Mode</CardTitle>
-                    <CardDescription>
+                <div className="mb-8 rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
+                  <div className="mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Debug Mode</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                       Добавляет информацию о реальной модели и расходе токенов в чате
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
+                    </p>
+                  </div>
+                  <div className="space-y-4">
                     <div className="flex items-start justify-between">
                       <div className="space-y-2">
                         <div className="flex items-center gap-3">
@@ -869,12 +853,14 @@ export default function AdminPanel() {
                       </Button>
                     </div>
                     {debugSaveMsg?.text && (
-                      <Alert variant={debugSaveMsg.ok ? 'default' : 'destructive'} className="mt-3">
-                        <AlertDescription>{debugSaveMsg.text}</AlertDescription>
-                      </Alert>
+                      <div className={`rounded-md p-3 text-sm ${debugSaveMsg.ok
+                        ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
+                        : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'}`}>
+                        {debugSaveMsg.text}
+                      </div>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
 
                 {/* ── Тарифные планы ── */}
                 <div className="mb-8">
@@ -885,10 +871,10 @@ export default function AdminPanel() {
                     if (!edit) return null;
                     const msg = planSaveMsg[plan.planId];
                     return (
-                      <Card key={plan.planId}>
-                        <CardHeader>
+                      <div key={plan.planId} className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+                        <div className="mb-4">
                           <div className="flex items-center justify-between">
-                            <CardTitle>{plan.label}</CardTitle>
+                            <h3 className="text-base font-semibold text-gray-900 dark:text-white">{plan.label}</h3>
                             <div className="flex items-center gap-2">
                               <Checkbox
                                 id={`plan-active-${plan.planId}`}
@@ -905,8 +891,8 @@ export default function AdminPanel() {
                               </Label>
                             </div>
                           </div>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
+                        </div>
+                        <div className="space-y-4">
                           <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-2">
                               <Label htmlFor={`price-${plan.planId}`} className="text-xs">
@@ -943,12 +929,12 @@ export default function AdminPanel() {
                           </div>
                           <div className="space-y-2">
                             <Label className="text-xs">Разрешённые модели</Label>
-                            <ScrollArea className="h-32 w-full rounded border">
-                              <div className="space-y-2 p-3">
-                                {availableModels.length === 0 ? (
-                                  <p className="text-xs text-gray-500">Загрузка моделей...</p>
-                                ) : (
-                                  availableModels.map((model) => (
+                            <div className="max-h-32 overflow-y-auto rounded border border-gray-300 bg-gray-50 p-3 dark:border-gray-600 dark:bg-gray-700">
+                              {availableModels.length === 0 ? (
+                                <p className="text-xs text-gray-500">Загрузка моделей...</p>
+                              ) : (
+                                <div className="space-y-2">
+                                  {availableModels.map((model) => (
                                     <div key={model} className="flex items-center gap-2">
                                       <Checkbox
                                         id={`model-${plan.planId}-${model}`}
@@ -967,10 +953,10 @@ export default function AdminPanel() {
                                         {model}
                                       </Label>
                                     </div>
-                                  ))
-                                )}
-                              </div>
-                            </ScrollArea>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           </div>
                           <div className="flex items-center justify-between pt-2">
                             <Button
@@ -981,13 +967,13 @@ export default function AdminPanel() {
                               {planSaving[plan.planId] ? 'Сохранение...' : 'Сохранить'}
                             </Button>
                             {msg?.text && (
-                              <Badge variant={msg.ok ? 'default' : 'destructive'} className="text-xs">
+                              <Badge className="text-xs">
                                 {msg.text}
                               </Badge>
                             )}
                           </div>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </div>
                     );
                   })}
                   </div>
@@ -1002,10 +988,10 @@ export default function AdminPanel() {
                     if (!edit) return null;
                     const msg = pkgSaveMsg[pkg.packageId];
                     return (
-                      <Card key={pkg.packageId}>
-                        <CardHeader>
+                      <div key={pkg.packageId} className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+                        <div className="mb-4">
                           <div className="flex items-center justify-between">
-                            <CardTitle>{pkg.label}</CardTitle>
+                            <h3 className="text-base font-semibold text-gray-900 dark:text-white">{pkg.label}</h3>
                             <div className="flex items-center gap-2">
                               <Checkbox
                                 id={`pkg-active-${pkg.packageId}`}
@@ -1022,8 +1008,8 @@ export default function AdminPanel() {
                               </Label>
                             </div>
                           </div>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
+                        </div>
+                        <div className="space-y-4">
                           <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-2">
                               <Label htmlFor={`pkg-price-${pkg.packageId}`} className="text-xs">
@@ -1067,13 +1053,13 @@ export default function AdminPanel() {
                               {pkgSaving[pkg.packageId] ? 'Сохранение...' : 'Сохранить'}
                             </Button>
                             {msg?.text && (
-                              <Badge variant={msg.ok ? 'default' : 'destructive'} className="text-xs">
+                              <Badge className="text-xs">
                                 {msg.text}
                               </Badge>
                             )}
                           </div>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </div>
                     );
                   })}
                   </div>
@@ -1099,22 +1085,18 @@ function StatCard({
   suffix?: string;
 }) {
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardDescription className="text-xs">{label}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p
-          className={`text-2xl font-bold ${
-            accent === 'blue'
-              ? 'text-blue-600 dark:text-blue-400'
-              : 'text-gray-900 dark:text-white'
-          }`}
-        >
-          {value}
-          {suffix && <span className="ml-1 text-sm font-normal text-gray-400">{suffix}</span>}
-        </p>
-      </CardContent>
-    </Card>
+    <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+      <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
+      <p
+        className={`mt-2 text-2xl font-bold ${
+          accent === 'blue'
+            ? 'text-blue-600 dark:text-blue-400'
+            : 'text-gray-900 dark:text-white'
+        }`}
+      >
+        {value}
+        {suffix && <span className="ml-1 text-sm font-normal text-gray-400">{suffix}</span>}
+      </p>
+    </div>
   );
 }
