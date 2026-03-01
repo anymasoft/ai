@@ -365,10 +365,10 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
         // before the response is saved to the database, causing orphaned parentMessageIds.
         if (client.savedMessageIds && !client.savedMessageIds.has(messageId)) {
           const messageToDB = { ...response, user: userId, unfinished: wasAbortedBeforeComplete };
-          // Явно копируем debug информацию для сохранения в БД
-          if (response?.debug && !messageToDB?.debug) {
+          // Явно копируем debug информацию для сохранения в БД (override для гарантии)
+          if (response?.debug) {
             messageToDB.debug = response.debug;
-            logger.info(`[ResumableAgentController] Explicitly assigned debug to message for DB save`);
+            logger.info(`[ResumableAgentController] Explicitly assigned debug to message for DB save (override)`);
           }
           await saveMessage(
             req,
@@ -398,9 +398,9 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
 
           const responseCopy = { ...response };
           // Явно копируем debug информацию чтобы убедиться что она попадет в responseMessage
-          if (response?.debug && !responseCopy?.debug) {
+          if (response?.debug) {
             responseCopy.debug = response.debug;
-            logger.info(`[ResumableAgentController] Explicitly assigned debug to responseCopy`);
+            logger.info(`[ResumableAgentController] Explicitly assigned debug to responseCopy (override)`);
           }
 
           logger.info(`[ResumableAgentController] Creating finalEvent - response has debug? ${!!response?.debug}`);
@@ -441,9 +441,9 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
 
           const responseCopy = { ...response, unfinished: true };
           // Явно копируем debug информацию чтобы убедиться что она попадет в responseMessage
-          if (response?.debug && !responseCopy?.debug) {
+          if (response?.debug) {
             responseCopy.debug = response.debug;
-            logger.info(`[ResumableAgentController] Explicitly assigned debug to ABORTED responseCopy`);
+            logger.info(`[ResumableAgentController] Explicitly assigned debug to ABORTED responseCopy (override)`);
           }
 
           logger.info(`[ResumableAgentController] Creating ABORTED finalEvent - response has debug? ${!!response?.debug}`);

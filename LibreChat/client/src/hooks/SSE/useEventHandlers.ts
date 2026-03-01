@@ -438,6 +438,14 @@ export default function useEventHandlers({
         isTemporary: _isTemporary = false,
       } = submission;
 
+      // DEBUG: Check if responseMessage has debug info
+      console.log('[finalHandler] Received data', {
+        hasResponseMessage: !!responseMessage,
+        hasDebugInResponseMessage: !!responseMessage?.debug,
+        debugInfo: responseMessage?.debug ? JSON.stringify(responseMessage.debug) : 'NO DEBUG',
+        responseMessageKeys: responseMessage ? Object.keys(responseMessage).slice(0, 15) : [],
+      });
+
       try {
         // Handle early abort - aborted during tool loading before any messages saved
         // Don't update conversation state, just reset UI and stay on new chat
