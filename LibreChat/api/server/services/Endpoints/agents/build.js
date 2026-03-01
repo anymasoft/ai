@@ -4,6 +4,15 @@ const { loadAgent } = require('~/models/Agent');
 
 const buildOptions = (req, endpoint, parsedBody, endpointType) => {
   const { spec, iconURL, agent_id, ...model_parameters } = parsedBody;
+  const requestedModel = req.body?.model;
+
+  // [MODEL DISPATCH] Log the exact model being used
+  logger.info(`[MODEL DISPATCH] Build options for ${endpoint}`, {
+    requested: requestedModel,
+    model_parameters: model_parameters.model,
+    spec,
+  });
+
   const agentPromise = loadAgent({
     req,
     spec,

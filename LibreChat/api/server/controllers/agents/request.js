@@ -278,11 +278,20 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
           throw new Error(balanceCheck.errorMessage);
         }
 
+        // [MODEL DISPATCH] Log the exact model being used
+        const requestedModel = req.body?.model;
+        const usedModel = endpointOption.modelOptions?.model || endpointOption.model_parameters?.model;
+        logger.info(`[MODEL DISPATCH] ResumableAgentController sendMessage`, {
+          requested: requestedModel,
+          used: usedModel,
+          endpoint: endpointOption.endpoint,
+        });
+
         // Anthropic restriction:
         // temperature cannot be used together with thinking
         if (endpointOption.endpoint === 'anthropic' && client.options?.thinking) {
           if (client.options?.temperature !== undefined) {
-            logger.info(`[ResumableAgentController] Removing temperature for Anthropic thinking mode (model: ${endpointOption.model})`);
+            logger.info(`[ResumableAgentController] Removing temperature for Anthropic thinking mode (model: ${usedModel})`);
             delete client.options.temperature;
           }
         }
@@ -377,7 +386,6 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
           // Явно копируем debug информацию для сохранения в БД (override для гарантии)
           if (response?.debug) {
             messageToDB.debug = response.debug;
-            logger.info(`[ResumableAgentController] Explicitly assigned debug to message for DB save (override)`);
           }
           await saveMessage(
             req,
@@ -409,7 +417,6 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
           // Явно копируем debug информацию чтобы убедиться что она попадет в responseMessage
           if (response?.debug) {
             responseCopy.debug = response.debug;
-            logger.info(`[ResumableAgentController] Explicitly assigned debug to responseCopy (override)`);
           }
 
           logger.info(`[ResumableAgentController] Creating finalEvent - response has debug? ${!!response?.debug}`);
@@ -442,16 +449,6 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
             debugContent: finalEvent.responseMessage?.debug ? JSON.stringify(finalEvent.responseMessage.debug) : 'NO DEBUG',
           });
 
-          // CRITICAL: Log the actual JSON that will be sent to client
-          const jsonToSend = JSON.stringify(finalEvent);
-          const parsedBack = JSON.parse(jsonToSend);
-          logger.info(`[ResumableAgentController] JSON to client contains debug? ${!!parsedBack.responseMessage?.debug}`);
-          if (parsedBack.responseMessage?.debug) {
-            logger.info(`[ResumableAgentController] ✓ DEBUG PRESERVED in JSON: ${JSON.stringify(parsedBack.responseMessage.debug).substring(0, 200)}`);
-          } else {
-            logger.error(`[ResumableAgentController] ❌ DEBUG LOST in JSON SERIALIZATION! finalEvent has debug but JSON doesn't`);
-          }
-
           await GenerationJobManager.emitDone(streamId, finalEvent);
           GenerationJobManager.completeJob(streamId);
           await decrementPendingRequest(userId);
@@ -462,7 +459,6 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
           // Явно копируем debug информацию чтобы убедиться что она попадет в responseMessage
           if (response?.debug) {
             responseCopy.debug = response.debug;
-            logger.info(`[ResumableAgentController] Explicitly assigned debug to ABORTED responseCopy (override)`);
           }
 
           logger.info(`[ResumableAgentController] Creating ABORTED finalEvent - response has debug? ${!!response?.debug}`);
@@ -494,16 +490,6 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
             hasDebugInResponseMessage: !!finalEvent.responseMessage?.debug,
             debugContent: finalEvent.responseMessage?.debug ? JSON.stringify(finalEvent.responseMessage.debug) : 'NO DEBUG',
           });
-
-          // CRITICAL: Log the actual JSON that will be sent to client (ABORTED case)
-          const jsonToSendAborted = JSON.stringify(finalEvent);
-          const parsedBackAborted = JSON.parse(jsonToSendAborted);
-          logger.info(`[ResumableAgentController] ABORTED: JSON to client contains debug? ${!!parsedBackAborted.responseMessage?.debug}`);
-          if (parsedBackAborted.responseMessage?.debug) {
-            logger.info(`[ResumableAgentController] ABORTED: ✓ DEBUG PRESERVED in JSON: ${JSON.stringify(parsedBackAborted.responseMessage.debug).substring(0, 200)}`);
-          } else {
-            logger.error(`[ResumableAgentController] ABORTED: ❌ DEBUG LOST in JSON SERIALIZATION! finalEvent has debug but JSON doesn't`);
-          }
 
           await GenerationJobManager.emitDone(streamId, finalEvent);
           GenerationJobManager.completeJob(streamId, 'Request aborted');
@@ -768,11 +754,20 @@ const _LegacyAgentController = async (req, res, next, initializeClient, addTitle
       });
     };
 
+    // [MODEL DISPATCH] Log the exact model being used
+    const requestedModelLegacy = req.body?.model;
+    const usedModelLegacy = endpointOption.modelOptions?.model || endpointOption.model_parameters?.model;
+    logger.info(`[MODEL DISPATCH] AgentController sendMessage`, {
+      requested: requestedModelLegacy,
+      used: usedModelLegacy,
+      endpoint: endpointOption.endpoint,
+    });
+
     // Anthropic restriction:
     // temperature cannot be used together with thinking
     if (endpointOption.endpoint === 'anthropic' && client.options?.thinking) {
       if (client.options?.temperature !== undefined) {
-        logger.info(`[AgentController] Removing temperature for Anthropic thinking mode (model: ${endpointOption.model})`);
+        logger.info(`[AgentController] Removing temperature for Anthropic thinking mode (model: ${usedModelLegacy})`);
         delete client.options.temperature;
       }
     }
