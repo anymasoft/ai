@@ -127,21 +127,29 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
   /**
    * Filter endpoints to only show those that have models in the user's allowed models.
    * This prevents showing empty endpoint sections for models the user doesn't have access to.
+   *
+   * TODO: Agents and Assistants endpoints are currently hidden (commented out below).
+   * Uncomment the code to enable them when ready to support them.
    */
   const filteredMappedEndpoints = useMemo(() => {
     if (!mappedEndpoints) {
       return mappedEndpoints;
     }
 
-    // If no allowed models restriction, show all endpoints
-    if (allowedModelIds.size === 0) {
-      return mappedEndpoints;
-    }
-
     return mappedEndpoints
       .map((endpoint) => {
-        // Keep agents and assistants endpoints as-is (they're not restricted by models)
+        // TODO: Temporarily hide Agents and Assistants endpoints
+        // if (isAgentsEndpoint(endpoint.value) || isAssistantsEndpoint(endpoint.value)) {
+        //   return endpoint;
+        // }
+
+        // Hide agents and assistants endpoints for now
         if (isAgentsEndpoint(endpoint.value) || isAssistantsEndpoint(endpoint.value)) {
+          return null;
+        }
+
+        // If no allowed models restriction, show all endpoints
+        if (allowedModelIds.size === 0) {
           return endpoint;
         }
 
