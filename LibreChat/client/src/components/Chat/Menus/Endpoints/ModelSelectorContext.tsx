@@ -1,6 +1,5 @@
 import debounce from 'lodash/debounce';
 import React, { createContext, useContext, useState, useMemo, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { EModelEndpoint, isAgentsEndpoint, isAssistantsEndpoint } from 'librechat-data-provider';
 import type * as t from 'librechat-data-provider';
 import type { Endpoint, SelectedValues } from '~/common';
@@ -10,7 +9,6 @@ import {
   useKeyDialog,
   useEndpoints,
   useLocalize,
-  useAuthContext,
 } from '~/hooks';
 import { useAgentsMapContext, useAssistantsMapContext, useLiveAnnouncer } from '~/Providers';
 import { useGetEndpointsQuery, useListAgentsQuery } from '~/data-provider';
@@ -57,7 +55,6 @@ interface ModelSelectorProviderProps {
 }
 
 export function ModelSelectorProvider({ children, startupConfig }: ModelSelectorProviderProps) {
-  const { token } = useAuthContext();
   const agentsMap = useAgentsMapContext();
   const assistantsMap = useAssistantsMapContext();
   const { data: endpointsConfig } = useGetEndpointsQuery();
@@ -65,38 +62,23 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     useModelSelectorChatContext();
   const localize = useLocalize();
   const { announcePolite } = useLiveAnnouncer();
-
-  /**
-   * Загружаем план пользователя и его allowedModels
-   */
-  const { data: userPlanData } = useQuery({
-    queryKey: ['userPlan'],
-    queryFn: async (): Promise<{ plan: string; allowedModels: string[] } | null> => {
-      const res = await fetch('/api/auth/plan', {
-        credentials: 'include',
-      });
-      if (!res.ok) return null;
-      return res.json();
-    },
-    staleTime: 60_000,
-    gcTime: 60_000,
-  });
-
   const modelSpecs = useMemo(() => {
     const specs = startupConfig?.modelSpecs?.list ?? [];
+    if (!agentsMap) {
+      return specs;
+    }
 
-    // Фильтруем по агентам (если есть)
-    const filteredByAgents = specs.filter((spec) => {
-      if (!agentsMap) return true;
+    /**
+     * Filter modelSpecs to only include agents the user has access to.
+     * Use agentsMap which already contains permission-filtered agents (consistent with other components).
+     */
+    return specs.filter((spec) => {
       if (spec.preset?.endpoint === EModelEndpoint.agents && spec.preset?.agent_id) {
         return spec.preset.agent_id in agentsMap;
       }
+      /** Keep non-agent modelSpecs */
       return true;
     });
-
-    // YAML модели используются только как fallback когда нет динамических моделей из БД
-    // allowedModels из плана НЕ применяются к YAML моделям
-    return filteredByAgents;
   }, [startupConfig, agentsMap]);
 
   const permissionLevel = useAgentDefaultPermissionLevel();
@@ -107,92 +89,12 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     },
   );
 
-  const { mappedEndpoints: rawMappedEndpoints, endpointRequiresUserKey } = useEndpoints({
+  const { mappedEndpoints, endpointRequiresUserKey } = useEndpoints({
     agents,
     assistantsMap,
     startupConfig,
     endpointsConfig,
   });
-
-  /**
-   * Загружаем разрешённые модели из БД (Plans + AiModel).
-   * Каждая запись содержит { modelId, displayName, endpointKey } — достаточно для
-   * генерации синтетического TModelSpec без привязки к LibreChat-конфигу.
-   *
-   * Состояния allowedModelsData:
-   *   undefined  — запрос ещё в полёте (isLoading)
-   *   null       — запрос вернул ошибку (res.ok === false)
-   *   { models } — успешный ответ (models может быть пустым массивом)
-   */
-  type AllowedModel = { modelId: string; displayName: string; provider: string; endpointKey: string };
-  const { data: allowedModelsData, isLoading: allowedLoading } = useQuery({
-    queryKey: ['allowedModels', token],
-    queryFn: async (): Promise<{ models: AllowedModel[]; plan: string } | null> => {
-      if (!token) return null;
-      const res = await fetch('/api/models/allowed', {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) return null;
-      return res.json();
-    },
-    staleTime: 60_000,
-    gcTime: 60_000,
-    enabled: !!token,
-  });
-
-  /**
-   * Преобразуем список разрешённых моделей в синтетические TModelSpec.
-   *
-   * Возвращает:
-   *   null     — запрос ещё не завершён (показываем YAML-спеки как запасной вариант)
-   *   []       — запрос завершён, но моделей нет (показываем пустой список)
-   *   [...]    — список синтетических спеков для отображения
-   *
-   * Когда dynamicModelSpecs !== null:
-   *   - mappedEndpoints = [] (скрываем все эндпоинт-модели LibreChat)
-   *   - modelSpecs      = dynamicModelSpecs (только модели из БД)
-   */
-  /** Встроенные эндпоинты LibreChat — иконки берутся из icons map по ключу.
-   *  Кастомные эндпоинты (deepseek и др.) используют 'custom' → CustomMinimalIcon */
-  const builtinEndpoints = new Set(['openAI', 'anthropic', 'google', 'azureOpenAI', 'bedrock', 'agents', 'assistants', 'azureAssistants']);
-
-  const dynamicModelSpecs = useMemo((): t.TModelSpec[] | null => {
-    // allowedLoading = true: запрос ещё в полёте → возвращаем null (показываем loading/empty)
-    if (allowedLoading) return null;
-
-    // allowedModelsData = null: ошибка запроса → возвращаем null (показываем ошибку)
-    if (allowedModelsData === null) return null;
-
-    // !allowedModelsData: данные ещё не загружены → возвращаем null
-    if (!allowedModelsData) return null;
-
-    // !endpointsConfig: конфиг эндпоинтов ещё не загружен → возвращаем null
-    if (!endpointsConfig) return null;
-
-    // Создаём синтетические TModelSpec ТОЛЬКО из разрешённых моделей
-    // Без YAML моделей - ТОЛЬКО /api/models/allowed!
-    return allowedModelsData.models
-      .filter((m) => endpointsConfig[m.endpointKey] != null)
-      .map((m) => ({
-        name: m.modelId,
-        label: m.displayName,
-        iconURL: builtinEndpoints.has(m.endpointKey) ? m.endpointKey : 'custom',
-        preset: {
-          endpoint: m.endpointKey,
-          model: m.modelId,
-        },
-      } as unknown as t.TModelSpec));
-  }, [allowedModelsData, allowedLoading, endpointsConfig]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Логика fallback:
-  // - Если dynamicModelSpecs !== null: используем ТОЛЬКО динамические модели (YAML модели скрыты)
-  // - Если dynamicModelSpecs === null (загружаются/ошибка): используем YAML модели как fallback
-  const effectiveModelSpecs = dynamicModelSpecs !== null ? dynamicModelSpecs : modelSpecs;
-
-  // Эндпоинты показываются ТОЛЬКО если загружаются динамические модели
-  // Когда dynamicModelSpecs !== null - скрываем YAML эндпоинты
-  const mappedEndpoints = dynamicModelSpecs !== null ? [] : rawMappedEndpoints;
 
   const getModelDisplayName = useCallback(
     (endpoint: Endpoint, model: string): string => {
@@ -258,9 +160,9 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     if (!searchValue) {
       return null;
     }
-    const allItems = [...effectiveModelSpecs, ...mappedEndpoints];
+    const allItems = [...modelSpecs, ...mappedEndpoints];
     return filterItems(allItems, searchValue, agentsMap, assistantsMap || {});
-  }, [searchValue, effectiveModelSpecs, mappedEndpoints, agentsMap, assistantsMap]);
+  }, [searchValue, modelSpecs, mappedEndpoints, agentsMap, assistantsMap]);
 
   const setDebouncedSearchValue = useMemo(
     () =>
@@ -337,7 +239,7 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     endpointSearchValues,
     // LibreChat
     agentsMap,
-    modelSpecs: effectiveModelSpecs,
+    modelSpecs,
     assistantsMap,
     mappedEndpoints,
     endpointsConfig,
