@@ -345,12 +345,17 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
         // ВАЖНО: это должно быть ДО сохранения в БД, чтобы debug информация сохранилась
         const requestedModel = req.body?.endpointOption?.model || req.body?.model;
         logger.info(`[ResumableAgentController] Обогащаем response debug информацией для пользователя ${userId}, модель=${requestedModel}`);
+        logger.info(`[ResumableAgentController] Response type before enrichment: ${typeof response}, constructor: ${response?.constructor?.name}`);
+        logger.info(`[ResumableAgentController] Response keys before enrichment: ${Object.keys(response || {}).slice(0, 10).join(', ')}`);
+
         await enrichWithDebugInfo({
           response,
           requestedModel,
           userId,
         });
+
         logger.info(`[ResumableAgentController] Debug информация добавлена? ${response?.debug ? 'ДА' : 'НЕТ'}`);
+        logger.info(`[ResumableAgentController] Response keys after enrichment: ${Object.keys(response || {}).slice(0, 10).join(', ')}`);
         if (response?.debug) {
           logger.info(`[ResumableAgentController] Debug info: ${JSON.stringify(response.debug)}`);
         }
@@ -385,13 +390,25 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
         if (!wasAbortedBeforeComplete) {
           // Debug информация уже добавлена выше перед сохранением в БД
 
+          const responseCopy = { ...response };
+          logger.info(`[ResumableAgentController] Creating finalEvent - response has debug? ${!!response?.debug}`);
+          logger.info(`[ResumableAgentController] Creating finalEvent - responseCopy has debug? ${!!responseCopy?.debug}`);
+
           const finalEvent = {
             final: true,
             conversation,
             title: conversation.title,
             requestMessage: sanitizeMessageForTransmit(userMessage),
-            responseMessage: { ...response },
+            responseMessage: responseCopy,
           };
+
+          logger.info(`[ResumableAgentController] Final finalEvent structure - responseMessage has debug? ${!!finalEvent.responseMessage?.debug}`);
+          if (finalEvent.responseMessage?.debug) {
+            logger.info(`[ResumableAgentController] DEBUG FOUND in finalEvent: ${JSON.stringify(finalEvent.responseMessage.debug)}`);
+          } else {
+            logger.warn(`[ResumableAgentController] WARNING: DEBUG NOT FOUND in finalEvent.responseMessage`);
+            logger.warn(`[ResumableAgentController] responseMessage keys: ${Object.keys(finalEvent.responseMessage || {}).join(', ')}`);
+          }
 
           logger.debug(`[ResumableAgentController] Emitting FINAL event`, {
             streamId,
@@ -399,6 +416,9 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
             userMessageId: userMessage?.messageId,
             responseMessageId: response?.messageId,
             conversationId: conversation?.conversationId,
+            hasDebugInResponse: !!response?.debug,
+            hasDebugInResponseMessage: !!finalEvent.responseMessage?.debug,
+            debugContent: finalEvent.responseMessage?.debug ? JSON.stringify(finalEvent.responseMessage.debug) : 'NO DEBUG',
           });
 
           await GenerationJobManager.emitDone(streamId, finalEvent);
@@ -407,13 +427,25 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
         } else {
           // Debug информация уже добавлена выше перед сохранением в БД
 
+          const responseCopy = { ...response, unfinished: true };
+          logger.info(`[ResumableAgentController] Creating ABORTED finalEvent - response has debug? ${!!response?.debug}`);
+          logger.info(`[ResumableAgentController] Creating ABORTED finalEvent - responseCopy has debug? ${!!responseCopy?.debug}`);
+
           const finalEvent = {
             final: true,
             conversation,
             title: conversation.title,
             requestMessage: sanitizeMessageForTransmit(userMessage),
-            responseMessage: { ...response, unfinished: true },
+            responseMessage: responseCopy,
           };
+
+          logger.info(`[ResumableAgentController] Final ABORTED finalEvent structure - responseMessage has debug? ${!!finalEvent.responseMessage?.debug}`);
+          if (finalEvent.responseMessage?.debug) {
+            logger.info(`[ResumableAgentController] DEBUG FOUND in ABORTED finalEvent: ${JSON.stringify(finalEvent.responseMessage.debug)}`);
+          } else {
+            logger.warn(`[ResumableAgentController] WARNING: DEBUG NOT FOUND in ABORTED finalEvent.responseMessage`);
+            logger.warn(`[ResumableAgentController] ABORTED responseMessage keys: ${Object.keys(finalEvent.responseMessage || {}).join(', ')}`);
+          }
 
           logger.debug(`[ResumableAgentController] Emitting ABORTED FINAL event`, {
             streamId,
@@ -421,6 +453,9 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
             userMessageId: userMessage?.messageId,
             responseMessageId: response?.messageId,
             conversationId: conversation?.conversationId,
+            hasDebugInResponse: !!response?.debug,
+            hasDebugInResponseMessage: !!finalEvent.responseMessage?.debug,
+            debugContent: finalEvent.responseMessage?.debug ? JSON.stringify(finalEvent.responseMessage.debug) : 'NO DEBUG',
           });
 
           await GenerationJobManager.emitDone(streamId, finalEvent);
