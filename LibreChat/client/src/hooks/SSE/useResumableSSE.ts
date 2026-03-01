@@ -179,6 +179,16 @@ export default function useResumableSSE(
               debugInfo: data.responseMessage?.debug ? JSON.stringify(data.responseMessage.debug) : 'NO DEBUG',
               responseMessageKeys: data.responseMessage ? Object.keys(data.responseMessage).slice(0, 15) : [],
             });
+
+            // CRITICAL: If debug is missing when backend should provide it
+            if (!data.responseMessage?.debug && data.responseMessage && !data.aborted) {
+              console.error('[ResumableSSE] ❌ CRITICAL: Debug info missing in final event!');
+              console.error('[ResumableSSE] Response message keys:', Object.keys(data.responseMessage || {}).join(', '));
+              console.error('[ResumableSSE] Full data keys:', Object.keys(data || {}).join(', '));
+            } else if (data.responseMessage?.debug) {
+              console.log('[ResumableSSE] ✓ Debug info received:', data.responseMessage.debug);
+            }
+
             clearDraft(currentSubmission.conversation?.conversationId);
             try {
               finalHandler(data, currentSubmission as EventSubmission);
