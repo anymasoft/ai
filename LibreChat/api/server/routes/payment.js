@@ -261,14 +261,12 @@ router.get('/check', requireJwtAuth, async (req, res) => {
     );
 
     logger.info(
-      `[payment/check] userId=${userId} paymentId=${pending.externalPaymentId} ykStatus=${ykPayment.status} paid=${ykPayment.paid}`,
+      `[payment/check] userId=${userId} paymentId=${pending.externalPaymentId} ykStatus=${ykPayment.status}`,
     );
 
-    // Платеж успешен ТОЛЬКО если:
-    // 1. status === 'succeeded' (при capture: true это гарантирует что деньги списаны)
-    // 2. AND paid === true (деньги действительно списаны)
-    // Оба условия ДОЛЖНЫ быть верны одновременно!
-    if (ykPayment.status === 'succeeded' && ykPayment.paid === true) {
+    // Платеж успешен если status === 'succeeded'
+    // При capture: true, это гарантирует что деньги захвачены и списаны
+    if (ykPayment.status === 'succeeded') {
       const result = await applySuccessfulPayment(pending.externalPaymentId);
       if (result.ok) {
         return res.json({
@@ -302,7 +300,7 @@ router.get('/check', requireJwtAuth, async (req, res) => {
         logger.info(`[payment/check] Платеж захвачен: ${pending.externalPaymentId}, новый статус=${capturedPayment.status}`);
 
         // Если capture успешен, обрабатываем как успешный платеж
-        if (capturedPayment.status === 'succeeded' && capturedPayment.paid === true) {
+        if (capturedPayment.status === 'succeeded') {
           const result = await applySuccessfulPayment(pending.externalPaymentId);
           if (result.ok) {
             return res.json({
@@ -348,7 +346,7 @@ router.post('/webhook', express.json(), async (req, res) => {
     const { userId, tokenCredits, packageId, plan, type } = payment.metadata || {};
     if (!userId || !tokenCredits || !packageId) return;
 
-    logger.info(`[payment/webhook] Получен платеж: id=${payment.id}, status=${payment.status}, paid=${payment.paid}`);
+    logger.info(`[payment/webhook] Получен платеж: id=${payment.id}, status=${payment.status}`);
 
     // Сохраняем платеж в БД если его еще нет
     await Payment.findOneAndUpdate(
@@ -369,7 +367,7 @@ router.post('/webhook', express.json(), async (req, res) => {
     );
 
     // Обрабатываем платеж если статус 'succeeded'
-    if (payment.status === 'succeeded' && payment.paid === true) {
+    if (payment.status === 'succeeded') {
       const result = await applySuccessfulPayment(payment.id);
       if (!result.ok && !result.alreadyDone) {
         logger.warn(`[payment/webhook] apply failed: ${result.message}`);
@@ -386,7 +384,7 @@ router.post('/webhook', express.json(), async (req, res) => {
         logger.info(`[payment/webhook] Платеж захвачен: ${payment.id}, новый статус=${capturedPayment.status}`);
 
         // Если capture успешен, обрабатываем платеж
-        if (capturedPayment.status === 'succeeded' && capturedPayment.paid === true) {
+        if (capturedPayment.status === 'succeeded') {
           const result = await applySuccessfulPayment(payment.id);
           if (!result.ok && !result.alreadyDone) {
             logger.warn(`[payment/webhook] apply failed after capture: ${result.message}`);
