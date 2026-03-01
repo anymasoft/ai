@@ -136,24 +136,20 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
       return mappedEndpoints;
     }
 
-    return mappedEndpoints
+    // Filter out agents and assistants endpoints
+    const withoutAgentsAssistants = mappedEndpoints.filter(
+      (endpoint) =>
+        !isAgentsEndpoint(endpoint.value) && !isAssistantsEndpoint(endpoint.value),
+    );
+
+    // If no allowed models restriction, show all endpoints (except agents/assistants)
+    if (allowedModelIds.size === 0) {
+      return withoutAgentsAssistants;
+    }
+
+    // For regular endpoints, filter models to only allowed ones
+    return withoutAgentsAssistants
       .map((endpoint) => {
-        // TODO: Temporarily hide Agents and Assistants endpoints
-        // if (isAgentsEndpoint(endpoint.value) || isAssistantsEndpoint(endpoint.value)) {
-        //   return endpoint;
-        // }
-
-        // Hide agents and assistants endpoints for now
-        if (isAgentsEndpoint(endpoint.value) || isAssistantsEndpoint(endpoint.value)) {
-          return null;
-        }
-
-        // If no allowed models restriction, show all endpoints
-        if (allowedModelIds.size === 0) {
-          return endpoint;
-        }
-
-        // For regular endpoints, filter models to only allowed ones
         if (endpoint.models && Array.isArray(endpoint.models)) {
           const filteredModels = endpoint.models.filter((model: string) =>
             allowedModelIds.has(model),
