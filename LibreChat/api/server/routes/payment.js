@@ -60,53 +60,72 @@ async function upsertSubscription(userId, planId, durationDays) {
 }
 
 async function applySuccessfulPayment(externalPaymentId) {
-  const existing = await Payment.findOne({ externalPaymentId }).lean();
+  try {
+    const existing = await Payment.findOne({ externalPaymentId }).lean();
+    logger.debug(`[payment/apply] Found payment: ${externalPaymentId}, status=${existing?.status}`);
 
-  if (existing && existing.status === 'succeeded') {
-    return { ok: true, alreadyDone: true, message: 'Платёж уже был обработан ранее' };
-  }
-  if (!existing || existing.status !== 'pending') {
-    return { ok: false, message: `Платёж не найден или статус: ${existing?.status}` };
-  }
-
-  const { userId, tokenCredits: creditsRaw, planPurchased, type } = existing;
-  const creditsNum = parseInt(creditsRaw);
-  if (!creditsNum || creditsNum <= 0) {
-    return { ok: false, message: `Некорректное значение tokenCredits: ${creditsRaw}` };
-  }
-
-  const updatedBalance = await Balance.findOneAndUpdate(
-    { user: userId },
-    { $inc: { tokenCredits: creditsNum } },
-    { upsert: true, new: true },
-  );
-
-  let subscription = null;
-  if (type === 'subscription' && planPurchased) {
-    const planDoc = await Plan.findOne({ planId: planPurchased }).lean();
-    if (planDoc?.durationDays) {
-      subscription = await upsertSubscription(userId, planPurchased, planDoc.durationDays);
+    if (existing && existing.status === 'succeeded') {
+      logger.info(`[payment/apply] Payment already succeeded: ${externalPaymentId}`);
+      return { ok: true, alreadyDone: true, message: 'Платёж уже был обработан ранее' };
     }
+    if (!existing || existing.status !== 'pending') {
+      logger.warn(`[payment/apply] Invalid payment state: ${externalPaymentId}, status=${existing?.status}`);
+      return { ok: false, message: `Платёж не найден или статус: ${existing?.status}` };
+    }
+
+    const { userId, tokenCredits: creditsRaw, planPurchased, type } = existing;
+    const creditsNum = parseInt(creditsRaw);
+    if (!creditsNum || creditsNum <= 0) {
+      logger.warn(`[payment/apply] Invalid tokenCredits: ${creditsRaw}`);
+      return { ok: false, message: `Некорректное значение tokenCredits: ${creditsRaw}` };
+    }
+
+    logger.debug(`[payment/apply] Updating balance for ${userId}: +${creditsNum} TC`);
+    const updatedBalance = await Balance.findOneAndUpdate(
+      { user: userId },
+      { $inc: { tokenCredits: creditsNum } },
+      { upsert: true, new: true },
+    );
+
+    if (!updatedBalance) {
+      logger.error(`[payment/apply] Failed to update balance for ${userId}`);
+      return { ok: false, message: 'Ошибка при обновлении баланса' };
+    }
+
+    logger.debug(`[payment/apply] Balance updated: oldBalance=0, newBalance=${updatedBalance.tokenCredits}`);
+
+    let subscription = null;
+    if (type === 'subscription' && planPurchased) {
+      logger.debug(`[payment/apply] Processing subscription: ${planPurchased}`);
+      const planDoc = await Plan.findOne({ planId: planPurchased }).lean();
+      if (planDoc?.durationDays) {
+        subscription = await upsertSubscription(userId, planPurchased, planDoc.durationDays);
+        logger.debug(`[payment/apply] Subscription updated: expires=${subscription?.planExpiresAt}`);
+      }
+    }
+
+    await Payment.findOneAndUpdate(
+      { externalPaymentId },
+      { status: 'succeeded', expiresAt: subscription?.planExpiresAt || null },
+    );
+
+    logger.info(
+      `[payment/apply] SUCCESS: paymentId=${externalPaymentId} userId=${userId} type=${type} ` +
+      `plan=${planPurchased || '—'} +${creditsNum} TC newBalance=${updatedBalance.tokenCredits}`,
+    );
+
+    return {
+      ok: true,
+      alreadyDone: false,
+      tokenCredits: creditsNum,
+      newBalance: updatedBalance.tokenCredits,
+      plan: planPurchased,
+      planExpiresAt: subscription?.planExpiresAt || null,
+    };
+  } catch (err) {
+    logger.error(`[payment/apply] ERROR for ${externalPaymentId}:`, err);
+    return { ok: false, message: `Ошибка применения платежа: ${err.message}` };
   }
-
-  await Payment.findOneAndUpdate(
-    { externalPaymentId },
-    { status: 'succeeded', expiresAt: subscription?.planExpiresAt || null },
-  );
-
-  logger.info(
-    `[payment/apply] userId=${userId} type=${type} plan=${planPurchased || '—'} +${creditsNum} TC. ` +
-    `Баланс: ${updatedBalance.tokenCredits}. Подписка до: ${subscription?.planExpiresAt || '—'}`,
-  );
-
-  return {
-    ok: true,
-    alreadyDone: false,
-    tokenCredits: creditsNum,
-    newBalance: updatedBalance.tokenCredits,
-    plan: planPurchased,
-    planExpiresAt: subscription?.planExpiresAt || null,
-  };
 }
 
 /**
@@ -241,9 +260,13 @@ router.get('/check', requireJwtAuth, async (req, res) => {
       { auth: yukassaAuth() },
     );
 
-    logger.info(`[payment/check] userId=${userId} paymentId=${pending.externalPaymentId} ykStatus=${ykPayment.status}`);
+    logger.info(
+      `[payment/check] userId=${userId} paymentId=${pending.externalPaymentId} ykStatus=${ykPayment.status}`,
+    );
 
-    if (ykPayment.status === 'succeeded' && ykPayment.paid === true) {
+    // Платеж успешен если status === 'succeeded'
+    // При capture: true, это гарантирует что деньги захвачены и списаны
+    if (ykPayment.status === 'succeeded') {
       const result = await applySuccessfulPayment(pending.externalPaymentId);
       if (result.ok) {
         return res.json({
@@ -264,7 +287,42 @@ router.get('/check', requireJwtAuth, async (req, res) => {
       return res.json({ ok: false, status: 'canceled', message: 'Платёж отменён' });
     }
 
-    return res.json({ ok: false, status: ykPayment.status, message: 'Платёж ещё обрабатывается' });
+    // Если статус 'waiting_for_capture' — попытаемся захватить платеж
+    // (может быть capture: true не сработал с первого раза)
+    if (ykPayment.status === 'waiting_for_capture') {
+      logger.info(`[payment/check] Платеж в статусе waiting_for_capture, пытаемся захватить: ${pending.externalPaymentId}`);
+      try {
+        const { data: capturedPayment } = await axios.post(
+          `${YUKASSA_API}/payments/${pending.externalPaymentId}/capture`,
+          { amount: { value: ykPayment.amount?.value, currency: 'RUB' } },
+          { auth: yukassaAuth() },
+        );
+        logger.info(`[payment/check] Платеж захвачен: ${pending.externalPaymentId}, новый статус=${capturedPayment.status}`);
+
+        // Если capture успешен, обрабатываем как успешный платеж
+        if (capturedPayment.status === 'succeeded') {
+          const result = await applySuccessfulPayment(pending.externalPaymentId);
+          if (result.ok) {
+            return res.json({
+              ok: true,
+              status: 'succeeded',
+              alreadyDone: result.alreadyDone,
+              tokenCredits: result.tokenCredits,
+              newBalance: result.newBalance,
+              plan: result.plan,
+              planExpiresAt: result.planExpiresAt,
+            });
+          }
+          return res.json({ ok: false, status: 'error', message: result.message });
+        }
+      } catch (captureErr) {
+        logger.error(`[payment/check] Ошибка при захвате платежа: ${pending.externalPaymentId}`, captureErr.response?.data || captureErr.message);
+      }
+      return res.json({ ok: false, status: 'waiting_for_capture', message: 'Платёж авторизован, но ещё не захвачен. Попытайтесь ещё раз через минуту.' });
+    }
+
+    // Для любых других статусов
+    return res.json({ ok: false, status: ykPayment.status, message: `Платёж в статусе: ${ykPayment.status}` });
   } catch (err) {
     const msg = err.response?.data?.description || err.message;
     logger.error('[payment/check]', msg);
@@ -283,31 +341,58 @@ router.post('/webhook', express.json(), async (req, res) => {
     if (!event || event.type !== 'notification') return;
 
     const payment = event.object;
-    if (!payment || payment.status !== 'succeeded') return;
+    if (!payment) return;
 
     const { userId, tokenCredits, packageId, plan, type } = payment.metadata || {};
-    if (userId && tokenCredits && packageId) {
-      await Payment.findOneAndUpdate(
-        { externalPaymentId: payment.id },
-        {
-          $setOnInsert: {
-            externalPaymentId: payment.id,
-            userId,
-            packageId,
-            type: type || 'subscription',
-            planPurchased: plan || null,
-            tokenCredits: parseInt(tokenCredits),
-            amount: payment.amount?.value ?? '',
-          },
-          $set: { status: 'pending' },
-        },
-        { upsert: true },
-      );
-    }
+    if (!userId || !tokenCredits || !packageId) return;
 
-    const result = await applySuccessfulPayment(payment.id);
-    if (!result.ok && !result.alreadyDone) {
-      logger.warn(`[payment/webhook] apply failed: ${result.message}`);
+    logger.info(`[payment/webhook] Получен платеж: id=${payment.id}, status=${payment.status}`);
+
+    // Сохраняем платеж в БД если его еще нет
+    await Payment.findOneAndUpdate(
+      { externalPaymentId: payment.id },
+      {
+        $setOnInsert: {
+          externalPaymentId: payment.id,
+          userId,
+          packageId,
+          type: type || 'subscription',
+          planPurchased: plan || null,
+          tokenCredits: parseInt(tokenCredits),
+          amount: payment.amount?.value ?? '',
+        },
+        $set: { status: 'pending' },
+      },
+      { upsert: true },
+    );
+
+    // Обрабатываем платеж если статус 'succeeded'
+    if (payment.status === 'succeeded') {
+      const result = await applySuccessfulPayment(payment.id);
+      if (!result.ok && !result.alreadyDone) {
+        logger.warn(`[payment/webhook] apply failed: ${result.message}`);
+      }
+    } else if (payment.status === 'waiting_for_capture') {
+      // Если статус 'waiting_for_capture', попытаемся захватить
+      logger.info(`[payment/webhook] Платеж в статусе waiting_for_capture, пытаемся захватить: ${payment.id}`);
+      try {
+        const { data: capturedPayment } = await axios.post(
+          `${YUKASSA_API}/payments/${payment.id}/capture`,
+          { amount: { value: payment.amount?.value, currency: 'RUB' } },
+          { auth: yukassaAuth() },
+        );
+        logger.info(`[payment/webhook] Платеж захвачен: ${payment.id}, новый статус=${capturedPayment.status}`);
+
+        // Если capture успешен, обрабатываем платеж
+        if (capturedPayment.status === 'succeeded') {
+          const result = await applySuccessfulPayment(payment.id);
+          if (!result.ok && !result.alreadyDone) {
+            logger.warn(`[payment/webhook] apply failed after capture: ${result.message}`);
+          }
+        }
+      } catch (captureErr) {
+        logger.error(`[payment/webhook] Ошибка при захвате платежа: ${payment.id}`, captureErr.response?.data || captureErr.message);
+      }
     }
   } catch (err) {
     logger.error('[payment/webhook]', err);
