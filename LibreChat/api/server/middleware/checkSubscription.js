@@ -68,7 +68,16 @@ async function checkSubscription(req, res, next) {
       req.body?.endpointOption?.modelOptions?.model ||
       null;
 
+    // [MODEL CHECK] Log the model being checked
     if (modelName) {
+      const { logger } = require('@librechat/data-schemas');
+      logger.info(`[MODEL CHECK] Checking model against plan "${plan}"`, {
+        modelName,
+        requested: req.body?.model,
+        from_endpoint: req.body?.endpointOption?.model,
+        from_modelOptions: req.body?.endpointOption?.modelOptions?.model,
+      });
+
       const plans = await getPlans();
       const planConfig = plans[plan];
       if (!isModelAllowed(planConfig, modelName)) {
