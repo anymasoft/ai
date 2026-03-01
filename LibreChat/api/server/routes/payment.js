@@ -60,53 +60,72 @@ async function upsertSubscription(userId, planId, durationDays) {
 }
 
 async function applySuccessfulPayment(externalPaymentId) {
-  const existing = await Payment.findOne({ externalPaymentId }).lean();
+  try {
+    const existing = await Payment.findOne({ externalPaymentId }).lean();
+    logger.debug(`[payment/apply] Found payment: ${externalPaymentId}, status=${existing?.status}`);
 
-  if (existing && existing.status === 'succeeded') {
-    return { ok: true, alreadyDone: true, message: 'Платёж уже был обработан ранее' };
-  }
-  if (!existing || existing.status !== 'pending') {
-    return { ok: false, message: `Платёж не найден или статус: ${existing?.status}` };
-  }
-
-  const { userId, tokenCredits: creditsRaw, planPurchased, type } = existing;
-  const creditsNum = parseInt(creditsRaw);
-  if (!creditsNum || creditsNum <= 0) {
-    return { ok: false, message: `Некорректное значение tokenCredits: ${creditsRaw}` };
-  }
-
-  const updatedBalance = await Balance.findOneAndUpdate(
-    { user: userId },
-    { $inc: { tokenCredits: creditsNum } },
-    { upsert: true, new: true },
-  );
-
-  let subscription = null;
-  if (type === 'subscription' && planPurchased) {
-    const planDoc = await Plan.findOne({ planId: planPurchased }).lean();
-    if (planDoc?.durationDays) {
-      subscription = await upsertSubscription(userId, planPurchased, planDoc.durationDays);
+    if (existing && existing.status === 'succeeded') {
+      logger.info(`[payment/apply] Payment already succeeded: ${externalPaymentId}`);
+      return { ok: true, alreadyDone: true, message: 'Платёж уже был обработан ранее' };
     }
+    if (!existing || existing.status !== 'pending') {
+      logger.warn(`[payment/apply] Invalid payment state: ${externalPaymentId}, status=${existing?.status}`);
+      return { ok: false, message: `Платёж не найден или статус: ${existing?.status}` };
+    }
+
+    const { userId, tokenCredits: creditsRaw, planPurchased, type } = existing;
+    const creditsNum = parseInt(creditsRaw);
+    if (!creditsNum || creditsNum <= 0) {
+      logger.warn(`[payment/apply] Invalid tokenCredits: ${creditsRaw}`);
+      return { ok: false, message: `Некорректное значение tokenCredits: ${creditsRaw}` };
+    }
+
+    logger.debug(`[payment/apply] Updating balance for ${userId}: +${creditsNum} TC`);
+    const updatedBalance = await Balance.findOneAndUpdate(
+      { user: userId },
+      { $inc: { tokenCredits: creditsNum } },
+      { upsert: true, new: true },
+    );
+
+    if (!updatedBalance) {
+      logger.error(`[payment/apply] Failed to update balance for ${userId}`);
+      return { ok: false, message: 'Ошибка при обновлении баланса' };
+    }
+
+    logger.debug(`[payment/apply] Balance updated: oldBalance=0, newBalance=${updatedBalance.tokenCredits}`);
+
+    let subscription = null;
+    if (type === 'subscription' && planPurchased) {
+      logger.debug(`[payment/apply] Processing subscription: ${planPurchased}`);
+      const planDoc = await Plan.findOne({ planId: planPurchased }).lean();
+      if (planDoc?.durationDays) {
+        subscription = await upsertSubscription(userId, planPurchased, planDoc.durationDays);
+        logger.debug(`[payment/apply] Subscription updated: expires=${subscription?.planExpiresAt}`);
+      }
+    }
+
+    await Payment.findOneAndUpdate(
+      { externalPaymentId },
+      { status: 'succeeded', expiresAt: subscription?.planExpiresAt || null },
+    );
+
+    logger.info(
+      `[payment/apply] SUCCESS: paymentId=${externalPaymentId} userId=${userId} type=${type} ` +
+      `plan=${planPurchased || '—'} +${creditsNum} TC newBalance=${updatedBalance.tokenCredits}`,
+    );
+
+    return {
+      ok: true,
+      alreadyDone: false,
+      tokenCredits: creditsNum,
+      newBalance: updatedBalance.tokenCredits,
+      plan: planPurchased,
+      planExpiresAt: subscription?.planExpiresAt || null,
+    };
+  } catch (err) {
+    logger.error(`[payment/apply] ERROR for ${externalPaymentId}:`, err);
+    return { ok: false, message: `Ошибка применения платежа: ${err.message}` };
   }
-
-  await Payment.findOneAndUpdate(
-    { externalPaymentId },
-    { status: 'succeeded', expiresAt: subscription?.planExpiresAt || null },
-  );
-
-  logger.info(
-    `[payment/apply] userId=${userId} type=${type} plan=${planPurchased || '—'} +${creditsNum} TC. ` +
-    `Баланс: ${updatedBalance.tokenCredits}. Подписка до: ${subscription?.planExpiresAt || '—'}`,
-  );
-
-  return {
-    ok: true,
-    alreadyDone: false,
-    tokenCredits: creditsNum,
-    newBalance: updatedBalance.tokenCredits,
-    plan: planPurchased,
-    planExpiresAt: subscription?.planExpiresAt || null,
-  };
 }
 
 /**
@@ -241,9 +260,15 @@ router.get('/check', requireJwtAuth, async (req, res) => {
       { auth: yukassaAuth() },
     );
 
-    logger.info(`[payment/check] userId=${userId} paymentId=${pending.externalPaymentId} ykStatus=${ykPayment.status}`);
+    logger.info(
+      `[payment/check] userId=${userId} paymentId=${pending.externalPaymentId} ykStatus=${ykPayment.status} paid=${ykPayment.paid}`,
+    );
 
-    if (ykPayment.status === 'succeeded' && ykPayment.paid === true) {
+    // Платеж считается успешным если:
+    // 1. Статус 'succeeded' ИЛИ
+    // 2. Платеж помечен как оплаченный (paid === true)
+    // Используем OR (||) вместо AND (&&) чтобы обработать оба случая
+    if (ykPayment.status === 'succeeded' || ykPayment.paid === true) {
       const result = await applySuccessfulPayment(pending.externalPaymentId);
       if (result.ok) {
         return res.json({
