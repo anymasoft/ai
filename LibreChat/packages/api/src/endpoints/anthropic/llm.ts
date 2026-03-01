@@ -178,6 +178,10 @@ function getLLMConfig(
   if (!isThinkingModel || !hasActiveThinking) {
     requestOptions.topP = mergedOptions.topP;
     requestOptions.topK = mergedOptions.topK;
+  } else if (isThinkingModel && hasActiveThinking) {
+    // When thinking is enabled, Anthropic does not support temperature, topP, or topK
+    // Remove temperature when thinking is active
+    delete requestOptions.temperature;
   }
 
   const supportsCacheControl =

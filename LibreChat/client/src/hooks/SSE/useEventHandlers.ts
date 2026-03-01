@@ -534,6 +534,18 @@ export default function useEventHandlers({
         } else if (requestMessage != null && responseMessage != null) {
           finalMessages = [...messages, requestMessage, responseMessage];
         }
+
+        // DEBUG: Log debug info in final messages
+        if (finalMessages.length > 0) {
+          const lastMessage = finalMessages[finalMessages.length - 1];
+          console.log('[finalHandler] About to set finalMessages', {
+            messageCount: finalMessages.length,
+            lastMessageId: lastMessage?.messageId,
+            hasDebugInLastMessage: !!lastMessage?.debug,
+            debugInfo: lastMessage?.debug ? JSON.stringify(lastMessage.debug) : 'NO DEBUG',
+          });
+        }
+
         if (finalMessages.length > 0) {
           setFinalMessages(conversation.conversationId, finalMessages);
         } else if (
