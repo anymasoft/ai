@@ -260,7 +260,6 @@ export default function useChatFunctions({
       model: convo?.model,
       error: false,
       iconURL,
-      debugTest: 'ТЕСТ',
     };
 
     if (isAssistantsEndpoint(endpoint)) {

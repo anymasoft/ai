@@ -124,7 +124,6 @@ const DisplayMessage = ({ text, isCreatedByUser, message, showCursor }: TDisplay
       >
         {content}
       </div>
-      <div style={{ color: 'red' }}>ТЕСТ</div>
       {!isCreatedByUser && message?.debug && <DebugInfo debug={message.debug} />}
     </Container>
   );
