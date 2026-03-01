@@ -1,5 +1,6 @@
 import debounce from 'lodash/debounce';
 import React, { createContext, useContext, useState, useMemo, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { EModelEndpoint, isAgentsEndpoint, isAssistantsEndpoint } from 'librechat-data-provider';
 import type * as t from 'librechat-data-provider';
 import type { Endpoint, SelectedValues } from '~/common';
@@ -62,6 +63,26 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     useModelSelectorChatContext();
   const localize = useLocalize();
   const { announcePolite } = useLiveAnnouncer();
+
+  /**
+   * Получаем список разрешённых моделей для текущего пользователя (по его тарифу).
+   * API возвращает: { models: [ { modelId, provider, endpointKey, displayName } ], plan }
+   * Кэш: 60 секунд
+   */
+  const { data: allowedModelsData } = useQuery({
+    queryKey: ['allowedModels'],
+    queryFn: async () => {
+      const res = await fetch('/api/models/allowed', { credentials: 'include' });
+      if (!res.ok) return null;
+      const json = await res.json();
+      return json;
+    },
+    staleTime: 60_000,
+    gcTime: 60_000,
+  });
+
+  const allowedModelIds = new Set(allowedModelsData?.models?.map((m: any) => m.modelId) ?? []);
+
   const modelSpecs = useMemo(() => {
     const specs = startupConfig?.modelSpecs?.list ?? [];
     if (!agentsMap) {
@@ -69,17 +90,27 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     }
 
     /**
-     * Filter modelSpecs to only include agents the user has access to.
-     * Use agentsMap which already contains permission-filtered agents (consistent with other components).
+     * Filter modelSpecs by:
+     * 1. Agents the user has access to (agentsMap)
+     * 2. Models allowed by user's subscription plan (allowedModels)
      */
     return specs.filter((spec) => {
       if (spec.preset?.endpoint === EModelEndpoint.agents && spec.preset?.agent_id) {
         return spec.preset.agent_id in agentsMap;
       }
-      /** Keep non-agent modelSpecs */
-      return true;
+
+      /**
+       * Filter by user's subscription plan
+       * Only show models that are in allowedModelIds
+       */
+      if (spec.preset?.model && allowedModelIds.size > 0) {
+        return allowedModelIds.has(spec.preset.model);
+      }
+
+      /** Keep non-agent modelSpecs if no allowed models restriction */
+      return allowedModelIds.size === 0;
     });
-  }, [startupConfig, agentsMap]);
+  }, [startupConfig, agentsMap, allowedModelIds]);
 
   const permissionLevel = useAgentDefaultPermissionLevel();
   const { data: agents = null } = useListAgentsQuery(
