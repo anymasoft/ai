@@ -11,6 +11,7 @@ import Thinking from './Parts/Thinking';
 import { useLocalize } from '~/hooks';
 import Container from './Container';
 import Markdown from './Markdown';
+import DebugInfo from '../DebugInfo';
 import { cn } from '~/utils';
 import store from '~/store';
 
@@ -123,6 +124,7 @@ const DisplayMessage = ({ text, isCreatedByUser, message, showCursor }: TDisplay
       >
         {content}
       </div>
+      {!isCreatedByUser && message?.debug && <DebugInfo debug={message.debug} />}
     </Container>
   );
 };
