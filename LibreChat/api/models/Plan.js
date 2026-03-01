@@ -88,7 +88,21 @@ const SEED_DEFAULTS = [
 /** Инициализирует дефолтные планы при первом запуске (идемпотентно). */
 planSchema.statics.seedDefaults = async function () {
   for (const def of SEED_DEFAULTS) {
-    await this.findOneAndUpdate({ planId: def.planId }, { $setOnInsert: def }, { upsert: true });
+    // Используем $set вместо $setOnInsert чтобы обновить как новые, так и существующие документы
+    await this.findOneAndUpdate(
+      { planId: def.planId },
+      {
+        $set: {
+          label: def.label,
+          priceRub: def.priceRub,
+          tokenCreditsOnPurchase: def.tokenCreditsOnPurchase,
+          durationDays: def.durationDays,
+          allowedModels: def.allowedModels,
+          isActive: def.isActive,
+        },
+      },
+      { upsert: true, new: true }
+    );
   }
 };
 
