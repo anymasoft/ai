@@ -175,6 +175,9 @@ export default function useResumableSSE(
               aborted: data.aborted,
               conversationId: data.conversation?.conversationId,
               hasResponseMessage: !!data.responseMessage,
+              hasDebugInResponseMessage: !!data.responseMessage?.debug,
+              debugInfo: data.responseMessage?.debug ? JSON.stringify(data.responseMessage.debug) : 'NO DEBUG',
+              responseMessageKeys: data.responseMessage ? Object.keys(data.responseMessage).slice(0, 15) : [],
             });
             clearDraft(currentSubmission.conversation?.conversationId);
             try {
