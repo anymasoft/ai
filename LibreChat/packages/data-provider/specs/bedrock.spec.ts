@@ -66,8 +66,8 @@ describe('supportsAdaptiveThinking', () => {
     expect(supportsAdaptiveThinking('us.anthropic.claude-sonnet-4-6')).toBe(true);
   });
 
-  test('should return true for claude-4-6-sonnet (alternate naming)', () => {
-    expect(supportsAdaptiveThinking('claude-4-6-sonnet')).toBe(true);
+  test('should return true for claude-sonnet-4-6 (alternate naming)', () => {
+    expect(supportsAdaptiveThinking('claude-sonnet-4-6')).toBe(true);
   });
 
   test('should return false for claude-sonnet-4-5', () => {
@@ -94,12 +94,12 @@ describe('supportsAdaptiveThinking', () => {
     expect(supportsAdaptiveThinking('us.anthropic.claude-opus-4-6-v1')).toBe(true);
   });
 
-  test('should return true for claude-4-6-opus (alternate naming)', () => {
-    expect(supportsAdaptiveThinking('claude-4-6-opus')).toBe(true);
+  test('should return true for claude-opus-4-6 (alternate naming)', () => {
+    expect(supportsAdaptiveThinking('claude-opus-4-6')).toBe(true);
   });
 
-  test('should return true for anthropic.claude-4-6-opus (alternate naming)', () => {
-    expect(supportsAdaptiveThinking('anthropic.claude-4-6-opus')).toBe(true);
+  test('should return true for anthropic.claude-opus-4-6 (alternate naming)', () => {
+    expect(supportsAdaptiveThinking('anthropic.claude-opus-4-6')).toBe(true);
   });
 
   test('should return true for claude-5-sonnet (alternate naming)', () => {
@@ -176,8 +176,8 @@ describe('supportsContext1m', () => {
     expect(supportsContext1m('claude-5-sonnet')).toBe(true);
   });
 
-  test('should return true for claude-4-6-opus (alternate naming)', () => {
-    expect(supportsContext1m('claude-4-6-opus')).toBe(true);
+  test('should return true for claude-opus-4-6 (alternate naming)', () => {
+    expect(supportsContext1m('claude-opus-4-6')).toBe(true);
   });
 
   test('should return false for claude-3-sonnet (alternate naming, below threshold)', () => {

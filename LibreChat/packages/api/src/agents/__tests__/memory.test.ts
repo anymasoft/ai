@@ -372,7 +372,7 @@ describe('processMemory - GPT-5+ handling', () => {
     }
   });
 
-  it('should use default model (gpt-4.1-mini) without temperature removal when no llmConfig provided', async () => {
+  it('should use default model (gpt-4o-mini) without temperature removal when no llmConfig provided', async () => {
     await processMemory({
       res: mockRes as Response,
       userId: 'test-user',
@@ -391,7 +391,7 @@ describe('processMemory - GPT-5+ handling', () => {
       expect.objectContaining({
         graphConfig: expect.objectContaining({
           llmConfig: expect.objectContaining({
-            model: 'gpt-4.1-mini',
+            model: 'gpt-4o-mini',
             temperature: 0.4, // Default temperature should remain
           }),
         }),
