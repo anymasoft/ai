@@ -278,20 +278,11 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
           throw new Error(balanceCheck.errorMessage);
         }
 
-        // [MODEL DISPATCH] Log the exact model being used
-        const requestedModel = req.body?.model;
-        const usedModel = endpointOption.modelOptions?.model || endpointOption.model_parameters?.model;
-        logger.info(`[MODEL DISPATCH] ResumableAgentController sendMessage`, {
-          requested: requestedModel,
-          used: usedModel,
-          endpoint: endpointOption.endpoint,
-        });
-
         // Anthropic restriction:
         // temperature cannot be used together with thinking
         if (endpointOption.endpoint === 'anthropic' && client.options?.thinking) {
           if (client.options?.temperature !== undefined) {
-            logger.info(`[ResumableAgentController] Removing temperature for Anthropic thinking mode (model: ${usedModel})`);
+            logger.info(`[ResumableAgentController] Removing temperature for Anthropic thinking mode (model: ${endpointOption.modelOptions?.model || endpointOption.model_parameters?.model})`);
             delete client.options.temperature;
           }
         }
@@ -362,6 +353,14 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
         // Обогащаем response debug информацией (если включен debug mode)
         // ВАЖНО: это должно быть ДО сохранения в БД, чтобы debug информация сохранилась
         const requestedModel = req.body?.endpointOption?.model || req.body?.model;
+
+        // [MODEL DISPATCH] Log the exact model being used
+        logger.info(`[MODEL DISPATCH] ResumableAgentController sendMessage`, {
+          requested: req.body?.model,
+          used: requestedModel,
+          endpoint: endpointOption.endpoint,
+        });
+
         logger.info(`[ResumableAgentController] Обогащаем response debug информацией для пользователя ${userId}, модель=${requestedModel}`);
         logger.info(`[ResumableAgentController] Response type before enrichment: ${typeof response}, constructor: ${response?.constructor?.name}`);
         logger.info(`[ResumableAgentController] Response keys before enrichment: ${Object.keys(response || {}).slice(0, 10).join(', ')}`);
