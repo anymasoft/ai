@@ -81,6 +81,9 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     gcTime: 60_000,
   });
 
+  // Флаг: успешно ли загружены разрешённые модели (true если ответ получен, false если ошибка)
+  const hasLoadedAllowedModels = allowedModelsData !== undefined && allowedModelsData !== null;
+
   const allowedModelIds = new Set(allowedModelsData?.models?.map((m: any) => m.modelId) ?? []);
 
   const modelSpecs = useMemo(() => {
@@ -142,7 +145,13 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
         !isAgentsEndpoint(endpoint.value) && !isAssistantsEndpoint(endpoint.value),
     );
 
-    // If no allowed models restriction, show all endpoints (except agents/assistants)
+    // Only apply filtering if allowedModels were successfully loaded from API
+    // If API failed to load (hasLoadedAllowedModels = false), show all models as fallback
+    if (!hasLoadedAllowedModels) {
+      return withoutAgentsAssistants;
+    }
+
+    // If allowedModelIds is empty after successful load, it means all models are allowed
     if (allowedModelIds.size === 0) {
       return withoutAgentsAssistants;
     }
@@ -169,7 +178,7 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
         return endpoint;
       })
       .filter((ep): ep is Endpoint => ep !== null);
-  }, [mappedEndpoints, allowedModelIds]);
+  }, [mappedEndpoints, allowedModelIds, hasLoadedAllowedModels]);
 
   const getModelDisplayName = useCallback(
     (endpoint: Endpoint, model: string): string => {
