@@ -628,7 +628,7 @@ router.patch('/settings/debug-mode', requireJwtAuth, requireAdminRole, async (re
   try {
     const { debugModelUsage } = req.body;
 
-    logger.debug(`[admin/settings/debug-mode/patch] Получен запрос: debugModelUsage=${debugModelUsage}, тип=${typeof debugModelUsage}`);
+    logger.info(`[admin/settings/debug-mode/patch] Получен запрос: debugModelUsage=${debugModelUsage}, тип=${typeof debugModelUsage}`);
 
     if (typeof debugModelUsage !== 'boolean') {
       logger.warn(`[admin/settings/debug-mode/patch] debugModelUsage не boolean: ${typeof debugModelUsage}`);

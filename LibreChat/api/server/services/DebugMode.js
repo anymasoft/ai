@@ -19,7 +19,7 @@ async function isDebugModeEnabled() {
       return false;
     }
     const value = await SystemSettings.getValue('debugModelUsage', false);
-    logger.debug(`[DebugMode] debugModelUsage значение из БД: ${value}`);
+    logger.info(`[DebugMode] debugModelUsage значение из БД: ${value}`);
     return Boolean(value);
   } catch (err) {
     // Если ошибка при чтении - вернуть false (безопасный fallback)
@@ -49,19 +49,19 @@ async function enrichWithDebugInfo(params) {
     // Проверяем включен ли debug mode
     const debugEnabled = await isDebugModeEnabled();
     if (!debugEnabled) {
-      logger.debug(`[DebugMode] Debug Mode отключен для пользователя ${userId}`);
+      logger.info(`[DebugMode] Debug Mode отключен для пользователя ${userId}`);
       return;
     }
 
-    logger.debug(`[DebugMode] Обогащаем response debug информацией для пользователя ${userId}`);
+    logger.info(`[DebugMode] Обогащаем response debug информацией для пользователя ${userId}`);
 
     // Извлекаем информацию о модели из response
     const actualModel = response.model || requestedModel;
 
     // Логируем структуру response для диагностики
-    logger.debug(`[DebugMode] response структура: model=${response.model}, usage=${JSON.stringify(response.usage)}`);
-    logger.debug(`[DebugMode] response.usage.prompt_tokens=${response.usage?.prompt_tokens}, input_tokens=${response.usage?.input_tokens}`);
-    logger.debug(`[DebugMode] response.usage.completion_tokens=${response.usage?.completion_tokens}, output_tokens=${response.usage?.output_tokens}`);
+    logger.info(`[DebugMode] response структура: model=${response.model}, usage=${JSON.stringify(response.usage)}`);
+    logger.info(`[DebugMode] response.usage.prompt_tokens=${response.usage?.prompt_tokens}, input_tokens=${response.usage?.input_tokens}`);
+    logger.info(`[DebugMode] response.usage.completion_tokens=${response.usage?.completion_tokens}, output_tokens=${response.usage?.output_tokens}`);
 
     // Извлекаем информацию о токенах
     let promptTokens = 0;
