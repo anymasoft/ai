@@ -344,11 +344,13 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
         // Обогащаем response debug информацией (если включен debug mode)
         // ВАЖНО: это должно быть ДО сохранения в БД, чтобы debug информация сохранилась
         const requestedModel = req.body?.endpointOption?.model || req.body?.model;
+        logger.debug(`[ResumableAgentController] Обогащаем response debug информацией для пользователя ${userId}, модель=${requestedModel}`);
         await enrichWithDebugInfo({
           response,
           requestedModel,
           userId,
         });
+        logger.debug(`[ResumableAgentController] Debug информация добавлена? ${response?.debug ? 'ДА' : 'НЕТ'}`);
 
         // CRITICAL: Save response message BEFORE emitting final event.
         // This prevents race conditions where the client sends a follow-up message

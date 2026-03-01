@@ -612,6 +612,7 @@ router.delete('/models/:modelId', requireJwtAuth, requireAdminRole, async (req, 
 router.get('/settings/debug-mode', requireJwtAuth, requireAdminRole, async (req, res) => {
   try {
     const debugModelUsage = await SystemSettings.getValue('debugModelUsage', false);
+    logger.info(`[admin/settings/debug-mode/get] Загрузен debugModelUsage = ${debugModelUsage}`);
     res.json({ debugModelUsage });
   } catch (err) {
     logger.error('[admin/settings/debug-mode/get]', err);
@@ -627,7 +628,10 @@ router.patch('/settings/debug-mode', requireJwtAuth, requireAdminRole, async (re
   try {
     const { debugModelUsage } = req.body;
 
+    logger.debug(`[admin/settings/debug-mode/patch] Получен запрос: debugModelUsage=${debugModelUsage}, тип=${typeof debugModelUsage}`);
+
     if (typeof debugModelUsage !== 'boolean') {
+      logger.warn(`[admin/settings/debug-mode/patch] debugModelUsage не boolean: ${typeof debugModelUsage}`);
       return res.status(400).json({ error: 'debugModelUsage должен быть boolean' });
     }
 
