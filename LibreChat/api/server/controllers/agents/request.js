@@ -220,6 +220,13 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
 
     client = result.client;
 
+    // [MODEL DISPATCH] Log client model at initialization
+    const clientModel = client.options?.model || client.modelId;
+    logger.info(`[MODEL DISPATCH] Client initialized with model: ${clientModel}`, {
+      requested: req.body?.model,
+      endpoint: endpointOption.endpoint,
+    });
+
     if (client?.sender) {
       GenerationJobManager.updateMetadata(streamId, { sender: client.sender });
     }
@@ -696,6 +703,13 @@ const _LegacyAgentController = async (req, res, next, initializeClient, addTitle
       cleanupHandlers.pop();
     }
     client = result.client;
+
+    // [MODEL DISPATCH] Log client model at initialization
+    const clientModelLegacy = client.options?.model || client.modelId;
+    logger.info(`[MODEL DISPATCH] AgentController - Client initialized with model: ${clientModelLegacy}`, {
+      requested: req.body?.model,
+      endpoint: endpointOption.endpoint,
+    });
 
     // Register client with finalization registry if available
     if (clientRegistry) {

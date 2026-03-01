@@ -77,6 +77,14 @@ async function buildEndpointOption(req, res, next) {
       if (currentModelSpec.iconURL != null && currentModelSpec.iconURL !== '') {
         parsedBody.iconURL = currentModelSpec.iconURL;
       }
+
+      // IMPORTANT: If user explicitly selected a model in req.body,
+      // override the preset model with the user's choice.
+      // This ensures we use EXACTLY the model the user selected.
+      if (req.body?.model) {
+        parsedBody.model = req.body.model;
+        logger.info(`[buildEndpointOption] Using explicitly requested model: ${req.body.model}`);
+      }
     } catch (error) {
       logger.error(`Error parsing model spec for endpoint ${endpoint}`, error);
       return handleError(res, { text: 'Error parsing model spec' });
