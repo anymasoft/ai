@@ -433,6 +433,16 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
             debugContent: finalEvent.responseMessage?.debug ? JSON.stringify(finalEvent.responseMessage.debug) : 'NO DEBUG',
           });
 
+          // CRITICAL: Log the actual JSON that will be sent to client
+          const jsonToSend = JSON.stringify(finalEvent);
+          const parsedBack = JSON.parse(jsonToSend);
+          logger.info(`[ResumableAgentController] JSON to client contains debug? ${!!parsedBack.responseMessage?.debug}`);
+          if (parsedBack.responseMessage?.debug) {
+            logger.info(`[ResumableAgentController] ✓ DEBUG PRESERVED in JSON: ${JSON.stringify(parsedBack.responseMessage.debug).substring(0, 200)}`);
+          } else {
+            logger.error(`[ResumableAgentController] ❌ DEBUG LOST in JSON SERIALIZATION! finalEvent has debug but JSON doesn't`);
+          }
+
           await GenerationJobManager.emitDone(streamId, finalEvent);
           GenerationJobManager.completeJob(streamId);
           await decrementPendingRequest(userId);
@@ -475,6 +485,16 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
             hasDebugInResponseMessage: !!finalEvent.responseMessage?.debug,
             debugContent: finalEvent.responseMessage?.debug ? JSON.stringify(finalEvent.responseMessage.debug) : 'NO DEBUG',
           });
+
+          // CRITICAL: Log the actual JSON that will be sent to client (ABORTED case)
+          const jsonToSendAborted = JSON.stringify(finalEvent);
+          const parsedBackAborted = JSON.parse(jsonToSendAborted);
+          logger.info(`[ResumableAgentController] ABORTED: JSON to client contains debug? ${!!parsedBackAborted.responseMessage?.debug}`);
+          if (parsedBackAborted.responseMessage?.debug) {
+            logger.info(`[ResumableAgentController] ABORTED: ✓ DEBUG PRESERVED in JSON: ${JSON.stringify(parsedBackAborted.responseMessage.debug).substring(0, 200)}`);
+          } else {
+            logger.error(`[ResumableAgentController] ABORTED: ❌ DEBUG LOST in JSON SERIALIZATION! finalEvent has debug but JSON doesn't`);
+          }
 
           await GenerationJobManager.emitDone(streamId, finalEvent);
           GenerationJobManager.completeJob(streamId, 'Request aborted');

@@ -544,6 +544,13 @@ export default function useEventHandlers({
             hasDebugInLastMessage: !!lastMessage?.debug,
             debugInfo: lastMessage?.debug ? JSON.stringify(lastMessage.debug) : 'NO DEBUG',
           });
+
+          // IMPORTANT: Alert if debug is missing when expected
+          if (!lastMessage?.debug && !lastMessage?.isCreatedByUser) {
+            console.warn('[finalHandler] ⚠️ WARNING: No debug info in response message. Debug info should be present if Debug Mode is enabled');
+            console.warn('[finalHandler] responseMessage keys:', Object.keys(responseMessage || {}).join(', '));
+            console.warn('[finalHandler] lastMessage keys:', Object.keys(lastMessage || {}).join(', '));
+          }
         }
 
         if (finalMessages.length > 0) {
