@@ -5,19 +5,7 @@ import { useAuthContext } from '~/hooks';
 import type { ContextType } from '~/common';
 import OpenSidebar from '~/components/Chat/Menus/OpenSidebar';
 import store from '~/store';
-import {
-  Button,
-  Input,
-  Checkbox,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-  Label,
-  Badge,
-  Separator,
-  Switch,
-} from '@librechat/client';
+import { Switch, Button, Input, Label } from '@librechat/client';
 
 type Tab = 'users' | 'payments' | 'settings';
 
@@ -227,21 +215,13 @@ export default function AdminPanel() {
 
       // Загружаем debug mode
       setDebugLoading(true);
-      try {
-        const debugRes = await fetch('/api/admin/settings/debug-mode', {
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        });
-        if (debugRes.ok) {
-          const debugData = await debugRes.json();
-          setDebugModelUsage(debugData.debugModelUsage ?? false);
-        } else {
-          // Если эндпоинт не существует или ошибка - просто используем default
-          setDebugModelUsage(false);
-        }
-      } catch (debugErr) {
-        // Silent fail для debug mode
-        setDebugModelUsage(false);
+      const debugRes = await fetch('/api/admin/settings/debug-mode', {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      });
+      if (debugRes.ok) {
+        const debugData = await debugRes.json();
+        setDebugModelUsage(debugData.debugModelUsage ?? false);
       }
       setDebugLoading(false);
     } catch (e: unknown) {
@@ -459,18 +439,16 @@ export default function AdminPanel() {
         {/* Header */}
         <div className="mb-6 flex items-start justify-between">
           <div>
-            <Button
-              variant="ghost"
-              size="sm"
+            <button
               onClick={() => {
                 clearAllConversations(true);
                 navigate('/c/new');
               }}
-              className="mb-1"
+              className="mb-1 block text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
             >
               ← Вернуться в чат
-            </Button>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            </button>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
               Панель администратора
             </h1>
             {data && (
@@ -479,30 +457,58 @@ export default function AdminPanel() {
               </p>
             )}
           </div>
-          <Button
+          <button
             onClick={tab === 'users' ? load : tab === 'payments' ? loadPayments : loadSettings}
             disabled={tab === 'users' ? loading : tab === 'payments' ? paymentsLoading : settingsLoading}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
             {(tab === 'users' ? loading : tab === 'payments' ? paymentsLoading : settingsLoading)
               ? 'Загрузка...'
               : 'Обновить'}
-          </Button>
+          </button>
         </div>
 
         {/* Tabs */}
-        <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)} className="mb-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="users">Пользователи</TabsTrigger>
-            <TabsTrigger value="payments">Платежи</TabsTrigger>
-            <TabsTrigger value="settings">Настройки</TabsTrigger>
-          </TabsList>
+        <div className="mb-6 flex gap-2 border-b border-gray-200 dark:border-gray-700">
+          <button
+            onClick={() => setTab('users')}
+            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              tab === 'users'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+            }`}
+          >
+            Пользователи
+          </button>
+          <button
+            onClick={() => setTab('payments')}
+            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              tab === 'payments'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+            }`}
+          >
+            Платежи
+          </button>
+          <button
+            onClick={() => setTab('settings')}
+            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              tab === 'settings'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+            }`}
+          >
+            Настройки
+          </button>
+        </div>
 
-          {/* ── USERS TAB ─────────────────────────────────────── */}
-          <TabsContent value="users">
+        {/* ── USERS TAB ─────────────────────────────────────── */}
+        {tab === 'users' && (
+          <>
+        {/* Error */}
         {error && (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/50 dark:text-red-400">
-            <p className="font-semibold">Ошибка</p>
-            <p>{error}</p>
+          <div className="mb-4 rounded-lg bg-red-100 p-3 text-sm text-red-700 dark:bg-red-900 dark:text-red-200">
+            {error}
           </div>
         )}
 
@@ -657,11 +663,12 @@ export default function AdminPanel() {
             )}
           </>
         )}
-            </>
-          </TabsContent>
+          </> // users tab close
+        )}
 
-          {/* ── PAYMENTS TAB ───────────────────────────────────── */}
-          <TabsContent value="payments">
+        {/* ── PAYMENTS TAB ───────────────────────────────────── */}
+        {tab === 'payments' && (
+          <>
             {/* Reconcile — ручная проверка платежа */}
             <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950">
               <p className="mb-2 text-sm font-semibold text-amber-800 dark:text-amber-300">
@@ -692,31 +699,30 @@ export default function AdminPanel() {
 
             {/* Filters */}
             <div className="mb-4 flex flex-wrap gap-3">
-              <input
+              <Input
                 type="text"
                 placeholder="Фильтр по email..."
                 value={paymentEmailFilter}
                 onChange={(e) => setPaymentEmailFilter(e.target.value)}
-                className="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                className="w-40"
               />
-              <input
+              <Input
                 type="date"
                 value={paymentFromFilter}
                 onChange={(e) => setPaymentFromFilter(e.target.value)}
-                className="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                className="w-40"
               />
-              <input
+              <Input
                 type="date"
                 value={paymentToFilter}
                 onChange={(e) => setPaymentToFilter(e.target.value)}
-                className="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                className="w-40"
               />
-              <button
+              <Button
                 onClick={loadPayments}
-                className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 transition-colors"
               >
                 Применить
-              </button>
+              </Button>
             </div>
 
             {paymentsError && (
@@ -792,279 +798,246 @@ export default function AdminPanel() {
             {paymentsLoading && (
               <div className="py-10 text-center text-sm text-gray-400">Загрузка платежей...</div>
             )}
-          </TabsContent>
+          </>
+        )}
 
-          {/* ── SETTINGS TAB ───────────────────────────────────── */}
-          <TabsContent value="settings">
+        {/* ── SETTINGS TAB ───────────────────────────────────── */}
+        {tab === 'settings' && (
+          <>
             {settingsError && (
-              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/50 dark:text-red-400">
-                <p className="font-semibold">Ошибка загрузки настроек</p>
-                <p>{settingsError}</p>
+              <div className="mb-4 rounded-lg bg-red-100 p-3 text-sm text-red-700 dark:bg-red-900 dark:text-red-200">
+                {settingsError}
               </div>
             )}
             {settingsLoading && (
-              <div className="py-10 text-center">
-                <div className="inline-flex items-center gap-2">
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"></div>
-                  <span className="text-sm text-gray-500">Загрузка настроек...</span>
-                </div>
-              </div>
+              <div className="py-10 text-center text-sm text-gray-400">Загрузка настроек...</div>
             )}
             {!settingsLoading && (
               <>
                 {/* ── Debug Mode ── */}
-                <div className="mb-8 rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
-                  <div className="mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Debug Mode</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Добавляет информацию о реальной модели и расходе токенов в чате
-                    </p>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-3">
-                          <Checkbox
-                            id="debugMode"
-                            checked={debugModelUsage}
-                            onCheckedChange={(checked) => {
-                              setDebugModelUsage(Boolean(checked));
-                              setDebugSaveMsg(null);
-                            }}
-                            disabled={debugSaving}
-                          />
-                          <Label htmlFor="debugMode" className="cursor-pointer">
-                            Показывать фактическую модель и расход токенов
-                          </Label>
-                        </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 ml-7">
-                          Debug информация отображается под каждым ответом модели
-                        </p>
+                <div className="mb-8 rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
+                  <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Debug Mode</h2>
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-3">
+                      <div className="flex cursor-pointer items-center gap-3">
+                        <Switch
+                          checked={debugModelUsage}
+                          onCheckedChange={(checked) => {
+                            setDebugModelUsage(checked);
+                            setDebugSaveMsg(null);
+                          }}
+                          disabled={debugSaving}
+                        />
+                        <Label className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                          Показывать фактическую модель и расход токенов
+                        </Label>
                       </div>
-                      <Button
-                        onClick={saveDebugMode}
-                        disabled={debugSaving}
-                        className="ml-4"
-                      >
-                        {debugSaving ? 'Сохранение...' : 'Сохранить'}
-                      </Button>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Добавляет debug информацию под каждым сообщением (только для тестирования)
+                      </p>
                     </div>
-                    {debugSaveMsg?.text && (
-                      <div className={`rounded-md p-3 text-sm ${debugSaveMsg.ok
-                        ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
-                        : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'}`}>
-                        {debugSaveMsg.text}
-                      </div>
-                    )}
+                    <Button
+                      onClick={saveDebugMode}
+                      disabled={debugSaving}
+                      className="ml-4"
+                    >
+                      {debugSaving ? 'Сохранение...' : 'Сохранить'}
+                    </Button>
                   </div>
+                  {debugSaveMsg?.text && (
+                    <div className={`mt-3 text-sm ${debugSaveMsg.ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {debugSaveMsg.text}
+                    </div>
+                  )}
                 </div>
 
                 {/* ── Тарифные планы ── */}
-                <div className="mb-8">
-                  <h2 className="mb-4 text-2xl font-bold">Тарифные планы</h2>
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Тарифные планы</h2>
+                <div className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {settingsPlans.map((plan) => {
                     const edit = planEdits[plan.planId];
                     if (!edit) return null;
                     const msg = planSaveMsg[plan.planId];
                     return (
-                      <div key={plan.planId} className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-                        <div className="mb-4">
-                          <div className="flex items-center justify-between">
-                            <h3 className="text-base font-semibold text-gray-900 dark:text-white">{plan.label}</h3>
-                            <div className="flex items-center gap-2">
-                              <Checkbox
-                                id={`plan-active-${plan.planId}`}
-                                checked={edit.isActive}
-                                onCheckedChange={(checked) =>
-                                  setPlanEdits((prev) => ({
-                                    ...prev,
-                                    [plan.planId]: { ...prev[plan.planId], isActive: Boolean(checked) },
-                                  }))
-                                }
-                              />
-                              <Label htmlFor={`plan-active-${plan.planId}`} className="text-xs cursor-pointer">
-                                Активен
-                              </Label>
-                            </div>
+                      <div
+                        key={plan.planId}
+                        className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
+                      >
+                        <div className="mb-3 flex items-center justify-between">
+                          <span className="text-base font-semibold text-gray-900 dark:text-white">{plan.label}</span>
+                          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                            <input
+                              type="checkbox"
+                              checked={edit.isActive}
+                              onChange={(e) =>
+                                setPlanEdits((prev) => ({
+                                  ...prev,
+                                  [plan.planId]: { ...prev[plan.planId], isActive: e.target.checked },
+                                }))
+                              }
+                              className="h-3.5 w-3.5 rounded"
+                            />
+                            Активен
+                          </label>
+                        </div>
+                        <div className="mb-2 grid grid-cols-2 gap-2">
+                          <div>
+                            <Label className="mb-0.5 block text-xs">Цена (₽)</Label>
+                            <Input
+                              type="number"
+                              value={edit.priceRub}
+                              onChange={(e) =>
+                                setPlanEdits((prev) => ({
+                                  ...prev,
+                                  [plan.planId]: { ...prev[plan.planId], priceRub: e.target.value },
+                                }))
+                              }
+                            />
+                          </div>
+                          <div>
+                            <Label className="mb-0.5 block text-xs">Кредитов</Label>
+                            <Input
+                              type="number"
+                              value={edit.tokenCreditsOnPurchase}
+                              onChange={(e) =>
+                                setPlanEdits((prev) => ({
+                                  ...prev,
+                                  [plan.planId]: { ...prev[plan.planId], tokenCreditsOnPurchase: e.target.value },
+                                }))
+                              }
+                            />
                           </div>
                         </div>
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-2">
-                              <Label htmlFor={`price-${plan.planId}`} className="text-xs">
-                                Цена (₽)
-                              </Label>
-                              <Input
-                                id={`price-${plan.planId}`}
-                                type="number"
-                                value={edit.priceRub}
-                                onChange={(e) =>
-                                  setPlanEdits((prev) => ({
-                                    ...prev,
-                                    [plan.planId]: { ...prev[plan.planId], priceRub: e.target.value },
-                                  }))
-                                }
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor={`credits-${plan.planId}`} className="text-xs">
-                                Кредитов
-                              </Label>
-                              <Input
-                                id={`credits-${plan.planId}`}
-                                type="number"
-                                value={edit.tokenCreditsOnPurchase}
-                                onChange={(e) =>
-                                  setPlanEdits((prev) => ({
-                                    ...prev,
-                                    [plan.planId]: { ...prev[plan.planId], tokenCreditsOnPurchase: e.target.value },
-                                  }))
-                                }
-                              />
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="text-xs">Разрешённые модели</Label>
-                            <div className="max-h-32 overflow-y-auto rounded border border-gray-300 bg-gray-50 p-3 dark:border-gray-600 dark:bg-gray-700">
-                              {availableModels.length === 0 ? (
-                                <p className="text-xs text-gray-500">Загрузка моделей...</p>
-                              ) : (
-                                <div className="space-y-2">
-                                  {availableModels.map((model) => (
-                                    <div key={model} className="flex items-center gap-2">
-                                      <Checkbox
-                                        id={`model-${plan.planId}-${model}`}
-                                        checked={edit.allowedModels.includes(model)}
-                                        onCheckedChange={(checked) => {
-                                          const updated = checked
-                                            ? [...edit.allowedModels, model]
-                                            : edit.allowedModels.filter((m) => m !== model);
-                                          setPlanEdits((prev) => ({
-                                            ...prev,
-                                            [plan.planId]: { ...prev[plan.planId], allowedModels: updated },
-                                          }));
-                                        }}
-                                      />
-                                      <Label htmlFor={`model-${plan.planId}-${model}`} className="text-xs cursor-pointer">
-                                        {model}
-                                      </Label>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between pt-2">
-                            <Button
-                              onClick={() => savePlan(plan.planId)}
-                              disabled={planSaving[plan.planId]}
-                              size="sm"
-                            >
-                              {planSaving[plan.planId] ? 'Сохранение...' : 'Сохранить'}
-                            </Button>
-                            {msg?.text && (
-                              <Badge className="text-xs">
-                                {msg.text}
-                              </Badge>
+                        <div className="mb-3">
+                          <label className="mb-1.5 block text-xs text-gray-500 dark:text-gray-400">
+                            Разрешённые модели (пусто = все модели)
+                          </label>
+                          <div className="max-h-32 space-y-1.5 overflow-y-auto rounded border border-gray-300 bg-gray-50 p-2 dark:border-gray-600 dark:bg-gray-700">
+                            {availableModels.length === 0 ? (
+                              <p className="text-xs text-gray-500 dark:text-gray-400">Загрузка моделей...</p>
+                            ) : (
+                              availableModels.map((model) => (
+                                <label key={model} className="flex cursor-pointer items-center gap-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 px-1 py-0.5 rounded">
+                                  <input
+                                    type="checkbox"
+                                    checked={edit.allowedModels.includes(model)}
+                                    onChange={(e) => {
+                                      const updated = e.target.checked
+                                        ? [...edit.allowedModels, model]
+                                        : edit.allowedModels.filter((m) => m !== model);
+                                      setPlanEdits((prev) => ({
+                                        ...prev,
+                                        [plan.planId]: { ...prev[plan.planId], allowedModels: updated },
+                                      }));
+                                    }}
+                                    className="h-3.5 w-3.5 rounded"
+                                  />
+                                  <span>{model}</span>
+                                </label>
+                              ))
                             )}
                           </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <Button
+                            onClick={() => savePlan(plan.planId)}
+                            disabled={planSaving[plan.planId]}
+                          >
+                            {planSaving[plan.planId] ? 'Сохранение...' : 'Сохранить'}
+                          </Button>
+                          {msg?.text && (
+                            <span
+                              className={`text-xs ${msg.ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                            >
+                              {msg.text}
+                            </span>
+                          )}
                         </div>
                       </div>
                     );
                   })}
-                  </div>
                 </div>
 
                 {/* ── Пакеты токенов ── */}
-                <div>
-                  <h2 className="mb-4 text-2xl font-bold">Пакеты токенов</h2>
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Пакеты токенов</h2>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {settingsPkgs.map((pkg) => {
                     const edit = pkgEdits[pkg.packageId];
                     if (!edit) return null;
                     const msg = pkgSaveMsg[pkg.packageId];
                     return (
-                      <div key={pkg.packageId} className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-                        <div className="mb-4">
-                          <div className="flex items-center justify-between">
-                            <h3 className="text-base font-semibold text-gray-900 dark:text-white">{pkg.label}</h3>
-                            <div className="flex items-center gap-2">
-                              <Checkbox
-                                id={`pkg-active-${pkg.packageId}`}
-                                checked={edit.isActive}
-                                onCheckedChange={(checked) =>
-                                  setPkgEdits((prev) => ({
-                                    ...prev,
-                                    [pkg.packageId]: { ...prev[pkg.packageId], isActive: Boolean(checked) },
-                                  }))
-                                }
-                              />
-                              <Label htmlFor={`pkg-active-${pkg.packageId}`} className="text-xs cursor-pointer">
-                                Активен
-                              </Label>
-                            </div>
+                      <div
+                        key={pkg.packageId}
+                        className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
+                      >
+                        <div className="mb-3 flex items-center justify-between">
+                          <span className="text-base font-semibold text-gray-900 dark:text-white">{pkg.label}</span>
+                          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                            <input
+                              type="checkbox"
+                              checked={edit.isActive}
+                              onChange={(e) =>
+                                setPkgEdits((prev) => ({
+                                  ...prev,
+                                  [pkg.packageId]: { ...prev[pkg.packageId], isActive: e.target.checked },
+                                }))
+                              }
+                              className="h-3.5 w-3.5 rounded"
+                            />
+                            Активен
+                          </label>
+                        </div>
+                        <div className="mb-3 grid grid-cols-2 gap-2">
+                          <div>
+                            <Label className="mb-0.5 block text-xs">Цена (₽)</Label>
+                            <Input
+                              type="number"
+                              value={edit.priceRub}
+                              onChange={(e) =>
+                                setPkgEdits((prev) => ({
+                                  ...prev,
+                                  [pkg.packageId]: { ...prev[pkg.packageId], priceRub: e.target.value },
+                                }))
+                              }
+                            />
+                          </div>
+                          <div>
+                            <Label className="mb-0.5 block text-xs">Кредитов</Label>
+                            <Input
+                              type="number"
+                              value={edit.tokenCredits}
+                              onChange={(e) =>
+                                setPkgEdits((prev) => ({
+                                  ...prev,
+                                  [pkg.packageId]: { ...prev[pkg.packageId], tokenCredits: e.target.value },
+                                }))
+                              }
+                            />
                           </div>
                         </div>
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-2">
-                              <Label htmlFor={`pkg-price-${pkg.packageId}`} className="text-xs">
-                                Цена (₽)
-                              </Label>
-                              <Input
-                                id={`pkg-price-${pkg.packageId}`}
-                                type="number"
-                                value={edit.priceRub}
-                                onChange={(e) =>
-                                  setPkgEdits((prev) => ({
-                                    ...prev,
-                                    [pkg.packageId]: { ...prev[pkg.packageId], priceRub: e.target.value },
-                                  }))
-                                }
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor={`pkg-credits-${pkg.packageId}`} className="text-xs">
-                                Кредитов
-                              </Label>
-                              <Input
-                                id={`pkg-credits-${pkg.packageId}`}
-                                type="number"
-                                value={edit.tokenCredits}
-                                onChange={(e) =>
-                                  setPkgEdits((prev) => ({
-                                    ...prev,
-                                    [pkg.packageId]: { ...prev[pkg.packageId], tokenCredits: e.target.value },
-                                  }))
-                                }
-                              />
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between pt-2">
-                            <Button
-                              onClick={() => savePkg(pkg.packageId)}
-                              disabled={pkgSaving[pkg.packageId]}
-                              size="sm"
+                        <div className="flex items-center justify-between">
+                          <Button
+                            onClick={() => savePkg(pkg.packageId)}
+                            disabled={pkgSaving[pkg.packageId]}
+                          >
+                            {pkgSaving[pkg.packageId] ? 'Сохранение...' : 'Сохранить'}
+                          </Button>
+                          {msg?.text && (
+                            <span
+                              className={`text-xs ${msg.ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
                             >
-                              {pkgSaving[pkg.packageId] ? 'Сохранение...' : 'Сохранить'}
-                            </Button>
-                            {msg?.text && (
-                              <Badge className="text-xs">
-                                {msg.text}
-                              </Badge>
-                            )}
-                          </div>
+                              {msg.text}
+                            </span>
+                          )}
                         </div>
                       </div>
                     );
                   })}
-                  </div>
                 </div>
               </>
             )}
-          </TabsContent>
-        </Tabs>
+          </>
+        )}
       </div>
     </div>
   );
@@ -1082,10 +1055,10 @@ function StatCard({
   suffix?: string;
 }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+    <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
       <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
       <p
-        className={`mt-2 text-2xl font-bold ${
+        className={`mt-1 text-2xl font-bold ${
           accent === 'blue'
             ? 'text-blue-600 dark:text-blue-400'
             : 'text-gray-900 dark:text-white'
