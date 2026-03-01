@@ -10,6 +10,9 @@ import {
   Input,
   Checkbox,
   Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
   Label,
   Badge,
   Separator,
@@ -493,12 +496,9 @@ export default function AdminPanel() {
             <TabsTrigger value="payments">Платежи</TabsTrigger>
             <TabsTrigger value="settings">Настройки</TabsTrigger>
           </TabsList>
-        </Tabs>
 
-        {/* ── USERS TAB ─────────────────────────────────────── */}
-        {tab === 'users' && (
-          <>
-        {/* Error */}
+          {/* ── USERS TAB ─────────────────────────────────────── */}
+          <TabsContent value="users">
         {error && (
           <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/50 dark:text-red-400">
             <p className="font-semibold">Ошибка</p>
@@ -657,12 +657,11 @@ export default function AdminPanel() {
             )}
           </>
         )}
-          </> // users tab close
-        )}
+            </>
+          </TabsContent>
 
-        {/* ── PAYMENTS TAB ───────────────────────────────────── */}
-        {tab === 'payments' && (
-          <>
+          {/* ── PAYMENTS TAB ───────────────────────────────────── */}
+          <TabsContent value="payments">
             {/* Reconcile — ручная проверка платежа */}
             <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950">
               <p className="mb-2 text-sm font-semibold text-amber-800 dark:text-amber-300">
@@ -793,12 +792,10 @@ export default function AdminPanel() {
             {paymentsLoading && (
               <div className="py-10 text-center text-sm text-gray-400">Загрузка платежей...</div>
             )}
-          </>
-        )}
+          </TabsContent>
 
-        {/* ── SETTINGS TAB ───────────────────────────────────── */}
-        {tab === 'settings' && (
-          <>
+          {/* ── SETTINGS TAB ───────────────────────────────────── */}
+          <TabsContent value="settings">
             {settingsError && (
               <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/50 dark:text-red-400">
                 <p className="font-semibold">Ошибка загрузки настроек</p>
@@ -1066,8 +1063,8 @@ export default function AdminPanel() {
                 </div>
               </>
             )}
-          </>
-        )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
