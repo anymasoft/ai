@@ -5,6 +5,7 @@ import { useAuthContext } from '~/hooks';
 import type { ContextType } from '~/common';
 import OpenSidebar from '~/components/Chat/Menus/OpenSidebar';
 import store from '~/store';
+import { Switch, Button, Input, Label } from '@librechat/client';
 
 type Tab = 'users' | 'payments' | 'settings';
 
@@ -698,31 +699,30 @@ export default function AdminPanel() {
 
             {/* Filters */}
             <div className="mb-4 flex flex-wrap gap-3">
-              <input
+              <Input
                 type="text"
                 placeholder="Фильтр по email..."
                 value={paymentEmailFilter}
                 onChange={(e) => setPaymentEmailFilter(e.target.value)}
-                className="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                className="w-40"
               />
-              <input
+              <Input
                 type="date"
                 value={paymentFromFilter}
                 onChange={(e) => setPaymentFromFilter(e.target.value)}
-                className="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                className="w-40"
               />
-              <input
+              <Input
                 type="date"
                 value={paymentToFilter}
                 onChange={(e) => setPaymentToFilter(e.target.value)}
-                className="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                className="w-40"
               />
-              <button
+              <Button
                 onClick={loadPayments}
-                className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 transition-colors"
               >
                 Применить
-              </button>
+              </Button>
             </div>
 
             {paymentsError && (
@@ -818,33 +818,31 @@ export default function AdminPanel() {
                 <div className="mb-8 rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
                   <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Debug Mode</h2>
                   <div className="flex items-center justify-between">
-                    <div className="flex flex-col gap-2">
-                      <label className="flex cursor-pointer items-center gap-3">
-                        <input
-                          type="checkbox"
+                    <div className="flex flex-col gap-3">
+                      <div className="flex cursor-pointer items-center gap-3">
+                        <Switch
                           checked={debugModelUsage}
-                          onChange={(e) => {
-                            setDebugModelUsage(e.target.checked);
+                          onCheckedChange={(checked) => {
+                            setDebugModelUsage(checked);
                             setDebugSaveMsg(null);
                           }}
                           disabled={debugSaving}
-                          className="h-4 w-4 rounded cursor-pointer disabled:opacity-50"
                         />
-                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                        <Label className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
                           Показывать фактическую модель и расход токенов
-                        </span>
-                      </label>
+                        </Label>
+                      </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
                         Добавляет debug информацию под каждым сообщением (только для тестирования)
                       </p>
                     </div>
-                    <button
+                    <Button
                       onClick={saveDebugMode}
                       disabled={debugSaving}
-                      className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50 transition-colors ml-4"
+                      className="ml-4"
                     >
                       {debugSaving ? 'Сохранение...' : 'Сохранить'}
-                    </button>
+                    </Button>
                   </div>
                   {debugSaveMsg?.text && (
                     <div className={`mt-3 text-sm ${debugSaveMsg.ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
@@ -884,8 +882,8 @@ export default function AdminPanel() {
                         </div>
                         <div className="mb-2 grid grid-cols-2 gap-2">
                           <div>
-                            <label className="mb-0.5 block text-xs text-gray-500 dark:text-gray-400">Цена (₽)</label>
-                            <input
+                            <Label className="mb-0.5 block text-xs">Цена (₽)</Label>
+                            <Input
                               type="number"
                               value={edit.priceRub}
                               onChange={(e) =>
@@ -894,12 +892,11 @@ export default function AdminPanel() {
                                   [plan.planId]: { ...prev[plan.planId], priceRub: e.target.value },
                                 }))
                               }
-                              className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                             />
                           </div>
                           <div>
-                            <label className="mb-0.5 block text-xs text-gray-500 dark:text-gray-400">Кредитов</label>
-                            <input
+                            <Label className="mb-0.5 block text-xs">Кредитов</Label>
+                            <Input
                               type="number"
                               value={edit.tokenCreditsOnPurchase}
                               onChange={(e) =>
@@ -908,7 +905,6 @@ export default function AdminPanel() {
                                   [plan.planId]: { ...prev[plan.planId], tokenCreditsOnPurchase: e.target.value },
                                 }))
                               }
-                              className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                             />
                           </div>
                         </div>
@@ -943,13 +939,12 @@ export default function AdminPanel() {
                           </div>
                         </div>
                         <div className="flex items-center justify-between">
-                          <button
+                          <Button
                             onClick={() => savePlan(plan.planId)}
                             disabled={planSaving[plan.planId]}
-                            className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
                           >
                             {planSaving[plan.planId] ? 'Сохранение...' : 'Сохранить'}
-                          </button>
+                          </Button>
                           {msg?.text && (
                             <span
                               className={`text-xs ${msg.ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
@@ -994,8 +989,8 @@ export default function AdminPanel() {
                         </div>
                         <div className="mb-3 grid grid-cols-2 gap-2">
                           <div>
-                            <label className="mb-0.5 block text-xs text-gray-500 dark:text-gray-400">Цена (₽)</label>
-                            <input
+                            <Label className="mb-0.5 block text-xs">Цена (₽)</Label>
+                            <Input
                               type="number"
                               value={edit.priceRub}
                               onChange={(e) =>
@@ -1004,12 +999,11 @@ export default function AdminPanel() {
                                   [pkg.packageId]: { ...prev[pkg.packageId], priceRub: e.target.value },
                                 }))
                               }
-                              className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                             />
                           </div>
                           <div>
-                            <label className="mb-0.5 block text-xs text-gray-500 dark:text-gray-400">Кредитов</label>
-                            <input
+                            <Label className="mb-0.5 block text-xs">Кредитов</Label>
+                            <Input
                               type="number"
                               value={edit.tokenCredits}
                               onChange={(e) =>
@@ -1018,18 +1012,16 @@ export default function AdminPanel() {
                                   [pkg.packageId]: { ...prev[pkg.packageId], tokenCredits: e.target.value },
                                 }))
                               }
-                              className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                             />
                           </div>
                         </div>
                         <div className="flex items-center justify-between">
-                          <button
+                          <Button
                             onClick={() => savePkg(pkg.packageId)}
                             disabled={pkgSaving[pkg.packageId]}
-                            className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
                           >
                             {pkgSaving[pkg.packageId] ? 'Сохранение...' : 'Сохранить'}
-                          </button>
+                          </Button>
                           {msg?.text && (
                             <span
                               className={`text-xs ${msg.ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
