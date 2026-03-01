@@ -48,13 +48,47 @@ const aiModelSchema = new mongoose.Schema(
 );
 
 /**
- * Дефолтные модели согласно требованиям сегментации тарифов.
+ * Дефолтные модели - полный каталог доступных моделей.
  * seedDefaults идемпотентен — не перезаписывает существующие записи.
+ *
+ * Доступные модели в каждом плане определяются в Plan.js (allowedModels).
+ * Селектор фильтрует эти модели по плану пользователя.
  */
 const SEED_DEFAULTS = [
-  { modelId: 'gpt-4o-mini',      provider: 'openai',    endpointKey: 'openAI',    displayName: 'GPT-4o Mini'       },
-  { modelId: 'claude-sonnet-4-6', provider: 'anthropic', endpointKey: 'anthropic', displayName: 'Claude Sonnet'     },
-  { modelId: 'deepseek-chat',     provider: 'deepseek',  endpointKey: 'deepseek',  displayName: 'DeepSeek V3'       },
+  // ═══════════════════════════════════════════════════════
+  // OpenAI Models
+  // ═══════════════════════════════════════════════════════
+  { modelId: 'gpt-4o',                    provider: 'openai',    endpointKey: 'openAI',    displayName: 'GPT-4o'                      },
+  { modelId: 'gpt-4o-mini',               provider: 'openai',    endpointKey: 'openAI',    displayName: 'GPT-4o Mini'                 },
+  { modelId: 'gpt-4.1-mini',              provider: 'openai',    endpointKey: 'openAI',    displayName: 'GPT-4.1 Mini'                },
+  { modelId: 'gpt-4-turbo',               provider: 'openai',    endpointKey: 'openAI',    displayName: 'GPT-4 Turbo'                 },
+  { modelId: 'gpt-4',                     provider: 'openai',    endpointKey: 'openAI',    displayName: 'GPT-4'                       },
+  { modelId: 'gpt-3.5-turbo',             provider: 'openai',    endpointKey: 'openAI',    displayName: 'GPT-3.5 Turbo'               },
+
+  // ═══════════════════════════════════════════════════════
+  // Anthropic Models
+  // ═══════════════════════════════════════════════════════
+  { modelId: 'claude-sonnet-4-6',         provider: 'anthropic', endpointKey: 'anthropic', displayName: 'Claude Sonnet 4.6'            },
+  { modelId: 'claude-opus-4-6',           provider: 'anthropic', endpointKey: 'anthropic', displayName: 'Claude Opus 4.6'              },
+  { modelId: 'claude-haiku-3-5',          provider: 'anthropic', endpointKey: 'anthropic', displayName: 'Claude Haiku 3.5'             },
+
+  // ═══════════════════════════════════════════════════════
+  // DeepSeek Models
+  // ═══════════════════════════════════════════════════════
+  { modelId: 'deepseek-chat',             provider: 'deepseek',  endpointKey: 'deepseek',  displayName: 'DeepSeek Chat'               },
+  { modelId: 'deepseek-reasoner',         provider: 'deepseek',  endpointKey: 'deepseek',  displayName: 'DeepSeek Reasoner'           },
+
+  // ═══════════════════════════════════════════════════════
+  // Google Models (если настроены)
+  // ═══════════════════════════════════════════════════════
+  { modelId: 'gemini-2.0-flash',          provider: 'google',    endpointKey: 'google',    displayName: 'Gemini 2.0 Flash'            },
+  { modelId: 'gemini-1.5-pro',            provider: 'google',    endpointKey: 'google',    displayName: 'Gemini 1.5 Pro'              },
+
+  // ═══════════════════════════════════════════════════════
+  // Groq Models (если настроены)
+  // ═══════════════════════════════════════════════════════
+  { modelId: 'llama-3.1-70b-versatile',   provider: 'groq',      endpointKey: 'groq',      displayName: 'Llama 3.1 70B Versatile'     },
+  { modelId: 'mixtral-8x7b-32768',        provider: 'groq',      endpointKey: 'groq',      displayName: 'Mixtral 8x7B'                },
 ];
 
 aiModelSchema.statics.seedDefaults = async function () {

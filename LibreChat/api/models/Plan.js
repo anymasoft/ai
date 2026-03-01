@@ -32,7 +32,11 @@ const SEED_DEFAULTS = [
     priceRub: 0,
     tokenCreditsOnPurchase: 0,
     durationDays: null,
-    allowedModels: ['gpt-4o-mini'],
+    // Free план: только экономичные модели
+    allowedModels: [
+      'gpt-4o-mini',      // OpenAI
+      'gpt-3.5-turbo',    // OpenAI (старая, дешёвая)
+    ],
     isActive: true,
   },
   {
@@ -41,7 +45,16 @@ const SEED_DEFAULTS = [
     priceRub: 3_990,
     tokenCreditsOnPurchase: 5_000_000,
     durationDays: 30,
-    allowedModels: ['gpt-4o-mini', 'claude-sonnet-4-6', 'deepseek-chat'],
+    // Pro план: основные модели
+    allowedModels: [
+      'gpt-4o',               // OpenAI (лучшая)
+      'gpt-4o-mini',          // OpenAI
+      'gpt-4.1-mini',         // OpenAI (альтернатива)
+      'gpt-4-turbo',          // OpenAI
+      'claude-sonnet-4-6',    // Anthropic
+      'claude-haiku-3.5',     // Anthropic (бюджетная)
+      'deepseek-chat',        // DeepSeek
+    ],
     isActive: true,
   },
   {
@@ -50,7 +63,24 @@ const SEED_DEFAULTS = [
     priceRub: 9_990,
     tokenCreditsOnPurchase: 12_000_000,
     durationDays: 30,
-    allowedModels: ['gpt-4o-mini', 'claude-sonnet-4-6', 'deepseek-chat'],
+    // Business план: ВСЕ модели
+    allowedModels: [
+      'gpt-4o',                       // OpenAI
+      'gpt-4o-mini',                  // OpenAI
+      'gpt-4.1-mini',                 // OpenAI
+      'gpt-4-turbo',                  // OpenAI
+      'gpt-4',                        // OpenAI
+      'gpt-3.5-turbo',                // OpenAI
+      'claude-sonnet-4-6',            // Anthropic
+      'claude-opus-4-6',              // Anthropic
+      'claude-haiku-3.5',             // Anthropic
+      'deepseek-chat',                // DeepSeek
+      'deepseek-reasoner',            // DeepSeek
+      'gemini-2.0-flash',             // Google
+      'gemini-1.5-pro',               // Google
+      'llama-3.1-70b-versatile',      // Groq
+      'mixtral-8x7b-32768',           // Groq
+    ],
     isActive: true,
   },
 ];
