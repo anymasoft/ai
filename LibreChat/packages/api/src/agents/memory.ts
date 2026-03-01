@@ -335,7 +335,7 @@ ${memory ?? 'No existing memories'}`;
 
     const defaultLLMConfig: LLMConfig = {
       provider: Providers.OPENAI,
-      model: 'gpt-4.1-mini',
+      model: 'gpt-4o-mini',
       temperature: 0.4,
       streaming: false,
       disableStreaming: true,

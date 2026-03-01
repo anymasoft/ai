@@ -52,12 +52,9 @@ const aiModelSchema = new mongoose.Schema(
  * seedDefaults идемпотентен — не перезаписывает существующие записи.
  */
 const SEED_DEFAULTS = [
-  { modelId: 'gpt-4.1-mini',      provider: 'openai',    endpointKey: 'openAI',    displayName: 'GPT-4.1 Mini'      },
-  { modelId: 'gpt-5.2',           provider: 'openai',    endpointKey: 'openAI',    displayName: 'GPT-5.2'           },
-  { modelId: 'claude-4-6-sonnet', provider: 'anthropic', endpointKey: 'anthropic', displayName: 'Claude 4.6 Sonnet' },
-  { modelId: 'claude-4-6-opus',   provider: 'anthropic', endpointKey: 'anthropic', displayName: 'Claude 4.6 Opus'   },
+  { modelId: 'gpt-4o-mini',      provider: 'openai',    endpointKey: 'openAI',    displayName: 'GPT-4o Mini'       },
+  { modelId: 'claude-sonnet-4-6', provider: 'anthropic', endpointKey: 'anthropic', displayName: 'Claude Sonnet'     },
   { modelId: 'deepseek-chat',     provider: 'deepseek',  endpointKey: 'deepseek',  displayName: 'DeepSeek V3'       },
-  { modelId: 'deepseek-reasoner', provider: 'deepseek',  endpointKey: 'deepseek',  displayName: 'DeepSeek R2'       },
 ];
 
 aiModelSchema.statics.seedDefaults = async function () {

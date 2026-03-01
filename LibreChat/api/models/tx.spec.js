@@ -93,11 +93,11 @@ describe('getValueKey', () => {
     expect(getValueKey('gpt-4.1-0125')).toBe('gpt-4.1');
   });
 
-  it('should return "gpt-4.1-mini" for model type of "gpt-4.1-mini"', () => {
-    expect(getValueKey('gpt-4.1-mini-preview')).toBe('gpt-4.1-mini');
-    expect(getValueKey('gpt-4.1-mini-2024-08-06')).toBe('gpt-4.1-mini');
-    expect(getValueKey('openai/gpt-4.1-mini')).toBe('gpt-4.1-mini');
-    expect(getValueKey('gpt-4.1-mini-0125')).toBe('gpt-4.1-mini');
+  it('should return "gpt-4o-mini" for model type of "gpt-4o-mini"', () => {
+    expect(getValueKey('gpt-4o-mini-preview')).toBe('gpt-4o-mini');
+    expect(getValueKey('gpt-4o-mini-2024-08-06')).toBe('gpt-4o-mini');
+    expect(getValueKey('openai/gpt-4o-mini')).toBe('gpt-4o-mini');
+    expect(getValueKey('gpt-4o-mini-0125')).toBe('gpt-4o-mini');
   });
 
   it('should return "gpt-4.1-nano" for model type of "gpt-4.1-nano"', () => {
@@ -385,19 +385,19 @@ describe('getMultiplier', () => {
     );
   });
 
-  it('should return the correct multiplier for gpt-4.1-mini', () => {
-    const valueKey = getValueKey('gpt-4.1-mini-2024-08-06');
+  it('should return the correct multiplier for gpt-4o-mini', () => {
+    const valueKey = getValueKey('gpt-4o-mini-2024-08-06');
     expect(getMultiplier({ valueKey, tokenType: 'prompt' })).toBe(
-      tokenValues['gpt-4.1-mini'].prompt,
+      tokenValues['gpt-4o-mini'].prompt,
     );
     expect(getMultiplier({ valueKey, tokenType: 'completion' })).toBe(
-      tokenValues['gpt-4.1-mini'].completion,
+      tokenValues['gpt-4o-mini'].completion,
     );
-    expect(getMultiplier({ model: 'gpt-4.1-mini-preview', tokenType: 'prompt' })).toBe(
-      tokenValues['gpt-4.1-mini'].prompt,
+    expect(getMultiplier({ model: 'gpt-4o-mini-preview', tokenType: 'prompt' })).toBe(
+      tokenValues['gpt-4o-mini'].prompt,
     );
-    expect(getMultiplier({ model: 'openai/gpt-4.1-mini', tokenType: 'completion' })).toBe(
-      tokenValues['gpt-4.1-mini'].completion,
+    expect(getMultiplier({ model: 'openai/gpt-4o-mini', tokenType: 'completion' })).toBe(
+      tokenValues['gpt-4o-mini'].completion,
     );
   });
 
