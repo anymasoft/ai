@@ -164,6 +164,18 @@ async function buildEndpointOption(req, res, next) {
     req.body = req.body || {}; // Express 5: ensure req.body exists
     req.body.endpointOption = await builder(endpoint, parsedBody, endpointType);
 
+    // ✅ ЛОГИРОВАНИЕ: Показываем финальную модель что будет отправлена
+    logger.info('[buildEndpointOption] FINAL REQUEST', {
+      endpoint,
+      endpointType,
+      finalModel: req.body.endpointOption?.model || parsedBody?.model,
+      fullEndpointOption: {
+        model: req.body.endpointOption?.model,
+        endpoint: req.body.endpointOption?.endpoint,
+        endpointType: req.body.endpointOption?.endpointType,
+      },
+    });
+
     if (req.body.files && !isAgents) {
       req.body.endpointOption.attachments = updateFilesUsage(req.body.files);
     }
