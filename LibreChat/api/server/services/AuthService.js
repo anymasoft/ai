@@ -231,6 +231,15 @@ const registerUser = async (user, additionalData = {}) => {
 
     const newUser = await createUser(newUserData, appConfig.balance, disableTTL, true);
     newUserId = newUser._id;
+
+    // Создаем запись подписки для нового пользователя с планом 'free'
+    const { Subscription } = require('~/db/models');
+    await Subscription.create({
+      userId: newUserId,
+      plan: 'free',
+      planStartedAt: new Date(),
+    });
+
     if (emailEnabled && !newUser.emailVerified) {
       await sendVerificationEmail({
         _id: newUserId,

@@ -81,6 +81,7 @@ router.get('/allowed', requireJwtAuth, async (req, res) => {
       ? allSpecs.filter(spec => allowedSpecs.includes(spec.name))
       : allSpecs;
 
+    logger.info(`[models/allowed] [userId: ${userId}] [plan: ${plan}]`);
     res.set('Cache-Control', 'private, max-age=60');
     res.json({
       // Совместимость: модели, организованные по endpoint
