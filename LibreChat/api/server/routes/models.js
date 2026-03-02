@@ -42,7 +42,18 @@ router.get('/allowed', requireJwtAuth, async (req, res) => {
     const userId = req.user?._id?.toString() || req.user?.id;
 
     // Определяем план пользователя
-    const subscription = await Subscription.findOne({ userId }).lean();
+    let subscription = await Subscription.findOne({ userId }).lean();
+
+    // Если подписки нет, создаем её с планом 'free'
+    if (!subscription) {
+      await Subscription.create({
+        userId,
+        plan: 'free',
+        planStartedAt: new Date(),
+      });
+      subscription = { plan: 'free' };
+    }
+
     let plan = subscription?.plan || 'free';
     if (plan !== 'free' && subscription?.planExpiresAt && new Date(subscription.planExpiresAt) < new Date()) {
       plan = 'free';
