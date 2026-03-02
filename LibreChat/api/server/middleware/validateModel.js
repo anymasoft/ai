@@ -11,7 +11,8 @@ const { logViolation } = require('~/cache');
  * @param {Function} next - The Express next function.
  */
 const validateModel = async (req, res, next) => {
-  const { model, endpoint } = req.body;
+  // ✅ ЗАЩИТА: Проверяем что req.body существует
+  const { model, endpoint } = req.body || {};
   if (!model) {
     return handleError(res, { text: 'Model not provided' });
   }

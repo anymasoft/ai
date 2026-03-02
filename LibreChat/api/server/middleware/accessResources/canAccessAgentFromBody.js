@@ -53,7 +53,8 @@ const canAccessAgentFromBody = (options) => {
 
   return async (req, res, next) => {
     try {
-      const { endpoint, agent_id } = req.body;
+      // ✅ ЗАЩИТА: Проверяем что req.body существует
+      const { endpoint, agent_id } = req.body || {};
       let agentId = agent_id;
 
       if (!isAgentsEndpoint(endpoint)) {

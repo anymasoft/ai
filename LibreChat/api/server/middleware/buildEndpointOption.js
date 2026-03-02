@@ -20,6 +20,18 @@ const buildFunction = {
 };
 
 async function buildEndpointOption(req, res, next) {
+  // ✅ ЗАЩИТА: Проверяем что req.body существует и содержит endpoint
+  // Это нужно потому что middleware вызывается для всех методов (GET, POST, etc)
+  if (!req.body || !req.body.endpoint) {
+    logger.debug('[buildEndpointOption] Пропуск: req.body или endpoint не определены', {
+      hasBody: !!req.body,
+      hasEndpoint: !!req.body?.endpoint,
+      method: req.method,
+      path: req.path,
+    });
+    return next(); // Пропуск для GET, HEAD и других запросов без body
+  }
+
   const { endpoint, endpointType } = req.body;
 
   let endpointsConfig;

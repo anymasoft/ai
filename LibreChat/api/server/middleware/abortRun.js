@@ -11,7 +11,18 @@ const three_minutes = 1000 * 60 * 3;
 
 async function abortRun(req, res) {
   res.setHeader('Content-Type', 'application/json');
-  const { abortKey, endpoint } = req.body;
+
+  // ✅ ЗАЩИТА: Проверяем что req.body существует и содержит обязательные поля
+  const { abortKey, endpoint } = req.body || {};
+
+  if (!abortKey) {
+    logger.warn('[abortRun] Missing required field: abortKey', {
+      hasBody: !!req.body,
+      method: req.method,
+    });
+    return res.status(400).json({ error: 'Missing required field: abortKey' });
+  }
+
   const [conversationId, latestMessageId] = abortKey.split(':');
   const conversation = await getConvo(req.user.id, conversationId);
 

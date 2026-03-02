@@ -71,7 +71,17 @@ async function spendCollectedUsage({
  * Since streamId === conversationId, we can directly abort by conversationId.
  */
 async function abortMessage(req, res) {
-  const { abortKey, endpoint } = req.body;
+  // ✅ ЗАЩИТА: Проверяем что req.body существует
+  const { abortKey, endpoint } = req.body || {};
+
+  // ✅ Валидация: abortKey или endpoint не должны быть пусты
+  if (!abortKey && !endpoint) {
+    logger.warn('[abortMessage] Missing required fields: abortKey or endpoint', {
+      hasBody: !!req.body,
+      method: req.method,
+    });
+    return res.status(400).json({ error: 'Missing required fields: abortKey or endpoint' });
+  }
 
   if (isAssistantsEndpoint(endpoint)) {
     return await abortRun(req, res);
