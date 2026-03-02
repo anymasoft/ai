@@ -29,19 +29,14 @@ function AccountSettings() {
   const accountSettingsButtonRef = useRef<HTMLButtonElement>(null);
 
   const { data: planData } = useQuery({
-    queryKey: ['allowedModels', token],
-    queryFn: async (): Promise<{ models: unknown[]; plan: string }> => {
-      const res = await fetch('/api/models/allowed', {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+    queryKey: ['allowedModels'],
+    queryFn: async () => {
+      const res = await fetch('/api/models/allowed', { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch allowed models');
-      const data = await res.json();
-      return data;
+      return res.json();
     },
     staleTime: 60_000,
     gcTime: 60_000,
-    enabled: !!token && isAuthenticated,
   });
   const planBadge = PLAN_BADGE[planData.plan];
 
