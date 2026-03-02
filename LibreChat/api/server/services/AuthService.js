@@ -30,6 +30,7 @@ const {
   deleteUserById,
   generateRefreshToken,
 } = require('~/models');
+const { Subscription } = require('~/db/models');
 const { registerSchema } = require('~/strategies/validators');
 const { getAppConfig } = require('~/server/services/Config');
 const { sendEmail } = require('~/server/utils');
@@ -233,7 +234,6 @@ const registerUser = async (user, additionalData = {}) => {
     newUserId = newUser._id;
 
     // Создаем запись подписки для нового пользователя с планом 'free'
-    const { Subscription } = require('~/db/models');
     await Subscription.create({
       userId: newUserId,
       plan: 'free',
