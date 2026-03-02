@@ -275,6 +275,21 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
       model,
       modelSpec: spec.name,
     });
+    // CRITICAL: Also update conversation through onSelectEndpoint
+    // to ensure conversation.model is set, not just conversation.spec
+    if (spec.preset.endpoint) {
+      const updatePayload: Record<string, any> = {};
+      if (isAgentsEndpoint(spec.preset.endpoint)) {
+        updatePayload.agent_id = spec.preset.agent_id ?? '';
+        updatePayload.model = '';
+      } else if (isAssistantsEndpoint(spec.preset.endpoint)) {
+        updatePayload.assistant_id = spec.preset.assistant_id ?? '';
+        updatePayload.model = spec.preset.model ?? '';
+      } else {
+        updatePayload.model = model;
+      }
+      onSelectEndpoint?.(spec.preset.endpoint, updatePayload);
+    }
   };
 
   const handleSelectEndpoint = (endpoint: Endpoint) => {
@@ -287,6 +302,9 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
         model: '',
         modelSpec: '',
       });
+      // CRITICAL: Clear spec from conversation
+      // We only use model for model selection, never spec
+      return;
     }
   };
 
