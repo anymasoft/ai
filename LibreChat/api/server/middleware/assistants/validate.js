@@ -10,7 +10,8 @@ const { handleAbortError } = require('~/server/middleware/abortMiddleware');
  * @returns {Promise<void>}
  */
 const validateAssistant = async (req, res, next) => {
-  const { endpoint, conversationId, assistant_id, messageId } = req.body;
+  // ✅ ЗАЩИТА: Проверяем что req.body существует
+  const { endpoint, conversationId, assistant_id, messageId } = req.body || {};
 
   const appConfig = req.config;
   /** @type {Partial<TAssistantEndpoint>} */
