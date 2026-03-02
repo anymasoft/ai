@@ -1,7 +1,7 @@
 const { Balance, Subscription } = require('~/db/models');
 
 async function balanceController(req, res) {
-  const userId = req.user.id;
+  const userId = req.user._id || req.user.id;
 
   const [balanceData, subscription] = await Promise.all([
     Balance.findOne(

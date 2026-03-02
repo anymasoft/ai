@@ -1,4 +1,5 @@
 const express = require('express');
+const { logger } = require('@librechat/data-schemas');
 const {
   resetPasswordRequestController,
   resetPasswordController,
@@ -73,12 +74,30 @@ router.get('/graph-token', middleware.requireJwtAuth, graphTokenController);
  */
 router.get('/plan', middleware.requireJwtAuth, async (req, res) => {
   try {
-    const userId = req.user?._id?.toString() || req.user?.id;
+    const userId = req.user?._id || req.user?.id; // ObjectId для поиска
+    const userIdString = userId?.toString(); // Строка для логирования
+
     if (!userId) {
       return res.status(401).json({ error: 'User not found' });
     }
 
-    const subscription = await Subscription.findOne({ userId }).lean();
+    let subscription = await Subscription.findOne({ userId }).lean();
+
+    // Если подписки нет, создаем её с планом 'free'
+    if (!subscription) {
+      try {
+        await Subscription.create({
+          userId,
+          plan: 'free',
+        });
+        subscription = { plan: 'free' };
+        logger.info(`[auth/plan] Created subscription for userId: ${userIdString}`);
+      } catch (subErr) {
+        logger.error(`[auth/plan] Failed to create subscription for userId: ${userIdString}`, subErr);
+        subscription = { plan: 'free' };
+      }
+    }
+
     let plan = subscription?.plan || 'free';
     let planExpiresAt = subscription?.planExpiresAt || null;
 
@@ -92,12 +111,14 @@ router.get('/plan', middleware.requireJwtAuth, async (req, res) => {
     await Plan.seedDefaults();
     const planConfig = await Plan.findOne({ planId: plan }).lean();
 
+    logger.info(`[auth/plan] [userId: ${userIdString}] [plan: ${plan}]`);
     res.json({
       plan,
       planExpiresAt,
       allowedModels: planConfig?.allowedModels || [],
     });
   } catch (err) {
+    logger.error('[auth/plan]', err);
     res.status(500).json({ error: 'Failed to get user plan' });
   }
 });

@@ -39,10 +39,27 @@ router.get('/all', async (req, res) => {
  */
 router.get('/allowed', requireJwtAuth, async (req, res) => {
   try {
-    const userId = req.user?._id?.toString() || req.user?.id;
+    const userId = req.user?._id || req.user?.id; // ObjectId для поиска
+    const userIdString = userId?.toString(); // Строка для логирования
 
     // Определяем план пользователя
-    const subscription = await Subscription.findOne({ userId }).lean();
+    let subscription = await Subscription.findOne({ userId }).lean();
+
+    // Если подписки нет, создаем её с планом 'free'
+    if (!subscription) {
+      try {
+        await Subscription.create({
+          userId, // Передаем ObjectId
+          plan: 'free',
+        });
+        subscription = { plan: 'free' };
+        logger.info(`[models/allowed] Created subscription for userId: ${userIdString}`);
+      } catch (subErr) {
+        logger.error(`[models/allowed] Failed to create subscription for userId: ${userIdString}`, subErr);
+        subscription = { plan: 'free' };
+      }
+    }
+
     let plan = subscription?.plan || 'free';
     if (plan !== 'free' && subscription?.planExpiresAt && new Date(subscription.planExpiresAt) < new Date()) {
       plan = 'free';
@@ -81,7 +98,7 @@ router.get('/allowed', requireJwtAuth, async (req, res) => {
       ? allSpecs.filter(spec => allowedSpecs.includes(spec.name))
       : allSpecs;
 
-    logger.info(`[models/allowed] [userId: ${userId}] [plan: ${plan}]`);
+    logger.info(`[models/allowed] [userId: ${userIdString}] [plan: ${plan}]`);
     res.set('Cache-Control', 'private, max-age=60');
     res.json({
       // Совместимость: модели, организованные по endpoint
