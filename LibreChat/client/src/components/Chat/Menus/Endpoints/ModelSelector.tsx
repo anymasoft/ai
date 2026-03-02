@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { TooltipAnchor } from '@librechat/client';
 import { getConfigDefaults } from 'librechat-data-provider';
 import type { ModelSelectorProps } from '~/common';
@@ -9,7 +9,7 @@ import {
   renderCustomGroups,
 } from './components';
 import { ModelSelectorProvider, useModelSelectorContext } from './ModelSelectorContext';
-import { ModelSelectorChatProvider } from './ModelSelectorChatContext';
+import { ModelSelectorChatProvider, useModelSelectorChatContext } from './ModelSelectorChatContext';
 import { getSelectedIcon, getDisplayValue } from './utils';
 import { CustomMenu as Menu } from './CustomMenu';
 import DialogManager from './DialogManager';
@@ -17,6 +17,7 @@ import { useLocalize } from '~/hooks';
 
 function ModelSelectorContent() {
   const localize = useLocalize();
+  const { conversation, newConversation } = useModelSelectorChatContext();
 
   const {
     // LibreChat
@@ -59,6 +60,42 @@ function ModelSelectorContent() {
     [localize, agentsMap, modelSpecs, selectedValues, mappedEndpoints],
   );
 
+  // CRITICAL FIX: Handle model selection and update conversation.model directly
+  const handleModelChange = useCallback(
+    (values: Record<string, any>) => {
+      const selectedModel = values.model || '';
+      const selectedEndpoint = values.endpoint || '';
+
+      console.log('[ModelSelector] MODEL SELECTION CHANGE:', {
+        selectedModel,
+        selectedEndpoint,
+        previousModel: conversation?.model,
+      });
+
+      // Update selectedValues in context
+      setSelectedValues({
+        endpoint: selectedEndpoint,
+        model: selectedModel,
+        modelSpec: values.modelSpec || '',
+      });
+
+      // CRITICAL: Also update conversation.model directly
+      if (selectedModel && selectedEndpoint) {
+        console.log('[ModelSelector] UPDATING conversation.model to:', selectedModel);
+        newConversation({
+          template: {
+            ...conversation,
+            endpoint: selectedEndpoint,
+            model: selectedModel,
+          },
+          buildDefault: false,
+          keepLatestMessage: true,
+        });
+      }
+    },
+    [conversation, selectedValues, setSelectedValues, newConversation],
+  );
+
   const trigger = (
     <TooltipAnchor
       aria-label={localize('com_ui_select_model')}
@@ -83,13 +120,7 @@ function ModelSelectorContent() {
     <div className="relative flex w-full max-w-md flex-col items-center gap-2">
       <Menu
         values={selectedValues}
-        onValuesChange={(values: Record<string, any>) => {
-          setSelectedValues({
-            endpoint: values.endpoint || '',
-            model: values.model || '',
-            modelSpec: values.modelSpec || '',
-          });
-        }}
+        onValuesChange={handleModelChange}
         onSearch={(value) => setSearchValue(value)}
         combobox={<input id="model-search" placeholder=" " />}
         comboboxLabel={localize('com_endpoint_search_models')}
