@@ -234,11 +234,16 @@ const registerUser = async (user, additionalData = {}) => {
     newUserId = newUser._id;
 
     // Создаем запись подписки для нового пользователя с планом 'free'
-    await Subscription.create({
-      userId: newUserId,
-      plan: 'free',
-      planStartedAt: new Date(),
-    });
+    try {
+      await Subscription.create({
+        userId: newUserId, // ObjectId
+        plan: 'free',
+      });
+      logger.info(`[registerUser] Subscription created for userId: ${newUserId}`);
+    } catch (subErr) {
+      logger.error(`[registerUser] Failed to create subscription for userId: ${newUserId}`, subErr);
+      // Не удаляем пользователя - подписка будет создана при первом запросе
+    }
 
     if (emailEnabled && !newUser.emailVerified) {
       await sendVerificationEmail({
