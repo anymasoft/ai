@@ -65,6 +65,16 @@ async function buildEndpointOption(req, res, next) {
   }
 
   const appConfig = req.config;
+
+  // ✅ ЗАЩИТА: Проверяем что req.config (appConfig) существует
+  if (!appConfig) {
+    logger.error('[buildEndpointOption] CRITICAL: req.config is undefined!', {
+      hasConfig: !!appConfig,
+      middleware: 'configMiddleware must be called BEFORE buildEndpointOption',
+    });
+    return handleError(res, { text: 'Server configuration error' });
+  }
+
   if (appConfig.modelSpecs?.list && appConfig.modelSpecs?.enforce) {
     /** @type {{ list: TModelSpec[] }}*/
     const { list } = appConfig.modelSpecs;

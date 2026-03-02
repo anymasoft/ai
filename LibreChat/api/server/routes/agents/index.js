@@ -52,6 +52,8 @@ router.use('/v1', openai);
 
 router.use(requireJwtAuth);
 router.use(ensureBalance);
+// ✅ configMiddleware ДОЛЖЕН быть ДО buildEndpointOption, потому что buildEndpointOption требует req.config
+router.use(configMiddleware);
 // buildEndpointOption ДОЛЖЕН быть ДО checkSubscription, так как checkSubscription
 // требует req.builtEndpointOption.model для проверки доступа к модели по плану
 router.use(buildEndpointOption);
