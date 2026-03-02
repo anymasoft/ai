@@ -1,6 +1,7 @@
 import { useState, memo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as Select from '@ariakit/react/select';
+import { useQuery } from '@tanstack/react-query';
 import { FileText, LogOut, CreditCard, ShieldCheck } from 'lucide-react';
 import { LinkIcon, GearIcon, DropdownMenuSeparator, Avatar } from '@librechat/client';
 import { MyFilesModal } from '~/components/Chat/Input/Files/MyFilesModal';
@@ -21,13 +22,28 @@ function AccountSettings() {
   const { user, token, isAuthenticated, logout } = useAuthContext();
   const { data: startupConfig } = useGetStartupConfig();
   const balanceQuery = useGetUserBalance({
-    enabled: !!isAuthenticated,
+    enabled: !!isAuthenticated && startupConfig?.balance?.enabled,
   });
   const [showSettings, setShowSettings] = useState(false);
   const [showFiles, setShowFiles] = useState(false);
   const accountSettingsButtonRef = useRef<HTMLButtonElement>(null);
 
-  const planBadge = balanceQuery.data?.plan ? PLAN_BADGE[balanceQuery.data.plan] ?? null : null;
+  const { data: planData } = useQuery({
+    queryKey: ['allowedModels', token],
+    queryFn: async (): Promise<{ models: unknown[]; plan: string } | null> => {
+      if (!token) return null;
+      const res = await fetch('/api/models/allowed', {
+        credentials: 'include',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    staleTime: 60_000,
+    gcTime: 60_000,
+    enabled: !!token,
+  });
+  const planBadge = PLAN_BADGE[planData?.plan ?? ''] ?? null;
 
   return (
     <Select.SelectProvider>
@@ -63,16 +79,40 @@ function AccountSettings() {
         {planBadge && (
           <>
             <div className="ml-3 mr-2 flex items-center justify-between gap-2 py-2">
-              <span className="text-token-text-secondary text-sm">
-                {localize('com_nav_balance')}:{' '}
-                {balanceQuery.data?.tokenCredits != null
-                  ? new Intl.NumberFormat().format(Math.round(balanceQuery.data.tokenCredits))
-                  : '0'}
-              </span>
+              <span className="text-text-secondary text-sm">{localize('com_nav_plan')}</span>
               <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
                 {planBadge.label}
               </span>
             </div>
+            <DropdownMenuSeparator />
+          </>
+        )}
+        {startupConfig?.balance?.enabled === true && balanceQuery.data != null && (
+          <>
+            <Select.SelectItem
+              value=""
+              onClick={() => navigate('/pricing')}
+              className="select-item text-sm text-blue-600 dark:text-blue-400"
+            >
+              <CreditCard className="icon-md" aria-hidden="true" />
+              <span>
+                {localize('com_nav_balance')}:{' '}
+                {new Intl.NumberFormat().format(Math.round(balanceQuery.data.tokenCredits))}
+              </span>
+            </Select.SelectItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
+        {(startupConfig?.balance?.enabled !== true || balanceQuery.data == null) && (
+          <>
+            <Select.SelectItem
+              value=""
+              onClick={() => navigate('/pricing')}
+              className="select-item text-sm text-blue-600 dark:text-blue-400"
+            >
+              <CreditCard className="icon-md" aria-hidden="true" />
+              <span>{user?.role === 'ADMIN' ? 'Тарифы и баланс' : 'Купить Pro'}</span>
+            </Select.SelectItem>
             <DropdownMenuSeparator />
           </>
         )}
