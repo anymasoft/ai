@@ -195,6 +195,13 @@ export default function useChatFunctions({
       },
       convo,
     ) as TEndpointOption;
+
+    // FORCE SINGLE SOURCE OF TRUTH: Override with conversation.model (from UI selector)
+    // This ensures we NEVER use parseCompactConvo's model or preset.model
+    if (endpoint !== EModelEndpoint.agents && endpoint !== EModelEndpoint.assistants) {
+      endpointOption.model = conversation?.model ?? '';
+    }
+
     if (endpoint !== EModelEndpoint.agents) {
       endpointOption.key = getExpiry();
       endpointOption.thread_id = thread_id;
@@ -257,7 +264,8 @@ export default function useChatFunctions({
       conversationId,
       unfinished: false,
       isCreatedByUser: false,
-      model: convo?.model,
+      // SINGLE SOURCE OF TRUTH: conversation.model (from UI selector)
+      model: conversation?.model ?? '',
       error: false,
       iconURL,
     };
@@ -341,6 +349,13 @@ export default function useChatFunctions({
     if (index === 0 && setLatestMessage) {
       setLatestMessage(initialResponse);
     }
+
+    // [MODEL SANITY CHECK] Verify single source of truth
+    logger.log('[MODEL TRUTH] Frontend sends to backend:', {
+      selectedInUI: conversation?.model,
+      inEndpointOption: endpointOption.model,
+      inPayload: submission.endpointOption?.model,
+    });
 
     setSubmission(submission);
     logger.dir('message_stream', submission, { depth: null });

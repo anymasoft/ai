@@ -1,4 +1,4 @@
-import { useGetModelsQuery } from 'librechat-data-provider/react-query';
+import { useState, useEffect } from 'react';
 import type { TConversation } from 'librechat-data-provider';
 import type { TSetOption } from '~/common';
 import { multiChatOptions } from './options';
@@ -22,14 +22,32 @@ export default function ModelSelect({
   popover = false,
   showAbove = true,
 }: TSelectProps) {
-  const modelsQuery = useGetModelsQuery();
+  // SINGLE SOURCE: Load ONLY allowed models for current user
+  const [models, setModels] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchAllowedModels = async () => {
+      try {
+        const res = await fetch('/api/models/allowed', { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to fetch allowed models');
+        const data = await res.json();
+        setModels(data[conversation?.endpoint] ?? []);
+      } catch (error) {
+        console.error('[ModelSelect] Error fetching allowed models:', error);
+        setModels([]);
+      }
+    };
+
+    if (conversation?.endpoint) {
+      fetchAllowedModels();
+    }
+  }, [conversation?.endpoint]);
 
   if (!conversation?.endpoint) {
     return null;
   }
 
   const { endpoint: _endpoint, endpointType } = conversation;
-  const models = modelsQuery.data?.[_endpoint] ?? [];
   const endpoint = endpointType ?? _endpoint;
 
   const OptionComponent = multiChatOptions[endpoint];
