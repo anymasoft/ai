@@ -56,6 +56,12 @@ async function checkSubscription(req, res, next) {
     const userId = req.user?._id || req.user?.id; // ObjectId для поиска
     if (!userId) return next();
 
+    // ✅ ЗАЩИТА: checkSubscription должна работать ТОЛЬКО для POST/PUT/PATCH запросов
+    // которые требуют model. GET/HEAD/DELETE могут не содержать model и должны пропускаться.
+    if (!['POST', 'PUT', 'PATCH'].includes(req.method)) {
+      return next();
+    }
+
     const subscription = await Subscription.findOne({ userId }).lean();
 
     let plan = subscription?.plan || 'free';
@@ -78,7 +84,6 @@ async function checkSubscription(req, res, next) {
     const modelId = req.builtEndpointOption?.model;
 
     // Если buildEndpointOption не был вызван или результата нет — это критичная ошибка!
-    // checkSubscription ДОЛЖЕН быть ПОСЛЕ buildEndpointOption в middleware цепочке
     if (!modelId) {
       const { logger } = require('@librechat/data-schemas');
       logger.error(
