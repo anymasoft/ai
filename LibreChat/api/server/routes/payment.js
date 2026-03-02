@@ -205,7 +205,7 @@ router.post('/create', requireJwtAuth, async (req, res) => {
   try {
     await ensureSeeded();
     const { packageId } = req.body;
-    const userId = req.user._id.toString();
+    const userId = req.user._id; // ObjectId для поиска в БД
 
     const tokenPkg = await TokenPackage.findOne({ packageId, isActive: true }).lean();
     const planDoc  = tokenPkg ? null : await Plan.findOne({ planId: packageId, isActive: true }).lean();
@@ -276,7 +276,7 @@ router.post('/create', requireJwtAuth, async (req, res) => {
  */
 router.get('/check', requireJwtAuth, async (req, res) => {
   try {
-    const userId = req.user._id.toString();
+    const userId = req.user._id; // ObjectId для поиска в БД
     const { id: paymentId } = req.query;
     const pending = paymentId
       ? await Payment.findOne({ externalPaymentId: paymentId, userId, status: 'pending' }).lean()
@@ -452,7 +452,7 @@ router.post('/webhook', express.json(), async (req, res) => {
  */
 router.get('/history', requireJwtAuth, async (req, res) => {
   try {
-    const userId = req.user._id.toString();
+    const userId = req.user._id; // ObjectId для поиска в БД
     const limit = Math.min(100, parseInt(req.query.limit) || 20);
     const offset = parseInt(req.query.offset) || 0;
     const payments = await Payment.find({ userId }).sort({ createdAt: -1 }).skip(offset).limit(limit).lean();

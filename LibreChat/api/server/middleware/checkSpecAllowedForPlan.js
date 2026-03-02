@@ -49,7 +49,7 @@ function isSpecAllowed(planConfig, specName) {
 
 async function checkSpecAllowedForPlan(req, res, next) {
   try {
-    const userId = req.user?._id?.toString() || req.user?.id;
+    const userId = req.user?._id || req.user?.id; // ObjectId для поиска
     if (!userId) return next();
 
     const subscription = await Subscription.findOne({ userId }).lean();
