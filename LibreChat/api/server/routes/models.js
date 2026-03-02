@@ -28,9 +28,13 @@ router.get('/all', async (req, res) => {
 
 /**
  * GET /api/models/allowed
- * Список моделей, разрешённых текущему пользователю по его тарифному плану.
+ * Список моделей и spec, разрешённых текущему пользователю по его тарифному плану.
  * Организован по endpointKey для фронтенда.
- * Источник: коллекция Plan (allowedModels) + коллекция AiModel.
+ *
+ * Источники:
+ * - allowedModels: коллекция Plan + коллекция AiModel (для совместимости)
+ * - allowedSpecs: коллекция Plan + librechat.yaml (для spec-driven архитектуры)
+ *
  * Кэш на стороне клиента: не более 60 секунд.
  */
 router.get('/allowed', requireJwtAuth, async (req, res) => {
@@ -45,9 +49,11 @@ router.get('/allowed', requireJwtAuth, async (req, res) => {
     }
 
     await Plan.seedDefaults();
-    const planDoc = await Plan.findOne({ planId: plan }, 'allowedModels').lean();
+    const planDoc = await Plan.findOne({ planId: plan }, 'allowedModels allowedSpecs').lean();
     const allowedModelIds = planDoc?.allowedModels ?? [];
+    const allowedSpecs = planDoc?.allowedSpecs ?? [];
 
+    // ===== МОДЕЛИ (для совместимости) =====
     await AiModel.seedDefaults();
     const query = allowedModelIds.length > 0
       ? { modelId: { $in: allowedModelIds }, isActive: true }
@@ -67,10 +73,30 @@ router.get('/allowed', requireJwtAuth, async (req, res) => {
       modelsByEndpoint[model.endpointKey].push(model.modelId);
     });
 
+    // ===== SPEC (для spec-driven архитектуры) =====
+    // Фильтруем modelSpecs из конфига по allowedSpecs плана
+    const appConfig = req.config;
+    const allSpecs = appConfig.modelSpecs?.list ?? [];
+    const filteredSpecs = allowedSpecs.length > 0
+      ? allSpecs.filter(spec => allowedSpecs.includes(spec.name))
+      : allSpecs;
+
     res.set('Cache-Control', 'private, max-age=60');
     res.json({
+      // Совместимость: модели, организованные по endpoint
       ...modelsByEndpoint,
-      models, // Also return flat array for ModelSelectorContext filtering
+      models, // Плоский массив моделей
+
+      // Новое: spec для spec-driven архитектуры
+      modelSpecs: {
+        enforce: appConfig.modelSpecs?.enforce ?? false,
+        list: filteredSpecs,
+      },
+
+      // Debug информация
+      plan,
+      allowedSpecs,
+      allowedModelIds,
     });
   } catch (err) {
     logger.error('[models/allowed]', err);

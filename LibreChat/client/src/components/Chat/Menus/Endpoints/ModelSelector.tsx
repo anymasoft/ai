@@ -61,37 +61,39 @@ function ModelSelectorContent() {
     [localize, agentsMap, modelSpecs, selectedValues, mappedEndpoints],
   );
 
-  // ⭐ ЖЁСТКОЕ ИСПРАВЛЕНИЕ: ТОЛЬКО setConversation, БЕЗ newConversation
+  // ===== SPEC-FIRST АРХИТЕКТУРА =====
+  // Использовать ТОЛЬКО spec.name как источник истины
+  // Не обновлять conversation.model, только conversation.spec
   const handleModelChange = useCallback(
     (values: Record<string, any>) => {
-      const selectedModel = values.model || '';
+      const selectedSpec = values.modelSpec || '';
 
-      console.log('[ModelSelector] 🔴 MODEL SELECTION:', {
-        selectedModel,
+      console.log('[ModelSelector] ✅ SPEC-FIRST SELECTION:', {
+        selectedSpec,
+        previousSpec: conversation?.spec,
         previousModel: conversation?.model,
-        endpoint: conversation?.endpoint,
       });
 
-      // Update selectedValues in context (only for UI display)
+      // Update selectedValues in context (for UI display)
       setSelectedValues({
-        endpoint: values.endpoint || '',
-        model: selectedModel,
-        modelSpec: values.modelSpec || '',
+        endpoint: '',  // ← не используется в spec-first архитектуре
+        model: '',     // ← не используется в spec-first архитектуре
+        modelSpec: selectedSpec, // ← ГЛАВНОЕ: выбранный spec
       });
 
-      // ⭐ КРИТИЧНО: ТОЛЬКО прямой setConversation
-      // НЕ вызываем onSelectEndpoint
-      // НЕ вызываем newConversation (которая может переписать model)
-      // НЕ меняем endpoint
-      if (selectedModel) {
-        console.log('[ModelSelector] ⭐ DIRECTLY SETTING conversation.model to:', selectedModel);
+      // ===== КРИТИЧНО: ТОЛЬКО обновлять conversation.spec =====
+      // Backend будет использовать spec для определения endpoint и model через buildEndpointOption
+      if (selectedSpec) {
+        console.log('[ModelSelector] ✅ SPEC-FIRST: DIRECTLY SETTING conversation.spec to:', selectedSpec);
         setConversation((prev) => ({
           ...prev,
-          model: selectedModel,
+          spec: selectedSpec,
+          // НЕ обновляем conversation.model - это будет определено spec.preset.model на backend
+          // НЕ обновляем conversation.endpoint - это будет определено spec.preset.endpoint на backend
         }));
       }
     },
-    [conversation?.model, setConversation, setSelectedValues],
+    [conversation?.spec, setConversation, setSelectedValues],
   );
 
   const trigger = (
