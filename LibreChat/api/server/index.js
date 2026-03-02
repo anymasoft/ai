@@ -175,6 +175,12 @@ const startServer = async () => {
   logger.debug('[app.use] Mounting /api/files (after initialize)');
   app.use('/api/files', await routes.files.initialize());
   logger.debug('[app.use] Mounting /images/');
+
+  // Check staticRoute before using
+  if (typeof routes.staticRoute !== 'function' && typeof routes.staticRoute?.use !== 'function') {
+    throw new Error('❌ CRITICAL: routes.staticRoute is not a valid middleware! Type: ' + typeof routes.staticRoute);
+  }
+
   app.use('/images/', createValidateImageRequest(appConfig.secureImageLinks), routes.staticRoute);
   logger.debug('[app.use] Mounting /api/share', typeof routes.share);
   app.use('/api/share', routes.share);
