@@ -20,6 +20,9 @@ const planSchema = new mongoose.Schema(
     tokenCreditsOnPurchase:{ type: Number, required: true, default: 0, min: 0 },
     durationDays:          { type: Number, default: null },
     allowedModels:         { type: [String], default: [] },
+    // Новое: ограничение через spec вместо model (для spec-driven архитектуры)
+    // spec.name → spec.preset.model отображение выполняется на backend (buildEndpointOption)
+    allowedSpecs:          { type: [String], default: [] },
     isActive:              { type: Boolean, default: true },
   },
   { timestamps: true },
@@ -36,6 +39,11 @@ const SEED_DEFAULTS = [
     allowedModels: [
       'gpt-4o-mini',      // OpenAI
       'gpt-3.5-turbo',    // OpenAI (старая, дешёвая)
+    ],
+    // Новое: ограничение через spec (spec-driven архитектура)
+    allowedSpecs: [
+      'gpt-4o-mini',      // spec.name → spec.preset.model
+      'gpt-3.5-turbo',
     ],
     isActive: true,
   },
@@ -54,6 +62,16 @@ const SEED_DEFAULTS = [
       'claude-sonnet-4-6',    // Anthropic
       'claude-haiku-4-5',     // Anthropic (бюджетная) - ИСП. ИСТИНА: AiModel.js
       'deepseek-chat',        // DeepSeek
+    ],
+    // Новое: ограничение через spec (spec-driven архитектура)
+    allowedSpecs: [
+      'gpt-4o',
+      'gpt-4o-mini',
+      'gpt-4.1-mini',
+      'gpt-4-turbo',
+      'claude-sonnet-4-6',
+      'claude-haiku-4-5',
+      'deepseek-chat',
     ],
     isActive: true,
   },
@@ -82,6 +100,25 @@ const SEED_DEFAULTS = [
       'llama-3.1-70b-versatile',      // Groq
       'mixtral-8x7b-32768',           // Groq
     ],
+    // Новое: ограничение через spec (spec-driven архитектура)
+    allowedSpecs: [
+      'gpt-4o',
+      'gpt-4o-mini',
+      'gpt-4.1-mini',
+      'gpt-4-turbo',
+      'gpt-4',
+      'gpt-3.5-turbo',
+      'gpt-5.2',
+      'claude-sonnet-4-6',
+      'claude-opus-4-6',
+      'claude-haiku-4-5',
+      'deepseek-chat',
+      'deepseek-reasoner',
+      'gemini-2.0-flash',
+      'gemini-1.5-pro',
+      'llama-3.1-70b-versatile',
+      'mixtral-8x7b-32768',
+    ],
     isActive: true,
   },
 ];
@@ -89,9 +126,9 @@ const SEED_DEFAULTS = [
 /** Инициализирует дефолтные планы при первом запуске (идемпотентно). */
 planSchema.statics.seedDefaults = async function () {
   for (const def of SEED_DEFAULTS) {
-    // ВАЖНО: Используем $setOnInsert для allowedModels (только при создании документа)
+    // ВАЖНО: Используем $setOnInsert для allowedModels и allowedSpecs (только при создании документа)
     // и $set для остальных полей (всегда обновлять цены, токены и статус)
-    // Это предотвращает перезапись пользовательских изменений allowedModels
+    // Это предотвращает перезапись пользовательских изменений
     await this.findOneAndUpdate(
       { planId: def.planId },
       {
@@ -104,6 +141,7 @@ planSchema.statics.seedDefaults = async function () {
         },
         $setOnInsert: {
           allowedModels: def.allowedModels,
+          allowedSpecs: def.allowedSpecs,
         },
       },
       { upsert: true, new: true }

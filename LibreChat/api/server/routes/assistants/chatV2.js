@@ -7,6 +7,7 @@ const {
   validateModel,
   buildEndpointOption,
   checkSubscription,
+  checkSpecAllowedForPlan,
 } = require('~/server/middleware');
 const validateConvoAccess = require('~/server/middleware/validate/convoAccess');
 const validateAssistant = require('~/server/middleware/assistants/validate');
@@ -25,6 +26,7 @@ router.post('/abort', handleAbort());
 router.post(
   '/',
   validateModel,
+  checkSpecAllowedForPlan,
   buildEndpointOption,
   validateAssistant,
   validateConvoAccess,
