@@ -29,7 +29,7 @@ function AccountSettings() {
   const accountSettingsButtonRef = useRef<HTMLButtonElement>(null);
 
   const { data: planData } = useQuery({
-    queryKey: ['allowedModels'],
+    queryKey: ['allowedModels', token],
     queryFn: async () => {
       const res = await fetch('/api/models/allowed', { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch allowed models');
@@ -37,6 +37,7 @@ function AccountSettings() {
     },
     staleTime: 60_000,
     gcTime: 60_000,
+    enabled: !!token && isAuthenticated,
   });
   const planBadge = PLAN_BADGE[planData.plan];
 
