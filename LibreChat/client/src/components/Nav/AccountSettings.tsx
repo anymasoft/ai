@@ -30,18 +30,18 @@ function AccountSettings() {
 
   const { data: planData } = useQuery({
     queryKey: ['allowedModels', token],
-    queryFn: async (): Promise<{ models: unknown[]; plan: string } | null> => {
-      if (!token) return null;
+    queryFn: async (): Promise<{ models: unknown[]; plan: string }> => {
       const res = await fetch('/api/models/allowed', {
         credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) return null;
-      return res.json();
+      if (!res.ok) throw new Error('Failed to fetch allowed models');
+      const data = await res.json();
+      return data;
     },
     staleTime: 60_000,
     gcTime: 60_000,
-    enabled: !!token,
+    enabled: !!token && isAuthenticated,
   });
   const planBadge = PLAN_BADGE[planData.plan];
 
@@ -83,13 +83,7 @@ function AccountSettings() {
         >
           <CreditCard className="icon-md" aria-hidden="true" />
           <span className="flex flex-1 items-center justify-between gap-2">
-            <span>
-              {startupConfig?.balance?.enabled === true && balanceQuery.data != null
-                ? `${localize('com_nav_balance')}: ${new Intl.NumberFormat().format(Math.round(balanceQuery.data.tokenCredits))}`
-                : user!.role === 'ADMIN'
-                  ? 'Тарифы и баланс'
-                  : 'Купить Pro'}
-            </span>
+            <span>Баланс</span>
             <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
               {planBadge.label}
             </span>
