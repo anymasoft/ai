@@ -16,8 +16,16 @@ const { requireJwtAuth, validateMessageReq } = require('~/server/middleware');
 const { getConvosQueried } = require('~/models/Conversation');
 const { Message } = require('~/db/models');
 
+// коммерческие middleware
+const ensureBalance = require('~/server/middleware/ensureBalance');
+const checkSubscription = require('~/server/middleware/checkSubscription');
+const checkSpecAllowedForPlan = require('~/server/middleware/checkSpecAllowedForPlan');
+
 const router = express.Router();
 router.use(requireJwtAuth);
+router.use(ensureBalance);
+router.use(checkSubscription);
+router.use(checkSpecAllowedForPlan);
 
 router.get('/', async (req, res) => {
   try {

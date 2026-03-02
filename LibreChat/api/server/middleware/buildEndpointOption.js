@@ -104,6 +104,13 @@ async function buildEndpointOption(req, res, next) {
       req.body.endpointOption.attachments = updateFilesUsage(req.body.files);
     }
 
+    // Для коммерческой системы: сохраняем model из endpointOption
+    // checkSubscription middleware использует это для проверки доступа к модели
+    req.builtEndpointOption = {
+      model: req.body.endpointOption?.model || parsedBody?.model,
+      endpoint,
+    };
+
     next();
   } catch (error) {
     logger.error(

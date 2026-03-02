@@ -24,8 +24,16 @@ const assistantClients = {
   [EModelEndpoint.assistants]: require('~/server/services/Endpoints/assistants'),
 };
 
+// коммерческие middleware
+const ensureBalance = require('~/server/middleware/ensureBalance');
+const checkSubscription = require('~/server/middleware/checkSubscription');
+const checkSpecAllowedForPlan = require('~/server/middleware/checkSpecAllowedForPlan');
+
 const router = express.Router();
 router.use(requireJwtAuth);
+router.use(ensureBalance);
+router.use(checkSubscription);
+router.use(checkSpecAllowedForPlan);
 
 router.get('/', async (req, res) => {
   const limit = parseInt(req.query.limit, 10) || 25;
