@@ -62,27 +62,26 @@ async function checkSubscription(req, res, next) {
 
     req.subscription = { plan, planExpiresAt };
 
-    const modelName =
-      req.body?.model ||
+    // STRICT: Use model ONLY from explicit user request
+    // NO fallback to conversation.model or preset.model
+    const modelId =
       req.body?.endpointOption?.model ||
-      req.body?.endpointOption?.modelOptions?.model ||
-      null;
+      req.body?.model;
 
-    // [MODEL CHECK] Log the model being checked
-    if (modelName) {
+    // [MODEL CHECK] Log exactly where the model comes from
+    if (modelId) {
       const { logger } = require('@librechat/data-schemas');
-      logger.info(`[MODEL CHECK] Checking model against plan "${plan}"`, {
-        modelName,
-        requested: req.body?.model,
-        from_endpoint: req.body?.endpointOption?.model,
-        from_modelOptions: req.body?.endpointOption?.modelOptions?.model,
+      logger.info(`[MODEL CHECK] ${modelId} against plan "${plan}"`, {
+        usedForCheck: modelId,
+        fromEndpointOption: req.body?.endpointOption?.model,
+        fromBody: req.body?.model,
       });
 
       const plans = await getPlans();
       const planConfig = plans[plan];
-      if (!isModelAllowed(planConfig, modelName)) {
+      if (!isModelAllowed(planConfig, modelId)) {
         return res.status(403).json({
-          error: `Модель "${modelName}" недоступна на плане "${plan}". Перейдите на Pro или Business.`,
+          error: `Модель "${modelId}" недоступна на плане "${plan}". Перейдите на Pro или Business.`,
           code: 'MODEL_NOT_ALLOWED',
         });
       }
