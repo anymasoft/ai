@@ -43,7 +43,7 @@ function AccountSettings() {
     gcTime: 60_000,
     enabled: !!token,
   });
-  const planBadge = PLAN_BADGE[planData?.plan ?? ''] ?? null;
+  const planBadge = PLAN_BADGE[planData?.plan!];
 
   return (
     <Select.SelectProvider>
@@ -62,7 +62,7 @@ function AccountSettings() {
           className="mt-2 grow overflow-hidden text-ellipsis whitespace-nowrap text-left text-text-primary"
           style={{ marginTop: '0', marginLeft: '0' }}
         >
-          {user?.name ?? user?.username ?? localize('com_nav_user')}
+          {user!.name}
         </div>
       </Select.Select>
       <Select.SelectPopover
@@ -73,7 +73,7 @@ function AccountSettings() {
         }}
       >
         <div className="text-token-text-secondary ml-3 mr-2 py-2 text-sm" role="note">
-          {user?.email ?? localize('com_nav_user')}
+          {user!.email}
         </div>
         <DropdownMenuSeparator />
         {startupConfig?.balance?.enabled === true && balanceQuery.data != null && (
@@ -89,11 +89,9 @@ function AccountSettings() {
                   {localize('com_nav_balance')}:{' '}
                   {new Intl.NumberFormat().format(Math.round(balanceQuery.data.tokenCredits))}
                 </span>
-                {planBadge && (
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
-                    {planBadge.label}
-                  </span>
-                )}
+                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
+                  {planBadge.label}
+                </span>
               </span>
             </Select.SelectItem>
             <DropdownMenuSeparator />
@@ -109,11 +107,9 @@ function AccountSettings() {
               <CreditCard className="icon-md" aria-hidden="true" />
               <span className="flex flex-1 items-center justify-between gap-2">
                 <span>{user?.role === 'ADMIN' ? 'Тарифы и баланс' : 'Купить Pro'}</span>
-                {planBadge && (
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
-                    {planBadge.label}
-                  </span>
-                )}
+                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
+                  {planBadge.label}
+                </span>
               </span>
             </Select.SelectItem>
             <DropdownMenuSeparator />
