@@ -77,28 +77,51 @@ function AccountSettings() {
           {user?.email ?? localize('com_nav_user')}
         </div>
         <DropdownMenuSeparator />
-        {/* Плашка с тарифом */}
-        {planBadge && (
+        {/* Баланс — кликабельный, ведёт на /pricing */}
+        {startupConfig?.balance?.enabled === true && balanceQuery.data != null && (
           <>
-            <div className="ml-3 mr-2 flex items-center justify-between gap-2 py-2">
-              <span className="text-text-secondary text-sm">{localize('com_nav_plan')}</span>
-              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
-                {planBadge.label}
+            <Select.SelectItem
+              value=""
+              onClick={() => navigate('/pricing')}
+              className="select-item text-sm text-blue-600 dark:text-blue-400"
+            >
+              <CreditCard className="icon-md" aria-hidden="true" />
+              <span className="flex flex-1 items-center justify-between gap-2">
+                <span>
+                  {localize('com_nav_balance')}:{' '}
+                  {new Intl.NumberFormat().format(Math.round(balanceQuery.data.tokenCredits))}
+                </span>
+                {planBadge && (
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
+                    {planBadge.label}
+                  </span>
+                )}
               </span>
-            </div>
+            </Select.SelectItem>
             <DropdownMenuSeparator />
           </>
         )}
-        {/* Кнопка Тарифы/Купить Pro */}
-        <Select.SelectItem
-          value=""
-          onClick={() => navigate('/pricing')}
-          className="select-item text-sm text-blue-600 dark:text-blue-400"
-        >
-          <CreditCard className="icon-md" aria-hidden="true" />
-          <span>{user?.role === 'ADMIN' ? 'Тарифы и баланс' : 'Купить Pro'}</span>
-        </Select.SelectItem>
-        <DropdownMenuSeparator />
+        {/* Если баланс выключен — просто кнопка тарифов */}
+        {(startupConfig?.balance?.enabled !== true || balanceQuery.data == null) && (
+          <>
+            <Select.SelectItem
+              value=""
+              onClick={() => navigate('/pricing')}
+              className="select-item text-sm text-blue-600 dark:text-blue-400"
+            >
+              <CreditCard className="icon-md" aria-hidden="true" />
+              <span className="flex flex-1 items-center justify-between gap-2">
+                <span>{user?.role === 'ADMIN' ? 'Тарифы и баланс' : 'Купить Pro'}</span>
+                {planBadge && (
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
+                    {planBadge.label}
+                  </span>
+                )}
+              </span>
+            </Select.SelectItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
         {user?.role === 'ADMIN' && (
           <>
             <Select.SelectItem
