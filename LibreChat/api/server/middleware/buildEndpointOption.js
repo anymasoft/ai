@@ -19,6 +19,18 @@ const buildFunction = {
   [EModelEndpoint.azureAssistants]: azureAssistants.buildOptions,
 };
 
+/**
+ * Default builder для простых API endpoints (openAI, anthropic, deepseek, google, groq и т.д.)
+ * Эти endpoints не требуют специальной обработки — просто проходят данные дальше
+ */
+const defaultBuilder = (endpoint, parsedBody, endpointType) => {
+  return {
+    ...parsedBody,
+    endpoint,
+    endpointType,
+  };
+};
+
 async function buildEndpointOption(req, res, next) {
   // ✅ ЗАЩИТА: Проверяем что req.body существует и содержит endpoint
   // Это нужно потому что middleware вызывается для всех методов (GET, POST, etc)
@@ -119,9 +131,34 @@ async function buildEndpointOption(req, res, next) {
   try {
     const isAgents =
       isAgentsEndpoint(endpoint) || req.baseUrl.startsWith(EndpointURLs[EModelEndpoint.agents]);
-    const builder = isAgents
-      ? (...args) => buildFunction[EModelEndpoint.agents](req, ...args)
-      : buildFunction[endpointType ?? endpoint];
+
+    // ✅ ИСПРАВЛЕНИЕ: Получаем builder или используем defaultBuilder
+    let builder;
+    if (isAgents) {
+      builder = (...args) => buildFunction[EModelEndpoint.agents](req, ...args);
+    } else {
+      // Поиск специального builder для этого type, или используем default
+      builder = buildFunction[endpointType ?? endpoint];
+      if (!builder) {
+        logger.debug(`[buildEndpointOption] No specialized builder for endpoint type "${endpointType ?? endpoint}", using default`, {
+          endpoint,
+          endpointType,
+          availableBuilders: Object.keys(buildFunction),
+        });
+        builder = defaultBuilder;
+      }
+    }
+
+    // ✅ ЗАЩИТА: Проверяем что builder является функцией
+    if (typeof builder !== 'function') {
+      logger.error('[buildEndpointOption] CRITICAL: builder is not a function!', {
+        endpoint,
+        endpointType,
+        builderType: typeof builder,
+        builderValue: builder,
+      });
+      return handleError(res, { text: 'Invalid builder configuration' });
+    }
 
     // TODO: use object params
     req.body = req.body || {}; // Express 5: ensure req.body exists
