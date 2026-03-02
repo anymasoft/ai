@@ -12,7 +12,7 @@ const {
   deleteMessages,
 } = require('~/models');
 const { findAllArtifacts, replaceArtifactContent } = require('~/server/services/Artifacts/update');
-const { requireJwtAuth, validateMessageReq, buildEndpointOption } = require('~/server/middleware');
+const { requireJwtAuth, validateMessageReq, buildEndpointOption, configMiddleware } = require('~/server/middleware');
 const { getConvosQueried } = require('~/models/Conversation');
 const { Message } = require('~/db/models');
 
@@ -35,6 +35,8 @@ if (typeof checkSpecAllowedForPlan !== 'function') {
 const router = express.Router();
 router.use(requireJwtAuth);
 router.use(ensureBalance);
+// ✅ configMiddleware ДОЛЖЕН быть ДО buildEndpointOption, потому что buildEndpointOption требует req.config
+router.use(configMiddleware);
 // buildEndpointOption ДОЛЖЕН быть ДО checkSubscription, так как checkSubscription
 // требует req.builtEndpointOption.model для проверки доступа к модели по плану
 router.use(buildEndpointOption);
