@@ -83,18 +83,10 @@ function AccountSettings() {
         >
           <CreditCard className="icon-md" aria-hidden="true" />
           <span className="flex flex-1 items-center justify-between gap-2">
-            <span>
-              {startupConfig?.balance?.enabled === true && balanceQuery.data != null
-                ? `${localize('com_nav_balance')}: ${new Intl.NumberFormat().format(Math.round(balanceQuery.data.tokenCredits))}`
-                : user!.role === 'ADMIN'
-                  ? 'Тарифы и баланс'
-                  : 'Купить Pro'}
+            <span>Баланс</span>
+            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
+              {planBadge.label}
             </span>
-            {planBadge && (
-              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
-                {planBadge.label}
-              </span>
-            )}
           </span>
         </Select.SelectItem>
         <DropdownMenuSeparator />
