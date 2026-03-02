@@ -104,9 +104,24 @@ async function buildEndpointOption(req, res, next) {
       ? (...args) => buildFunction[EModelEndpoint.agents](req, ...args)
       : buildFunction[endpointType ?? endpoint];
 
+    // FORCE SINGLE SOURCE OF TRUTH: Ensure model comes ONLY from req.body.model
+    // Override parsedBody.model to match explicit user selection
+    if (req.body?.model) {
+      parsedBody.model = req.body.model;
+    }
+
     // TODO: use object params
     req.body = req.body || {}; // Express 5: ensure req.body exists
     req.body.endpointOption = await builder(endpoint, parsedBody, endpointType);
+
+    // FINAL CHECK: Verify endpointOption has the correct model
+    if (req.body.endpointOption && req.body?.model) {
+      req.body.endpointOption.model = req.body.model;
+      logger.info(`[buildEndpointOption] Final model check: ${req.body.model}`, {
+        requested: req.body.model,
+        assigned: req.body.endpointOption.model,
+      });
+    }
 
     if (req.body.files && !isAgents) {
       req.body.endpointOption.attachments = updateFilesUsage(req.body.files);
