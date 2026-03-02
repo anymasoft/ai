@@ -43,7 +43,7 @@ function AccountSettings() {
     gcTime: 60_000,
     enabled: !!token,
   });
-  const planBadge = PLAN_BADGE[planData?.plan ?? ''] ?? null;
+  const planBadge = PLAN_BADGE[planData?.plan ?? 'free'] ?? PLAN_BADGE['free'];
 
   return (
     <Select.SelectProvider>
@@ -89,11 +89,9 @@ function AccountSettings() {
                   {localize('com_nav_balance')}:{' '}
                   {new Intl.NumberFormat().format(Math.round(balanceQuery.data.tokenCredits))}
                 </span>
-                {planBadge && (
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
-                    {planBadge.label}
-                  </span>
-                )}
+                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
+                  {planBadge.label}
+                </span>
               </span>
             </Select.SelectItem>
             <DropdownMenuSeparator />
@@ -109,11 +107,9 @@ function AccountSettings() {
               <CreditCard className="icon-md" aria-hidden="true" />
               <span className="flex flex-1 items-center justify-between gap-2">
                 <span>{user?.role === 'ADMIN' ? 'Тарифы и баланс' : 'Купить Pro'}</span>
-                {planBadge && (
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
-                    {planBadge.label}
-                  </span>
-                )}
+                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
+                  {planBadge.label}
+                </span>
               </span>
             </Select.SelectItem>
             <DropdownMenuSeparator />
