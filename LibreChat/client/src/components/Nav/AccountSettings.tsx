@@ -60,18 +60,18 @@ function AccountSettings() {
           {user?.email ?? localize('com_nav_user')}
         </div>
         <DropdownMenuSeparator />
-        {startupConfig?.balance?.enabled === true && balanceQuery.data != null && (
+        {planBadge && (
           <>
             <div className="ml-3 mr-2 flex items-center justify-between gap-2 py-2">
               <span className="text-token-text-secondary text-sm">
                 {localize('com_nav_balance')}:{' '}
-                {new Intl.NumberFormat().format(Math.round(balanceQuery.data.tokenCredits))}
+                {balanceQuery.data?.tokenCredits != null
+                  ? new Intl.NumberFormat().format(Math.round(balanceQuery.data.tokenCredits))
+                  : '0'}
               </span>
-              {planBadge && (
-                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
-                  {planBadge.label}
-                </span>
-              )}
+              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
+                {planBadge.label}
+              </span>
             </div>
             <DropdownMenuSeparator />
           </>
