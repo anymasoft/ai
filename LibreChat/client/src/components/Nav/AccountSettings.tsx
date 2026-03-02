@@ -28,7 +28,7 @@ function AccountSettings() {
   const [showFiles, setShowFiles] = useState(false);
   const accountSettingsButtonRef = useRef<HTMLButtonElement>(null);
 
-  const { data: planData, isLoading } = useQuery({
+  const { data: planData } = useQuery({
     queryKey: ['allowedModels', token],
     queryFn: async () => {
       console.log('[AccountSettings] Загружаем тарифный план...');
@@ -41,6 +41,7 @@ function AccountSettings() {
     staleTime: 60_000,
     gcTime: 60_000,
     enabled: !!token && isAuthenticated,
+    suspense: true,
   });
   const planBadge = PLAN_BADGE[planData.plan];
 
