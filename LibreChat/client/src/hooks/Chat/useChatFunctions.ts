@@ -319,12 +319,19 @@ export default function useChatFunctions({
     }
 
     logger.log('message_state', initialResponse);
+
+    // CRITICAL: Remove spec completely - use only model
+    // spec should never influence model selection
+    const conversationPayload = { ...conversation, conversationId };
+    delete conversationPayload.spec;
+
+    // Also ensure endpointOption doesn't have spec
+    const cleanEndpointOption = { ...endpointOption };
+    delete cleanEndpointOption.spec;
+
     const submission: TSubmission = {
-      conversation: {
-        ...conversation,
-        conversationId,
-      },
-      endpointOption,
+      conversation: conversationPayload,
+      endpointOption: cleanEndpointOption,
       userMessage: {
         ...currentMsg,
         responseMessageId,

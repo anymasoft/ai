@@ -48,7 +48,24 @@ async function buildEndpointOption(req, res, next) {
   }
 
   const appConfig = req.config;
-  if (appConfig.modelSpecs?.list && appConfig.modelSpecs?.enforce) {
+
+  // CRITICAL: User explicitly selected model - use it, NEVER use spec for model selection
+  // This is the single source of truth
+  if (req.body?.model) {
+    logger.info(`[buildEndpointOption] User explicitly selected model: ${req.body.model}`);
+    parsedBody.model = req.body.model;
+    // Optional: Get iconURL from spec if available, but NEVER change the model
+    if (appConfig.modelSpecs?.list) {
+      const { spec } = parsedBody;
+      if (spec) {
+        const modelSpec = appConfig.modelSpecs.list.find((s) => s.name === spec);
+        if (modelSpec?.iconURL) {
+          parsedBody.iconURL = modelSpec.iconURL;
+        }
+      }
+    }
+  } else if (appConfig.modelSpecs?.list && appConfig.modelSpecs?.enforce) {
+    // No explicit model selected - check if spec is required (enforce mode)
     /** @type {{ list: TModelSpec[] }}*/
     const { list } = appConfig.modelSpecs;
     const { spec } = parsedBody;
@@ -77,14 +94,6 @@ async function buildEndpointOption(req, res, next) {
       if (currentModelSpec.iconURL != null && currentModelSpec.iconURL !== '') {
         parsedBody.iconURL = currentModelSpec.iconURL;
       }
-
-      // IMPORTANT: If user explicitly selected a model in req.body,
-      // override the preset model with the user's choice.
-      // This ensures we use EXACTLY the model the user selected.
-      if (req.body?.model) {
-        parsedBody.model = req.body.model;
-        logger.info(`[buildEndpointOption] Using explicitly requested model: ${req.body.model}`);
-      }
     } catch (error) {
       logger.error(`Error parsing model spec for endpoint ${endpoint}`, error);
       return handleError(res, { text: 'Error parsing model spec' });
@@ -104,21 +113,15 @@ async function buildEndpointOption(req, res, next) {
       ? (...args) => buildFunction[EModelEndpoint.agents](req, ...args)
       : buildFunction[endpointType ?? endpoint];
 
-    // FORCE SINGLE SOURCE OF TRUTH: Ensure model comes ONLY from req.body.model
-    // Override parsedBody.model to match explicit user selection
-    if (req.body?.model) {
-      parsedBody.model = req.body.model;
-    }
-
     // TODO: use object params
     req.body = req.body || {}; // Express 5: ensure req.body exists
     req.body.endpointOption = await builder(endpoint, parsedBody, endpointType);
 
-    // FINAL CHECK: Verify endpointOption has the correct model
-    if (req.body.endpointOption && req.body?.model) {
-      req.body.endpointOption.model = req.body.model;
-      logger.info(`[buildEndpointOption] Final model check: ${req.body.model}`, {
-        requested: req.body.model,
+    // FINAL CHECK: Ensure endpointOption.model matches parsedBody.model (which is already the correct one)
+    if (req.body.endpointOption && parsedBody.model) {
+      req.body.endpointOption.model = parsedBody.model;
+      logger.info(`[buildEndpointOption] Model assigned: ${parsedBody.model}`, {
+        requested: req.body?.model,
         assigned: req.body.endpointOption.model,
       });
     }
