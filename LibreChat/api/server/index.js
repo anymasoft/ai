@@ -133,6 +133,7 @@ const startServer = async () => {
     await configureSocialLogins(app);
   }
 
+  logger.debug('[app.use] Mounting /oauth', typeof routes.oauth);
   app.use('/oauth', routes.oauth);
   /* API Endpoints */
   logger.debug('[app.use] Mounting /api/auth', typeof routes.auth);
@@ -169,17 +170,28 @@ const startServer = async () => {
   app.use('/api/payment', routes.payment);
   logger.debug('[app.use] Mounting /api/config', typeof routes.config);
   app.use('/api/config', routes.config);
+  logger.debug('[app.use] Mounting /api/assistants', typeof routes.assistants);
   app.use('/api/assistants', routes.assistants);
+  logger.debug('[app.use] Mounting /api/files (after initialize)');
   app.use('/api/files', await routes.files.initialize());
+  logger.debug('[app.use] Mounting /images/');
   app.use('/images/', createValidateImageRequest(appConfig.secureImageLinks), routes.staticRoute);
+  logger.debug('[app.use] Mounting /api/share', typeof routes.share);
   app.use('/api/share', routes.share);
+  logger.debug('[app.use] Mounting /api/roles', typeof routes.roles);
   app.use('/api/roles', routes.roles);
+  logger.debug('[app.use] Mounting /api/agents', typeof routes.agents);
   app.use('/api/agents', routes.agents);
+  logger.debug('[app.use] Mounting /api/banner', typeof routes.banner);
   app.use('/api/banner', routes.banner);
+  logger.debug('[app.use] Mounting /api/memories', typeof routes.memories);
   app.use('/api/memories', routes.memories);
+  logger.debug('[app.use] Mounting /api/permissions', typeof routes.accessPermissions);
   app.use('/api/permissions', routes.accessPermissions);
 
+  logger.debug('[app.use] Mounting /api/tags', typeof routes.tags);
   app.use('/api/tags', routes.tags);
+  logger.debug('[app.use] Mounting /api/mcp', typeof routes.mcp);
   app.use('/api/mcp', routes.mcp);
 
   /** 404 for unmatched API routes */
