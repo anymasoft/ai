@@ -9,7 +9,8 @@ import {
   renderCustomGroups,
 } from './components';
 import { ModelSelectorProvider, useModelSelectorContext } from './ModelSelectorContext';
-import { ModelSelectorChatProvider, useModelSelectorChatContext } from './ModelSelectorChatContext';
+import { ModelSelectorChatProvider } from './ModelSelectorChatContext';
+import { useChatContext } from '~/Providers/ChatContext';
 import { getSelectedIcon, getDisplayValue } from './utils';
 import { CustomMenu as Menu } from './CustomMenu';
 import DialogManager from './DialogManager';
@@ -17,7 +18,7 @@ import { useLocalize } from '~/hooks';
 
 function ModelSelectorContent() {
   const localize = useLocalize();
-  const { conversation, newConversation } = useModelSelectorChatContext();
+  const { conversation, setConversation } = useChatContext();
 
   const {
     // LibreChat
@@ -60,40 +61,37 @@ function ModelSelectorContent() {
     [localize, agentsMap, modelSpecs, selectedValues, mappedEndpoints],
   );
 
-  // CRITICAL FIX: Handle model selection and update conversation.model directly
+  // ⭐ ЖЁСТКОЕ ИСПРАВЛЕНИЕ: ТОЛЬКО setConversation, БЕЗ newConversation
   const handleModelChange = useCallback(
     (values: Record<string, any>) => {
       const selectedModel = values.model || '';
-      const selectedEndpoint = values.endpoint || '';
 
-      console.log('[ModelSelector] MODEL SELECTION CHANGE:', {
+      console.log('[ModelSelector] 🔴 MODEL SELECTION:', {
         selectedModel,
-        selectedEndpoint,
         previousModel: conversation?.model,
+        endpoint: conversation?.endpoint,
       });
 
-      // Update selectedValues in context
+      // Update selectedValues in context (only for UI display)
       setSelectedValues({
-        endpoint: selectedEndpoint,
+        endpoint: values.endpoint || '',
         model: selectedModel,
         modelSpec: values.modelSpec || '',
       });
 
-      // CRITICAL: Also update conversation.model directly
-      if (selectedModel && selectedEndpoint) {
-        console.log('[ModelSelector] UPDATING conversation.model to:', selectedModel);
-        newConversation({
-          template: {
-            ...conversation,
-            endpoint: selectedEndpoint,
-            model: selectedModel,
-          },
-          buildDefault: false,
-          keepLatestMessage: true,
-        });
+      // ⭐ КРИТИЧНО: ТОЛЬКО прямой setConversation
+      // НЕ вызываем onSelectEndpoint
+      // НЕ вызываем newConversation (которая может переписать model)
+      // НЕ меняем endpoint
+      if (selectedModel) {
+        console.log('[ModelSelector] ⭐ DIRECTLY SETTING conversation.model to:', selectedModel);
+        setConversation((prev) => ({
+          ...prev,
+          model: selectedModel,
+        }));
       }
     },
-    [conversation, selectedValues, setSelectedValues, newConversation],
+    [conversation?.model, setConversation, setSelectedValues],
   );
 
   const trigger = (

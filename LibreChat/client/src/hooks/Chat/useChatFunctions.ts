@@ -177,13 +177,19 @@ export default function useChatFunctions({
     const iconURL = conversation?.iconURL;
     const defaultParamsEndpoint = getDefaultParamsEndpoint(endpointsConfig, endpoint);
 
-    /** This becomes part of the `endpointOption` */
+    // ⭐ ЖЁСТКОЕ ОТКЛЮЧЕНИЕ: НЕ используем parseCompactConvo для определения model
+    // parseCompactConvo может брать model из других источников (preset, spec, etc)
+    // Мы ТОЛЬКО используем conversation.model
     const convo = parseCompactConvo({
       endpoint: endpoint as EndpointSchemaKey,
       endpointType: endpointType as EndpointSchemaKey,
       conversation: conversation ?? {},
       defaultParamsEndpoint,
     });
+
+    // ⭐ ОЧИСТКА: Удаляем model из convo если она там есть
+    // Используем ТОЛЬКО conversation.model
+    delete convo.model;
 
     const { modelDisplayLabel } = endpointsConfig?.[endpoint ?? ''] ?? {};
     const endpointOption = Object.assign(
@@ -196,11 +202,10 @@ export default function useChatFunctions({
       convo,
     ) as TEndpointOption;
 
-    // FORCE SINGLE SOURCE OF TRUTH: Override with conversation.model (from UI selector)
-    // This ensures we NEVER use parseCompactConvo's model or preset.model
-    if (endpoint !== EModelEndpoint.agents && endpoint !== EModelEndpoint.assistants) {
-      endpointOption.model = conversation?.model ?? '';
-    }
+    // ⭐ ЕДИНСТВЕННЫЙ источник модели: conversation.model
+    // НЕ используем parseCompactConvo, НЕ используем preset, НЕ используем spec
+    console.log('[useChatFunctions] 🔴 MODEL FROM CONVERSATION:', conversation?.model);
+    endpointOption.model = conversation?.model ?? '';
 
     if (endpoint !== EModelEndpoint.agents) {
       endpointOption.key = getExpiry();
