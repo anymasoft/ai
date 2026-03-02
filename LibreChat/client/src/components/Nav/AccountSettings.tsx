@@ -29,7 +29,7 @@ function AccountSettings() {
   const accountSettingsButtonRef = useRef<HTMLButtonElement>(null);
 
   const { data: planData } = useQuery({
-    queryKey: ['userPlan', token],
+    queryKey: ['allowedModels', token],
     queryFn: async (): Promise<{ models: unknown[]; plan: string } | null> => {
       if (!token) return null;
       const res = await fetch('/api/models/allowed', {
@@ -37,17 +37,13 @@ function AccountSettings() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) return null;
-      const data = await res.json();
-      console.log('[AccountSettings] Plan data loaded:', data.plan);
-      return data;
+      return res.json();
     },
     staleTime: 60_000,
     gcTime: 60_000,
     enabled: !!token,
   });
-  const userPlan = planData?.plan || 'free';
-  const planBadge = PLAN_BADGE[userPlan] || PLAN_BADGE.free;
-  console.log('[AccountSettings] planData:', planData, 'userPlan:', userPlan, 'planBadge:', planBadge);
+  const planBadge = PLAN_BADGE[planData?.plan ?? ''] ?? null;
 
   return (
     <Select.SelectProvider>
@@ -82,40 +78,17 @@ function AccountSettings() {
         <DropdownMenuSeparator />
         {startupConfig?.balance?.enabled === true && balanceQuery.data != null && (
           <>
-            <Select.SelectItem
-              value=""
-              onClick={() => navigate('/pricing')}
-              className="select-item text-sm text-blue-600 dark:text-blue-400"
-            >
-              <CreditCard className="icon-md" aria-hidden="true" />
-              <span className="flex flex-1 items-center justify-between gap-2">
-                <span>
-                  {localize('com_nav_balance')}:{' '}
-                  {new Intl.NumberFormat().format(Math.round(balanceQuery.data.tokenCredits))}
-                </span>
-                <span className={`rounded-full px-3 py-1 text-xs font-bold ${planBadge.className}`}>
+            <div className="ml-3 mr-2 flex items-center justify-between gap-2 py-2">
+              <span className="text-token-text-secondary text-sm">
+                {localize('com_nav_balance')}:{' '}
+                {new Intl.NumberFormat().format(Math.round(balanceQuery.data.tokenCredits))}
+              </span>
+              {planBadge && (
+                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
                   {planBadge.label}
                 </span>
-              </span>
-            </Select.SelectItem>
-            <DropdownMenuSeparator />
-          </>
-        )}
-        {(startupConfig?.balance?.enabled !== true || balanceQuery.data == null) && (
-          <>
-            <Select.SelectItem
-              value=""
-              onClick={() => navigate('/pricing')}
-              className="select-item text-sm text-blue-600 dark:text-blue-400"
-            >
-              <CreditCard className="icon-md" aria-hidden="true" />
-              <span className="flex flex-1 items-center justify-between gap-2">
-                <span>{user?.role === 'ADMIN' ? 'Тарифы и баланс' : 'Купить Pro'}</span>
-                <span className={`rounded-full px-3 py-1 text-xs font-bold ${planBadge.className}`}>
-                  {planBadge.label}
-                </span>
-              </span>
-            </Select.SelectItem>
+              )}
+            </div>
             <DropdownMenuSeparator />
           </>
         )}
