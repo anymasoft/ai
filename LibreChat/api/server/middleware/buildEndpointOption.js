@@ -29,6 +29,11 @@ async function buildEndpointOption(req, res, next) {
       method: req.method,
       path: req.path,
     });
+    // ✅ ВАЖНО: Всегда устанавливать req.builtEndpointOption чтобы checkSubscription не упала
+    req.builtEndpointOption = {
+      model: undefined,
+      endpoint: undefined,
+    };
     return next(); // Пропуск для GET, HEAD и других запросов без body
   }
 
