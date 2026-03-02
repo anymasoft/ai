@@ -29,7 +29,7 @@ function AccountSettings() {
   const accountSettingsButtonRef = useRef<HTMLButtonElement>(null);
 
   const { data: planData } = useQuery({
-    queryKey: ['allowedModels', token],
+    queryKey: ['userPlan', token],
     queryFn: async (): Promise<{ models: unknown[]; plan: string } | null> => {
       if (!token) return null;
       const res = await fetch('/api/models/allowed', {
@@ -37,13 +37,17 @@ function AccountSettings() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) return null;
-      return res.json();
+      const data = await res.json();
+      console.log('[AccountSettings] Plan data loaded:', data.plan);
+      return data;
     },
     staleTime: 60_000,
     gcTime: 60_000,
     enabled: !!token,
   });
-  const planBadge = PLAN_BADGE[planData?.plan ?? ''] ?? null;
+  const userPlan = planData?.plan || 'free';
+  const planBadge = PLAN_BADGE[userPlan] || PLAN_BADGE.free;
+  console.log('[AccountSettings] planData:', planData, 'userPlan:', userPlan, 'planBadge:', planBadge);
 
   return (
     <Select.SelectProvider>
@@ -89,11 +93,9 @@ function AccountSettings() {
                   {localize('com_nav_balance')}:{' '}
                   {new Intl.NumberFormat().format(Math.round(balanceQuery.data.tokenCredits))}
                 </span>
-                {planBadge && (
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
-                    {planBadge.label}
-                  </span>
-                )}
+                <span className={`rounded-full px-3 py-1 text-xs font-bold ${planBadge.className}`}>
+                  {planBadge.label}
+                </span>
               </span>
             </Select.SelectItem>
             <DropdownMenuSeparator />
@@ -109,11 +111,9 @@ function AccountSettings() {
               <CreditCard className="icon-md" aria-hidden="true" />
               <span className="flex flex-1 items-center justify-between gap-2">
                 <span>{user?.role === 'ADMIN' ? 'Тарифы и баланс' : 'Купить Pro'}</span>
-                {planBadge && (
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
-                    {planBadge.label}
-                  </span>
-                )}
+                <span className={`rounded-full px-3 py-1 text-xs font-bold ${planBadge.className}`}>
+                  {planBadge.label}
+                </span>
               </span>
             </Select.SelectItem>
             <DropdownMenuSeparator />
