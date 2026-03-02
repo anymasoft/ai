@@ -31,7 +31,11 @@ export default function ModelSelect({
         const res = await fetch('/api/models/allowed', { credentials: 'include' });
         if (!res.ok) throw new Error('Failed to fetch allowed models');
         const data = await res.json();
-        setModels(data[conversation?.endpoint] ?? []);
+        // data is organized by endpoint: { anthropic: [...], openai: [...], ... }
+        const endpoint = conversation?.endpointType ?? conversation?.endpoint;
+        const allowedModels = data[endpoint] ?? [];
+        console.log('[ModelSelect] Loaded allowed models:', { endpoint, allowedModels });
+        setModels(allowedModels);
       } catch (error) {
         console.error('[ModelSelect] Error fetching allowed models:', error);
         setModels([]);
@@ -41,7 +45,7 @@ export default function ModelSelect({
     if (conversation?.endpoint) {
       fetchAllowedModels();
     }
-  }, [conversation?.endpoint]);
+  }, [conversation?.endpoint, conversation?.endpointType]);
 
   if (!conversation?.endpoint) {
     return null;

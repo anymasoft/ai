@@ -29,7 +29,8 @@ router.get('/all', async (req, res) => {
 /**
  * GET /api/models/allowed
  * Список моделей, разрешённых текущему пользователю по его тарифному плану.
- * Источник: коллекция Plan (allowedModels) + коллекция AiModel (displayName).
+ * Организован по endpointKey для фронтенда.
+ * Источник: коллекция Plan (allowedModels) + коллекция AiModel.
  * Кэш на стороне клиента: не более 60 секунд.
  */
 router.get('/allowed', requireJwtAuth, async (req, res) => {
@@ -57,8 +58,20 @@ router.get('/allowed', requireJwtAuth, async (req, res) => {
       .select('modelId provider endpointKey displayName -_id')
       .lean();
 
+    // Organize models by endpointKey for frontend ModelSelect component
+    const modelsByEndpoint = {};
+    models.forEach((model) => {
+      if (!modelsByEndpoint[model.endpointKey]) {
+        modelsByEndpoint[model.endpointKey] = [];
+      }
+      modelsByEndpoint[model.endpointKey].push(model.modelId);
+    });
+
     res.set('Cache-Control', 'private, max-age=60');
-    res.json({ models, plan });
+    res.json({
+      ...modelsByEndpoint,
+      models, // Also return flat array for ModelSelectorContext filtering
+    });
   } catch (err) {
     logger.error('[models/allowed]', err);
     res.status(500).json({ error: 'Ошибка сервера' });
