@@ -15,10 +15,10 @@ const responses = require('./responses');
 const { v1 } = require('./v1');
 const chat = require('./chat');
 
-// коммерческие middleware
-const ensureBalance = require('~/server/middleware/ensureBalance');
-const checkSubscription = require('~/server/middleware/checkSubscription');
-const checkSpecAllowedForPlan = require('~/server/middleware/checkSpecAllowedForPlan');
+// коммерческие middleware (ДИАГНОСТИКА: временно отключены)
+// const ensureBalance = require('~/server/middleware/ensureBalance');
+// const checkSubscription = require('~/server/middleware/checkSubscription');
+// const checkSpecAllowedForPlan = require('~/server/middleware/checkSpecAllowedForPlan');
 
 const { LIMIT_MESSAGE_IP, LIMIT_MESSAGE_USER } = process.env ?? {};
 
@@ -39,9 +39,9 @@ router.use('/v1/responses', responses);
 router.use('/v1', openai);
 
 router.use(requireJwtAuth);
-router.use(ensureBalance);
-router.use(checkSubscription);
-router.use(checkSpecAllowedForPlan);
+// router.use(ensureBalance);
+// router.use(checkSubscription);
+// router.use(checkSpecAllowedForPlan);
 router.use(checkBan);
 router.use(uaParser);
 
