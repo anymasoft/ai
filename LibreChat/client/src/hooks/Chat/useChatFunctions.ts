@@ -329,6 +329,16 @@ export default function useChatFunctions({
     const cleanEndpointOption = { ...endpointOption };
     delete cleanEndpointOption.spec;
 
+    // CRITICAL LOGGING: Show exactly what's being sent
+    console.log('[useChatFunctions] PAYLOAD MODEL CHECK:', {
+      'conversation.model': conversation?.model,
+      'endpointOption.model': cleanEndpointOption.model,
+      'conversationPayload.model': conversationPayload.model,
+      endpoint,
+      conversationId,
+      timestamp: new Date().toISOString(),
+    });
+
     const submission: TSubmission = {
       conversation: conversationPayload,
       endpointOption: cleanEndpointOption,
@@ -358,9 +368,17 @@ export default function useChatFunctions({
     }
 
     // [MODEL SANITY CHECK] Verify single source of truth
+    console.log('[useChatFunctions] FINAL SUBMISSION PAYLOAD:', {
+      model: submission.conversation?.model,
+      endpointOptionModel: submission.endpointOption?.model,
+      endpoint: submission.conversation?.endpoint,
+      hasSpec: submission.conversation?.spec !== undefined,
+      conversationKeys: Object.keys(submission.conversation ?? {}),
+    });
+
     logger.log('[MODEL TRUTH] Frontend sends to backend:', {
       selectedInUI: conversation?.model,
-      inEndpointOption: endpointOption.model,
+      inEndpointOption: cleanEndpointOption.model,
       inPayload: submission.endpointOption?.model,
     });
 

@@ -313,10 +313,27 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     console.log('[ModelSelectorContext] handleSelectModel called:', {
       endpoint: endpoint.value,
       selectedModel: model,
+      previousModel: conversation?.model,
       isAgents: isAgentsEndpoint(endpoint.value),
       isAssistants: isAssistantsEndpoint(endpoint.value),
     });
 
+    // CRITICAL FIX: Directly update conversation.model immediately
+    // This ensures conversation.model is updated BEFORE any async operations
+    if (endpoint.value) {
+      console.log('[ModelSelectorContext] DIRECTLY UPDATING conversation.model to:', model);
+      newConversation({
+        template: {
+          ...conversation,
+          endpoint: endpoint.value,
+          model,
+        },
+        buildDefault: false,
+        keepLatestMessage: true,
+      });
+    }
+
+    // Also call onSelectEndpoint for side effects
     if (isAgentsEndpoint(endpoint.value)) {
       onSelectEndpoint?.(endpoint.value, {
         agent_id: model,
@@ -331,6 +348,7 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
       console.log('[ModelSelectorContext] Calling onSelectEndpoint with model:', model);
       onSelectEndpoint?.(endpoint.value, { model });
     }
+
     setSelectedValues({
       endpoint: endpoint.value,
       model,
