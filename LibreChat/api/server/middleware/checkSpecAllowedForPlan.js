@@ -19,7 +19,17 @@
  * 4. buildEndpointOption (преобразование spec → endpoint+model)
  */
 
-const { Subscription, Plan } = require('~/db/models');
+// FIX: Импортируем модели из правильных мест, не из ~/db/models
+const Subscription = require('~/models/Subscription');
+const Plan = require('~/models/Plan');
+
+// Проверка что модели загружены
+if (!Plan) {
+  throw new Error('❌ CRITICAL: Plan model is undefined! Check import path: ~/models/Plan');
+}
+if (!Subscription) {
+  throw new Error('❌ CRITICAL: Subscription model is undefined! Check import path: ~/models/Subscription');
+}
 
 // Кэш планов — обновляется раз в 60 секунд, чтобы не ходить в БД на каждый запрос
 let _planCache = null;
