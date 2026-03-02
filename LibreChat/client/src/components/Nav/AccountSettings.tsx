@@ -37,13 +37,13 @@ function AccountSettings() {
       });
       if (!res.ok) throw new Error('Failed to fetch allowed models');
       const data = await res.json();
-      return { ...data, plan: data.plan || 'free' };
+      return data;
     },
     staleTime: 60_000,
     gcTime: 60_000,
     enabled: !!token && isAuthenticated,
   });
-  const planBadge = planData && PLAN_BADGE[planData.plan];
+  const planBadge = PLAN_BADGE[planData.plan];
 
   return (
     <Select.SelectProvider>
