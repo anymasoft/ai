@@ -309,51 +309,25 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
   };
 
   const handleSelectModel = (endpoint: Endpoint, model: string) => {
-    // AUDIT: Log model selection in ModelSelector
-    console.log('[ModelSelectorContext] handleSelectModel called:', {
+    // ⭐ ЖЁСТКОЕ ИСПРАВЛЕНИЕ: НЕ используем newConversation
+    console.log('[ModelSelectorContext] 🔴 handleSelectModel called:', {
       endpoint: endpoint.value,
       selectedModel: model,
       previousModel: conversation?.model,
-      isAgents: isAgentsEndpoint(endpoint.value),
-      isAssistants: isAssistantsEndpoint(endpoint.value),
     });
 
-    // CRITICAL FIX: Directly update conversation.model immediately
-    // This ensures conversation.model is updated BEFORE any async operations
-    if (endpoint.value) {
-      console.log('[ModelSelectorContext] DIRECTLY UPDATING conversation.model to:', model);
-      newConversation({
-        template: {
-          ...conversation,
-          endpoint: endpoint.value,
-          model,
-        },
-        buildDefault: false,
-        keepLatestMessage: true,
-      });
-    }
-
-    // Also call onSelectEndpoint for side effects
-    if (isAgentsEndpoint(endpoint.value)) {
-      onSelectEndpoint?.(endpoint.value, {
-        agent_id: model,
-        model: agentsMap?.[model]?.model ?? '',
-      });
-    } else if (isAssistantsEndpoint(endpoint.value)) {
-      onSelectEndpoint?.(endpoint.value, {
-        assistant_id: model,
-        model: assistantsMap?.[endpoint.value]?.[model]?.model ?? '',
-      });
-    } else if (endpoint.value) {
-      console.log('[ModelSelectorContext] Calling onSelectEndpoint with model:', model);
-      onSelectEndpoint?.(endpoint.value, { model });
-    }
-
+    // ТОЛЬКО обновляем UI state
     setSelectedValues({
       endpoint: endpoint.value,
       model,
       modelSpec: '',
     });
+
+    // ⭐ НЕ вызываем onSelectEndpoint!
+    // onSelectEndpoint вызывает newConversation -> switchToConversation -> buildDefaultConvo
+    // И buildDefaultConvo может переписать conversation.model!
+    // Это legacy система автоматического назначения модели
+    console.log('[ModelSelectorContext] ⭐ DISABLED: NOT calling onSelectEndpoint to prevent auto model assignment');
 
     const modelDisplayName = getModelDisplayName(endpoint, model);
     const announcement = localize('com_ui_model_selected', { 0: modelDisplayName });

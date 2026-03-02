@@ -49,62 +49,35 @@ async function buildEndpointOption(req, res, next) {
 
   const appConfig = req.config;
 
-  // CRITICAL: User explicitly selected model - use it, NEVER use spec for model selection
-  // This is the single source of truth
-  if (req.body?.model) {
-    logger.info(`[buildEndpointOption] User explicitly selected model: ${req.body.model}`);
-    parsedBody.model = req.body.model;
-    // Optional: Get iconURL from spec if available, but NEVER change the model
-    if (appConfig.modelSpecs?.list) {
-      const { spec } = parsedBody;
-      if (spec) {
-        const modelSpec = appConfig.modelSpecs.list.find((s) => s.name === spec);
-        if (modelSpec?.iconURL) {
-          parsedBody.iconURL = modelSpec.iconURL;
-        }
-      }
-    }
-  } else if (appConfig.modelSpecs?.list && appConfig.modelSpecs?.enforce) {
-    // No explicit model selected - check if spec is required (enforce mode)
-    /** @type {{ list: TModelSpec[] }}*/
-    const { list } = appConfig.modelSpecs;
-    const { spec } = parsedBody;
+  // ⭐ ЖЁСТКОЕ ОТКЛЮЧЕНИЕ: Требуем req.body.model БЕЗ FALLBACK
+  // Никаких defaults, никаких endpoint-specific models, никаких specs
+  const requestedModel = req.body?.model;
 
-    if (!spec) {
-      return handleError(res, { text: 'No model spec selected' });
-    }
-
-    const currentModelSpec = list.find((s) => s.name === spec);
-    if (!currentModelSpec) {
-      return handleError(res, { text: 'Invalid model spec' });
-    }
-
-    if (endpoint !== currentModelSpec.preset.endpoint) {
-      return handleError(res, { text: 'Model spec mismatch' });
-    }
-
-    try {
-      currentModelSpec.preset.spec = spec;
-      parsedBody = parseCompactConvo({
-        endpoint,
-        endpointType,
-        conversation: currentModelSpec.preset,
-        defaultParamsEndpoint,
-      });
-      if (currentModelSpec.iconURL != null && currentModelSpec.iconURL !== '') {
-        parsedBody.iconURL = currentModelSpec.iconURL;
-      }
-    } catch (error) {
-      logger.error(`Error parsing model spec for endpoint ${endpoint}`, error);
-      return handleError(res, { text: 'Error parsing model spec' });
-    }
-  } else if (parsedBody.spec && appConfig.modelSpecs?.list) {
-    // Non-enforced mode: if spec is selected, derive iconURL from model spec
-    const modelSpec = appConfig.modelSpecs.list.find((s) => s.name === parsedBody.spec);
-    if (modelSpec?.iconURL) {
-      parsedBody.iconURL = modelSpec.iconURL;
-    }
+  if (!requestedModel) {
+    logger.error('[buildEndpointOption] 🔴 NO MODEL PROVIDED - rejecting request');
+    return handleError(res, { text: 'Model is required - user must explicitly select a model' });
   }
+
+  logger.info(`[buildEndpointOption] ⭐ USER EXPLICITLY SELECTED MODEL: ${requestedModel}`);
+
+  // ТОЛЬКО используем явно выбранную модель
+  parsedBody.model = requestedModel;
+
+  // ⭐ ОТКЛЮЧЕНО: Никакой логики с spec, никаких defaults, никаких preset overrides
+  // Старая система:
+  // - брала spec и парсила currentModelSpec.preset
+  // - подставляла default model для endpoint
+  // - использовала modelSpecs для переписывания model
+  //
+  // НОВАЯ система:
+  // - ТОЛЬКО req.body.model
+  // - НИКАКИХ fallback и автоматического назначения
+
+  console.log('[buildEndpointOption] ⭐ MODEL ASSIGNMENT:', {
+    requested: requestedModel,
+    assigned: parsedBody.model,
+    source: 'req.body.model (user explicit selection only)',
+  });
 
   try {
     const isAgents =
@@ -117,12 +90,18 @@ async function buildEndpointOption(req, res, next) {
     req.body = req.body || {}; // Express 5: ensure req.body exists
     req.body.endpointOption = await builder(endpoint, parsedBody, endpointType);
 
-    // FINAL CHECK: Ensure endpointOption.model matches parsedBody.model (which is already the correct one)
+    // ⭐ ФИНАЛЬНАЯ ПРОВЕРКА: endpointOption.model должен быть ТОЛЬКО из req.body.model
     if (req.body.endpointOption && parsedBody.model) {
       req.body.endpointOption.model = parsedBody.model;
-      logger.info(`[buildEndpointOption] Model assigned: ${parsedBody.model}`, {
-        requested: req.body?.model,
-        assigned: req.body.endpointOption.model,
+      console.log('[buildEndpointOption] ⭐ FINAL CHECK - MODEL IN ENDPOINT OPTION:', {
+        parsedBodyModel: parsedBody.model,
+        endpointOptionModel: req.body.endpointOption.model,
+        match: parsedBody.model === req.body.endpointOption.model,
+      });
+      logger.info(`[buildEndpointOption] ⭐ MODEL LOCKED: ${parsedBody.model}`, {
+        source: 'User explicit selection (req.body.model)',
+        endpoint,
+        endpointType,
       });
     }
 
