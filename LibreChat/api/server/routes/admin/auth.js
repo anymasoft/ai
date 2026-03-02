@@ -7,20 +7,16 @@ const {
   requireAdmin,
   getAdminPanelUrl,
   exchangeAdminCode,
-  createSetBalanceConfig,
 } = require('@librechat/api');
 const { loginController } = require('~/server/controllers/auth/LoginController');
 const { createOAuthHandler } = require('~/server/controllers/auth/oauth');
-const { getAppConfig } = require('~/server/services/Config');
 const getLogStores = require('~/cache/getLogStores');
 const { getOpenIdConfig } = require('~/strategies');
 const middleware = require('~/server/middleware');
-const { Balance } = require('~/db/models');
 
-const setBalanceConfig = createSetBalanceConfig({
-  getAppConfig,
-  Balance,
-});
+// ПРИМЕЧАНИЕ: setBalanceConfig больше НЕ НУЖЕН здесь
+// ensureBalance middleware применяется глобально в server/index.js
+// и гарантирует инициализацию Balance для всех authenticated запросов
 
 const router = express.Router();
 
@@ -31,7 +27,6 @@ router.post(
   middleware.checkBan,
   middleware.requireLocalAuth,
   requireAdmin,
-  setBalanceConfig,
   loginController,
 );
 

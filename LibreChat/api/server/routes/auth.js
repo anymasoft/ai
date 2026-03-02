@@ -1,5 +1,4 @@
 const express = require('express');
-const { createSetBalanceConfig } = require('@librechat/api');
 const {
   resetPasswordRequestController,
   resetPasswordController,
@@ -17,14 +16,8 @@ const {
 const { verify2FAWithTempToken } = require('~/server/controllers/auth/TwoFactorAuthController');
 const { logoutController } = require('~/server/controllers/auth/LogoutController');
 const { loginController } = require('~/server/controllers/auth/LoginController');
-const { getAppConfig } = require('~/server/services/Config');
 const middleware = require('~/server/middleware');
-const { Balance, Subscription, Plan } = require('~/db/models');
-
-const setBalanceConfig = createSetBalanceConfig({
-  getAppConfig,
-  Balance,
-});
+const { Subscription, Plan } = require('~/db/models');
 
 const router = express.Router();
 
@@ -37,7 +30,9 @@ router.post(
   middleware.loginLimiter,
   middleware.checkBan,
   ldapAuth ? middleware.requireLdapAuth : middleware.requireLocalAuth,
-  setBalanceConfig,
+  // ПРИМЕЧАНИЕ: setBalanceConfig больше НЕ НУЖЕН здесь
+  // ensureBalance middleware применяется глобально в server/index.js
+  // и гарантирует инициализацию Balance для всех authenticated запросов
   loginController,
 );
 router.post('/refresh', refreshController);
