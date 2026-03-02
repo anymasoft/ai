@@ -96,7 +96,7 @@ function AccountSettings() {
           </span>
         </Select.SelectItem>
         <DropdownMenuSeparator />
-        {user?.role === 'ADMIN' && (
+        {user!.role === 'ADMIN' && (
           <>
             <Select.SelectItem
               value=""
@@ -117,16 +117,14 @@ function AccountSettings() {
           <FileText className="icon-md" aria-hidden="true" />
           {localize('com_nav_my_files')}
         </Select.SelectItem>
-        {startupConfig?.helpAndFaqURL !== '/' && (
-          <Select.SelectItem
-            value=""
-            onClick={() => window.open(startupConfig?.helpAndFaqURL, '_blank')}
-            className="select-item text-sm"
-          >
-            <LinkIcon aria-hidden="true" />
-            {localize('com_nav_help_faq')}
-          </Select.SelectItem>
-        )}
+        <Select.SelectItem
+          value=""
+          onClick={() => window.open(startupConfig?.helpAndFaqURL, '_blank')}
+          className="select-item text-sm"
+        >
+          <LinkIcon aria-hidden="true" />
+          {localize('com_nav_help_faq')}
+        </Select.SelectItem>
         <Select.SelectItem
           value=""
           onClick={() => setShowSettings(true)}
