@@ -1,12 +1,12 @@
 @echo off
 REM ============================================================
-REM   LibreChat - Универсальный запуск (одна команда для всего)
+REM   LibreChat - Universal run
 REM ============================================================
 setlocal enabledelayedexpansion
 
 echo.
 echo ============================================================
-echo   LibreChat - запуск
+echo   LibreChat - START!!!
 echo ============================================================
 echo.
 
@@ -25,9 +25,8 @@ if not exist ".env" (
     echo [+] .env создан
     echo [!] ВНИМАНИЕ: Отредактируй .env и заполни:
     echo     - MONGO_URI (адрес MongoDB)
-    echo     - API ключи для моделей
+    echo     - API keys for models
     echo.
-    pause
 )
 
 REM ============================================================
