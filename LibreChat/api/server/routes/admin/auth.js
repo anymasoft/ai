@@ -62,7 +62,6 @@ router.get(
     session: false,
   }),
   requireAdmin,
-  setBalanceConfig,
   middleware.checkDomainAllowed,
   createOAuthHandler(`${getAdminPanelUrl()}/auth/openid/callback`),
 );
