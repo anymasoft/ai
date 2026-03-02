@@ -23,6 +23,7 @@ const {
 const { connectDb, indexSync } = require('~/db');
 const initializeOAuthReconnectManager = require('./services/initializeOAuthReconnectManager');
 const createValidateImageRequest = require('./middleware/validateImageRequest');
+const ensureBalance = require('./middleware/ensureBalance');
 const { jwtLogin, ldapLogin, passportLogin } = require('~/strategies');
 const { updateInterfacePermissions } = require('~/models/interface');
 const { checkMigrations } = require('./services/start/migration');
@@ -117,6 +118,12 @@ const startServer = async () => {
   app.use(staticCache(appConfig.paths.dist));
   app.use(staticCache(appConfig.paths.fonts));
   app.use(staticCache(appConfig.paths.assets));
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // КРИТИЧНЫЙ MIDDLEWARE: Гарантирует инициализацию Balance для authenticated users
+  // Вызывается на ВСЕ запросы, но обрабатывает ТОЛЬКО req.user (аутентифицированные)
+  // ════════════════════════════════════════════════════════════════════════════
+  app.use(ensureBalance);
 
   if (!ALLOW_SOCIAL_LOGIN) {
     console.warn('Social logins are disabled. Set ALLOW_SOCIAL_LOGIN=true to enable them.');

@@ -4,16 +4,12 @@ const passport = require('passport');
 const { randomState } = require('openid-client');
 const { logger } = require('@librechat/data-schemas');
 const { ErrorTypes } = require('librechat-data-provider');
-const { createSetBalanceConfig } = require('@librechat/api');
 const { checkDomainAllowed, loginLimiter, logHeaders } = require('~/server/middleware');
 const { createOAuthHandler } = require('~/server/controllers/auth/oauth');
-const { getAppConfig } = require('~/server/services/Config');
-const { Balance } = require('~/db/models');
 
-const setBalanceConfig = createSetBalanceConfig({
-  getAppConfig,
-  Balance,
-});
+// ПРИМЕЧАНИЕ: setBalanceConfig больше НЕ НУЖЕН здесь
+// ensureBalance middleware применяется глобально в server/index.js
+// и гарантирует инициализацию Balance для всех authenticated запросов
 
 const router = express.Router();
 
@@ -56,7 +52,6 @@ router.get(
     session: false,
     scope: ['openid', 'profile', 'email'],
   }),
-  setBalanceConfig,
   checkDomainAllowed,
   oauthHandler,
 );
@@ -82,7 +77,6 @@ router.get(
     scope: ['public_profile'],
     profileFields: ['id', 'email', 'name'],
   }),
-  setBalanceConfig,
   checkDomainAllowed,
   oauthHandler,
 );
@@ -104,7 +98,6 @@ router.get(
     failureMessage: true,
     session: false,
   }),
-  setBalanceConfig,
   checkDomainAllowed,
   oauthHandler,
 );
@@ -128,7 +121,6 @@ router.get(
     session: false,
     scope: ['user:email', 'read:user'],
   }),
-  setBalanceConfig,
   checkDomainAllowed,
   oauthHandler,
 );
@@ -152,7 +144,6 @@ router.get(
     session: false,
     scope: ['identify', 'email'],
   }),
-  setBalanceConfig,
   checkDomainAllowed,
   oauthHandler,
 );
@@ -174,7 +165,6 @@ router.post(
     failureMessage: true,
     session: false,
   }),
-  setBalanceConfig,
   checkDomainAllowed,
   oauthHandler,
 );

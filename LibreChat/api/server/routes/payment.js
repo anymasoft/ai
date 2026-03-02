@@ -35,9 +35,11 @@ async function ensureSeeded() {
   await Promise.all([Plan.seedDefaults(), TokenPackage.seedDefaults()]);
 }
 
-async function upsertSubscription(userId, planId, durationDays) {
+async function upsertSubscription(userId, planId, durationDays, session = null) {
   const now = new Date();
-  const existing = await Subscription.findOne({ userId }).lean();
+  // Опция: можно использовать session если передан (для transactions)
+  const findOptions = session ? { session } : {};
+  const existing = await Subscription.findOne({ userId }, null, findOptions).lean();
 
   let baseDate = now;
   if (
@@ -52,23 +54,34 @@ async function upsertSubscription(userId, planId, durationDays) {
   const planExpiresAt = new Date(baseDate);
   planExpiresAt.setDate(planExpiresAt.getDate() + durationDays);
 
+  const updateOptions = { upsert: true, new: true };
+  if (session) {
+    updateOptions.session = session;
+  }
+
   return Subscription.findOneAndUpdate(
     { userId },
     { plan: planId, planStartedAt: now, planExpiresAt },
-    { upsert: true, new: true },
+    updateOptions,
   ).lean();
 }
 
 async function applySuccessfulPayment(externalPaymentId) {
+  const session = await require('mongoose').startSession();
+  session.startTransaction();
+
   try {
+    // ВАЖНО: Проверка idempotency ПЕРЕД транзакцией (для экономии ресурсов)
     const existing = await Payment.findOne({ externalPaymentId }).lean();
     logger.debug(`[payment/apply] Found payment: ${externalPaymentId}, status=${existing?.status}`);
 
     if (existing && existing.status === 'succeeded') {
+      await session.endSession();
       logger.info(`[payment/apply] Payment already succeeded: ${externalPaymentId}`);
       return { ok: true, alreadyDone: true, message: 'Платёж уже был обработан ранее' };
     }
     if (!existing || existing.status !== 'pending') {
+      await session.endSession();
       logger.warn(`[payment/apply] Invalid payment state: ${externalPaymentId}, status=${existing?.status}`);
       return { ok: false, message: `Платёж не найден или статус: ${existing?.status}` };
     }
@@ -76,41 +89,68 @@ async function applySuccessfulPayment(externalPaymentId) {
     const { userId, tokenCredits: creditsRaw, planPurchased, type } = existing;
     const creditsNum = parseInt(creditsRaw);
     if (!creditsNum || creditsNum <= 0) {
+      await session.endSession();
       logger.warn(`[payment/apply] Invalid tokenCredits: ${creditsRaw}`);
       return { ok: false, message: `Некорректное значение tokenCredits: ${creditsRaw}` };
     }
 
+    // ════════════════════════════════════════════════════════════════════════
+    // КРИТИЧНЫЙ РАЗДЕЛ: ВСЕ ОПЕРАЦИИ В ОДНОЙ ТРАНЗАКЦИИ
+    // ════════════════════════════════════════════════════════════════════════
+
+    logger.debug(`[payment/apply] Starting transaction for payment ${externalPaymentId}`);
+
+    // 1. Обновляем Balance АТОМАРНО
     logger.debug(`[payment/apply] Updating balance for ${userId}: +${creditsNum} TC`);
     const updatedBalance = await Balance.findOneAndUpdate(
       { user: userId },
       { $inc: { tokenCredits: creditsNum } },
-      { upsert: true, new: true },
+      { upsert: true, new: true, session },  // ← session в каждой операции!
     );
 
     if (!updatedBalance) {
+      await session.abortTransaction();
+      await session.endSession();
       logger.error(`[payment/apply] Failed to update balance for ${userId}`);
       return { ok: false, message: 'Ошибка при обновлении баланса' };
     }
 
-    logger.debug(`[payment/apply] Balance updated: oldBalance=0, newBalance=${updatedBalance.tokenCredits}`);
+    logger.debug(`[payment/apply] Balance updated: newBalance=${updatedBalance.tokenCredits}`);
 
+    // 2. Обновляем Subscription АТОМАРНО (если это subscription платеж)
     let subscription = null;
     if (type === 'subscription' && planPurchased) {
       logger.debug(`[payment/apply] Processing subscription: ${planPurchased}`);
       const planDoc = await Plan.findOne({ planId: planPurchased }).lean();
       if (planDoc?.durationDays) {
-        subscription = await upsertSubscription(userId, planPurchased, planDoc.durationDays);
+        // upsertSubscription теперь должна принимать session
+        subscription = await upsertSubscription(userId, planPurchased, planDoc.durationDays, session);
         logger.debug(`[payment/apply] Subscription updated: expires=${subscription?.planExpiresAt}`);
       }
     }
 
-    await Payment.findOneAndUpdate(
+    // 3. Обновляем Payment АТОМАРНО
+    const updatedPayment = await Payment.findOneAndUpdate(
       { externalPaymentId },
       { status: 'succeeded', expiresAt: subscription?.planExpiresAt || null },
+      { new: true, session },  // ← session в каждой операции!
     );
 
+    if (!updatedPayment) {
+      await session.abortTransaction();
+      await session.endSession();
+      logger.error(`[payment/apply] Failed to update payment status for ${externalPaymentId}`);
+      return { ok: false, message: 'Ошибка при обновлении статуса платежа' };
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ВСЕ ОПЕРАЦИИ УСПЕШНЫ → КОММИТИМ ТРАНЗАКЦИЮ
+    // ════════════════════════════════════════════════════════════════════════
+    await session.commitTransaction();
+    await session.endSession();
+
     logger.info(
-      `[payment/apply] SUCCESS: paymentId=${externalPaymentId} userId=${userId} type=${type} ` +
+      `[payment/apply] SUCCESS (ATOMIC): paymentId=${externalPaymentId} userId=${userId} type=${type} ` +
       `plan=${planPurchased || '—'} +${creditsNum} TC newBalance=${updatedBalance.tokenCredits}`,
     );
 
@@ -123,6 +163,14 @@ async function applySuccessfulPayment(externalPaymentId) {
       planExpiresAt: subscription?.planExpiresAt || null,
     };
   } catch (err) {
+    // ОШИБКА → ОТКАТЫВАЕМ ВСЮ ТРАНЗАКЦИЮ
+    try {
+      await session.abortTransaction();
+    } catch (abortErr) {
+      logger.error(`[payment/apply] Error aborting transaction:`, abortErr);
+    }
+    await session.endSession();
+
     logger.error(`[payment/apply] ERROR for ${externalPaymentId}:`, err);
     return { ok: false, message: `Ошибка применения платежа: ${err.message}` };
   }

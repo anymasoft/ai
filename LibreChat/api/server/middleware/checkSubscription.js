@@ -62,24 +62,38 @@ async function checkSubscription(req, res, next) {
 
     req.subscription = { plan, planExpiresAt };
 
-    // STRICT: Use model ONLY from explicit user request
-    // NO fallback to conversation.model or preset.model
-    const modelId =
-      req.body?.endpointOption?.model ||
-      req.body?.model;
+    // SECURITY: Use model ONLY from buildEndpointOption (которое идёт ДО этого middleware)
+    // ЗАПРЕЩЕНО использовать req.body?.model или req.body?.endpointOption?.model
+    // Это защищает от подмены модели в payload
+    const modelId = req.builtEndpointOption?.model;
 
-    // [MODEL CHECK] Log exactly where the model comes from
+    // Если buildEndpointOption не был вызван или результата нет — это критичная ошибка!
+    // checkSubscription ДОЛЖЕН быть ПОСЛЕ buildEndpointOption в middleware цепочке
+    if (!modelId) {
+      const { logger } = require('@librechat/data-schemas');
+      logger.error(
+        '[SECURITY] checkSubscription вызван БЕЗ req.builtEndpointOption.model! ' +
+        'Проверьте порядок middleware. buildEndpointOption должен быть ПЕРЕД checkSubscription'
+      );
+      return res.status(500).json({
+        error: 'Internal server error: invalid middleware order',
+        code: 'INVALID_MIDDLEWARE_ORDER',
+      });
+    }
+
+    // [MODEL CHECK] Log security check
     if (modelId) {
       const { logger } = require('@librechat/data-schemas');
-      logger.info(`[MODEL CHECK] ${modelId} against plan "${plan}"`, {
-        usedForCheck: modelId,
-        fromEndpointOption: req.body?.endpointOption?.model,
-        fromBody: req.body?.model,
+      logger.info(`[MODEL CHECK] "${modelId}" against plan "${plan}"`, {
+        model: modelId,
+        plan,
+        userId,
       });
 
       const plans = await getPlans();
       const planConfig = plans[plan];
       if (!isModelAllowed(planConfig, modelId)) {
+        logger.warn(`[MODEL_DENIED] User="${userId}" tried model="${modelId}" on plan="${plan}"`);
         return res.status(403).json({
           error: `Модель "${modelId}" недоступна на плане "${plan}". Перейдите на Pro или Business.`,
           code: 'MODEL_NOT_ALLOWED',
