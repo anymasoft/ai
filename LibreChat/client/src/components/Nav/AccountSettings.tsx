@@ -43,7 +43,7 @@ function AccountSettings() {
     gcTime: 60_000,
     enabled: !!token,
   });
-  const planBadge = PLAN_BADGE[planData.plan];
+  const planBadge = planData ? PLAN_BADGE[planData.plan] ?? null : null;
 
   return (
     <Select.SelectProvider>
@@ -90,9 +90,11 @@ function AccountSettings() {
                   ? 'Тарифы и баланс'
                   : 'Купить Pro'}
             </span>
-            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
-              {planBadge.label}
-            </span>
+            {planBadge && (
+              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
+                {planBadge.label}
+              </span>
+            )}
           </span>
         </Select.SelectItem>
         <DropdownMenuSeparator />
