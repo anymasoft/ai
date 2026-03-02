@@ -25,8 +25,9 @@ export * from './crypto';
 export * from './flow/manager';
 /* Middleware */
 export * from './middleware';
+export { ErrorController } from './middleware/error';
 /* Memory */
-export * from './memory';
+// export * from './memory'; // TODO: Memory module not found
 /* Agents */
 export * from './agents';
 /* Prompts */
