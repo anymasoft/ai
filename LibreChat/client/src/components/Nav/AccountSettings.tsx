@@ -96,7 +96,7 @@ function AccountSettings() {
           </span>
         </Select.SelectItem>
         <DropdownMenuSeparator />
-        {user?.role === 'ADMIN' && (
+        {user!.role === 'ADMIN' && (
           <>
             <Select.SelectItem
               value=""
