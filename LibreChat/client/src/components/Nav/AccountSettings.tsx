@@ -43,7 +43,7 @@ function AccountSettings() {
     gcTime: 60_000,
     enabled: !!token,
   });
-  const planBadge = PLAN_BADGE[planData?.plan!];
+  const planBadge = PLAN_BADGE[planData.plan];
 
   return (
     <Select.SelectProvider>
@@ -76,45 +76,26 @@ function AccountSettings() {
           {user!.email}
         </div>
         <DropdownMenuSeparator />
-        {startupConfig?.balance?.enabled === true && balanceQuery.data != null && (
-          <>
-            <Select.SelectItem
-              value=""
-              onClick={() => navigate('/pricing')}
-              className="select-item text-sm text-blue-600 dark:text-blue-400"
-            >
-              <CreditCard className="icon-md" aria-hidden="true" />
-              <span className="flex flex-1 items-center justify-between gap-2">
-                <span>
-                  {localize('com_nav_balance')}:{' '}
-                  {new Intl.NumberFormat().format(Math.round(balanceQuery.data.tokenCredits))}
-                </span>
-                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
-                  {planBadge.label}
-                </span>
-              </span>
-            </Select.SelectItem>
-            <DropdownMenuSeparator />
-          </>
-        )}
-        {(startupConfig?.balance?.enabled !== true || balanceQuery.data == null) && (
-          <>
-            <Select.SelectItem
-              value=""
-              onClick={() => navigate('/pricing')}
-              className="select-item text-sm text-blue-600 dark:text-blue-400"
-            >
-              <CreditCard className="icon-md" aria-hidden="true" />
-              <span className="flex flex-1 items-center justify-between gap-2">
-                <span>{user?.role === 'ADMIN' ? 'Тарифы и баланс' : 'Купить Pro'}</span>
-                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
-                  {planBadge.label}
-                </span>
-              </span>
-            </Select.SelectItem>
-            <DropdownMenuSeparator />
-          </>
-        )}
+        <Select.SelectItem
+          value=""
+          onClick={() => navigate('/pricing')}
+          className="select-item text-sm text-blue-600 dark:text-blue-400"
+        >
+          <CreditCard className="icon-md" aria-hidden="true" />
+          <span className="flex flex-1 items-center justify-between gap-2">
+            <span>
+              {startupConfig?.balance?.enabled === true && balanceQuery.data != null
+                ? `${localize('com_nav_balance')}: ${new Intl.NumberFormat().format(Math.round(balanceQuery.data.tokenCredits))}`
+                : user!.role === 'ADMIN'
+                  ? 'Тарифы и баланс'
+                  : 'Купить Pro'}
+            </span>
+            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
+              {planBadge.label}
+            </span>
+          </span>
+        </Select.SelectItem>
+        <DropdownMenuSeparator />
         {user?.role === 'ADMIN' && (
           <>
             <Select.SelectItem
