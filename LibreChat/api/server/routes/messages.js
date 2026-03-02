@@ -21,6 +21,17 @@ const ensureBalance = require('~/server/middleware/ensureBalance');
 const checkSubscription = require('~/server/middleware/checkSubscription');
 const checkSpecAllowedForPlan = require('~/server/middleware/checkSpecAllowedForPlan');
 
+// DEBUG: Verify middleware is loaded correctly
+if (typeof ensureBalance !== 'function') {
+  throw new Error(`❌ CRITICAL: ensureBalance is not a function! Type: ${typeof ensureBalance}`);
+}
+if (typeof checkSubscription !== 'function') {
+  throw new Error(`❌ CRITICAL: checkSubscription is not a function! Type: ${typeof checkSubscription}`);
+}
+if (typeof checkSpecAllowedForPlan !== 'function') {
+  throw new Error(`❌ CRITICAL: checkSpecAllowedForPlan is not a function! Type: ${typeof checkSpecAllowedForPlan}`);
+}
+
 const router = express.Router();
 router.use(requireJwtAuth);
 router.use(ensureBalance);
