@@ -77,6 +77,18 @@ function AccountSettings() {
           {user?.email ?? localize('com_nav_user')}
         </div>
         <DropdownMenuSeparator />
+        {/* Плашка с тарифом — отображается независимо от баланса */}
+        {planBadge && (
+          <>
+            <div className="ml-3 mr-2 flex items-center justify-between gap-2 py-2">
+              <span className="text-text-secondary text-sm">{localize('com_nav_plan')}</span>
+              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
+                {planBadge.label}
+              </span>
+            </div>
+            <DropdownMenuSeparator />
+          </>
+        )}
         {/* Баланс — кликабельный, ведёт на /pricing */}
         {startupConfig?.balance?.enabled === true && balanceQuery.data != null && (
           <>
@@ -86,16 +98,9 @@ function AccountSettings() {
               className="select-item text-sm text-blue-600 dark:text-blue-400"
             >
               <CreditCard className="icon-md" aria-hidden="true" />
-              <span className="flex flex-1 items-center justify-between gap-2">
-                <span>
-                  {localize('com_nav_balance')}:{' '}
-                  {new Intl.NumberFormat().format(Math.round(balanceQuery.data.tokenCredits))}
-                </span>
-                {planBadge && (
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
-                    {planBadge.label}
-                  </span>
-                )}
+              <span>
+                {localize('com_nav_balance')}:{' '}
+                {new Intl.NumberFormat().format(Math.round(balanceQuery.data.tokenCredits))}
               </span>
             </Select.SelectItem>
             <DropdownMenuSeparator />
@@ -110,14 +115,7 @@ function AccountSettings() {
               className="select-item text-sm text-blue-600 dark:text-blue-400"
             >
               <CreditCard className="icon-md" aria-hidden="true" />
-              <span className="flex flex-1 items-center justify-between gap-2">
-                <span>{user?.role === 'ADMIN' ? 'Тарифы и баланс' : 'Купить Pro'}</span>
-                {planBadge && (
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
-                    {planBadge.label}
-                  </span>
-                )}
-              </span>
+              <span>{user?.role === 'ADMIN' ? 'Тарифы и баланс' : 'Купить Pro'}</span>
             </Select.SelectItem>
             <DropdownMenuSeparator />
           </>
