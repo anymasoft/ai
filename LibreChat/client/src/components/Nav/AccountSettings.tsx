@@ -43,7 +43,7 @@ function AccountSettings() {
     gcTime: 60_000,
     enabled: !!token,
   });
-  const planBadge = PLAN_BADGE[planData.plan];
+  const planBadge = planData ? PLAN_BADGE[planData.plan] : null;
 
   return (
     <Select.SelectProvider>
