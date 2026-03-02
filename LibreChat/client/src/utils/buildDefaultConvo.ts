@@ -36,6 +36,15 @@ const buildDefaultConvo = ({
   const availableModels = models;
   const model = lastConversationSetup?.model ?? lastSelectedModel?.[endpoint] ?? '';
 
+  // AUDIT: Log model selection logic
+  console.log('[buildDefaultConvo] Model selection:', {
+    endpoint,
+    availableModels,
+    lastConversationSetup_model: lastConversationSetup?.model,
+    lastSelectedModel_endpoint: lastSelectedModel?.[endpoint],
+    selectedModel: model,
+  });
+
   let possibleModels: string[];
 
   if (availableModels.includes(model)) {

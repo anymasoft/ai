@@ -309,6 +309,14 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
   };
 
   const handleSelectModel = (endpoint: Endpoint, model: string) => {
+    // AUDIT: Log model selection in ModelSelector
+    console.log('[ModelSelectorContext] handleSelectModel called:', {
+      endpoint: endpoint.value,
+      selectedModel: model,
+      isAgents: isAgentsEndpoint(endpoint.value),
+      isAssistants: isAssistantsEndpoint(endpoint.value),
+    });
+
     if (isAgentsEndpoint(endpoint.value)) {
       onSelectEndpoint?.(endpoint.value, {
         agent_id: model,
@@ -320,6 +328,7 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
         model: assistantsMap?.[endpoint.value]?.[model]?.model ?? '',
       });
     } else if (endpoint.value) {
+      console.log('[ModelSelectorContext] Calling onSelectEndpoint with model:', model);
       onSelectEndpoint?.(endpoint.value, { model });
     }
     setSelectedValues({

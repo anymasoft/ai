@@ -162,6 +162,15 @@ export default function useSelectMention({
       }
       clearModelForNonEphemeralAgent(template);
 
+      // AUDIT: Log template state before newConversation
+      console.log('[useSelectMention] onSelectEndpoint - template before newConversation:', {
+        endpoint: newEndpoint,
+        model: template.model,
+        agent_id: template.agent_id,
+        assistant_id: template.assistant_id,
+        spec: template.spec,
+      });
+
       template.spec = null;
       template.iconURL = null;
       template.modelLabel = null;
@@ -196,6 +205,14 @@ export default function useSelectMention({
       }
 
       logger.info('conversation', 'Switching conversation to new endpoint/model', template);
+
+      // AUDIT: Log newConversation call with model
+      console.log('[useSelectMention] Calling newConversation with:', {
+        templateModel: template.model,
+        presetModel: kwargs.model,
+        endpoint: newEndpoint,
+      });
+
       newConversation({
         template: { ...(template as Partial<TConversation>) },
         preset: { ...kwargs, spec: null, iconURL: null, modelLabel: null, endpoint: newEndpoint },
