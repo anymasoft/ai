@@ -8,6 +8,7 @@ const {
   messageIpLimiter,
   configMiddleware,
   messageUserLimiter,
+  buildEndpointOption,
 } = require('~/server/middleware');
 const { saveMessage } = require('~/models');
 const openai = require('./openai');
@@ -51,6 +52,9 @@ router.use('/v1', openai);
 
 router.use(requireJwtAuth);
 router.use(ensureBalance);
+// buildEndpointOption ДОЛЖЕН быть ДО checkSubscription, так как checkSubscription
+// требует req.builtEndpointOption.model для проверки доступа к модели по плану
+router.use(buildEndpointOption);
 router.use(checkSubscription);
 router.use(checkSpecAllowedForPlan);
 router.use(checkBan);

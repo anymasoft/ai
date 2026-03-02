@@ -9,6 +9,7 @@ const {
   validateConvoAccess,
   createForkLimiters,
   configMiddleware,
+  buildEndpointOption,
 } = require('~/server/middleware');
 const { getConvosByCursor, deleteConvos, getConvo, saveConvo } = require('~/models/Conversation');
 const { forkConversation, duplicateConversation } = require('~/server/utils/import/fork');
@@ -43,6 +44,9 @@ if (typeof checkSpecAllowedForPlan !== 'function') {
 const router = express.Router();
 router.use(requireJwtAuth);
 router.use(ensureBalance);
+// buildEndpointOption ДОЛЖЕН быть ДО checkSubscription, так как checkSubscription
+// требует req.builtEndpointOption.model для проверки доступа к модели по плану
+router.use(buildEndpointOption);
 router.use(checkSubscription);
 router.use(checkSpecAllowedForPlan);
 
