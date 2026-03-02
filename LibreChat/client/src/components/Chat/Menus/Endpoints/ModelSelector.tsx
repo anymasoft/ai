@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo } from 'react';
 import { TooltipAnchor } from '@librechat/client';
 import { getConfigDefaults } from 'librechat-data-provider';
 import type { ModelSelectorProps } from '~/common';
@@ -10,7 +10,6 @@ import {
 } from './components';
 import { ModelSelectorProvider, useModelSelectorContext } from './ModelSelectorContext';
 import { ModelSelectorChatProvider } from './ModelSelectorChatContext';
-import { useChatContext } from '~/Providers/ChatContext';
 import { getSelectedIcon, getDisplayValue } from './utils';
 import { CustomMenu as Menu } from './CustomMenu';
 import DialogManager from './DialogManager';
@@ -18,7 +17,6 @@ import { useLocalize } from '~/hooks';
 
 function ModelSelectorContent() {
   const localize = useLocalize();
-  const { conversation, setConversation } = useChatContext();
 
   const {
     // LibreChat
@@ -61,41 +59,6 @@ function ModelSelectorContent() {
     [localize, agentsMap, modelSpecs, selectedValues, mappedEndpoints],
   );
 
-  // ===== SPEC-FIRST АРХИТЕКТУРА =====
-  // Использовать ТОЛЬКО spec.name как источник истины
-  // Не обновлять conversation.model, только conversation.spec
-  const handleModelChange = useCallback(
-    (values: Record<string, any>) => {
-      const selectedSpec = values.modelSpec || '';
-
-      console.log('[ModelSelector] ✅ SPEC-FIRST SELECTION:', {
-        selectedSpec,
-        previousSpec: conversation?.spec,
-        previousModel: conversation?.model,
-      });
-
-      // Update selectedValues in context (for UI display)
-      setSelectedValues({
-        endpoint: '',  // ← не используется в spec-first архитектуре
-        model: '',     // ← не используется в spec-first архитектуре
-        modelSpec: selectedSpec, // ← ГЛАВНОЕ: выбранный spec
-      });
-
-      // ===== КРИТИЧНО: ТОЛЬКО обновлять conversation.spec =====
-      // Backend будет использовать spec для определения endpoint и model через buildEndpointOption
-      if (selectedSpec) {
-        console.log('[ModelSelector] ✅ SPEC-FIRST: DIRECTLY SETTING conversation.spec to:', selectedSpec);
-        setConversation((prev) => ({
-          ...prev,
-          spec: selectedSpec,
-          // НЕ обновляем conversation.model - это будет определено spec.preset.model на backend
-          // НЕ обновляем conversation.endpoint - это будет определено spec.preset.endpoint на backend
-        }));
-      }
-    },
-    [conversation?.spec, setConversation, setSelectedValues],
-  );
-
   const trigger = (
     <TooltipAnchor
       aria-label={localize('com_ui_select_model')}
@@ -120,7 +83,13 @@ function ModelSelectorContent() {
     <div className="relative flex w-full max-w-md flex-col items-center gap-2">
       <Menu
         values={selectedValues}
-        onValuesChange={handleModelChange}
+        onValuesChange={(values: Record<string, any>) => {
+          setSelectedValues({
+            endpoint: values.endpoint || '',
+            model: values.model || '',
+            modelSpec: values.modelSpec || '',
+          });
+        }}
         onSearch={(value) => setSearchValue(value)}
         combobox={<input id="model-search" placeholder=" " />}
         comboboxLabel={localize('com_endpoint_search_models')}

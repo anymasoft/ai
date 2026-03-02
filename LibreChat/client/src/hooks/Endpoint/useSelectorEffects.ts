@@ -91,27 +91,28 @@ export default function useSelectorEffects({
     if (
       conversation?.assistant_id ||
       conversation?.agent_id ||
-      conversation?.model
+      conversation?.model ||
+      conversation?.spec
     ) {
       if (isAgentsEndpoint(conversation?.endpoint)) {
         debouncedSetSelectedValues({
           endpoint: conversation.endpoint || '',
           model: conversation.agent_id ?? '',
-          modelSpec: '', // Never use spec - only model
+          modelSpec: conversation.spec || '',
         });
         return;
       } else if (isAssistantsEndpoint(conversation?.endpoint)) {
         debouncedSetSelectedValues({
           endpoint: conversation.endpoint || '',
           model: conversation.assistant_id || '',
-          modelSpec: '', // Never use spec - only model
+          modelSpec: conversation.spec || '',
         });
         return;
       }
       debouncedSetSelectedValues({
         endpoint: conversation.endpoint || '',
         model: conversation.model || '',
-        modelSpec: '', // Never use spec - only model
+        modelSpec: conversation.spec || '',
       });
     }
     return () => {
@@ -120,6 +121,7 @@ export default function useSelectorEffects({
       }
     };
   }, [
+    conversation?.spec,
     conversation?.model,
     conversation?.endpoint,
     conversation?.agent_id,

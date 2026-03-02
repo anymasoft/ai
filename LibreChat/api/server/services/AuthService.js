@@ -30,7 +30,6 @@ const {
   deleteUserById,
   generateRefreshToken,
 } = require('~/models');
-const { Subscription } = require('~/db/models');
 const { registerSchema } = require('~/strategies/validators');
 const { getAppConfig } = require('~/server/services/Config');
 const { sendEmail } = require('~/server/utils');
@@ -232,19 +231,6 @@ const registerUser = async (user, additionalData = {}) => {
 
     const newUser = await createUser(newUserData, appConfig.balance, disableTTL, true);
     newUserId = newUser._id;
-
-    // Создаем запись подписки для нового пользователя с планом 'free'
-    try {
-      await Subscription.create({
-        userId: newUserId, // ObjectId
-        plan: 'free',
-      });
-      logger.info(`[registerUser] Subscription created for userId: ${newUserId}`);
-    } catch (subErr) {
-      logger.error(`[registerUser] Failed to create subscription for userId: ${newUserId}`, subErr);
-      // Не удаляем пользователя - подписка будет создана при первом запросе
-    }
-
     if (emailEnabled && !newUser.emailVerified) {
       await sendVerificationEmail({
         _id: newUserId,

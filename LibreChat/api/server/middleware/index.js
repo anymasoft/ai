@@ -1,6 +1,3 @@
-const checkSubscription = require('./checkSubscription');
-const checkSpecAllowedForPlan = require('./checkSpecAllowedForPlan');
-const ensureBalance = require('./ensureBalance');
 const validatePasswordReset = require('./validatePasswordReset');
 const validateRegistration = require('./validateRegistration');
 const buildEndpointOption = require('./buildEndpointOption');
@@ -49,7 +46,4 @@ module.exports = {
   buildEndpointOption,
   validateRegistration,
   validatePasswordReset,
-  checkSubscription,
-  checkSpecAllowedForPlan,
-  ensureBalance,
 };

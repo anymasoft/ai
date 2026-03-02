@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'; 
+import { useCallback, useRef } from 'react';
 import { v4 } from 'uuid';
 import { useSetRecoilState } from 'recoil';
 import { useQueryClient } from '@tanstack/react-query';
@@ -438,14 +438,6 @@ export default function useEventHandlers({
         isTemporary: _isTemporary = false,
       } = submission;
 
-      // DEBUG: Check if responseMessage has debug info
-      console.log('[finalHandler] Received data', {
-        hasResponseMessage: !!responseMessage,
-        hasDebugInResponseMessage: !!responseMessage?.debug,
-        debugInfo: responseMessage?.debug ? JSON.stringify(responseMessage.debug) : 'NO DEBUG',
-        responseMessageKeys: responseMessage ? Object.keys(responseMessage).slice(0, 15) : [],
-      });
-
       try {
         // Handle early abort - aborted during tool loading before any messages saved
         // Don't update conversation state, just reset UI and stay on new chat
@@ -534,7 +526,6 @@ export default function useEventHandlers({
         } else if (requestMessage != null && responseMessage != null) {
           finalMessages = [...messages, requestMessage, responseMessage];
         }
-
         if (finalMessages.length > 0) {
           setFinalMessages(conversation.conversationId, finalMessages);
         } else if (

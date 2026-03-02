@@ -223,15 +223,6 @@ const useNewConvo = (index = 0) => {
         } else {
           logger.log('conversation', 'Setting conversation from `useNewConvo`', conversation);
           setConversation(conversation);
-          // AUDIT: Verify conversation.model after setConversation
-          console.log('[useNewConvo] MODEL AFTER setConversation:', {
-            conversationId: conversation.conversationId,
-            endpoint: conversation.endpoint,
-            model: conversation.model,
-            agent_id: conversation.agent_id,
-            assistant_id: conversation.assistant_id,
-            spec: conversation.spec,
-          });
         }
         setSubmission({} as TSubmission);
         if (!(keepLatestMessage ?? false)) {

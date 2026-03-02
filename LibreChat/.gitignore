@@ -6,7 +6,6 @@ meili_data*
 data/
 logs
 *.log
-*.rar
 
 # Runtime data
 pids

@@ -1,6 +1,5 @@
 import debounce from 'lodash/debounce';
 import React, { createContext, useContext, useState, useMemo, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { EModelEndpoint, isAgentsEndpoint, isAssistantsEndpoint } from 'librechat-data-provider';
 import type * as t from 'librechat-data-provider';
 import type { Endpoint, SelectedValues } from '~/common';
@@ -63,54 +62,24 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     useModelSelectorChatContext();
   const localize = useLocalize();
   const { announcePolite } = useLiveAnnouncer();
-
-  /**
-   * Получаем список разрешённых моделей для текущего пользователя (по его тарифу).
-   * API возвращает: { models: [ { modelId, provider, endpointKey, displayName } ], plan }
-   * Кэш: 60 секунд
-   */
-  const { data: allowedModelsData } = useQuery({
-    queryKey: ['allowedModels'],
-    queryFn: async () => {
-      const res = await fetch('/api/models/allowed', { credentials: 'include' });
-      if (!res.ok) return null;
-      const json = await res.json();
-      return json;
-    },
-    staleTime: 60_000,
-    gcTime: 60_000,
-  });
-
-  // Флаг: успешно ли загружены разрешённые модели (true если ответ получен, false если ошибка)
-  const hasLoadedAllowedModels = allowedModelsData !== undefined && allowedModelsData !== null;
-
-  const allowedModelIds = new Set(allowedModelsData?.models?.map((m: any) => m.modelId) ?? []);
-
   const modelSpecs = useMemo(() => {
     const specs = startupConfig?.modelSpecs?.list ?? [];
+    if (!agentsMap) {
+      return specs;
+    }
 
     /**
-     * Filter modelSpecs by:
-     * 1. Agents the user has access to (agentsMap)
-     * 2. Models allowed by user's subscription plan (allowedModels)
+     * Filter modelSpecs to only include agents the user has access to.
+     * Use agentsMap which already contains permission-filtered agents (consistent with other components).
      */
     return specs.filter((spec) => {
       if (spec.preset?.endpoint === EModelEndpoint.agents && spec.preset?.agent_id) {
-        return agentsMap && spec.preset.agent_id in agentsMap;
+        return spec.preset.agent_id in agentsMap;
       }
-
-      /**
-       * Filter by user's subscription plan
-       * Only show models that are in allowedModelIds
-       */
-      if (spec.preset?.model && allowedModelIds.size > 0) {
-        return allowedModelIds.has(spec.preset.model);
-      }
-
-      /** Keep non-agent modelSpecs if no allowed models restriction */
-      return allowedModelIds.size === 0;
+      /** Keep non-agent modelSpecs */
+      return true;
     });
-  }, [startupConfig, agentsMap, allowedModelIds]);
+  }, [startupConfig, agentsMap]);
 
   const permissionLevel = useAgentDefaultPermissionLevel();
   const { data: agents = null } = useListAgentsQuery(
@@ -126,59 +95,6 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     startupConfig,
     endpointsConfig,
   });
-
-  /**
-   * Filter endpoints to only show those that have models in the user's allowed models.
-   * This prevents showing empty endpoint sections for models the user doesn't have access to.
-   *
-   * TODO: Agents and Assistants endpoints are currently hidden (commented out below).
-   * Uncomment the code to enable them when ready to support them.
-   */
-  const filteredMappedEndpoints = useMemo(() => {
-    if (!mappedEndpoints) {
-      return mappedEndpoints;
-    }
-
-    // Filter out agents and assistants endpoints
-    const withoutAgentsAssistants = mappedEndpoints.filter(
-      (endpoint) =>
-        !isAgentsEndpoint(endpoint.value) && !isAssistantsEndpoint(endpoint.value),
-    );
-
-    // Only apply filtering if allowedModels were successfully loaded from API
-    // If API failed to load (hasLoadedAllowedModels = false), show all models as fallback
-    if (!hasLoadedAllowedModels) {
-      return withoutAgentsAssistants;
-    }
-
-    // If allowedModelIds is empty after successful load, it means all models are allowed
-    if (allowedModelIds.size === 0) {
-      return withoutAgentsAssistants;
-    }
-
-    // For regular endpoints, filter models to only allowed ones
-    return withoutAgentsAssistants
-      .map((endpoint) => {
-        if (endpoint.models && Array.isArray(endpoint.models)) {
-          const filteredModels = endpoint.models.filter((model: string) =>
-            allowedModelIds.has(model),
-          );
-
-          // Only return endpoint if it has at least one allowed model
-          if (filteredModels.length > 0) {
-            return {
-              ...endpoint,
-              models: filteredModels,
-            };
-          }
-
-          return null;
-        }
-
-        return endpoint;
-      })
-      .filter((ep): ep is Endpoint => ep !== null);
-  }, [mappedEndpoints, allowedModelIds, hasLoadedAllowedModels]);
 
   const getModelDisplayName = useCallback(
     (endpoint: Endpoint, model: string): string => {
@@ -275,21 +191,6 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
       model,
       modelSpec: spec.name,
     });
-    // CRITICAL: Also update conversation through onSelectEndpoint
-    // to ensure conversation.model is set, not just conversation.spec
-    if (spec.preset.endpoint) {
-      const updatePayload: Record<string, any> = {};
-      if (isAgentsEndpoint(spec.preset.endpoint)) {
-        updatePayload.agent_id = spec.preset.agent_id ?? '';
-        updatePayload.model = '';
-      } else if (isAssistantsEndpoint(spec.preset.endpoint)) {
-        updatePayload.assistant_id = spec.preset.assistant_id ?? '';
-        updatePayload.model = spec.preset.model ?? '';
-      } else {
-        updatePayload.model = model;
-      }
-      onSelectEndpoint?.(spec.preset.endpoint, updatePayload);
-    }
   };
 
   const handleSelectEndpoint = (endpoint: Endpoint) => {
@@ -302,32 +203,28 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
         model: '',
         modelSpec: '',
       });
-      // CRITICAL: Clear spec from conversation
-      // We only use model for model selection, never spec
-      return;
     }
   };
 
   const handleSelectModel = (endpoint: Endpoint, model: string) => {
-    // ⭐ ЖЁСТКОЕ ИСПРАВЛЕНИЕ: НЕ используем newConversation
-    console.log('[ModelSelectorContext] 🔴 handleSelectModel called:', {
-      endpoint: endpoint.value,
-      selectedModel: model,
-      previousModel: conversation?.model,
-    });
-
-    // ТОЛЬКО обновляем UI state
+    if (isAgentsEndpoint(endpoint.value)) {
+      onSelectEndpoint?.(endpoint.value, {
+        agent_id: model,
+        model: agentsMap?.[model]?.model ?? '',
+      });
+    } else if (isAssistantsEndpoint(endpoint.value)) {
+      onSelectEndpoint?.(endpoint.value, {
+        assistant_id: model,
+        model: assistantsMap?.[endpoint.value]?.[model]?.model ?? '',
+      });
+    } else if (endpoint.value) {
+      onSelectEndpoint?.(endpoint.value, { model });
+    }
     setSelectedValues({
       endpoint: endpoint.value,
       model,
       modelSpec: '',
     });
-
-    // ⭐ НЕ вызываем onSelectEndpoint!
-    // onSelectEndpoint вызывает newConversation -> switchToConversation -> buildDefaultConvo
-    // И buildDefaultConvo может переписать conversation.model!
-    // Это legacy система автоматического назначения модели
-    console.log('[ModelSelectorContext] ⭐ DISABLED: NOT calling onSelectEndpoint to prevent auto model assignment');
 
     const modelDisplayName = getModelDisplayName(endpoint, model);
     const announcement = localize('com_ui_model_selected', { 0: modelDisplayName });
@@ -344,7 +241,7 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     agentsMap,
     modelSpecs,
     assistantsMap,
-    mappedEndpoints: filteredMappedEndpoints,
+    mappedEndpoints,
     endpointsConfig,
 
     // Functions

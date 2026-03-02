@@ -171,6 +171,11 @@ export default function useResumableSSE(
           const data = JSON.parse(e.data);
 
           if (data.final != null) {
+            console.log('[ResumableSSE] Received FINAL event', {
+              aborted: data.aborted,
+              conversationId: data.conversation?.conversationId,
+              hasResponseMessage: !!data.responseMessage,
+            });
             clearDraft(currentSubmission.conversation?.conversationId);
             try {
               finalHandler(data, currentSubmission as EventSubmission);

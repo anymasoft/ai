@@ -1,5 +1,5 @@
 const express = require('express');
-const { logger } = require('@librechat/data-schemas');
+const { createSetBalanceConfig } = require('@librechat/api');
 const {
   resetPasswordRequestController,
   resetPasswordController,
@@ -17,8 +17,14 @@ const {
 const { verify2FAWithTempToken } = require('~/server/controllers/auth/TwoFactorAuthController');
 const { logoutController } = require('~/server/controllers/auth/LogoutController');
 const { loginController } = require('~/server/controllers/auth/LoginController');
+const { getAppConfig } = require('~/server/services/Config');
 const middleware = require('~/server/middleware');
-const { Subscription, Plan } = require('~/db/models');
+const { Balance } = require('~/db/models');
+
+const setBalanceConfig = createSetBalanceConfig({
+  getAppConfig,
+  Balance,
+});
 
 const router = express.Router();
 
@@ -31,9 +37,7 @@ router.post(
   middleware.loginLimiter,
   middleware.checkBan,
   ldapAuth ? middleware.requireLdapAuth : middleware.requireLocalAuth,
-  // ПРИМЕЧАНИЕ: setBalanceConfig больше НЕ НУЖЕН здесь
-  // ensureBalance middleware применяется глобально в server/index.js
-  // и гарантирует инициализацию Balance для всех authenticated запросов
+  setBalanceConfig,
   loginController,
 );
 router.post('/refresh', refreshController);
@@ -67,60 +71,5 @@ router.post('/2fa/disable', middleware.requireJwtAuth, disable2FA);
 router.post('/2fa/backup/regenerate', middleware.requireJwtAuth, regenerateBackupCodes);
 
 router.get('/graph-token', middleware.requireJwtAuth, graphTokenController);
-
-/**
- * GET /api/auth/plan
- * Возвращает текущий план пользователя и его allowedModels
- */
-router.get('/plan', middleware.requireJwtAuth, async (req, res) => {
-  try {
-    const userId = req.user?._id || req.user?.id; // ObjectId для поиска
-    const userIdString = userId?.toString(); // Строка для логирования
-
-    if (!userId) {
-      return res.status(401).json({ error: 'User not found' });
-    }
-
-    let subscription = await Subscription.findOne({ userId }).lean();
-
-    // Если подписки нет, создаем её с планом 'free'
-    if (!subscription) {
-      try {
-        await Subscription.create({
-          userId,
-          plan: 'free',
-        });
-        subscription = { plan: 'free' };
-        logger.info(`[auth/plan] Created subscription for userId: ${userIdString}`);
-      } catch (subErr) {
-        logger.error(`[auth/plan] Failed to create subscription for userId: ${userIdString}`, subErr);
-        subscription = { plan: 'free' };
-      }
-    }
-
-    let plan = subscription?.plan || 'free';
-    let planExpiresAt = subscription?.planExpiresAt || null;
-
-    // Проверяем истёк ли план
-    if (plan !== 'free' && planExpiresAt && new Date(planExpiresAt) < new Date()) {
-      plan = 'free';
-      planExpiresAt = null;
-    }
-
-    // Получаем информацию о плане из коллекции Plan
-    await Plan.seedDefaults();
-    const planConfig = await Plan.findOne({ planId: plan }).lean();
-
-    logger.info(`[auth/plan] [userId: ${userIdString}] [plan: ${plan}]`);
-    res.json({
-      plan,
-      planExpiresAt,
-      allowedModels: planConfig?.allowedModels || [],
-    });
-  } catch (err) {
-    logger.error('[auth/plan]', err);
-    res.status(500).json({ error: 'Failed to get user plan' });
-  }
-});
 
 module.exports = router;

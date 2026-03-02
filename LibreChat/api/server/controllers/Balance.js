@@ -1,15 +1,10 @@
-const { Balance, Subscription } = require('~/db/models');
+const { Balance } = require('~/db/models');
 
 async function balanceController(req, res) {
-  const userId = req.user._id || req.user.id;
-
-  const [balanceData, subscription] = await Promise.all([
-    Balance.findOne(
-      { user: userId },
-      '-_id tokenCredits autoRefillEnabled refillIntervalValue refillIntervalUnit lastRefill refillAmount',
-    ).lean(),
-    Subscription.findOne({ userId }).lean(),
-  ]);
+  const balanceData = await Balance.findOne(
+    { user: req.user.id },
+    '-_id tokenCredits autoRefillEnabled refillIntervalValue refillIntervalUnit lastRefill refillAmount',
+  ).lean();
 
   if (!balanceData) {
     return res.status(404).json({ error: 'Balance not found' });
@@ -23,19 +18,7 @@ async function balanceController(req, res) {
     delete balanceData.refillAmount;
   }
 
-  // Lazy expiry: если план истёк — понижаем до free прямо здесь
-  let plan = subscription?.plan || 'free';
-  let planStartedAt = subscription?.planStartedAt || null;
-  let planExpiresAt = subscription?.planExpiresAt || null;
-
-  if (plan !== 'free' && planExpiresAt && new Date(planExpiresAt) < new Date()) {
-    await Subscription.findOneAndUpdate({ userId }, { plan: 'free', planExpiresAt: null, planStartedAt: null });
-    plan = 'free';
-    planStartedAt = null;
-    planExpiresAt = null;
-  }
-
-  res.status(200).json({ ...balanceData, plan, planStartedAt, planExpiresAt });
+  res.status(200).json(balanceData);
 }
 
 module.exports = balanceController;

@@ -48,91 +48,66 @@ async function buildEndpointOption(req, res, next) {
   }
 
   const appConfig = req.config;
-
-  // ===== SPEC-FIRST АРХИТЕКТУРА =====
-  // Если modelSpecs.enforce = true, используем ТОЛЬКО spec → preset.model
-  if (appConfig.modelSpecs?.enforce === true) {
-    const spec = req.body?.spec;
+  if (appConfig.modelSpecs?.list && appConfig.modelSpecs?.enforce) {
+    /** @type {{ list: TModelSpec[] }}*/
+    const { list } = appConfig.modelSpecs;
+    const { spec } = parsedBody;
 
     if (!spec) {
-      logger.error('[buildEndpointOption] 🔴 SPEC-FIRST MODE: spec is required');
-      return handleError(res, {
-        text: 'spec is required when modelSpecs.enforce = true',
-        code: 'SPEC_REQUIRED',
-      });
+      return handleError(res, { text: 'No model spec selected' });
     }
 
-    // Найти modelSpec в конфиге
-    const modelSpec = appConfig.modelSpecs.list?.find((s) => s.name === spec);
-    if (!modelSpec) {
-      logger.error(`[buildEndpointOption] 🔴 SPEC NOT FOUND: "${spec}"`);
-      return handleError(res, {
-        text: `Model spec "${spec}" not found in configuration`,
-        code: 'SPEC_NOT_FOUND',
-      });
+    const currentModelSpec = list.find((s) => s.name === spec);
+    if (!currentModelSpec) {
+      return handleError(res, { text: 'Invalid model spec' });
     }
 
-    // Взять endpoint и model из spec.preset
-    const specEndpoint = modelSpec.preset?.endpoint;
-    const specModel = modelSpec.preset?.model;
-
-    if (!specEndpoint || !specModel) {
-      logger.error(`[buildEndpointOption] 🔴 INVALID SPEC PRESET: "${spec}"`, modelSpec.preset);
-      return handleError(res, {
-        text: `Invalid spec preset for "${spec}"`,
-        code: 'INVALID_SPEC_PRESET',
-      });
+    if (endpoint !== currentModelSpec.preset.endpoint) {
+      return handleError(res, { text: 'Model spec mismatch' });
     }
 
-    // Применить preset из spec
-    parsedBody.endpoint = specEndpoint;
-    parsedBody.model = specModel;
-    parsedBody.spec = spec;
-
-    logger.info(`[buildEndpointOption] ✅ SPEC-FIRST: "${spec}" → endpoint="${specEndpoint}", model="${specModel}"`, {
-      spec,
-      endpoint: specEndpoint,
-      model: specModel,
-    });
-  } else {
-    // ===== FALLBACK: MODE-FIRST АРХИТЕКТУРА (для совместимости) =====
-    // Если enforce = false, можно использовать model напрямую
-    const requestedModel = req.body?.model;
-
-    if (requestedModel) {
-      parsedBody.model = requestedModel;
-      logger.info(`[buildEndpointOption] MODEL-FIRST (fallback): "${requestedModel}"`, {
-        model: requestedModel,
+    try {
+      currentModelSpec.preset.spec = spec;
+      parsedBody = parseCompactConvo({
+        endpoint,
+        endpointType,
+        conversation: currentModelSpec.preset,
+        defaultParamsEndpoint,
       });
+      if (currentModelSpec.iconURL != null && currentModelSpec.iconURL !== '') {
+        parsedBody.iconURL = currentModelSpec.iconURL;
+      }
+    } catch (error) {
+      logger.error(`Error parsing model spec for endpoint ${endpoint}`, error);
+      return handleError(res, { text: 'Error parsing model spec' });
+    }
+  } else if (parsedBody.spec && appConfig.modelSpecs?.list) {
+    // Non-enforced mode: if spec is selected, derive iconURL from model spec
+    const modelSpec = appConfig.modelSpecs.list.find((s) => s.name === parsedBody.spec);
+    if (modelSpec?.iconURL) {
+      parsedBody.iconURL = modelSpec.iconURL;
     }
   }
 
   try {
     const isAgents =
-      isAgentsEndpoint(parsedBody.endpoint || endpoint) ||
-      req.baseUrl.startsWith(EndpointURLs[EModelEndpoint.agents]);
+      isAgentsEndpoint(endpoint) || req.baseUrl.startsWith(EndpointURLs[EModelEndpoint.agents]);
     const builder = isAgents
       ? (...args) => buildFunction[EModelEndpoint.agents](req, ...args)
-      : buildFunction[endpointType ?? (parsedBody.endpoint || endpoint)];
+      : buildFunction[endpointType ?? endpoint];
 
     // TODO: use object params
     req.body = req.body || {}; // Express 5: ensure req.body exists
-    req.body.endpointOption = await builder(parsedBody.endpoint || endpoint, parsedBody, endpointType);
+    req.body.endpointOption = await builder(endpoint, parsedBody, endpointType);
 
     if (req.body.files && !isAgents) {
       req.body.endpointOption.attachments = updateFilesUsage(req.body.files);
     }
 
-    logger.info(`[buildEndpointOption] ✅ BUILT ENDPOINT OPTION`, {
-      spec: req.body?.spec,
-      model: parsedBody.model,
-      endpoint: parsedBody.endpoint,
-    });
-
     next();
   } catch (error) {
     logger.error(
-      `Error building endpoint option for endpoint ${parsedBody.endpoint || endpoint} with type ${endpointType}`,
+      `Error building endpoint option for endpoint ${endpoint} with type ${endpointType}`,
       error,
     );
     return handleError(res, { text: 'Error building endpoint option' });

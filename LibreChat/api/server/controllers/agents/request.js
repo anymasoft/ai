@@ -13,64 +13,6 @@ const { disposeClient, clientRegistry, requestDataMap } = require('~/server/clea
 const { handleAbortError } = require('~/server/middleware');
 const { logViolation } = require('~/cache');
 const { saveMessage } = require('~/models');
-const { enrichWithDebugInfo } = require('~/server/services/DebugMode');
-const { Balance } = require('~/db/models');
-
-/**
- * Проверить баланс токенов пользователя и вернуть информативное сообщение если его недостаточно
- * @returns {Promise<{hasTokens: boolean, errorMessage?: string, balance?: number}>}
- */
-async function checkUserTokenBalance(userId) {
-  try {
-    const balance = await Balance.findOne({ user: userId }).lean();
-    const tokenCredits = balance?.tokenCredits || 0;
-
-    if (tokenCredits <= 0) {
-      return {
-        hasTokens: false,
-        errorMessage: `Недостаточно токенов для генерации ответа. Текущий баланс: ${tokenCredits} кредитов. Пополните баланс в разделе "Пополнение баланса".`,
-        balance: tokenCredits,
-      };
-    }
-
-    // Предупреждение если мало токенов (менее 1 млн)
-    if (tokenCredits < 1_000_000) {
-      logger.warn(`[TokenBalance] User ${userId} has low token balance: ${tokenCredits}`);
-    }
-
-    return { hasTokens: true, balance: tokenCredits };
-  } catch (err) {
-    logger.error('[TokenBalance] Error checking user balance:', err);
-    // Если ошибка при проверке - разрешаем продолжать (безопасный fallback)
-    return { hasTokens: true };
-  }
-}
-
-/**
- * Получить информативное сообщение об ошибке с контекстом
- */
-function getErrorMessage(error, errorContext = {}) {
-  const { code, message } = error;
-  const errorMsg = message || error.toString();
-
-  // ECONNRESET - соединение разорвано (может быть проблема с сервером модели или сетью)
-  if (code === 'ECONNRESET' || errorMsg.includes('ECONNRESET')) {
-    return `Ошибка соединения с сервером модели (ECONNRESET). Пожалуйста, попробуйте ещё раз.`;
-  }
-
-  // ETIMEDOUT - timeout
-  if (code === 'ETIMEDOUT' || errorMsg.includes('ETIMEDOUT') || errorMsg.includes('timeout')) {
-    return `Истекло время ожидания ответа от модели. Пожалуйста, попробуйте ещё раз или выберите другую модель.`;
-  }
-
-  // Недостаток токенов
-  if (errorMsg.includes('insufficient') || errorMsg.includes('token')) {
-    return `Недостаточно токенов для генерации полного ответа. Пополните баланс.`;
-  }
-
-  // Общая ошибка
-  return `Ошибка при генерации ответа: ${errorMsg.substring(0, 150)}`;
-}
 
 function createCloseHandler(abortController) {
   return function (manual) {
@@ -220,13 +162,6 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
 
     client = result.client;
 
-    // [MODEL DISPATCH] Log client model at initialization
-    const clientModel = client.options?.model || client.modelId;
-    logger.info(`[MODEL DISPATCH] Client initialized with model: ${clientModel}`, {
-      requested: req.body?.model,
-      endpoint: endpointOption.endpoint,
-    });
-
     if (client?.sender) {
       GenerationJobManager.updateMetadata(streamId, { sender: client.sender });
     }
@@ -278,21 +213,6 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
             streamId,
           });
         };
-
-        // Проверяем баланс токенов перед отправкой
-        const balanceCheck = await checkUserTokenBalance(userId);
-        if (!balanceCheck.hasTokens) {
-          throw new Error(balanceCheck.errorMessage);
-        }
-
-        // Anthropic restriction:
-        // temperature cannot be used together with thinking
-        if (endpointOption.endpoint === 'anthropic' && client.options?.thinking) {
-          if (client.options?.temperature !== undefined) {
-            logger.info(`[ResumableAgentController] Removing temperature for Anthropic thinking mode (model: ${endpointOption.modelOptions?.model || endpointOption.model_parameters?.model})`);
-            delete client.options.temperature;
-          }
-        }
 
         const messageOptions = {
           user: userId,
@@ -357,45 +277,13 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
           });
         }
 
-        // Обогащаем response debug информацией (если включен debug mode)
-        // ВАЖНО: это должно быть ДО сохранения в БД, чтобы debug информация сохранилась
-        const requestedModel = req.body?.endpointOption?.model || req.body?.model;
-
-        // [MODEL DISPATCH] Log the exact model being used
-        logger.info(`[MODEL DISPATCH] ResumableAgentController sendMessage`, {
-          requested: req.body?.model,
-          used: requestedModel,
-          endpoint: endpointOption.endpoint,
-        });
-
-        logger.info(`[ResumableAgentController] Обогащаем response debug информацией для пользователя ${userId}, модель=${requestedModel}`);
-        logger.info(`[ResumableAgentController] Response type before enrichment: ${typeof response}, constructor: ${response?.constructor?.name}`);
-        logger.info(`[ResumableAgentController] Response keys before enrichment: ${Object.keys(response || {}).slice(0, 10).join(', ')}`);
-
-        await enrichWithDebugInfo({
-          response,
-          requestedModel,
-          userId,
-        });
-
-        logger.info(`[ResumableAgentController] Debug информация добавлена? ${response?.debug ? 'ДА' : 'НЕТ'}`);
-        logger.info(`[ResumableAgentController] Response keys after enrichment: ${Object.keys(response || {}).slice(0, 10).join(', ')}`);
-        if (response?.debug) {
-          logger.info(`[ResumableAgentController] Debug info: ${JSON.stringify(response.debug)}`);
-        }
-
         // CRITICAL: Save response message BEFORE emitting final event.
         // This prevents race conditions where the client sends a follow-up message
         // before the response is saved to the database, causing orphaned parentMessageIds.
         if (client.savedMessageIds && !client.savedMessageIds.has(messageId)) {
-          const messageToDB = { ...response, user: userId, unfinished: wasAbortedBeforeComplete };
-          // Явно копируем debug информацию для сохранения в БД (override для гарантии)
-          if (response?.debug) {
-            messageToDB.debug = response.debug;
-          }
           await saveMessage(
             req,
-            messageToDB,
+            { ...response, user: userId, unfinished: wasAbortedBeforeComplete },
             { context: 'api/server/controllers/agents/request.js - resumable response end' },
           );
         }
@@ -417,32 +305,13 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
         }
 
         if (!wasAbortedBeforeComplete) {
-          // Debug информация уже добавлена выше перед сохранением в БД
-
-          const responseCopy = { ...response };
-          // Явно копируем debug информацию чтобы убедиться что она попадет в responseMessage
-          if (response?.debug) {
-            responseCopy.debug = response.debug;
-          }
-
-          logger.info(`[ResumableAgentController] Creating finalEvent - response has debug? ${!!response?.debug}`);
-          logger.info(`[ResumableAgentController] Creating finalEvent - responseCopy has debug? ${!!responseCopy?.debug}`);
-
           const finalEvent = {
             final: true,
             conversation,
             title: conversation.title,
             requestMessage: sanitizeMessageForTransmit(userMessage),
-            responseMessage: responseCopy,
+            responseMessage: { ...response },
           };
-
-          logger.info(`[ResumableAgentController] Final finalEvent structure - responseMessage has debug? ${!!finalEvent.responseMessage?.debug}`);
-          if (finalEvent.responseMessage?.debug) {
-            logger.info(`[ResumableAgentController] DEBUG FOUND in finalEvent: ${JSON.stringify(finalEvent.responseMessage.debug)}`);
-          } else {
-            logger.warn(`[ResumableAgentController] WARNING: DEBUG NOT FOUND in finalEvent.responseMessage`);
-            logger.warn(`[ResumableAgentController] responseMessage keys: ${Object.keys(finalEvent.responseMessage || {}).join(', ')}`);
-          }
 
           logger.debug(`[ResumableAgentController] Emitting FINAL event`, {
             streamId,
@@ -450,41 +319,19 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
             userMessageId: userMessage?.messageId,
             responseMessageId: response?.messageId,
             conversationId: conversation?.conversationId,
-            hasDebugInResponse: !!response?.debug,
-            hasDebugInResponseMessage: !!finalEvent.responseMessage?.debug,
-            debugContent: finalEvent.responseMessage?.debug ? JSON.stringify(finalEvent.responseMessage.debug) : 'NO DEBUG',
           });
 
           await GenerationJobManager.emitDone(streamId, finalEvent);
           GenerationJobManager.completeJob(streamId);
           await decrementPendingRequest(userId);
         } else {
-          // Debug информация уже добавлена выше перед сохранением в БД
-
-          const responseCopy = { ...response, unfinished: true };
-          // Явно копируем debug информацию чтобы убедиться что она попадет в responseMessage
-          if (response?.debug) {
-            responseCopy.debug = response.debug;
-          }
-
-          logger.info(`[ResumableAgentController] Creating ABORTED finalEvent - response has debug? ${!!response?.debug}`);
-          logger.info(`[ResumableAgentController] Creating ABORTED finalEvent - responseCopy has debug? ${!!responseCopy?.debug}`);
-
           const finalEvent = {
             final: true,
             conversation,
             title: conversation.title,
             requestMessage: sanitizeMessageForTransmit(userMessage),
-            responseMessage: responseCopy,
+            responseMessage: { ...response, unfinished: true },
           };
-
-          logger.info(`[ResumableAgentController] Final ABORTED finalEvent structure - responseMessage has debug? ${!!finalEvent.responseMessage?.debug}`);
-          if (finalEvent.responseMessage?.debug) {
-            logger.info(`[ResumableAgentController] DEBUG FOUND in ABORTED finalEvent: ${JSON.stringify(finalEvent.responseMessage.debug)}`);
-          } else {
-            logger.warn(`[ResumableAgentController] WARNING: DEBUG NOT FOUND in ABORTED finalEvent.responseMessage`);
-            logger.warn(`[ResumableAgentController] ABORTED responseMessage keys: ${Object.keys(finalEvent.responseMessage || {}).join(', ')}`);
-          }
 
           logger.debug(`[ResumableAgentController] Emitting ABORTED FINAL event`, {
             streamId,
@@ -492,9 +339,6 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
             userMessageId: userMessage?.messageId,
             responseMessageId: response?.messageId,
             conversationId: conversation?.conversationId,
-            hasDebugInResponse: !!response?.debug,
-            hasDebugInResponseMessage: !!finalEvent.responseMessage?.debug,
-            debugContent: finalEvent.responseMessage?.debug ? JSON.stringify(finalEvent.responseMessage.debug) : 'NO DEBUG',
           });
 
           await GenerationJobManager.emitDone(streamId, finalEvent);
@@ -530,12 +374,8 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
           // abortJob already handled emitDone and completeJob
         } else {
           logger.error(`[ResumableAgentController] Generation error for ${streamId}:`, error);
-
-          // Получаем информативное сообщение об ошибке
-          const userFriendlyMessage = getErrorMessage(error);
-
-          await GenerationJobManager.emitError(streamId, userFriendlyMessage);
-          GenerationJobManager.completeJob(streamId, userFriendlyMessage);
+          await GenerationJobManager.emitError(streamId, error.message || 'Generation failed');
+          GenerationJobManager.completeJob(streamId, error.message);
         }
 
         await decrementPendingRequest(userId);
@@ -704,13 +544,6 @@ const _LegacyAgentController = async (req, res, next, initializeClient, addTitle
     }
     client = result.client;
 
-    // [MODEL DISPATCH] Log client model at initialization
-    const clientModelLegacy = client.options?.model || client.modelId;
-    logger.info(`[MODEL DISPATCH] AgentController - Client initialized with model: ${clientModelLegacy}`, {
-      requested: req.body?.model,
-      endpoint: endpointOption.endpoint,
-    });
-
     // Register client with finalization registry if available
     if (clientRegistry) {
       clientRegistry.register(client, { userId }, client);
@@ -766,24 +599,6 @@ const _LegacyAgentController = async (req, res, next, initializeClient, addTitle
         },
       });
     };
-
-    // [MODEL DISPATCH] Log the exact model being used
-    const requestedModelLegacy = req.body?.model;
-    const usedModelLegacy = endpointOption.modelOptions?.model || endpointOption.model_parameters?.model;
-    logger.info(`[MODEL DISPATCH] AgentController sendMessage`, {
-      requested: requestedModelLegacy,
-      used: usedModelLegacy,
-      endpoint: endpointOption.endpoint,
-    });
-
-    // Anthropic restriction:
-    // temperature cannot be used together with thinking
-    if (endpointOption.endpoint === 'anthropic' && client.options?.thinking) {
-      if (client.options?.temperature !== undefined) {
-        logger.info(`[AgentController] Removing temperature for Anthropic thinking mode (model: ${usedModelLegacy})`);
-        delete client.options.temperature;
-      }
-    }
 
     const messageOptions = {
       user: userId,

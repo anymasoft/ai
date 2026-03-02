@@ -177,19 +177,13 @@ export default function useChatFunctions({
     const iconURL = conversation?.iconURL;
     const defaultParamsEndpoint = getDefaultParamsEndpoint(endpointsConfig, endpoint);
 
-    // ⭐ ЖЁСТКОЕ ОТКЛЮЧЕНИЕ: НЕ используем parseCompactConvo для определения model
-    // parseCompactConvo может брать model из других источников (preset, spec, etc)
-    // Мы ТОЛЬКО используем conversation.model
+    /** This becomes part of the `endpointOption` */
     const convo = parseCompactConvo({
       endpoint: endpoint as EndpointSchemaKey,
       endpointType: endpointType as EndpointSchemaKey,
       conversation: conversation ?? {},
       defaultParamsEndpoint,
     });
-
-    // ⭐ ОЧИСТКА: Удаляем model из convo если она там есть
-    // Используем ТОЛЬКО conversation.model
-    delete convo.model;
 
     const { modelDisplayLabel } = endpointsConfig?.[endpoint ?? ''] ?? {};
     const endpointOption = Object.assign(
@@ -201,12 +195,6 @@ export default function useChatFunctions({
       },
       convo,
     ) as TEndpointOption;
-
-    // ⭐ ЕДИНСТВЕННЫЙ источник модели: conversation.model
-    // НЕ используем parseCompactConvo, НЕ используем preset, НЕ используем spec
-    console.log('[useChatFunctions] 🔴 MODEL FROM CONVERSATION:', conversation?.model);
-    endpointOption.model = conversation?.model ?? '';
-
     if (endpoint !== EModelEndpoint.agents) {
       endpointOption.key = getExpiry();
       endpointOption.thread_id = thread_id;
@@ -269,8 +257,7 @@ export default function useChatFunctions({
       conversationId,
       unfinished: false,
       isCreatedByUser: false,
-      // SINGLE SOURCE OF TRUTH: conversation.model (from UI selector)
-      model: conversation?.model ?? '',
+      model: convo?.model,
       error: false,
       iconURL,
     };
@@ -324,29 +311,12 @@ export default function useChatFunctions({
     }
 
     logger.log('message_state', initialResponse);
-
-    // CRITICAL: Remove spec completely - use only model
-    // spec should never influence model selection
-    const conversationPayload = { ...conversation, conversationId };
-    delete conversationPayload.spec;
-
-    // Also ensure endpointOption doesn't have spec
-    const cleanEndpointOption = { ...endpointOption };
-    delete cleanEndpointOption.spec;
-
-    // CRITICAL LOGGING: Show exactly what's being sent
-    console.log('[useChatFunctions] PAYLOAD MODEL CHECK:', {
-      'conversation.model': conversation?.model,
-      'endpointOption.model': cleanEndpointOption.model,
-      'conversationPayload.model': conversationPayload.model,
-      endpoint,
-      conversationId,
-      timestamp: new Date().toISOString(),
-    });
-
     const submission: TSubmission = {
-      conversation: conversationPayload,
-      endpointOption: cleanEndpointOption,
+      conversation: {
+        ...conversation,
+        conversationId,
+      },
+      endpointOption,
       userMessage: {
         ...currentMsg,
         responseMessageId,
@@ -371,21 +341,6 @@ export default function useChatFunctions({
     if (index === 0 && setLatestMessage) {
       setLatestMessage(initialResponse);
     }
-
-    // [MODEL SANITY CHECK] Verify single source of truth
-    console.log('[useChatFunctions] FINAL SUBMISSION PAYLOAD:', {
-      model: submission.conversation?.model,
-      endpointOptionModel: submission.endpointOption?.model,
-      endpoint: submission.conversation?.endpoint,
-      hasSpec: submission.conversation?.spec !== undefined,
-      conversationKeys: Object.keys(submission.conversation ?? {}),
-    });
-
-    logger.log('[MODEL TRUTH] Frontend sends to backend:', {
-      selectedInUI: conversation?.model,
-      inEndpointOption: cleanEndpointOption.model,
-      inPayload: submission.endpointOption?.model,
-    });
 
     setSubmission(submission);
     logger.dir('message_stream', submission, { depth: null });

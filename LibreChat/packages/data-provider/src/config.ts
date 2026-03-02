@@ -1110,7 +1110,7 @@ const sharedOpenAIModels = [
   'gpt-5-nano',
   'gpt-5-chat-latest',
   'gpt-4.1',
-  'gpt-4o-mini',
+  'gpt-4.1-mini',
   'gpt-4.1-nano',
   'gpt-4o-mini',
   'gpt-4o',
@@ -1196,6 +1196,9 @@ export const defaultModels = {
     // Gemini 3.1 Models
     'gemini-3.1-pro-preview',
     'gemini-3.1-pro-preview-customtools',
+    // Gemini 3 Models
+    'gemini-3-pro-preview',
+    'gemini-3-flash-preview',
     // Gemini 2.5 Models
     'gemini-2.5-pro',
     'gemini-2.5-flash',

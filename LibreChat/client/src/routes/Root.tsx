@@ -21,7 +21,6 @@ import { Nav, MobileNav, NAV_WIDTH } from '~/components/Nav';
 import { TermsAndConditionsModal } from '~/components/ui';
 import { useHealthCheck } from '~/data-provider';
 import { Banner } from '~/components/Banners';
-import ProBanner from '~/components/ui/ProBanner';
 
 export default function Root() {
   const [showTerms, setShowTerms] = useState(false);
@@ -73,10 +72,8 @@ export default function Root() {
         <AssistantsMapContext.Provider value={assistantsMap}>
           <AgentsMapContext.Provider value={agentsMap}>
             <PromptGroupsProvider>
-              <div className="flex h-dvh flex-col">
-              <ProBanner />
               <Banner onHeightChange={setBannerHeight} />
-              <div className="flex flex-1 overflow-hidden">
+              <div className="flex" style={{ height: `calc(100dvh - ${bannerHeight}px)` }}>
                 <div className="relative z-0 flex h-full w-full overflow-hidden">
                   <Nav navVisible={navVisible} setNavVisible={setNavVisible} />
                   <div
@@ -96,7 +93,6 @@ export default function Root() {
                     <Outlet context={{ navVisible, setNavVisible } satisfies ContextType} />
                   </div>
                 </div>
-              </div>
               </div>
             </PromptGroupsProvider>
           </AgentsMapContext.Provider>
