@@ -211,10 +211,15 @@ router.post('/create', requireJwtAuth, async (req, res) => {
     const { packageId } = req.body;
     const userId = req.user._id; // ObjectId для поиска в БД
 
-    const tokenPkg = await TokenPackage.findOne({ packageId, isActive: true }).lean();
-    const planDoc  = tokenPkg ? null : await Plan.findOne({ planId: packageId, isActive: true }).lean();
+    // ✅ FIX: Normalize packageId to lowercase to prevent case-sensitivity issues
+    // Allows: "Business" → "business", "BUSINESS" → "business"
+    const normalizedPackageId = String(packageId || '').toLowerCase();
+
+    const tokenPkg = await TokenPackage.findOne({ packageId: normalizedPackageId, isActive: true }).lean();
+    const planDoc  = tokenPkg ? null : await Plan.findOne({ planId: normalizedPackageId, isActive: true }).lean();
 
     if (!tokenPkg && !planDoc) {
+      logger.warn(`[payment/create] Unknown package: original="${packageId}" normalized="${normalizedPackageId}"`);
       return res.status(400).json({ error: `Неизвестный или неактивный пакет: ${packageId}` });
     }
     if (planDoc && planDoc.priceRub <= 0) {
@@ -230,10 +235,18 @@ router.post('/create', requireJwtAuth, async (req, res) => {
       : `Подписка ${planDoc.label} — ${priceRub} ₽/мес`;
 
     const amountStr = priceRub.toFixed(2);
-    const idempotenceKey = `${userId}-${packageId}-${Date.now()}`;
+    const idempotenceKey = `${userId}-${normalizedPackageId}-${Date.now()}`;
 
     const baseUrl = process.env.DOMAIN_CLIENT || `${req.protocol}://${req.get('host')}`;
     const returnUrl = process.env.YOOKASSA_RETURN_URL || `${baseUrl}/pricing?payment=success`;
+
+    // 📝 DEBUG LOG
+    logger.info('[PAYMENT PLAN DEBUG] Creating payment', {
+      originalPackageId: packageId,
+      normalizedPackageId,
+      type,
+      planId,
+    });
 
     const { data } = await axios.post(
       `${YUKASSA_API}/payments`,
