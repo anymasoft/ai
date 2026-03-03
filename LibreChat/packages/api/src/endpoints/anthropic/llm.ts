@@ -172,12 +172,38 @@ function getLLMConfig(
   }
 
   const hasActiveThinking = requestOptions.thinking != null;
-  const isThinkingModel =
-    /claude-3[-.]7/.test(mergedOptions.model) || supportsAdaptiveThinking(mergedOptions.model);
-  if (!isThinkingModel || !hasActiveThinking) {
+
+  // ✅ FIX: Anthropic 4.x API doesn't allow temperature when thinking is enabled
+  // STRICTLY delete temperature, topP, topK from the payload when thinking is active
+  if (hasActiveThinking) {
+    // thinking is active - DELETE temperature/topP/topK from payload
+    // This prevents: "temperature is not supported when thinking is enabled"
+    delete requestOptions.temperature;
+    delete requestOptions.topP;
+    delete requestOptions.topK;
+
+    // 📝 DEBUG LOG: Confirm temperature is removed
+    logger.debug('[ANTHROPIC PAYLOAD DEBUG] Thinking enabled - removed temperature', {
+      model: requestOptions.model,
+      thinking: requestOptions.thinking,
+      hasTemperature: Object.prototype.hasOwnProperty.call(requestOptions, 'temperature'),
+      hasTopP: Object.prototype.hasOwnProperty.call(requestOptions, 'topP'),
+      hasTopK: Object.prototype.hasOwnProperty.call(requestOptions, 'topK'),
+    });
+  } else {
+    // thinking is NOT active - SET temperature/topP/topK normally
     requestOptions.temperature = mergedOptions.temperature;
     requestOptions.topP = mergedOptions.topP;
     requestOptions.topK = mergedOptions.topK;
+
+    // 📝 DEBUG LOG: Confirm temperature is set
+    logger.debug('[ANTHROPIC PAYLOAD DEBUG] Thinking disabled - temperature set', {
+      model: requestOptions.model,
+      thinking: requestOptions.thinking,
+      temperature: requestOptions.temperature,
+      topP: requestOptions.topP,
+      topK: requestOptions.topK,
+    });
   }
 
   const supportsCacheControl =
@@ -280,11 +306,26 @@ function getLLMConfig(
     }
   }
 
+  // ✅ FINAL PAYLOAD DEBUG - verify temperature/thinking conflict is resolved
+  const finalPayload = removeNullishValues(
+    requestOptions as Record<string, unknown>,
+  ) as AnthropicClientOptions & { clientOptions?: { fetchOptions?: { dispatcher: Dispatcher } } };
+
+  logger.info('[ANTHROPIC FINAL PAYLOAD]', {
+    model: finalPayload.model,
+    thinking: (finalPayload as Record<string, unknown>).thinking ?? null,
+    hasTemperature: Object.prototype.hasOwnProperty.call(finalPayload, 'temperature'),
+    temperature: finalPayload.temperature ?? null,
+    hasTopP: Object.prototype.hasOwnProperty.call(finalPayload, 'topP'),
+    topP: finalPayload.topP ?? null,
+    hasTopK: Object.prototype.hasOwnProperty.call(finalPayload, 'topK'),
+    topK: finalPayload.topK ?? null,
+    maxTokens: finalPayload.maxTokens ?? null,
+  });
+
   return {
     tools,
-    llmConfig: removeNullishValues(
-      requestOptions as Record<string, unknown>,
-    ) as AnthropicClientOptions & { clientOptions?: { fetchOptions?: { dispatcher: Dispatcher } } },
+    llmConfig: finalPayload,
   };
 }
 
