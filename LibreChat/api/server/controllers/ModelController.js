@@ -26,12 +26,35 @@ async function loadModels(req) {
   const cache = getLogStores(CacheKeys.CONFIG_STORE);
   const cachedModelsConfig = await cache.get(CacheKeys.MODELS_CONFIG);
   if (cachedModelsConfig) {
+    logger.debug('[ModelController.loadModels] Using cached models config', {
+      endpoints: Object.keys(cachedModelsConfig),
+      anthropicModels: cachedModelsConfig.anthropic?.length,
+    });
     return cachedModelsConfig;
   }
+
+  logger.debug('[ModelController.loadModels] Loading models from sources');
   const defaultModelsConfig = await loadDefaultModels(req);
+  logger.debug('[ModelController.loadModels] Default models loaded', {
+    endpoints: Object.keys(defaultModelsConfig),
+    anthropicModels: defaultModelsConfig.anthropic?.slice(0, 5),
+    anthropicCount: defaultModelsConfig.anthropic?.length,
+  });
+
   const customModelsConfig = await loadConfigModels(req);
+  logger.debug('[ModelController.loadModels] Custom models loaded', {
+    endpoints: Object.keys(customModelsConfig),
+    anthropicModels: customModelsConfig.anthropic?.slice(0, 5),
+  });
 
   const modelConfig = { ...defaultModelsConfig, ...customModelsConfig };
+
+  logger.debug('[ModelController.loadModels] Final merged config', {
+    endpoints: Object.keys(modelConfig),
+    anthropicModels: modelConfig.anthropic?.slice(0, 5),
+    anthropicCount: modelConfig.anthropic?.length,
+    hasHaiku: modelConfig.anthropic?.includes('claude-haiku-4-5'),
+  });
 
   await cache.set(CacheKeys.MODELS_CONFIG, modelConfig);
   return modelConfig;

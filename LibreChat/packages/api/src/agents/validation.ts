@@ -181,9 +181,18 @@ export async function validateAgentModel(
     endpoint,
     model,
     availableModels: availableModels.slice(0, 5), // Log first 5 models
+    availableCount: availableModels.length,
+    allModels: availableModels, // Log ALL models for debugging
   });
 
   const validModel = !!availableModels.find((availableModel) => availableModel === model);
+
+  logger.debug('[validateAgentModel] Model validation result', {
+    endpoint,
+    model,
+    isValid: validModel,
+    matchedModel: validModel ? model : 'NOT FOUND',
+  });
 
   if (validModel) {
     return { isValid: true };

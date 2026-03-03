@@ -1,6 +1,8 @@
 const accessPermissions = require('./accessPermissions');
 const assistants = require('./assistants');
 const categories = require('./categories');
+const admin = require('./admin');
+const adminMvp = require('./admin/mvp');
 const adminAuth = require('./admin/auth');
 const endpoints = require('./endpoints');
 const staticRoute = require('./static');
@@ -31,6 +33,8 @@ const payment = require('./payment');
 module.exports = {
   mcp,
   auth,
+  admin,
+  adminMvp,
   adminAuth,
   keys,
   apiKeys,
