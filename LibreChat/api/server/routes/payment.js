@@ -188,10 +188,10 @@ router.get('/plans', async (req, res) => {
       Plan.find({ isActive: true }).sort({ priceRub: 1 }).lean(),
       TokenPackage.find({ isActive: true }).lean(),
     ]);
-    res.json({ plans, tokenPackages });
+    return res.json({ plans, tokenPackages });
   } catch (err) {
     logger.error('[payment/plans]', err);
-    res.status(500).json({ error: 'Ошибка сервера' });
+    return res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
 
@@ -262,11 +262,11 @@ router.post('/create', requireJwtAuth, async (req, res) => {
     );
 
     logger.info(`[payment/create] userId=${userId} packageId=${packageId} type=${type} paymentId=${data.id}`);
-    res.json({ paymentId: data.id, confirmationUrl: data.confirmation?.confirmation_url });
+    return res.json({ paymentId: data.id, confirmationUrl: data.confirmation?.confirmation_url });
   } catch (err) {
     const msg = err.response?.data?.description || err.message;
     logger.error('[payment/create]', msg);
-    res.status(500).json({ error: `Ошибка создания платежа: ${msg}` });
+    return res.status(500).json({ error: `Ошибка создания платежа: ${msg}` });
   }
 });
 
@@ -374,7 +374,7 @@ router.get('/check', requireJwtAuth, async (req, res) => {
   } catch (err) {
     const msg = err.response?.data?.description || err.message;
     logger.error('[payment/check]', msg);
-    res.status(500).json({ ok: false, error: `Ошибка проверки: ${msg}` });
+    return res.status(500).json({ ok: false, error: `Ошибка проверки: ${msg}` });
   }
 });
 
@@ -457,10 +457,10 @@ router.get('/history', requireJwtAuth, async (req, res) => {
     const offset = parseInt(req.query.offset) || 0;
     const payments = await Payment.find({ userId }).sort({ createdAt: -1 }).skip(offset).limit(limit).lean();
     const total = await Payment.countDocuments({ userId });
-    res.json({ payments, total, limit, offset });
+    return res.json({ payments, total, limit, offset });
   } catch (err) {
     logger.error('[payment/history]', err);
-    res.status(500).json({ error: 'Ошибка сервера' });
+    return res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
 
