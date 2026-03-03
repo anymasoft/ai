@@ -3,7 +3,7 @@ import { useNavigate, useOutletContext } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { QueryKeys } from 'librechat-data-provider';
 import { Check, X, AlertTriangle, Loader2, CheckCircle, Clock, Plus } from 'lucide-react';
-import { useAuthContext } from '~/hooks';
+import { useAuthContext, useSubscription } from '~/hooks';
 import type { ContextType } from '~/common';
 import OpenSidebar from '~/components/Chat/Menus/OpenSidebar';
 
@@ -81,6 +81,9 @@ export default function Pricing() {
   const queryClient = useQueryClient();
   const { navVisible, setNavVisible } = useOutletContext<ContextType>();
 
+  // ✅ SSOT: Единый источник информации о тарифе
+  const { data: subscription } = useSubscription();
+
   const [plans, setPlans] = useState<PlanDoc[]>([]);
   const [tokenPackages, setTokenPackages] = useState<TokenPackageDoc[]>([]);
   const [balance, setBalance] = useState<BalanceInfo | null>(null);
@@ -119,10 +122,11 @@ export default function Pricing() {
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d?.tokenCredits != null) {
+          // ✅ SSOT: план берётся из subscription hook, не из /api/balance
           setBalance({
             tokenCredits: d.tokenCredits,
-            plan: d.plan || 'free',
-            planExpiresAt: d.planExpiresAt || null,
+            plan: subscription?.planId || 'free',
+            planExpiresAt: subscription?.expiresAt || null,
           });
           queryClient.invalidateQueries([QueryKeys.balance]);
         }
@@ -134,7 +138,7 @@ export default function Pricing() {
     fetchPlans();
     fetchAllModels();
     fetchBalance();
-  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [token, subscription]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fallback-поллинг для localhost: ONE-TIME check после редиректа с ?payment=success
   useEffect(() => {

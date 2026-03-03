@@ -31,23 +31,11 @@ if (!Subscription) {
   throw new Error('❌ CRITICAL: Subscription model is undefined! Check import path: ~/models/Subscription');
 }
 
-// Кэш планов — обновляется раз в 60 секунд, чтобы не ходить в БД на каждый запрос
-let _planCache = null;
-let _cacheExpiresAt = 0;
-const CACHE_TTL = 60_000;
-
-async function getPlans() {
-  if (_planCache && Date.now() < _cacheExpiresAt) return _planCache;
+// ✅ АРХИТЕКТУРА SSOT: НЕТ in-memory кэша.
+// Каждый запрос читает ПРЯМО из БД (максимум ~1ms от MongoDB).
+async function getPlanById(planId) {
   await Plan.seedDefaults();
-  const plans = await Plan.find({}, 'planId allowedSpecs isActive').lean();
-  _planCache = Object.fromEntries(plans.map((p) => [p.planId, p]));
-  _cacheExpiresAt = Date.now() + CACHE_TTL;
-  return _planCache;
-}
-
-/** Вызывать после обновления планов в admin, чтобы сразу применились новые allowedSpecs. */
-function invalidatePlanCache() {
-  _planCache = null;
+  return Plan.findOne({ planId }, 'planId allowedSpecs isActive').lean();
 }
 
 function isSpecAllowed(planConfig, specName) {
@@ -82,8 +70,7 @@ async function checkSpecAllowedForPlan(req, res, next) {
         userId,
       });
 
-      const plans = await getPlans();
-      const planConfig = plans[plan];
+      const planConfig = await getPlanById(plan);
 
       if (!isSpecAllowed(planConfig, spec)) {
         return res.status(403).json({
@@ -103,4 +90,3 @@ async function checkSpecAllowedForPlan(req, res, next) {
 }
 
 module.exports = checkSpecAllowedForPlan;
-module.exports.invalidatePlanCache = invalidatePlanCache;
