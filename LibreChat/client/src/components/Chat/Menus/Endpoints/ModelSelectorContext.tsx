@@ -77,13 +77,24 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
   const allowedModelsQuery = useQuery({
     queryKey: ['allowedModels'],
     queryFn: async () => {
+      console.log('[MODELS_DIAGNOSTIC] Starting fetch GET /api/models/allowed');
       const res = await fetch('/api/models/allowed', {
         credentials: 'include',
       });
+      console.log('[MODELS_DIAGNOSTIC] GET /api/models/allowed response status:', res.status);
+
       if (!res.ok) {
+        console.error('[MODELS_DIAGNOSTIC] GET /api/models/allowed failed with status:', res.status);
         throw new Error('Failed to load allowed models');
       }
-      return res.json() as Promise<{
+
+      const data = await res.json();
+      console.log('[MODELS_DIAGNOSTIC] GET /api/models/allowed response data:', data);
+      console.log('[MODELS_DIAGNOSTIC] Models count:', data.models?.length);
+      console.log('[MODELS_DIAGNOSTIC] Models:', data.models?.map((m: any) => m.modelId));
+      console.log('[MODELS_DIAGNOSTIC] Plan:', data.plan);
+
+      return data as {
         models: Array<{
           modelId: string;
           displayName: string;
@@ -92,7 +103,7 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
         }>;
         plan: string;
         [key: string]: any;
-      }>;
+      };
     },
     staleTime: 60_000, // 60 секунд кэш
     gcTime: 5 * 60_000, // 5 минут в памяти
@@ -100,8 +111,15 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
 
   // НОВОЕ: Построить modelSpecs из разрешенных моделей
   const modelSpecs = useMemo(() => {
+    // ДИАГНОСТИКА: Логируем данные allowedModels
+    console.log('[MODELS_DIAGNOSTIC] allowedModelsQuery.data:', allowedModelsQuery.data);
+    console.log('[MODELS_DIAGNOSTIC] allowedModelsQuery.isLoading:', allowedModelsQuery.isLoading);
+    console.log('[MODELS_DIAGNOSTIC] allowedModelsQuery.error:', allowedModelsQuery.error);
+
     // Если есть данные из /api/models/allowed, использовать их
     if (allowedModelsQuery.data?.models && Array.isArray(allowedModelsQuery.data.models)) {
+      console.log('[MODELS_DIAGNOSTIC] Using allowedModels from API, count:', allowedModelsQuery.data.models.length);
+
       const specs = allowedModelsQuery.data.models.map((model) => ({
         name: model.modelId,
         label: model.displayName,
@@ -111,32 +129,47 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
         },
       })) as t.TModelSpec[];
 
+      console.log('[MODELS_DIAGNOSTIC] Mapped specs from API:', specs.map(s => s.name));
+
       // Фильтрация по агентам (сохранить старую логику)
       if (!agentsMap) {
+        console.log('[MODELS_DIAGNOSTIC] No agentsMap, returning specs as is');
         return specs;
       }
 
-      return specs.filter((spec) => {
+      const filtered = specs.filter((spec) => {
         if (spec.preset?.endpoint === EModelEndpoint.agents && spec.preset?.agent_id) {
           return spec.preset.agent_id in agentsMap;
         }
         return true;
       });
+      console.log('[MODELS_DIAGNOSTIC] Filtered specs after agents filter:', filtered.map(s => s.name));
+      return filtered;
     }
 
     // Fallback на startupConfig если запрос еще не загрузился
+    console.log('[MODELS_DIAGNOSTIC] FALLBACK to startupConfig.modelSpecs');
+    console.log('[MODELS_DIAGNOSTIC] startupConfig.modelSpecs.list count:', startupConfig?.modelSpecs?.list?.length);
+    console.log('[MODELS_DIAGNOSTIC] startupConfig.modelSpecs.list:', startupConfig?.modelSpecs?.list?.map(m => m.name));
+
     const specs = startupConfig?.modelSpecs?.list ?? [];
     if (!agentsMap) {
+      console.log('[MODELS_DIAGNOSTIC] No agentsMap (fallback), returning startup specs as is');
       return specs;
     }
 
-    return specs.filter((spec) => {
+    const filtered = specs.filter((spec) => {
       if (spec.preset?.endpoint === EModelEndpoint.agents && spec.preset?.agent_id) {
         return spec.preset.agent_id in agentsMap;
       }
       return true;
     });
+    console.log('[MODELS_DIAGNOSTIC] Filtered startup specs after agents filter:', filtered.map(s => s.name));
+    return filtered;
   }, [allowedModelsQuery.data, agentsMap, startupConfig]);
+
+  // ДИАГНОСТИКА: Логируем финальный массив
+  console.log('[MODELS_DIAGNOSTIC] FINAL modelSpecs for selector:', modelSpecs.map(m => m.name));
 
   const permissionLevel = useAgentDefaultPermissionLevel();
   const { data: agents = null } = useListAgentsQuery(
