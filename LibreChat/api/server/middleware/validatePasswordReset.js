@@ -6,7 +6,7 @@ function validatePasswordReset(req, res, next) {
     next();
   } else {
     logger.warn(`Password reset attempt while not allowed. IP: ${req.ip}`);
-    res.status(403).send('Password reset is not allowed.');
+    return res.status(403).send('Password reset is not allowed.');
   }
 }
 
