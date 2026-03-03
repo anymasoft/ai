@@ -132,7 +132,16 @@ export async function validateAgentModel(
   params: ValidateAgentModelParams,
 ): Promise<ValidateAgentModelResult> {
   const { req, res, agent, modelsConfig, logViolation } = params;
-  const { model, provider: endpoint } = agent;
+  let { model, provider: endpoint } = agent;
+
+  // Handle model format with provider prefix (e.g., "anthropic|claude-haiku-4-5")
+  if (model && model.includes('|')) {
+    const [providerFromModel, modelName] = model.split('|');
+    if (providerFromModel && modelName) {
+      endpoint = endpoint || providerFromModel;
+      model = modelName;
+    }
+  }
 
   if (!model) {
     return {
