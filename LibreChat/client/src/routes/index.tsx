@@ -18,6 +18,7 @@ import LoginLayout from './Layouts/Login';
 import dashboardRoutes from './Dashboard';
 import ShareRoute from './ShareRoute';
 import ChatRoute from './ChatRoute';
+import AdminPanel from './AdminPanel';
 import Search from './Search';
 import Root from './Root';
 import Pricing from './Pricing';
@@ -96,6 +97,11 @@ export const router = createBrowserRouter(
           ],
         },
         dashboardRoutes,
+        {
+          path: 'admin',
+          element: <AdminPanel />,
+          errorElement: <RouteErrorBoundary />,
+        },
         {
           path: '/',
           element: <Root />,

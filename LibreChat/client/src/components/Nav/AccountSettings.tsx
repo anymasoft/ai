@@ -62,7 +62,7 @@ function AccountSettings() {
           className="mt-2 grow overflow-hidden text-ellipsis whitespace-nowrap text-left text-text-primary"
           style={{ marginTop: '0', marginLeft: '0' }}
         >
-          {user?.name ?? user?.username ?? localize('com_nav_user')}
+          {user?.name || user?.username || user?.email || localize('com_nav_user')}
         </div>
       </Select.Select>
       <Select.SelectPopover
@@ -76,30 +76,22 @@ function AccountSettings() {
           {user?.email ?? localize('com_nav_user')}
         </div>
         <DropdownMenuSeparator />
-        {planBadge && (
-          <>
-            <div className="ml-3 mr-2 flex items-center justify-between gap-2 py-2">
-              <span className="text-text-secondary text-sm">{localize('com_nav_plan')}</span>
-              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
-                {planBadge.label}
-              </span>
-            </div>
-            <DropdownMenuSeparator />
-          </>
-        )}
         {startupConfig?.balance?.enabled === true && balanceQuery.data != null && (
           <>
-            <Select.SelectItem
-              value=""
-              onClick={() => navigate('/pricing')}
-              className="select-item text-sm text-blue-600 dark:text-blue-400"
-            >
-              <CreditCard className="icon-md" aria-hidden="true" />
-              <span>
-                {localize('com_nav_balance')}:{' '}
-                {new Intl.NumberFormat().format(Math.round(balanceQuery.data.tokenCredits))}
-              </span>
-            </Select.SelectItem>
+            <div className="ml-3 mr-2 flex items-center justify-between gap-2 py-2">
+              <div className="flex items-center gap-2">
+                <CreditCard className="icon-md" aria-hidden="true" />
+                <span>
+                  {localize('com_nav_balance')}:{' '}
+                  {new Intl.NumberFormat().format(Math.round(balanceQuery.data.tokenCredits))}
+                </span>
+              </div>
+              {planBadge && (
+                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${planBadge.className}`}>
+                  {planBadge.label}
+                </span>
+              )}
+            </div>
             <DropdownMenuSeparator />
           </>
         )}
