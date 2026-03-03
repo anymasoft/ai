@@ -3,7 +3,15 @@ const express = require('express');
 const axios = require('axios');
 const { logger } = require('@librechat/data-schemas');
 const { requireJwtAuth } = require('../middleware/');
-const { User, Balance, Payment, Subscription, Plan, TokenPackage, AiModel, SystemSettings } = require('~/db/models');
+
+// ✅ ИСПРАВЛЕНИЕ: Импортируем модели из правильных источников
+// User, Balance, Plan, AiModel, SystemSettings - из ~/db/models (@librechat/data-schemas)
+// Payment, Subscription, TokenPackage - локальные модели из ~/models
+const { User, Balance, Plan, AiModel, SystemSettings } = require('~/db/models');
+const Payment = require('~/models/Payment');
+const Subscription = require('~/models/Subscription');
+const TokenPackage = require('~/models/TokenPackage');
+
 const { invalidatePlanCache } = require('../middleware/checkSubscription');
 const { getEndpointsConfig } = require('~/server/services/Config');
 
