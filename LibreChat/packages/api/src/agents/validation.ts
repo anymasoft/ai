@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { logger } from '@librechat/data-schemas';
 import { ViolationTypes, ErrorTypes } from 'librechat-data-provider';
 import type { Agent, TModelsConfig } from 'librechat-data-provider';
 import type { Request, Response } from 'express';
@@ -163,6 +164,11 @@ export async function validateAgentModel(
 
   const availableModels = modelsConfig[endpoint];
   if (!availableModels) {
+    logger.warn('[validateAgentModel] Endpoint not found in modelsConfig', {
+      endpoint,
+      availableEndpoints: Object.keys(modelsConfig),
+      model,
+    });
     return {
       isValid: false,
       error: {
@@ -170,6 +176,12 @@ export async function validateAgentModel(
       },
     };
   }
+
+  logger.debug('[validateAgentModel] Checking model', {
+    endpoint,
+    model,
+    availableModels: availableModels.slice(0, 5), // Log first 5 models
+  });
 
   const validModel = !!availableModels.find((availableModel) => availableModel === model);
 
