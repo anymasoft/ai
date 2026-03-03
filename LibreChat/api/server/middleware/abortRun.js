@@ -108,7 +108,7 @@ async function abortRun(req, res) {
     return sendEvent(res, finalEvent);
   }
 
-  res.json(finalEvent);
+  return res.json(finalEvent);
 }
 
 module.exports = {

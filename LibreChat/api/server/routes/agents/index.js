@@ -166,7 +166,7 @@ router.get('/chat/stream/:streamId', async (req, res) => {
  */
 router.get('/chat/active', async (req, res) => {
   const activeJobIds = await GenerationJobManager.getActiveJobIdsForUser(req.user.id);
-  res.json({ activeJobIds });
+  return res.json({ activeJobIds });
 });
 
 /**
@@ -194,7 +194,7 @@ router.get('/chat/status/:conversationId', async (req, res) => {
   const resumeState = await GenerationJobManager.getResumeState(conversationId);
   const isActive = job.status === 'running';
 
-  res.json({
+  return res.json({
     active: isActive,
     streamId: conversationId,
     status: job.status,

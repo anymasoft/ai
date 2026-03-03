@@ -51,9 +51,9 @@ router.get('/', async (req, res) => {
     const actions =
       editableAgentIds.length > 0 ? await getActions({ agent_id: { $in: editableAgentIds } }) : [];
 
-    res.json(actions);
+    return res.json(actions);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 });
 
@@ -193,11 +193,11 @@ router.post(
         }
       }
 
-      res.json([updatedAgent, updatedAction]);
+      return res.json([updatedAgent, updatedAction]);
     } catch (error) {
       const message = 'Trouble updating the Agent Action';
       logger.error(message, error);
-      res.status(500).json({ message });
+      return res.status(500).json({ message });
     }
   },
 );
@@ -252,11 +252,11 @@ router.delete(
         { updatingUserId: req.user.id, forceVersion: true },
       );
       await deleteAction({ action_id });
-      res.status(200).json({ message: 'Action deleted successfully' });
+      return res.status(200).json({ message: 'Action deleted successfully' });
     } catch (error) {
       const message = 'Trouble deleting the Agent Action';
       logger.error(message, error);
-      res.status(500).json({ message });
+      return res.status(500).json({ message });
     }
   },
 );

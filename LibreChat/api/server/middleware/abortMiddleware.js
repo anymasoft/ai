@@ -173,7 +173,7 @@ async function abortMessage(req, res) {
   }
 
   res.setHeader('Content-Type', 'application/json');
-  res.send(JSON.stringify(finalEvent));
+  return res.send(JSON.stringify(finalEvent));
 }
 
 const handleAbort = function () {

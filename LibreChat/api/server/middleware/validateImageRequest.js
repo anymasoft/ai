@@ -150,11 +150,11 @@ function createValidateImageRequest(secureImageLinks) {
         next();
       } else {
         logger.warn('[validateImageRequest] Invalid image path');
-        res.status(403).send('Access Denied');
+        return res.status(403).send('Access Denied');
       }
     } catch (error) {
       logger.error('[validateImageRequest] Error:', error);
-      res.status(500).send('Internal Server Error');
+      return res.status(500).send('Internal Server Error');
     }
   };
 }
