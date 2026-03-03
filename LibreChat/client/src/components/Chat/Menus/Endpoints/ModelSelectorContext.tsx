@@ -1,5 +1,6 @@
 import debounce from 'lodash/debounce';
 import React, { createContext, useContext, useState, useMemo, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { EModelEndpoint, isAgentsEndpoint, isAssistantsEndpoint } from 'librechat-data-provider';
 import type * as t from 'librechat-data-provider';
 import type { Endpoint, SelectedValues } from '~/common';
@@ -15,6 +16,15 @@ import { useGetEndpointsQuery, useListAgentsQuery } from '~/data-provider';
 import { useModelSelectorChatContext } from './ModelSelectorChatContext';
 import useSelectMention from '~/hooks/Input/useSelectMention';
 import { filterItems } from './utils';
+
+/**
+ * Конвертирует endpointKey из AiModel в строку эндпоинта LibreChat
+ * Используется для построения modelSpecs из результата /api/models/allowed
+ */
+function mapEndpointKeyToEndpoint(endpointKey: string): string {
+  // endpointKey уже содержит правильное имя эндпоинта (openAI, anthropic, deepseek и т.д.)
+  return endpointKey;
+}
 
 type ModelSelectorContextType = {
   // State
@@ -62,24 +72,71 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     useModelSelectorChatContext();
   const localize = useLocalize();
   const { announcePolite } = useLiveAnnouncer();
+
+  // НОВОЕ: Query для получения разрешенных моделей из backend
+  const allowedModelsQuery = useQuery({
+    queryKey: ['allowedModels'],
+    queryFn: async () => {
+      const res = await fetch('/api/models/allowed', {
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        throw new Error('Failed to load allowed models');
+      }
+      return res.json() as Promise<{
+        models: Array<{
+          modelId: string;
+          displayName: string;
+          provider: string;
+          endpointKey: string;
+        }>;
+        plan: string;
+        [key: string]: any;
+      }>;
+    },
+    staleTime: 60_000, // 60 секунд кэш
+    gcTime: 5 * 60_000, // 5 минут в памяти
+  });
+
+  // НОВОЕ: Построить modelSpecs из разрешенных моделей
   const modelSpecs = useMemo(() => {
+    // Если есть данные из /api/models/allowed, использовать их
+    if (allowedModelsQuery.data?.models && Array.isArray(allowedModelsQuery.data.models)) {
+      const specs = allowedModelsQuery.data.models.map((model) => ({
+        name: model.modelId,
+        label: model.displayName,
+        preset: {
+          endpoint: mapEndpointKeyToEndpoint(model.endpointKey),
+          model: model.modelId,
+        },
+      })) as t.TModelSpec[];
+
+      // Фильтрация по агентам (сохранить старую логику)
+      if (!agentsMap) {
+        return specs;
+      }
+
+      return specs.filter((spec) => {
+        if (spec.preset?.endpoint === EModelEndpoint.agents && spec.preset?.agent_id) {
+          return spec.preset.agent_id in agentsMap;
+        }
+        return true;
+      });
+    }
+
+    // Fallback на startupConfig если запрос еще не загрузился
     const specs = startupConfig?.modelSpecs?.list ?? [];
     if (!agentsMap) {
       return specs;
     }
 
-    /**
-     * Filter modelSpecs to only include agents the user has access to.
-     * Use agentsMap which already contains permission-filtered agents (consistent with other components).
-     */
     return specs.filter((spec) => {
       if (spec.preset?.endpoint === EModelEndpoint.agents && spec.preset?.agent_id) {
         return spec.preset.agent_id in agentsMap;
       }
-      /** Keep non-agent modelSpecs */
       return true;
     });
-  }, [startupConfig, agentsMap]);
+  }, [allowedModelsQuery.data, agentsMap, startupConfig]);
 
   const permissionLevel = useAgentDefaultPermissionLevel();
   const { data: agents = null } = useListAgentsQuery(
