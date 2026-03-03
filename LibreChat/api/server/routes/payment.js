@@ -19,7 +19,11 @@ const express = require('express');
 const axios = require('axios');
 const { logger } = require('@librechat/data-schemas');
 const { requireJwtAuth } = require('../middleware/');
-const { Balance, Payment, Subscription, Plan, TokenPackage } = require('~/db/models');
+const { Balance } = require('~/db/models');
+const Payment = require('~/models/Payment');
+const Subscription = require('~/models/Subscription');
+const Plan = require('~/models/Plan');
+const TokenPackage = require('~/models/TokenPackage');
 
 const router = express.Router();
 const YUKASSA_API = 'https://api.yookassa.ru/v3';
