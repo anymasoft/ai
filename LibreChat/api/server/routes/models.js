@@ -3,7 +3,9 @@ const express = require('express');
 const { logger } = require('@librechat/data-schemas');
 const { modelController } = require('~/server/controllers/ModelController');
 const { requireJwtAuth } = require('~/server/middleware/');
-const { AiModel, Plan, Subscription } = require('~/db/models');
+const AiModel = require('~/models/AiModel');
+const Plan = require('~/models/Plan');
+const Subscription = require('~/models/Subscription');
 
 const router = express.Router();
 
