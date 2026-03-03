@@ -345,23 +345,40 @@ export async function getAnthropicModels(
 ): Promise<string[]> {
   const models = defaultModels[EModelEndpoint.anthropic];
 
+  logger.debug('[getAnthropicModels] Called with options', {
+    hasVertexModels: !!opts.vertexModels?.length,
+    vertexModelsCount: opts.vertexModels?.length,
+    hasANTHROPIC_MODELS_env: !!process.env.ANTHROPIC_MODELS,
+    isUserProvidedKey: isUserProvided(process.env.ANTHROPIC_API_KEY),
+    defaultModelsCount: models?.length,
+    firstFiveModels: models?.slice(0, 5),
+    hasHaikuInDefaults: models?.includes('claude-haiku-4-5'),
+  });
+
   // Vertex AI models from YAML config take priority
   if (opts.vertexModels && opts.vertexModels.length > 0) {
+    logger.debug('[getAnthropicModels] Returning Vertex AI models', { count: opts.vertexModels.length });
     return opts.vertexModels;
   }
 
   if (process.env.ANTHROPIC_MODELS) {
-    return splitAndTrim(process.env.ANTHROPIC_MODELS);
+    const envModels = splitAndTrim(process.env.ANTHROPIC_MODELS);
+    logger.debug('[getAnthropicModels] Returning env ANTHROPIC_MODELS', { count: envModels.length, models: envModels });
+    return envModels;
   }
 
   if (isUserProvided(process.env.ANTHROPIC_API_KEY)) {
+    logger.debug('[getAnthropicModels] API key is user provided, returning defaults', { count: models?.length });
     return models;
   }
 
   try {
-    return await fetchAnthropicModels(opts, models);
+    const fetchedModels = await fetchAnthropicModels(opts, models);
+    logger.debug('[getAnthropicModels] Successfully fetched models', { count: fetchedModels.length, models: fetchedModels.slice(0, 5) });
+    return fetchedModels;
   } catch (error) {
-    logger.error('Error fetching Anthropic models:', error);
+    logger.error('[getAnthropicModels] Error fetching Anthropic models:', error);
+    logger.debug('[getAnthropicModels] Falling back to defaults', { count: models?.length });
     return models;
   }
 }

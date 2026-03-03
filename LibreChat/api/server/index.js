@@ -138,8 +138,10 @@ const startServer = async () => {
   /* API Endpoints */
   logger.debug('[app.use] Mounting /api/auth', typeof routes.auth);
   app.use('/api/auth', routes.auth);
-  logger.debug('[app.use] Mounting /api/admin', typeof routes.adminAuth);
-  app.use('/api/admin', routes.adminAuth);
+  logger.debug('[app.use] Mounting /api/admin/auth', typeof routes.adminAuth);
+  app.use('/api/admin/auth', routes.adminAuth);
+  logger.debug('[app.use] Mounting /api/admin/mvp', typeof routes.adminMvp);
+  app.use('/api/admin/mvp', routes.adminMvp);
   logger.debug('[app.use] Mounting /api/actions', typeof routes.actions);
   app.use('/api/actions', routes.actions);
   logger.debug('[app.use] Mounting /api/keys', typeof routes.keys);
