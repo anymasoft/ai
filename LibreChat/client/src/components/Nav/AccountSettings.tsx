@@ -1,12 +1,11 @@
 import { useState, memo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as Select from '@ariakit/react/select';
-import { useQuery } from '@tanstack/react-query';
 import { FileText, LogOut, CreditCard, ShieldCheck } from 'lucide-react';
 import { LinkIcon, GearIcon, DropdownMenuSeparator, Avatar } from '@librechat/client';
 import { MyFilesModal } from '~/components/Chat/Input/Files/MyFilesModal';
 import { useGetStartupConfig, useGetUserBalance } from '~/data-provider';
-import { useAuthContext } from '~/hooks/AuthContext';
+import { useAuthContext, useSubscription } from '~/hooks';
 import { useLocalize } from '~/hooks';
 import Settings from './Settings';
 
@@ -28,22 +27,10 @@ function AccountSettings() {
   const [showFiles, setShowFiles] = useState(false);
   const accountSettingsButtonRef = useRef<HTMLButtonElement>(null);
 
-  const { data: planData } = useQuery({
-    queryKey: ['allowedModels', token],
-    queryFn: async (): Promise<{ models: unknown[]; plan: string } | null> => {
-      if (!token) return null;
-      const res = await fetch('/api/models/allowed', {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) return null;
-      return res.json();
-    },
-    staleTime: 60_000,
-    gcTime: 60_000,
-    enabled: !!token,
-  });
-  const planBadge = PLAN_BADGE[planData?.plan ?? ''] ?? null;
+  // ✅ SSOT: Единый источник информации о тарифе
+  const { data: subscription } = useSubscription();
+
+  const planBadge = PLAN_BADGE[subscription?.planId ?? ''] ?? null;
 
   return (
     <Select.SelectProvider>

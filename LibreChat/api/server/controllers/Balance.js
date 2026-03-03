@@ -14,17 +14,6 @@ async function balanceController(req, res) {
     return res.status(404).json({ error: 'Balance not found' });
   }
 
-  // ✅ Получаем информацию о плане (подписке)
-  const subscription = await Subscription.findOne({ userId }).lean();
-  let plan = subscription?.plan || 'free';
-  let planExpiresAt = subscription?.planExpiresAt || null;
-
-  // ✅ Проверяем не истёк ли план
-  if (plan !== 'free' && planExpiresAt && new Date(planExpiresAt) < new Date()) {
-    plan = 'free';
-    planExpiresAt = null;
-  }
-
   // If auto-refill is not enabled, remove auto-refill related fields from the response
   if (!balanceData.autoRefillEnabled) {
     delete balanceData.refillIntervalValue;
@@ -33,12 +22,9 @@ async function balanceController(req, res) {
     delete balanceData.refillAmount;
   }
 
-  // ✅ Добавляем информацию о плане в response
-  res.status(200).json({
-    ...balanceData,
-    plan,           // 'free' | 'pro' | 'business'
-    planExpiresAt,  // ISO date string или null
-  });
+  // ⚠️ АРХИТЕКТУРА SSOT: План больше НЕ возвращается отсюда!
+  // План берётся из /api/user/subscription, а не из /api/balance!
+  res.status(200).json(balanceData);
 }
 
 module.exports = balanceController;

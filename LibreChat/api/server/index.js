@@ -170,6 +170,8 @@ const startServer = async () => {
   app.use('/api/models', routes.models);
   logger.debug('[app.use] Mounting /api/payment', typeof routes.payment);
   app.use('/api/payment', routes.payment);
+  logger.debug('[app.use] Mounting /api/user/subscription', typeof routes.subscription);
+  app.use('/api/user/subscription', routes.subscription);
   logger.debug('[app.use] Mounting /api/config', typeof routes.config);
   app.use('/api/config', routes.config);
   logger.debug('[app.use] Mounting /api/assistants', typeof routes.assistants);

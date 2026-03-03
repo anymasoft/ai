@@ -10,6 +10,7 @@ import {
   useKeyDialog,
   useEndpoints,
   useLocalize,
+  useSubscription,
 } from '~/hooks';
 import { useAgentsMapContext, useAssistantsMapContext, useLiveAnnouncer } from '~/Providers';
 import { useGetEndpointsQuery, useListAgentsQuery } from '~/data-provider';
@@ -147,26 +148,28 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
   const localize = useLocalize();
   const { announcePolite } = useLiveAnnouncer();
 
-  // НОВОЕ: Query для получения разрешенных моделей из backend
-  const allowedModelsQuery = useQuery({
-    queryKey: ['allowedModels'],
+  // ✅ SSOT: Получение плана из единого источника
+  const { data: subscription } = useSubscription();
+
+  // Query для получения ВСЕ ДОСТУПНЫХ моделей (независимо от плана)
+  const allModelsQuery = useQuery({
+    queryKey: ['models/all'],
     queryFn: async () => {
-      console.log('[MODELS_DIAGNOSTIC] Starting fetch GET /api/models/allowed');
-      const res = await fetch('/api/models/allowed', {
+      console.log('[MODELS_DIAGNOSTIC] Starting fetch GET /api/models/all');
+      const res = await fetch('/api/models/all', {
         credentials: 'include',
       });
-      console.log('[MODELS_DIAGNOSTIC] GET /api/models/allowed response status:', res.status);
+      console.log('[MODELS_DIAGNOSTIC] GET /api/models/all response status:', res.status);
 
       if (!res.ok) {
-        console.error('[MODELS_DIAGNOSTIC] GET /api/models/allowed failed with status:', res.status);
-        throw new Error('Failed to load allowed models');
+        console.error('[MODELS_DIAGNOSTIC] GET /api/models/all failed with status:', res.status);
+        throw new Error('Failed to load models');
       }
 
       const data = await res.json();
-      console.log('[MODELS_DIAGNOSTIC] GET /api/models/allowed response data:', data);
+      console.log('[MODELS_DIAGNOSTIC] GET /api/models/all response data:', data);
       console.log('[MODELS_DIAGNOSTIC] Models count:', data.models?.length);
       console.log('[MODELS_DIAGNOSTIC] Models:', data.models?.map((m: any) => m.modelId));
-      console.log('[MODELS_DIAGNOSTIC] Plan:', data.plan);
 
       return data as {
         models: Array<{
@@ -175,26 +178,31 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
           provider: string;
           endpointKey: string;
         }>;
-        plan: string;
         [key: string]: any;
       };
     },
-    staleTime: 60_000, // 60 секунд кэш
-    gcTime: 5 * 60_000, // 5 минут в памяти
+    staleTime: 5 * 60_000, // 5 минут (редко меняется)
+    gcTime: 10 * 60_000,   // 10 минут в памяти
   });
 
-  // НОВОЕ: Построить modelSpecs из разрешенных моделей
+  // Построить modelSpecs из доступных моделей, фильтруя по allowedModels из subscription
   const modelSpecs = useMemo(() => {
-    // ДИАГНОСТИКА: Логируем данные allowedModels
-    console.log('[MODELS_DIAGNOSTIC] allowedModelsQuery.data:', allowedModelsQuery.data);
-    console.log('[MODELS_DIAGNOSTIC] allowedModelsQuery.isLoading:', allowedModelsQuery.isLoading);
-    console.log('[MODELS_DIAGNOSTIC] allowedModelsQuery.error:', allowedModelsQuery.error);
+    console.log('[MODELS_DIAGNOSTIC] subscription.allowedModels:', subscription?.allowedModels);
+    console.log('[MODELS_DIAGNOSTIC] allModelsQuery.data:', allModelsQuery.data);
+    console.log('[MODELS_DIAGNOSTIC] allModelsQuery.isLoading:', allModelsQuery.isLoading);
 
-    // Если есть данные из /api/models/allowed, использовать их
-    if (allowedModelsQuery.data?.models && Array.isArray(allowedModelsQuery.data.models)) {
-      console.log('[MODELS_DIAGNOSTIC] Using allowedModels from API, count:', allowedModelsQuery.data.models.length);
+    // ✅ SSOT: Если есть data из subscription и allModels, фильтруем
+    if (allModelsQuery.data?.models && Array.isArray(allModelsQuery.data.models) && subscription?.allowedModels) {
+      console.log('[MODELS_DIAGNOSTIC] Using allowedModels from subscription, count:', subscription.allowedModels.length);
 
-      const specs = allowedModelsQuery.data.models.map((model) => ({
+      // Создаём set allowedModels для быстрого поиска
+      const allowedSet = new Set(subscription.allowedModels);
+
+      // Фильтруем модели по allowedModels из subscription
+      const filteredModels = allModelsQuery.data.models.filter(m => allowedSet.has(m.modelId));
+      console.log('[MODELS_DIAGNOSTIC] Filtered models count:', filteredModels.length);
+
+      const specs = filteredModels.map((model) => ({
         name: model.modelId,
         label: model.displayName,
         preset: {
@@ -203,9 +211,9 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
         },
       })) as t.TModelSpec[];
 
-      console.log('[MODELS_DIAGNOSTIC] Mapped specs from API:', specs.map(s => s.name));
+      console.log('[MODELS_DIAGNOSTIC] Mapped specs from subscription:', specs.map(s => s.name));
 
-      // Фильтрация по агентам (сохранить старую логику)
+      // Фильтрация по агентам
       if (!agentsMap) {
         console.log('[MODELS_DIAGNOSTIC] No agentsMap, returning specs as is');
         return specs;
@@ -221,10 +229,9 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
       return filtered;
     }
 
-    // Fallback на startupConfig если запрос еще не загрузился
+    // Fallback на startupConfig если ещё загружается
     console.log('[MODELS_DIAGNOSTIC] FALLBACK to startupConfig.modelSpecs');
     console.log('[MODELS_DIAGNOSTIC] startupConfig.modelSpecs.list count:', startupConfig?.modelSpecs?.list?.length);
-    console.log('[MODELS_DIAGNOSTIC] startupConfig.modelSpecs.list:', startupConfig?.modelSpecs?.list?.map(m => m.name));
 
     const specs = startupConfig?.modelSpecs?.list ?? [];
     if (!agentsMap) {
@@ -240,7 +247,7 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     });
     console.log('[MODELS_DIAGNOSTIC] Filtered startup specs after agents filter:', filtered.map(s => s.name));
     return filtered;
-  }, [allowedModelsQuery.data, agentsMap, startupConfig]);
+  }, [allModelsQuery.data, subscription?.allowedModels, agentsMap, startupConfig]);
 
   // ДИАГНОСТИКА: Логируем финальный массив
   console.log('[MODELS_DIAGNOSTIC] FINAL modelSpecs for selector:', modelSpecs.map(m => m.name));

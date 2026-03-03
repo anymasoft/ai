@@ -29,17 +29,16 @@ router.get('/all', async (req, res) => {
 });
 
 /**
- * GET /api/models/allowed
+ * GET /api/models/allowed (DEPRECATED - используйте GET /api/user/subscription)
  * Список моделей, разрешённых текущему пользователю по его тарифному плану.
- * ПЛЮС текущий план пользователя (для отображения бейджа).
+ * ⚠️ АРХИТЕКТУРА SSOT: План берётся из /api/user/subscription, а не отсюда!
  * Источник: коллекция Plan (allowedModels) + коллекция AiModel + Subscription.
- * Кэш на стороне клиента: не более 60 секунд.
  */
 router.get('/allowed', requireJwtAuth, async (req, res) => {
   try {
     const userId = req.user?._id || req.user?.id; // ObjectId для поиска
 
-    // ✅ Получаем план пользователя
+    // ✅ Получаем план пользователя (только для фильтрации моделей)
     const subscription = await Subscription.findOne({ userId }).lean();
     let plan = subscription?.plan || 'free';
 
@@ -73,11 +72,11 @@ router.get('/allowed', requireJwtAuth, async (req, res) => {
       modelsByEndpoint[model.endpointKey].push(model.modelId);
     });
 
-    res.set('Cache-Control', 'private, max-age=60');
+    // ⚠️ НЕ КЭШИРУЕМ И НЕ ВОЗВРАЩАЕМ ПЛАН
+    // План берётся из /api/user/subscription, а не отсюда!
     return res.json({
       ...modelsByEndpoint,
       models, // Плоский массив для фильтрации в компонентах
-      plan,   // ✅ ДОБАВЛЯЕМ ПЛАН СЮДА для бейджа!
     });
   } catch (err) {
     logger.error('[models/allowed]', err);
