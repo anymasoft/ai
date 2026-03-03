@@ -177,62 +177,44 @@ export async function validateAgentModel(
     };
   }
 
-  // =====================================================
-  // 🔴 CRITICAL DEBUG LOGS
-  // =====================================================
-  console.log('\n\n========== VALIDATEAGENTMODEL DEBUG ==========');
-  console.log('ENDPOINT:', endpoint);
-  console.log('REQUESTED_MODEL:', model);
-  console.log('AVAILABLE_MODELS_COUNT:', availableModels.length);
-  console.log('AVAILABLE_MODELS:', availableModels);
-  console.log('HAS_HAIKU_4_5:', availableModels.includes('claude-haiku-4-5'));
-  console.log('HAS_HAIKU_4_5_VERSIONED:', availableModels.includes('claude-haiku-4-5-20251001'));
-  console.log('==========================================\n\n');
-
-  logger.debug('[validateAgentModel] Checking model', {
-    endpoint,
-    model,
-    availableModels: availableModels.slice(0, 5), // Log first 5 models
-    availableCount: availableModels.length,
-    allModels: availableModels, // Log ALL models for debugging
-  });
-
-  const validModel = !!availableModels.find((availableModel) => availableModel === model);
-
-  logger.debug('[validateAgentModel] Model validation result', {
-    endpoint,
-    model,
-    isValid: validModel,
-    matchedModel: validModel ? model : 'NOT FOUND',
-  });
-
-  // EXTRA DEBUG: Show detailed mismatch info
-  if (!validModel && model && typeof model === 'string') {
-    const modelStr = model as string;
-    console.log('\n\n========== MODEL NOT FOUND DETAILED INFO ==========');
-    console.log('REQUESTED_MODEL:', modelStr);
-    console.log('REQUESTED_MODEL_LENGTH:', modelStr.length);
-    console.log('AVAILABLE_COUNT:', availableModels.length);
-    console.log('HAS_HAIKU:', availableModels.includes('claude-haiku-4-5'));
-    console.log('HAS_HAIKU_VERSIONED:', availableModels.includes('claude-haiku-4-5-20251001'));
-    console.log('ALL_MODELS:', JSON.stringify(availableModels, null, 2));
-    const partialMatches = availableModels.filter(m => m.includes(modelStr));
-    console.log('PARTIAL_MATCHES:', partialMatches);
-    console.log('====================================================\n\n');
-
-    logger.warn('[validateAgentModel] Model NOT FOUND - Detailed mismatch info', {
-      requestedModel: modelStr,
-      requestedModelLength: modelStr.length,
-      availableCount: availableModels.length,
-      hasHaiku: availableModels.includes('claude-haiku-4-5'),
-      hasHaikuVersioned: availableModels.includes('claude-haiku-4-5-20251001'),
-      allModels: availableModels,
-      // Check for substring matches or case issues
-      partialMatches: availableModels.filter(m => m.includes(modelStr)),
+  // ✅ STEP 1: Try exact match first
+  if (availableModels.includes(model)) {
+    logger.info('[validateAgentModel] Model validation SUCCESS (exact match)', {
+      endpoint,
+      requestedModel: model,
+      resolvedModel: model,
     });
+    return { isValid: true };
   }
 
-  if (validModel) {
+  // ✅ STEP 2: Try alias resolution
+  // Example: "claude-haiku-4-5" → "claude-haiku-4-5-20251001"
+  const aliasPrefix = model + '-';
+  const aliasMatches = availableModels.filter(
+    (available) => available.startsWith(aliasPrefix)
+  );
+
+  let resolvedModel: string | null = null;
+
+  if (aliasMatches.length === 1) {
+    // ✅ Exactly one match
+    resolvedModel = aliasMatches[0];
+  } else if (aliasMatches.length > 1) {
+    // ✅ Multiple matches - select latest by suffix (sort descending)
+    const sorted = [...aliasMatches].sort().reverse();
+    resolvedModel = sorted[0];
+  }
+
+  // ✅ Log resolution result
+  logger.info('[validateAgentModel] Model resolution', {
+    endpoint,
+    requestedModel: model,
+    resolvedModel,
+    aliasMatches: aliasMatches,
+    availableModelsCount: availableModels.length,
+  });
+
+  if (resolvedModel) {
     return { isValid: true };
   }
 

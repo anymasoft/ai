@@ -213,16 +213,40 @@ const loadAgent = async ({ req, spec, agent_id, endpoint, model_parameters }) =>
   // Это позволяет использовать сохраненный agent с другой моделью
   if (model_parameters && model_parameters.model) {
     const { model, ...otherParams } = model_parameters;
-    agent.model = model;
 
-    // Логирование для отладки
-    if (model !== agent.model) {
-      logger.info('[loadAgent] Model overridden from model_parameters', {
-        agentId: agent_id,
-        originalModel: agent.model,
-        overriddenModel: model,
-      });
+    // ✅ IMPROVEMENT: Resolve model alias to versioned ID
+    // Example: "claude-haiku-4-5" → "claude-haiku-4-5-20251001"
+    let resolvedModel = model;
+    if (endpoint && req?.config?.modelsConfig) {
+      const availableModels = req.config.modelsConfig[endpoint];
+      if (availableModels) {
+        // Try exact match first
+        if (!availableModels.includes(model)) {
+          // Try alias resolution
+          const aliasPrefix = model + '-';
+          const aliasMatches = availableModels.filter(
+            (available) => available.startsWith(aliasPrefix)
+          );
+
+          if (aliasMatches.length === 1) {
+            resolvedModel = aliasMatches[0];
+          } else if (aliasMatches.length > 1) {
+            // Select latest by suffix
+            const sorted = [...aliasMatches].sort().reverse();
+            resolvedModel = sorted[0];
+          }
+        }
+
+        logger.info('[loadAgent] Model resolution', {
+          agentId: agent_id,
+          endpoint,
+          requestedModel: model,
+          resolvedModel,
+        });
+      }
     }
+
+    agent.model = resolvedModel;
 
     // Если model_parameters содержит другие поля, их тоже переопределяем
     if (otherParams && Object.keys(otherParams).length > 0) {
