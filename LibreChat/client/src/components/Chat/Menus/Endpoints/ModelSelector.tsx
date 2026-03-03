@@ -37,6 +37,28 @@ function ModelSelectorContent() {
     keyDialogEndpoint,
   } = useModelSelectorContext();
 
+  // ДИАГНОСТИКА: Логируем основные данные селектора
+  console.log('[SELECTOR_STRUCTURE] ModelSelectorContent props:', {
+    agentsMap: Object.keys(agentsMap || {}),
+    modelSpecs: modelSpecs?.map(spec => ({
+      name: spec.name,
+      label: spec.label,
+      group: spec.group,
+      preset: spec.preset,
+      description: spec.description,
+    })),
+    mappedEndpoints: mappedEndpoints?.map(ep => ({
+      value: ep.value,
+      label: ep.label,
+      hasModels: ep.hasModels,
+      modelsCount: ep.models?.length || 0,
+    })),
+    endpointsConfig: Object.keys(endpointsConfig || {}),
+    searchValue,
+    searchResults: searchResults?.map(r => ('name' in r ? `spec:${r.name}` : `endpoint:${r.value}`)),
+    selectedValues,
+  });
+
   const selectedIcon = useMemo(
     () =>
       getSelectedIcon({

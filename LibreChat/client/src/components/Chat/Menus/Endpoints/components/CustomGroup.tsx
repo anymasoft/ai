@@ -71,6 +71,18 @@ export function renderCustomGroups(
     {} as Record<string, { specs: TModelSpec[]; groupIcon?: string }>,
   );
 
+  // ДИАГНОСТИКА: Логируем группировку
+  console.log('[CUSTOM_GROUPS_STRUCTURE]:', {
+    totalSpecs: modelSpecs.length,
+    endpointValues: Array.from(endpointValues),
+    customGroups: Object.entries(customGroups).map(([name, data]) => ({
+      groupName: name,
+      specCount: data.specs.length,
+      specs: data.specs.map(s => ({ name: s.name, label: s.label, group: s.group })),
+      groupIcon: data.groupIcon ? 'present' : 'absent',
+    })),
+  });
+
   // Render each custom group
   return Object.entries(customGroups).map(([groupName, { specs, groupIcon }]) => (
     <CustomGroup key={groupName} groupName={groupName} specs={specs} groupIcon={groupIcon} />
