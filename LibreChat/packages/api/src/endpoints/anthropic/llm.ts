@@ -112,7 +112,6 @@ function getLLMConfig(
   let requestOptions: AnthropicClientOptions & { stream?: boolean } = {
     model: mergedOptions.model,
     stream: mergedOptions.stream,
-    temperature: mergedOptions.temperature,
     stopSequences: mergedOptions.stop,
     maxTokens:
       mergedOptions.maxOutputTokens || anthropicSettings.maxOutputTokens.reset(mergedOptions.model),
@@ -176,6 +175,7 @@ function getLLMConfig(
   const isThinkingModel =
     /claude-3[-.]7/.test(mergedOptions.model) || supportsAdaptiveThinking(mergedOptions.model);
   if (!isThinkingModel || !hasActiveThinking) {
+    requestOptions.temperature = mergedOptions.temperature;
     requestOptions.topP = mergedOptions.topP;
     requestOptions.topK = mergedOptions.topK;
   }

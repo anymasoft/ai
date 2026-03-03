@@ -536,7 +536,6 @@ describe('getLLMConfig', () => {
 
         expect(result.llmConfig).toMatchObject({
           model: 'claude-3-7-sonnet',
-          temperature: 0.4,
           maxTokens: 8192,
           stream: true, // default
           thinking: {
@@ -544,7 +543,8 @@ describe('getLLMConfig', () => {
             budget_tokens: 3000,
           },
         });
-        // topP and topK should NOT be included for Claude-3.7 with thinking enabled
+        // temperature, topP and topK should NOT be included for Claude-3.7 with thinking enabled
+        expect(result.llmConfig).not.toHaveProperty('temperature');
         expect(result.llmConfig).not.toHaveProperty('topP');
         expect(result.llmConfig).not.toHaveProperty('topK');
         // Should have appropriate headers for Claude-3.7 with prompt cache
