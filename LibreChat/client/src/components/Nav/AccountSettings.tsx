@@ -81,7 +81,7 @@ function AccountSettings() {
             <Select.SelectItem
               value=""
               onClick={() => navigate('/pricing')}
-              className="select-item text-sm"
+              className="select-item text-sm text-blue-600 dark:text-blue-400"
             >
               <div className="flex items-center justify-between gap-2 w-full">
                 <div className="flex items-center gap-2">
