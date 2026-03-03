@@ -30,6 +30,22 @@ if not exist ".env" (
 )
 
 REM ============================================================
+REM 1.5 Проверяем что MONGO_URI заполнена
+REM ============================================================
+findstr /c:"MONGO_URI=mongodb+srv://" .env > nul 2>&1
+if errorlevel 1 (
+    echo.
+    echo [!] ОШИБКА: MONGO_URI не заполнена или некорректная в .env!
+    echo.
+    echo Отредактируйте .env и вставьте ваш реальный MongoDB URI.
+    echo Пример:
+    echo   MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/?appName=...
+    echo.
+    pause
+    exit /b 1
+)
+
+REM ============================================================
 REM 2. Создаём librechat.yaml если не существует
 REM ============================================================
 if not exist "librechat.yaml" (
