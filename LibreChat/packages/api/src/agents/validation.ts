@@ -194,6 +194,21 @@ export async function validateAgentModel(
     matchedModel: validModel ? model : 'NOT FOUND',
   });
 
+  // EXTRA DEBUG: Show detailed mismatch info
+  if (!validModel && model && typeof model === 'string') {
+    const modelStr = model as string;
+    logger.warn('[validateAgentModel] Model NOT FOUND - Detailed mismatch info', {
+      requestedModel: modelStr,
+      requestedModelLength: modelStr.length,
+      availableCount: availableModels.length,
+      hasHaiku: availableModels.includes('claude-haiku-4-5'),
+      hasHaikuVersioned: availableModels.includes('claude-haiku-4-5-20251001'),
+      allModels: availableModels,
+      // Check for substring matches or case issues
+      partialMatches: availableModels.filter(m => m.includes(modelStr)),
+    });
+  }
+
   if (validModel) {
     return { isValid: true };
   }
