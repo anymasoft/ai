@@ -1,6 +1,6 @@
 'use strict';
 const express = require('express');
-const admin = require('../admin');
+const admin = require('../admin.js');
 
 const router = express.Router();
 
