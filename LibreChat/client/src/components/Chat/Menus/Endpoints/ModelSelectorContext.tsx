@@ -26,6 +26,80 @@ function mapEndpointKeyToEndpoint(endpointKey: string): string {
   return endpointKey;
 }
 
+/**
+ * Построить endpoints только из разрешённых моделей
+ * Фильтрует endpoints, оставляя только те которые содержат разрешённые модели
+ */
+function buildEndpointsFromAllowedModels(
+  allowedModels: Array<{
+    modelId: string;
+    displayName: string;
+    provider: string;
+    endpointKey: string;
+  }>,
+  startupConfig: t.TStartupConfig | undefined,
+): Endpoint[] {
+  if (!allowedModels || !startupConfig?.endpoints) {
+    return [];
+  }
+
+  // Получить все уникальные endpoint'ы из разрешённых моделей
+  const allowedEndpointKeys = new Set(allowedModels.map(m => m.endpointKey));
+
+  // Сгруппировать разрешённые модели по endpoint
+  const modelsByEndpoint = new Map<string, typeof allowedModels>();
+  for (const model of allowedModels) {
+    if (!modelsByEndpoint.has(model.endpointKey)) {
+      modelsByEndpoint.set(model.endpointKey, []);
+    }
+    modelsByEndpoint.get(model.endpointKey)!.push(model);
+  }
+
+  // Отфильтровать endpoints из startupConfig, оставить только разрешённые
+  // И подставить разрешённые модели вместо всех моделей из startupConfig
+  const filteredEndpoints: Endpoint[] = [];
+
+  for (const endpoint of startupConfig.endpoints) {
+    if (!allowedEndpointKeys.has(endpoint.value)) {
+      // Пропустить endpoint, если в нём нет разрешённых моделей
+      continue;
+    }
+
+    const allowedEndpointModels = modelsByEndpoint.get(endpoint.value);
+    if (!allowedEndpointModels) {
+      continue;
+    }
+
+    // Создать новый endpoint только с разрешёнными моделями
+    const filteredEndpoint: Endpoint = {
+      ...endpoint,
+      models: allowedEndpointModels.map(m => ({
+        name: m.modelId,
+        label: m.displayName,
+      })) as any,
+    };
+
+    console.log('[ENDPOINTS_REFACTOR] Filtered endpoint:', {
+      value: filteredEndpoint.value,
+      label: filteredEndpoint.label,
+      totalModels: filteredEndpoint.models?.length || 0,
+      models: filteredEndpoint.models?.map(m => m.name),
+    });
+
+    filteredEndpoints.push(filteredEndpoint);
+  }
+
+  console.log('[ENDPOINTS_REFACTOR] buildEndpointsFromAllowedModels result:', {
+    totalEndpoints: filteredEndpoints.length,
+    endpoints: filteredEndpoints.map(e => ({
+      value: e.value,
+      modelCount: e.models?.length || 0,
+    })),
+  });
+
+  return filteredEndpoints;
+}
+
 type ModelSelectorContextType = {
   // State
   searchValue: string;
@@ -179,12 +253,41 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     },
   );
 
-  const { mappedEndpoints, endpointRequiresUserKey } = useEndpoints({
+  // НОВОЕ: Построить endpoints только из разрешённых моделей
+  const allowedEndpoints = useMemo(() => {
+    if (allowedModelsQuery.data?.models) {
+      console.log('[MODELS_DIAGNOSTIC] Building endpoints from allowedModels, count:', allowedModelsQuery.data.models.length);
+      const endpoints = buildEndpointsFromAllowedModels(allowedModelsQuery.data.models, startupConfig);
+      console.log('[MODELS_DIAGNOSTIC] Built endpoints from API, count:', endpoints.length);
+      return endpoints;
+    }
+
+    // Fallback на старую логику если данные не загрузились
+    console.log('[MODELS_DIAGNOSTIC] FALLBACK: Using startupConfig.endpoints (all models)');
+    return startupConfig?.endpoints ?? [];
+  }, [allowedModelsQuery.data?.models, startupConfig]);
+
+  // Используем старый useEndpoints для получения endpointRequiresUserKey и других функций
+  // но с отфильтрованными endpoints
+  const { mappedEndpoints: _unused, endpointRequiresUserKey } = useEndpoints({
     agents,
     assistantsMap,
     startupConfig,
     endpointsConfig,
   });
+
+  // Используем allowedEndpoints вместо mappedEndpoints из useEndpoints
+  const mappedEndpoints = useMemo(() => {
+    console.log('[ENDPOINTS_REFACTOR] Final mappedEndpoints:', {
+      count: allowedEndpoints.length,
+      endpoints: allowedEndpoints.map(e => ({
+        value: e.value,
+        label: e.label,
+        modelCount: e.models?.length || 0,
+      })),
+    });
+    return allowedEndpoints;
+  }, [allowedEndpoints]);
 
   const getModelDisplayName = useCallback(
     (endpoint: Endpoint, model: string): string => {
