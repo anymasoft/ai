@@ -1,201 +1,175 @@
-# 🔧 ДИАГНОСТИЧЕСКИЙ ОТЧЕТ: "argument handler must be a function"
+# 🔍 ДИАГНОСТИЧЕСКИЙ ОТЧЕТ: ИСТОЧНИКИ МОДЕЛЕЙ В СЕЛЕКТОРЕ
 
-**Дата:** 2026-03-02
-**Ошибка:** `"There was an uncaught error: argument handler must be a function"`
-**Статус:** 🔴 АКТИВНО ДИАГНОСТИРУЕТСЯ
-
----
-
-## 📋 АНАЛИЗ ПРОБЛЕМЫ
-
-### Что произошло
-
-При интеграции коммерческой системы в LibreChat возникла ошибка Express:
-```
-"argument handler must be a function"
-```
-
-Это означает, что в `app.use()` или `router.use()` передан **НЕ function**, а что-то другое (undefined, объект, строка и т.д.).
-
-### Где проверены ошибочные пути
-
-✅ **Проверены и работают:**
-- `routes/index.js` - payment импортирован и экспортирован правильно
-- `payment.js` - экспортирует `router` (функция)
-- `ensureBalance.js` - экспортирует функцию
-- `checkSubscription.js` - экспортирует функцию
-- `checkSpecAllowedForPlan.js` - экспортирует функцию
-- `buildEndpointOption.js` - создает `req.builtEndpointOption` (не middleware)
-
-### Где может быть проблема
-
-❓ **Возможные причины:**
-
-1. **ensureBalance использует createSetBalanceConfig неправильно**
-   - Файл: `api/server/middleware/ensureBalance.js`
-   - Проблема: Может быть, `createSetBalanceConfig()` возвращает что-то не функцию?
-   - Решение: Нужно проверить что возвращает `require('@librechat/api').createSetBalanceConfig`
-
-2. **Динамическое требование в convos.js/messages.js/agents/index.js**
-   - Может быть, путь `~/server/middleware/ensureBalance` не разрешается правильно?
-   - Решение: Добавить try/catch и логирование при загрузке middleware
-
-3. **Конфликт с существующим middleware**
-   - Может быть, в routes уже есть какой-то middleware с тем же именем?
-   - Решение: Переименовать наши middleware
+**Дата:** 2026-03-03
+**Статус:** ДИАГНОСТИКА (никаких исправлений не сделано)
 
 ---
 
-## 🛠️ ВРЕМЕННОЕ РЕШЕНИЕ
+## 📋 ЧТО ПРОВЕРЯЕТСЯ
 
-Все коммерческие middleware **ОТКЛЮЧЕНЫ** в:
-- ✅ `/api/server/routes/convos.js`
-- ✅ `/api/server/routes/messages.js`
-- ✅ `/api/server/routes/agents/index.js`
-
-Сервер должен запуститься без ошибок. Если запускается - проблема в одном из наших middleware.
-
----
-
-## 🔍 ДИАГНОСТИЧЕСКИЙ ПЛАН
-
-### ШАГ 1: Проверить что сервер запускается
-
-```bash
-npm start
-# или
-yarn start
-# или в зависимости от проекта
-```
-
-**Ожидаемый результат:**
-- ✅ Сервер слушает на порту (обычно 3080)
-- ✅ Нет ошибок в консоли
-- ✅ API доступен на http://localhost:3080
+1. **Выполняется ли запрос GET /api/models/allowed?**
+2. **Где формируется итоговый массив моделей?**
+3. **Есть ли fallback на startupConfig.modelSpecs?**
+4. **Какие React Query параметры используются?**
+5. **Какой реальный ответ приходит с backend?**
 
 ---
 
-### ШАГ 2: Включить middleware поочередно
+## ✅ ДОБАВЛЕННЫЕ ЛОГИ В КОД
 
-Если сервер запускается без наших middleware, включи их по одному:
+### Файл: `client/src/components/Chat/Menus/Endpoints/ModelSelectorContext.tsx`
 
-**2a) Включить ТОЛЬКО ensureBalance в convos.js:**
-```javascript
-const ensureBalance = require('~/server/middleware/ensureBalance');
-// ...
-router.use(ensureBalance);
+#### ЛОГИРОВАНИЕ В QUERYFN (строки ~79-100)
+
+```
+✅ console.log('[MODELS_DIAGNOSTIC] Starting fetch GET /api/models/allowed');
+✅ console.log('[MODELS_DIAGNOSTIC] GET /api/models/allowed response status:', res.status);
+✅ console.log('[MODELS_DIAGNOSTIC] GET /api/models/allowed response data:', data);
+✅ console.log('[MODELS_DIAGNOSTIC] Models count:', data.models?.length);
+✅ console.log('[MODELS_DIAGNOSTIC] Models:', data.models?.map(m => m.modelId));
+✅ console.log('[MODELS_DIAGNOSTIC] Plan:', data.plan);
 ```
 
-**Тест:** `npm start` → Сработает ли?
-- ✅ ДА → ensureBalance рабочий
-- ❌ НЕТ → ensureBalance сломан
+#### ЛОГИРОВАНИЕ В USEMEMO (строки ~102-150)
 
-**2b) Если ensureBalance работает, добавить checkSubscription:**
-```javascript
-const checkSubscription = require('~/server/middleware/checkSubscription');
-// ...
-router.use(checkSubscription);
 ```
-
-**2c) Если работают оба, добавить checkSpecAllowedForPlan:**
-```javascript
-const checkSpecAllowedForPlan = require('~/server/middleware/checkSpecAllowedForPlan');
-// ...
-router.use(checkSpecAllowedForPlan);
+✅ console.log('[MODELS_DIAGNOSTIC] allowedModelsQuery.data:', allowedModelsQuery.data);
+✅ console.log('[MODELS_DIAGNOSTIC] allowedModelsQuery.isLoading:', allowedModelsQuery.isLoading);
+✅ console.log('[MODELS_DIAGNOSTIC] allowedModelsQuery.error:', allowedModelsQuery.error);
+✅ console.log('[MODELS_DIAGNOSTIC] Using allowedModels from API, count:', count);
+✅ console.log('[MODELS_DIAGNOSTIC] FALLBACK to startupConfig.modelSpecs');
+✅ console.log('[MODELS_DIAGNOSTIC] FINAL modelSpecs for selector:', modelSpecs.map(m => m.name));
 ```
 
 ---
 
-### ШАГ 3: Если нашли проблемный middleware
+## 📊 ПАРАМЕТРЫ useQuery В КОДЕ
 
-**Если проблема в ensureBalance.js:**
-
-Потенциальное решение - переписать без использования createSetBalanceConfig:
-
-```javascript
-const { Balance } = require('~/db/models');
-
-async function ensureBalance(req, res, next) {
-  if (!req.user) return next();
-
-  try {
-    const userId = req.user._id || req.user.id;
-    await Balance.findOneAndUpdate(
-      { user: userId },
-      { $setOnInsert: { user: userId, tokenCredits: 0 } },
-      { upsert: true }
-    );
-    next();
-  } catch (err) {
-    next(); // Ошибка в balance не должна блокировать
-  }
-}
-
-module.exports = ensureBalance;
-```
-
-**Если проблема в checkSubscription или checkSpecAllowedForPlan:**
-
-Проверить, что функция правильно определена и не возвращает undefined.
-
----
-
-### ШАГ 4: Добавить debug логирование
-
-Добавить в convos.js перед router.use():
-
-```javascript
-console.log('ensureBalance type:', typeof ensureBalance);
-console.log('checkSubscription type:', typeof checkSubscription);
-console.log('checkSpecAllowedForPlan type:', typeof checkSpecAllowedForPlan);
-
-router.use(requireJwtAuth);
-if (typeof ensureBalance === 'function') {
-  router.use(ensureBalance);
-} else {
-  console.error('ERROR: ensureBalance is not a function!', ensureBalance);
-}
+```typescript
+const allowedModelsQuery = useQuery({
+  queryKey: ['allowedModels'],           // ← KEY ПАРАМЕТР 1
+  queryFn: async () => { ... },          // ← Функция запроса
+  staleTime: 60_000,                     // ← 60 сек кэш
+  gcTime: 5 * 60_000,                    // ← 5 мин в памяти
+  // enabled: не указан (=true по умолчанию)
+  // retry: не указан (=3 по умолчанию)
+});
 ```
 
 ---
 
-## 📊 ТЕКУЩИЙ СТАТУС ИНТЕГРАЦИИ
+## 🔍 КАК ЗАПУСТИТЬ ДИАГНОСТИКУ
 
-| Компонент | Статус | Статус |
-|-----------|--------|--------|
-| Payment route | ✅ Подключена | Работает |
-| ensureBalance middleware | ⚠️ Отключена | Требует проверки |
-| checkSubscription middleware | ⚠️ Отключена | Требует проверки |
-| checkSpecAllowedForPlan middleware | ⚠️ Отключена | Требует проверки |
-| buildEndpointOption.js модификация | ✅ Подключена | Работает |
-| Frontend /pricing | ✅ Подключена | Работает |
+### ШАГИ:
+
+1. **Пересобрать фронтенд:**
+   ```bash
+   cd /home/user/ai/LibreChat
+   npm run build
+   ```
+
+2. **Запустить локально:**
+   ```bash
+   npm run dev
+   ```
+   Откройте http://localhost:3080
+
+3. **Открыть DevTools:**
+   - F12 → Console tab
+   - Фильтр: [MODELS_DIAGNOSTIC]
+
+4. **Открыть селектор моделей:**
+   - Нажмите кнопку "Select Model" в чате
+
+5. **Посмотреть логи:**
+   - Console должна показать логи [MODELS_DIAGNOSTIC]
+   - Читать в порядке появления
+
+6. **Проверить Network:**
+   - DevTools → Network tab
+   - Фильтр: /api/models/allowed
+   - Status? Response?
 
 ---
 
-## 📝 NEXT STEPS
+## 🎯 ЧТО ИЩЕМ
 
-1. **Запустить сервер** с отключенными middleware
-2. **Убедиться что работает** (curl http://localhost:3080/health)
-3. **Включить middleware поочередно**, чтобы найти проблемный
-4. **Исправить проблемный middleware**
-5. **Переподключить все** в правильном порядке
+### Пример хороших логов (API работает):
 
----
-
-## 💾 ОТКАТ (если нужен)
-
-Все изменения **ОТМЕНЯЕМЫ**. Можно просто закомментировать:
-
-```bash
-# В convos.js, messages.js, agents/index.js:
-# Закомментировать строки с require коммерческих middleware
-# Закомментировать строки с router.use(...)
+```
+[MODELS_DIAGNOSTIC] Starting fetch GET /api/models/allowed
+[MODELS_DIAGNOSTIC] GET /api/models/allowed response status: 200
+[MODELS_DIAGNOSTIC] GET /api/models/allowed response data: { models: [...], plan: 'pro' }
+[MODELS_DIAGNOSTIC] Models count: 7
+[MODELS_DIAGNOSTIC] Models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', ...]
+[MODELS_DIAGNOSTIC] Plan: pro
+[MODELS_DIAGNOSTIC] allowedModelsQuery.data: { models: [...], plan: 'pro' }
+[MODELS_DIAGNOSTIC] allowedModelsQuery.isLoading: false
+[MODELS_DIAGNOSTIC] allowedModelsQuery.error: null
+[MODELS_DIAGNOSTIC] Using allowedModels from API, count: 7
+[MODELS_DIAGNOSTIC] Mapped specs from API: ['gpt-4o', 'gpt-4o-mini', ...]
+[MODELS_DIAGNOSTIC] FINAL modelSpecs for selector: ['gpt-4o', 'gpt-4o-mini', ...]
 ```
 
-Сервер заработает как обычно LibreChat.
+### Пример плохих логов (Fallback):
+
+```
+[MODELS_DIAGNOSTIC] Starting fetch GET /api/models/allowed
+[MODELS_DIAGNOSTIC] GET /api/models/allowed response status: 401
+[MODELS_DIAGNOSTIC] FALLBACK to startupConfig.modelSpecs  ← ⚠️ FALLBACK!
+[MODELS_DIAGNOSTIC] startupConfig.modelSpecs.list count: 16  ← 16 вместо 7!
+[MODELS_DIAGNOSTIC] FINAL modelSpecs for selector: 16 моделей  ← ВСЕ модели!
+```
 
 ---
 
-**Диагностирование:** В процессе
-**Затраченное время:** ~20 минут
-**Ожидаемое время на исправление:** 15-30 минут
+## 📋 ЧЕКЛИСТ ДИАГНОСТИКИ
+
+- [ ] npm run build выполнен (нет старого кэша)
+- [ ] npm run dev запущен (http://localhost:3080)
+- [ ] DevTools открыт (F12)
+- [ ] Console фильтрован ([MODELS_DIAGNOSTIC])
+- [ ] Селектор открыт (нажата кнопка "Select Model")
+- [ ] Логи видны в Console
+- [ ] Network запрос /api/models/allowed видна (или нет?)
+- [ ] Response от API содержит models?
+- [ ] Plan правильный?
+- [ ] FINAL modelSpecs показывает сколько моделей?
+
+---
+
+## 🔑 КЛЮЧЕВЫЕ ВОПРОСЫ ДЛЯ ОТВЕТА
+
+После запуска диагностики ответьте:
+
+1. **Выполняется ли запрос?**
+   - Видна ли строка `Starting fetch GET /api/models/allowed`?
+
+2. **Какой статус ответа?**
+   - Status 200 (успешно) или 401/500 (ошибка)?
+
+3. **Какие модели приходят с API?**
+   - Сколько моделей в Models count?
+   - Какие modelId?
+
+4. **Используется ли API или Fallback?**
+   - Видна ли строка `Using allowedModels from API`?
+   - Или видна `FALLBACK to startupConfig`?
+
+5. **Сколько моделей в итоговом массиве?**
+   - FINAL modelSpecs count: 7 (как в плане) или 16 (все)?
+
+---
+
+## 📍 ЛОКАЦИЯ ЛОГОВ В КОДЕ
+
+| Что | Файл | Строки | Уровень |
+|-----|------|--------|---------|
+| queryFn логи | ModelSelectorContext.tsx | ~79-100 | fetch-уровень |
+| useMemo логи | ModelSelectorContext.tsx | ~102-150 | логика-уровень |
+| Финальный | ModelSelectorContext.tsx | ~152 | результат |
+
+---
+
+**Status:** 🔍 ДИАГНОСТИКА АКТИВНА И ГОТОВА К ЗАПУСКУ
+
