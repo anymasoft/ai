@@ -116,7 +116,8 @@ export default function AdminPanel() {
   const [pkgSaveMsg, setPkgSaveMsg] = useState<Record<string, { ok: boolean; text: string }>>({});
   const [availableModels, setAvailableModels] = useState<string[]>([]);
 
-  const { navVisible, setNavVisible } = useOutletContext<ContextType>();
+  const context = useOutletContext<ContextType>();
+  const { navVisible, setNavVisible } = context || { navVisible: false, setNavVisible: () => {} };
   const isAdmin = user?.role === SystemRoles.ADMIN;
 
   const load = useCallback(async () => {
