@@ -262,9 +262,9 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
 
   // НОВОЕ: Построить endpoints только из разрешённых моделей
   const allowedEndpoints = useMemo(() => {
-    if (allowedModelsQuery.data?.models) {
-      console.log('[MODELS_DIAGNOSTIC] Building endpoints from allowedModels, count:', allowedModelsQuery.data.models.length);
-      const endpoints = buildEndpointsFromAllowedModels(allowedModelsQuery.data.models, startupConfig);
+    if (allModelsQuery.data?.models) {
+      console.log('[MODELS_DIAGNOSTIC] Building endpoints from allowedModels, count:', allModelsQuery.data.models.length);
+      const endpoints = buildEndpointsFromAllowedModels(allModelsQuery.data.models, startupConfig);
       console.log('[MODELS_DIAGNOSTIC] Built endpoints from API, count:', endpoints.length);
       return endpoints;
     }
@@ -272,7 +272,7 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     // Fallback на старую логику если данные не загрузились
     console.log('[MODELS_DIAGNOSTIC] FALLBACK: Using startupConfig.endpoints (all models)');
     return startupConfig?.endpoints ?? [];
-  }, [allowedModelsQuery.data?.models, startupConfig]);
+  }, [allModelsQuery.data?.models, startupConfig]);
 
   // Используем старый useEndpoints для получения endpointRequiresUserKey и других функций
   // но с отфильтрованными endpoints
