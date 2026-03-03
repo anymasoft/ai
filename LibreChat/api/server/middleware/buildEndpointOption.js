@@ -51,6 +51,14 @@ async function buildEndpointOption(req, res, next) {
 
   const { endpoint, endpointType } = req.body;
 
+  // Debug: Log incoming request
+  logger.debug('[buildEndpointOption] Incoming request', {
+    endpoint,
+    endpointType,
+    incomingModel: req.body.model,
+    incomingSpec: req.body.spec,
+  });
+
   let endpointsConfig;
   try {
     endpointsConfig = await getEndpointsConfig(req);
@@ -129,6 +137,31 @@ async function buildEndpointOption(req, res, next) {
   }
 
   try {
+    // ✅ ИСПРАВЛЕНИЕ: Обрабатываем модель с pipe character (e.g., "anthropic|claude-haiku-4-5")
+    if (parsedBody.model && parsedBody.model.includes('|')) {
+      const [providerFromModel, modelName] = parsedBody.model.split('|');
+      if (providerFromModel && modelName) {
+        logger.debug('[buildEndpointOption] Model contains provider prefix, extracting', {
+          originalModel: parsedBody.model,
+          extractedProvider: providerFromModel,
+          extractedModel: modelName,
+        });
+        parsedBody.model = modelName;
+        // If endpoint is not yet set or is default, use the provider from model
+        if (!endpoint || endpoint === 'agents') {
+          // For agents, keep the endpoint from request
+        } else {
+          // For other endpoints, we might want to verify endpoint matches
+          if (providerFromModel !== endpoint) {
+            logger.warn('[buildEndpointOption] Provider mismatch in model string', {
+              modelProvider: providerFromModel,
+              requestEndpoint: endpoint,
+            });
+          }
+        }
+      }
+    }
+
     const isAgents =
       isAgentsEndpoint(endpoint) || req.baseUrl.startsWith(EndpointURLs[EModelEndpoint.agents]);
 
@@ -165,16 +198,29 @@ async function buildEndpointOption(req, res, next) {
     req.body.endpointOption = await builder(endpoint, parsedBody, endpointType);
 
     // ✅ ЛОГИРОВАНИЕ: Показываем финальную модель что будет отправлена
+    const finalModel = req.body.endpointOption?.model || parsedBody?.model;
     logger.info('[buildEndpointOption] FINAL REQUEST', {
       endpoint,
       endpointType,
-      finalModel: req.body.endpointOption?.model || parsedBody?.model,
+      finalModel,
       fullEndpointOption: {
         model: req.body.endpointOption?.model,
         endpoint: req.body.endpointOption?.endpoint,
         endpointType: req.body.endpointOption?.endpointType,
       },
+      parsedBodyModel: parsedBody?.model,
+      parsedBodySpec: parsedBody?.spec,
     });
+
+    // Debug: log if model has pipe character
+    if (finalModel && finalModel.includes('|')) {
+      logger.warn('[buildEndpointOption] Model contains pipe character!', {
+        endpoint,
+        finalModel,
+        parsedBodyModel: parsedBody?.model,
+        originalBody: req.body,
+      });
+    }
 
     if (req.body.files && !isAgents) {
       req.body.endpointOption.attachments = updateFilesUsage(req.body.files);
