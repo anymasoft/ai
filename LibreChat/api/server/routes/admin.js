@@ -5,9 +5,10 @@ const { logger } = require('@librechat/data-schemas');
 const { requireJwtAuth } = require('../middleware/');
 
 // ✅ ИСПРАВЛЕНИЕ: Импортируем модели из правильных источников
-// User, Balance, Plan, AiModel, SystemSettings - из ~/db/models (@librechat/data-schemas)
-// Payment, Subscription, TokenPackage - локальные модели из ~/models
-const { User, Balance, Plan, AiModel, SystemSettings } = require('~/db/models');
+// User, Balance, AiModel, SystemSettings - из ~/db/models (@librechat/data-schemas)
+// Plan, Payment, Subscription, TokenPackage - локальные модели из ~/models
+const { User, Balance, AiModel, SystemSettings } = require('~/db/models');
+const Plan = require('~/models/Plan');
 const Payment = require('~/models/Payment');
 const Subscription = require('~/models/Subscription');
 const TokenPackage = require('~/models/TokenPackage');
