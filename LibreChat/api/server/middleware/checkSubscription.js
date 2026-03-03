@@ -44,11 +44,40 @@ function invalidatePlanCache() {
   _planCache = null;
 }
 
+/**
+ * Проверяет разрешена ли модель для плана.
+ *
+ * Поддерживает:
+ * 1. Exact match: modelName точно совпадает с allowedModels[i]
+ * 2. Alias match: allowedModels[i] это alias, modelName это versioned ID
+ *    Пример: allowedModels=["claude-haiku-4-5"], modelName="claude-haiku-4-5-20251001" ✅
+ * 3. Prefix match: modelName начинается с allowedModels[i] + "-"
+ *    Пример: allowedModels=["gpt-4"], modelName="gpt-4-turbo" ✅
+ */
 function isModelAllowed(planConfig, modelName) {
   if (!planConfig || !modelName) return true;
   const allowed = planConfig.allowedModels || [];
   if (allowed.length === 0) return true;       // пустой = все модели разрешены
-  return allowed.includes(modelName);          // exact match по полному modelId
+
+  // ✅ Exact match: точное совпадение
+  if (allowed.includes(modelName)) {
+    return true;
+  }
+
+  // ✅ Prefix/Alias match: проверяем prefix matching
+  // Для каждого разрешенного модель проверяем:
+  // - Если это может быть alias (не содержит версию в формате YYYYMMDD)
+  // - То проверяем что requestedModel начинается с alias + "-"
+  // Пример: allowed="claude-haiku-4-5", requested="claude-haiku-4-5-20251001" ✅
+  for (const allowedModel of allowed) {
+    // Если allowedModel меньше requestedModel и requestedModel начинается с allowedModel + "-"
+    // то это скорее всего alias-to-versioned резолвинг
+    if (modelName.startsWith(allowedModel + '-')) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 async function checkSubscription(req, res, next) {
@@ -99,21 +128,42 @@ async function checkSubscription(req, res, next) {
     // [MODEL CHECK] Log security check
     if (modelId) {
       const { logger } = require('@librechat/data-schemas');
-      logger.info(`[MODEL CHECK] "${modelId}" against plan "${plan}"`, {
-        model: modelId,
-        plan,
-        userId,
-      });
 
       const plans = await getPlans();
       const planConfig = plans[plan];
+      const allowedModels = planConfig?.allowedModels || [];
+
+      // Логируем проверку модели с деталями
+      logger.info(`[PLAN MODEL CHECK] User="${userId}" requested model="${modelId}" on plan="${plan}"`, {
+        model: modelId,
+        plan,
+        userId,
+        allowedModels,
+      });
+
       if (!isModelAllowed(planConfig, modelId)) {
-        logger.warn(`[MODEL_DENIED] User="${userId}" tried model="${modelId}" on plan="${plan}"`);
+        logger.warn(
+          `[MODEL_DENIED] User="${userId}" model="${modelId}" plan="${plan}"`,
+          {
+            model: modelId,
+            plan,
+            userId,
+            allowedModels,
+            requestType: 'subscription_check_failed',
+          }
+        );
         return res.status(403).json({
           error: `Модель "${modelId}" недоступна на плане "${plan}". Перейдите на Pro или Business.`,
           code: 'MODEL_NOT_ALLOWED',
         });
       }
+
+      // ✅ Модель разрешена
+      logger.debug(`[MODEL_ALLOWED] User="${userId}" model="${modelId}" on plan="${plan}"`, {
+        model: modelId,
+        plan,
+        userId,
+      });
     }
 
     next();
