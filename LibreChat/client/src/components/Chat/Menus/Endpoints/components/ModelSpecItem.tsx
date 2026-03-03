@@ -17,6 +17,18 @@ export function ModelSpecItem({ spec, isSelected }: ModelSpecItemProps) {
   const localize = useLocalize();
   const { handleSelectSpec, endpointsConfig } = useModelSelectorContext();
   const { showIconInMenu = true } = spec;
+
+  // ДИАГНОСТИКА: Логируем данные ModelSpec
+  console.log(`[MODEL_SPEC] ${spec.name}:`, {
+    name: spec.name,
+    label: spec.label,
+    group: spec.group,
+    preset: spec.preset,
+    description: spec.description,
+    groupIcon: spec.groupIcon,
+    showIconInMenu,
+    isSelected,
+  });
   return (
     <MenuItem
       key={spec.name}
@@ -61,6 +73,13 @@ export function renderModelSpecs(specs: TModelSpec[], selectedSpec: string) {
   if (!specs || specs.length === 0) {
     return null;
   }
+
+  // ДИАГНОСТИКА: Логируем ungrouped specs
+  console.log('[UNGROUPED_MODELSPECS]:', {
+    count: specs.length,
+    specs: specs.map(s => ({ name: s.name, label: s.label, group: s.group })),
+    selectedSpec,
+  });
 
   return specs.map((spec) => (
     <ModelSpecItem key={spec.name} spec={spec} isSelected={selectedSpec === spec.name} />

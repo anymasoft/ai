@@ -159,6 +159,16 @@ export function EndpointItem({ endpoint, endpointIndex }: EndpointItemProps) {
   } = useModelSelectorContext();
   const { endpoint: selectedEndpoint } = selectedValues;
 
+  // ДИАГНОСТИКА: Логируем данные endpoint'а
+  console.log(`[ENDPOINT_DATA] endpoint[${endpointIndex}]:`, {
+    value: endpoint.value,
+    label: endpoint.label,
+    icon: endpoint.icon ? 'present' : 'absent',
+    hasModels: endpoint.hasModels,
+    models: endpoint.models?.map(m => ({ name: m.name, label: m.label, context_length: m.context_length })),
+    isSelected: selectedEndpoint === endpoint.value,
+  });
+
   const searchValue = endpointSearchValues[endpoint.value] || '';
   const isUserProvided = useMemo(
     () => endpointRequiresUserKey(endpoint.value),

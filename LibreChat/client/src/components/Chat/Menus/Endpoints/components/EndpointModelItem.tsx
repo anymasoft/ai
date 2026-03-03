@@ -154,6 +154,16 @@ export function renderEndpointModels(
   const modelsToRender = filteredModels || models.map((model) => model.name);
   const indexSuffix = endpointIndex != null ? `-${endpointIndex}` : '';
 
+  // ДИАГНОСТИКА: Логируем модели endpoint'а
+  console.log(`[ENDPOINT_MODELS] ${endpoint?.value}:`, {
+    endpointLabel: endpoint?.label,
+    totalModels: models.length,
+    modelsToRender: modelsToRender,
+    isFiltered: !!filteredModels,
+    selectedModel,
+    models: models.map(m => ({ name: m.name, isGlobal: m.isGlobal })),
+  });
+
   return modelsToRender.map(
     (modelId, modelIndex) =>
       endpoint && (
