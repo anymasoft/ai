@@ -115,34 +115,57 @@ router.patch('/users/:userId/role', requireJwtAuth, requireAdminRole, async (req
  * PATCH /api/admin/users/:userId/plan
  * Вручную переключить тариф: { plan: 'free' | 'pro' | 'business', durationDays?: number }
  * durationDays по умолчанию 30.
+ *
+ * ✅ FIX: Plan is normalized to lowercase to prevent case-sensitivity issues
  */
 router.patch('/users/:userId/plan', requireJwtAuth, requireAdminRole, async (req, res) => {
   try {
-    const { plan, durationDays } = req.body;
-    if (!['free', 'pro', 'business'].includes(plan)) {
-      return res.status(400).json({ error: 'Недопустимый тариф. Используйте free, pro или business' });
+    let { plan, durationDays } = req.body;
+
+    // ✅ NORMALIZE: Convert plan to lowercase
+    // Allows: "Business" → "business", "BUSINESS" → "business", "Free" → "free"
+    const normalizedPlan = String(plan || '').toLowerCase();
+
+    if (!['free', 'pro', 'business'].includes(normalizedPlan)) {
+      logger.warn(`[admin/plan] Invalid plan received: original="${plan}" normalized="${normalizedPlan}"`);
+      return res.status(400).json({
+        error: 'Недопустимый тариф. Используйте free, pro или business',
+        received: plan,
+        normalized: normalizedPlan,
+      });
     }
+
     const userId = req.params.userId;
     const days = parseInt(durationDays) || 30;
 
     let planStartedAt = null;
     let planExpiresAt = null;
 
-    if (plan !== 'free') {
+    if (normalizedPlan !== 'free') {
       const now = new Date();
       planStartedAt = now;
       planExpiresAt = new Date(now);
       planExpiresAt.setDate(planExpiresAt.getDate() + days);
     }
 
+    // 📝 DEBUG LOG: Track plan normalization
+    logger.info('[PLAN DEBUG] Admin setting user plan', {
+      userId,
+      originalPlan: plan,
+      normalizedPlan,
+      planStartedAt,
+      planExpiresAt,
+      admin: req.user?.email,
+    });
+
     await Subscription.findOneAndUpdate(
       { userId },
-      { plan, planStartedAt, planExpiresAt },
+      { plan: normalizedPlan, planStartedAt, planExpiresAt },
       { upsert: true, new: true },
     );
 
-    logger.info(`[admin] ${req.user.email} переключил план userId=${userId} → ${plan} (до ${planExpiresAt || 'бессрочно'})`);
-    res.json({ ok: true, plan, planExpiresAt });
+    logger.info(`[admin] ${req.user.email} переключил план userId=${userId} → ${normalizedPlan} (до ${planExpiresAt || 'бессрочно'})`);
+    res.json({ ok: true, plan: normalizedPlan, planExpiresAt });
   } catch (err) {
     logger.error('[admin/plan]', err);
     res.status(500).json({ error: 'Ошибка сервера' });
@@ -336,6 +359,7 @@ router.patch('/plans/:planId', requireJwtAuth, requireAdminRole, async (req, res
     // ✅ NORMALIZE: Convert planId to lowercase for safety
     // Allows: "Business" → "business", "BUSINESS" → "business"
     const normalizedPlanId = String(planId || '').toLowerCase();
+
     if (!['free', 'pro', 'business'].includes(normalizedPlanId)) {
       logger.warn(`[admin/plans] Invalid planId: original="${planId}" normalized="${normalizedPlanId}"`);
       return res.status(400).json({
