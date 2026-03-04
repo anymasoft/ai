@@ -3,7 +3,7 @@ const { CacheKeys, Constants } = require('librechat-data-provider');
 const { findToken, createToken, updateToken, deleteTokens } = require('~/models');
 const { updateMCPServerTools } = require('~/server/services/Config');
 const { getMCPManager, getFlowStateManager } = require('~/config');
-const { getServerConfigWithAdminFallback } = require('~/server/services/MCP');
+const { getServerConfigWithAdminFallback, getAdminId } = require('~/server/services/MCP');
 const { getLogStores } = require('~/cache');
 
 /**
@@ -45,22 +45,23 @@ async function reinitMCPServer({
     const customUserVars = userMCPAuthMap?.[`${Constants.mcp_prefix}${serverName}`];
     const flowManager = _flowManager ?? getFlowStateManager(getLogStores(CacheKeys.FLOWS));
 
-    // Get server config to determine ownerId (admin's userId if server is admin-created)
+    // Verify server config exists
     const serverConfig = await getServerConfigWithAdminFallback(serverName, user?.id);
 
     if (!serverConfig) {
-      logger.error(`[MCP EXECUTION FIX] CRITICAL: No server config found for ${serverName} (userId=${user?.id})`);
+      logger.error(`[MCP EXECUTION] CRITICAL: No server config found for ${serverName} (userId=${user?.id})`);
       throw new Error(`Configuration for server "${serverName}" not found`);
     }
 
-    const ownerId = serverConfig.userId;  // ← ТОЛЬКО из config, БЕЗ fallback!
+    // All MCP tools execute through admin's MCP manager
+    const adminId = await getAdminId();
 
-    logger.info(`[MCP EXECUTION FIX] userId=${user?.id} ownerId=${ownerId}`);
-    logger.info(`[MCP AUDIT] Step 4 - Tool Execution for serverName=${serverName}, userId=${user?.id}, ownerId=${ownerId}`);
+    logger.info(`[MCP EXECUTION] user=${user?.id} executed via admin MCP for server=${serverName}`);
+    logger.info(`[MCP AUDIT] Step 4 - Tool Execution for serverName=${serverName}, userId=${user?.id}, adminId=${adminId}`);
 
-    const mcpManager = getMCPManager(ownerId);
+    const mcpManager = getMCPManager(adminId);
 
-    logger.info(`[MCP AUDIT] MCPManager initialized with ownerId=${ownerId}: ${!!mcpManager}`);
+    logger.info(`[MCP AUDIT] MCPManager initialized with adminId=${adminId}: ${!!mcpManager}`);
 
     const tokenMethods = { findToken, updateToken, createToken, deleteTokens };
 
@@ -73,13 +74,13 @@ async function reinitMCPServer({
       });
 
     try {
-      logger.info(`[MCP CONNECTION] server=${serverName} ownerId=${ownerId} user=${user?.id}`);
+      logger.info(`[MCP CONNECTION] server=${serverName} adminId=${adminId} user=${user?.id}`);
 
       connection = await mcpManager.getConnection({
         user,
         signal,
         forceNew,
-        ownerId,
+        ownerId: adminId,
         oauthStart,
         serverName,
         flowManager,
@@ -113,7 +114,7 @@ async function reinitMCPServer({
           const discoveryResult = await mcpManager.discoverServerTools({
             user,
             signal,
-            ownerId,
+            ownerId: adminId,
             serverName,
             flowManager,
             tokenMethods,
@@ -147,7 +148,7 @@ async function reinitMCPServer({
 
     if (tools && tools.length > 0) {
       availableTools = await updateMCPServerTools({
-        ownerId,
+        ownerId: adminId,
         serverName,
         tools,
       });

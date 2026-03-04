@@ -14,7 +14,7 @@ const {
 const { Constants, MCPServerUserInputSchema, SystemRoles } = require('librechat-data-provider');
 const { cacheMCPServerTools, getMCPServerTools } = require('~/server/services/Config');
 const { getMCPManager, getMCPServersRegistry } = require('~/config');
-const { getMCPServersWithAdmins, getServerConfigWithAdminFallback } = require('~/server/services/MCP');
+const { getMCPServersWithAdmins, getServerConfigWithAdminFallback, getAdminId } = require('~/server/services/MCP');
 const { User } = require('~/db/models');
 
 /**
@@ -79,17 +79,12 @@ const getMCPTools = async (req, res) => {
 
     const mcpServers = {};
 
-    // Get ownerId for each server
-    const serverOwnerMap = new Map();
-    for (const serverName of configuredServers) {
-      const rawServerConfig = await getServerConfigWithAdminFallback(serverName, userId);
-      const ownerId = rawServerConfig?.userId || userId;
-      serverOwnerMap.set(serverName, ownerId);
-    }
+    // All MCP tools execute through admin's MCP manager
+    const adminId = await getAdminId();
+    logger.info(`[MCP AUDIT] getMCPTools: using adminId=${adminId}`);
 
     const cachePromises = configuredServers.map((serverName) => {
-      const ownerId = serverOwnerMap.get(serverName);
-      return getMCPServerTools(ownerId, serverName).then((tools) => ({ serverName, tools }));
+      return getMCPServerTools(adminId, serverName).then((tools) => ({ serverName, tools }));
     });
     const cacheResults = await Promise.all(cachePromises);
 
@@ -102,9 +97,8 @@ const getMCPTools = async (req, res) => {
 
       let serverTools;
       try {
-        const ownerId = serverOwnerMap.get(serverName);
-        const mcpManager = getMCPManager(ownerId);
-        logger.info(`[MCP AUDIT] getMCPManager initialized with ownerId=${ownerId} for server=${serverName}`);
+        const mcpManager = getMCPManager(adminId);
+        logger.info(`[MCP AUDIT] getMCPManager initialized with adminId=${adminId} for server=${serverName}`);
         serverTools = await mcpManager.getServerToolFunctions(userId, serverName);
       } catch (error) {
         logger.error(`[getMCPTools] Error fetching tools for server ${serverName}:`, error);
@@ -118,8 +112,7 @@ const getMCPTools = async (req, res) => {
 
       if (Object.keys(serverTools).length > 0) {
         // Cache asynchronously without blocking
-        const ownerId = serverOwnerMap.get(serverName);
-        cacheMCPServerTools({ ownerId, serverName, serverTools }).catch((err) =>
+        cacheMCPServerTools({ ownerId: adminId, serverName, serverTools }).catch((err) =>
           logger.error(`[getMCPTools] Failed to cache tools for ${serverName}:`, err),
         );
       }
@@ -130,9 +123,8 @@ const getMCPTools = async (req, res) => {
       try {
         const serverTools = serverToolsMap.get(serverName);
 
-        // Get server config once (with admin fallback)
+        // Get server config once
         const serverConfig = mcpConfig[serverName];
-        const ownerId = serverOwnerMap.get(serverName);
         const rawServerConfig = await getServerConfigWithAdminFallback(serverName, userId);
 
         // Initialize server object with all server-level data

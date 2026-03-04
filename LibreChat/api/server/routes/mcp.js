@@ -35,7 +35,7 @@ const {
   getFlowStateManager,
   getMCPManager,
 } = require('~/config');
-const { getMCPSetupData, getServerConnectionStatus, getServerConfigWithAdminFallback } = require('~/server/services/MCP');
+const { getMCPSetupData, getServerConnectionStatus, getServerConfigWithAdminFallback, getAdminId } = require('~/server/services/MCP');
 const { requireJwtAuth, canAccessMCPServerResource } = require('~/server/middleware');
 const { findToken, updateToken, createToken, deleteTokens } = require('~/models');
 const { getUserPluginAuthValue } = require('~/server/services/PluginService');
@@ -235,12 +235,14 @@ router.get('/:serverName/oauth/callback', async (req, res) => {
     }
 
     try {
-      // Get server config to determine ownerId
+      // Verify server config exists
       const serverConfig = await getServerConfigWithAdminFallback(serverName, flowState.userId);
-      const ownerId = serverConfig?.userId || flowState.userId;
 
-      const mcpManager = getMCPManager(ownerId);
-      logger.info(`[MCP AUDIT] getMCPManager initialized with ownerId=${ownerId} for OAuth reconnection`);
+      // All MCP tools execute through admin's MCP manager
+      const adminId = await getAdminId();
+
+      const mcpManager = getMCPManager(adminId);
+      logger.info(`[MCP AUDIT] getMCPManager initialized with adminId=${adminId} for OAuth reconnection`);
       logger.debug(`[MCP OAuth] Attempting to reconnect ${serverName} with new OAuth tokens`);
 
       if (flowState.userId !== 'system') {
@@ -250,7 +252,7 @@ router.get('/:serverName/oauth/callback', async (req, res) => {
           user,
           serverName,
           flowManager,
-          ownerId,
+          ownerId: adminId,
           tokenMethods: {
             findToken,
             updateToken,
@@ -269,7 +271,7 @@ router.get('/:serverName/oauth/callback', async (req, res) => {
 
         const tools = await userConnection.fetchTools();
         await updateMCPServerTools({
-          ownerId,
+          ownerId: adminId,
           serverName,
           tools,
         });
@@ -461,12 +463,12 @@ router.post('/:serverName/reinitialize', requireJwtAuth, setOAuthSession, async 
       });
     }
 
-    // Use ownerId from server config (admin's userId if server is admin-created)
-    const ownerId = serverConfig.userId;
-    const mcpManager = getMCPManager(ownerId);
+    // All MCP tools execute through admin's MCP manager
+    const adminId = await getAdminId();
+    const mcpManager = getMCPManager(adminId);
 
-    logger.info(`[MCP EXECUTION FIX] userId=${user.id} ownerId=${ownerId}`);
-    logger.info(`[MCP Reinitialize] Disconnecting user=${user.id} from server=${serverName} (ownerId=${ownerId})`);
+    logger.info(`[MCP EXECUTION] user=${user.id} executed via admin MCP`);
+    logger.info(`[MCP Reinitialize] Disconnecting user=${user.id} from server=${serverName} (adminId=${adminId})`);
 
     await mcpManager.disconnectUserConnection(user.id, serverName);
     logger.info(

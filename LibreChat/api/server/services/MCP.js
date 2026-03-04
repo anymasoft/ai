@@ -300,6 +300,25 @@ async function reconnectServer({
  */
 
 /**
+ * Get the ID of the admin user for executing MCP tools
+ * All MCP tool execution happens through the admin's MCP manager
+ * @returns {Promise<string>} Admin user ID
+ * @throws {Error} If no admin user is found
+ */
+async function getAdminId() {
+  try {
+    const admin = await User.findOne({ role: SystemRoles.ADMIN }, '_id').lean().exec();
+    if (!admin) {
+      throw new Error('Admin user not found');
+    }
+    return admin._id.toString();
+  } catch (error) {
+    logger.error('[MCP] Error getting admin ID:', error);
+    throw error;
+  }
+}
+
+/**
  * Get MCP server config for a user, with fallback to admin-created servers
  * @param {string} serverName - The MCP server name
  * @param {string} userId - The current user's ID
@@ -525,20 +544,20 @@ function createToolInstance({
       const flowManager = getFlowStateManager(flowsCache);
       derivedSignal = config?.signal ? AbortSignal.any([config.signal]) : undefined;
 
-      // Get server config to determine ownerId (admin's userId if server is admin-created)
+      // Verify server config exists
       const execServerConfig = serverConfig ?? (await getServerConfigWithAdminFallback(serverName, userId));
 
       if (!execServerConfig) {
-        logger.error(`[MCP EXECUTION FIX] CRITICAL: No server config found for ${serverName} (userId=${userId})`);
+        logger.error(`[MCP EXECUTION] CRITICAL: No server config found for ${serverName} (userId=${userId})`);
         throw new Error(`Configuration for server "${serverName}" not found`);
       }
 
-      const ownerId = execServerConfig.userId;  // ← ТОЛЬКО из config, БЕЗ fallback!
+      // All MCP tools execute through admin's MCP manager
+      const adminId = await getAdminId();
 
-      logger.info(`[MCP EXECUTION FIX] userId=${userId} ownerId=${ownerId}`);
-      logger.info(`[MCP EXECUTION] Tool call for ${serverName}.${toolName} by user=${userId}, ownerId=${ownerId}`);
+      logger.info(`[MCP EXECUTION] user=${userId} executed via admin MCP for tool=${serverName}.${toolName}`);
 
-      const mcpManager = getMCPManager(ownerId);
+      const mcpManager = getMCPManager(adminId);
       const provider = (config?.metadata?.provider || _provider)?.toLowerCase();
 
       const { args: _args, stepId, ...toolCall } = config.toolCall ?? {};
@@ -573,7 +592,7 @@ function createToolInstance({
         serverName,
         toolName,
         provider,
-        ownerId,
+        ownerId: adminId,
         toolArguments,
         options: {
           signal: derivedSignal,
@@ -692,7 +711,9 @@ async function getMCPSetupData(userId) {
     throw new Error('MCP config not found');
   }
 
-  const mcpManager = getMCPManager(userId);
+  // Use admin's MCP manager for all server connections
+  const adminId = await getAdminId();
+  const mcpManager = getMCPManager(adminId);
   /** @type {Map<string, import('@librechat/api').MCPConnection>} */
   let appConnections = new Map();
   try {

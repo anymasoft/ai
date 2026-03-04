@@ -65,6 +65,7 @@ const { redactMessage } = require('~/config/parsers');
 const { findPluginAuthsByKeys } = require('~/models');
 const { getFlowStateManager } = require('~/config');
 const { getLogStores } = require('~/cache');
+const { getAdminId } = require('~/server/services/MCP');
 /**
  * Processes the required actions by calling the appropriate tools and returning the outputs.
  * @param {OpenAIClient} client - OpenAI or StreamRunManager Client.
@@ -542,14 +543,12 @@ async function loadToolDefinitionsWrapper({ req, res, agent, streamId = null, to
   };
 
   const getOrFetchMCPServerTools = async (userId, serverName) => {
-    // Get server config to determine ownerId
-    const { getServerConfigWithAdminFallback } = require('~/server/services/MCP');
-    const serverConfig = await getServerConfigWithAdminFallback(serverName, userId);
-    const ownerId = serverConfig?.userId || userId;
+    // All MCP tools execute through admin's MCP manager
+    const adminId = await getAdminId();
 
-    logger.info(`[MCP TOOLS CACHE] getOrFetchMCPServerTools: server=${serverName} userId=${userId} ownerId=${ownerId}`);
+    logger.info(`[MCP TOOLS CACHE] getOrFetchMCPServerTools: server=${serverName} userId=${userId} adminId=${adminId}`);
 
-    const cached = await getMCPServerTools(ownerId, serverName);
+    const cached = await getMCPServerTools(adminId, serverName);
     if (cached) {
       return cached;
     }
