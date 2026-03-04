@@ -75,6 +75,7 @@ async function reinitMCPServer({
 
     try {
       logger.info(`[MCP CONNECTION] server=${serverName} adminId=${adminId} user=${user?.id}`);
+      logger.info(`[MCP DIAG] Attempting getConnection for server: ${serverName}`);
 
       connection = await mcpManager.getConnection({
         user,
@@ -91,6 +92,7 @@ async function reinitMCPServer({
       });
 
       logger.info(`[MCP Reinitialize] Successfully established connection for ${serverName}`);
+      logger.info(`[MCP DIAG] Connection established successfully for ${serverName}`);
     } catch (err) {
       logger.info(`[MCP Reinitialize] getConnection threw error: ${err.message}`);
       logger.info(
@@ -111,6 +113,8 @@ async function reinitMCPServer({
         oauthRequired = true;
 
         try {
+          logger.info(`[MCP DIAG] Attempting discoverServerTools for ${serverName}`);
+
           const discoveryResult = await mcpManager.discoverServerTools({
             user,
             signal,
@@ -128,11 +132,15 @@ async function reinitMCPServer({
             logger.info(
               `[MCP Reinitialize] Discovered ${tools.length} tools for ${serverName} without full auth`,
             );
+            logger.info(`[MCP DIAG] Tools discovered: ${tools.map(t => t.name || t).join(', ')}`);
+          } else {
+            logger.warn(`[MCP DIAG] No tools discovered from ${serverName}`);
           }
         } catch (discoveryErr) {
           logger.debug(
             `[MCP Reinitialize] Tool discovery failed for ${serverName}: ${discoveryErr?.message ?? String(discoveryErr)}`,
           );
+          logger.error(`[MCP DIAG] discoverServerTools error for ${serverName}:`, discoveryErr);
         }
       } else {
         logger.error(
