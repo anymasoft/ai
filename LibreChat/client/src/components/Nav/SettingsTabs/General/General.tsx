@@ -1,10 +1,11 @@
-import React, { useContext, useCallback } from 'react';
+import React, { useContext, useCallback, useState } from 'react';
 import Cookies from 'js-cookie';
 import { useRecoilState } from 'recoil';
-import { Dropdown, ThemeContext } from '@librechat/client';
+import { Dropdown, ThemeContext, Switch, InfoHoverCard, ESide } from '@librechat/client';
 import ArchivedChats from './ArchivedChats';
 import ToggleSwitch from '../ToggleSwitch';
 import { useLocalize, useIsAdmin } from '~/hooks';
+import { useGetStartupConfig } from '~/data-provider';
 import store from '~/store';
 
 const toggleSwitchConfigs = [
@@ -21,13 +22,6 @@ const toggleSwitchConfigs = [
     switchId: 'autoScroll',
     hoverCardText: undefined,
     key: 'autoScroll',
-  },
-  {
-    stateAtom: store.hideSidePanel,
-    localizationKey: 'com_nav_hide_panel',
-    switchId: 'hideSidePanel',
-    hoverCardText: undefined,
-    key: 'hideSidePanel',
   },
   {
     stateAtom: store.keepScreenAwake,
@@ -153,6 +147,9 @@ export const LangSelector = ({
 function General() {
   const { theme, setTheme } = useContext(ThemeContext);
   const isAdmin = useIsAdmin();
+  const { data: startupConfig, refetch: refetchConfig } = useGetStartupConfig();
+  const [isSaving, setIsSaving] = useState(false);
+  const localize = useLocalize();
 
   const [langcode, setLangcode] = useRecoilState(store.lang);
 
@@ -179,13 +176,34 @@ function General() {
     [setLangcode],
   );
 
-  // SaaS security: скрыть toggle hideSidePanel для не-админов
-  const filteredConfigs = toggleSwitchConfigs.filter((config) => {
-    if (config.key === 'hideSidePanel' && !isAdmin) {
-      return false;
-    }
-    return true;
-  });
+  const handleHideSidePanelChange = useCallback(
+    async (value: boolean) => {
+      setIsSaving(true);
+      try {
+        const response = await fetch('/api/settings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ hideSidePanel: value }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to save settings');
+        }
+
+        // Обновляем startupConfig после успешного сохранения
+        await refetchConfig();
+      } catch (error) {
+        console.error('Error saving hideSidePanel setting:', error);
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [refetchConfig],
+  );
+
+  const filteredConfigs = toggleSwitchConfigs;
 
   return (
     <div className="flex flex-col gap-3 p-1 text-sm text-text-primary">
@@ -205,6 +223,25 @@ function General() {
           />
         </div>
       ))}
+      {isAdmin && (
+        <div className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div id="hideSidePanel-label">{localize('com_nav_hide_panel')}</div>
+              <InfoHoverCard side={ESide.Bottom} text={localize('com_nav_hide_panel')} />
+            </div>
+            <Switch
+              id="hideSidePanel"
+              checked={startupConfig?.hideSidePanel ?? false}
+              onCheckedChange={handleHideSidePanelChange}
+              disabled={isSaving}
+              className="ml-4"
+              data-testid="hideSidePanel"
+              aria-labelledby="hideSidePanel-label"
+            />
+          </div>
+        </div>
+      )}
       <div className="pb-3">
         <ArchivedChats />
       </div>
