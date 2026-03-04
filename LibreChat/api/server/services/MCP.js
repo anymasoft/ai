@@ -439,7 +439,7 @@ async function createMCPTool({
   // Runtime domain validation: check if the server's domain is still allowed
   // Use getAppConfig() to support per-user/role domain restrictions
   const serverConfig =
-    config ?? (await getMCPServersRegistry().getServerConfig(serverName, user?.id));
+    config ?? (await getServerConfigWithAdminFallback(serverName, user?.id));
   if (serverConfig?.url) {
     const appConfig = await getAppConfig({ role: user?.role });
     const allowedDomains = appConfig?.mcpSettings?.allowedDomains;
@@ -521,7 +521,14 @@ function createToolInstance({
       const flowsCache = getLogStores(CacheKeys.FLOWS);
       const flowManager = getFlowStateManager(flowsCache);
       derivedSignal = config?.signal ? AbortSignal.any([config.signal]) : undefined;
-      const mcpManager = getMCPManager(userId);
+
+      // Get server config to determine ownerId (admin's userId if server is admin-created)
+      const execServerConfig = serverConfig ?? (await getServerConfigWithAdminFallback(serverName, userId));
+      const ownerId = execServerConfig?.userId || userId;
+
+      logger.info(`[MCP EXECUTION] Tool call for ${serverName}.${toolName} by user=${userId}, ownerId=${ownerId}`);
+
+      const mcpManager = getMCPManager(ownerId);
       const provider = (config?.metadata?.provider || _provider)?.toLowerCase();
 
       const { args: _args, stepId, ...toolCall } = config.toolCall ?? {};
