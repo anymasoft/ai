@@ -149,6 +149,7 @@ function General() {
   const isAdmin = useIsAdmin();
   const { data: startupConfig, refetch: refetchConfig } = useGetStartupConfig();
   const [isSaving, setIsSaving] = useState(false);
+  const [localHideSidePanel, setLocalHideSidePanel] = useState<boolean | null>(null);
   const localize = useLocalize();
 
   const [langcode, setLangcode] = useRecoilState(store.lang);
@@ -178,7 +179,10 @@ function General() {
 
   const handleHideSidePanelChange = useCallback(
     async (value: boolean) => {
+      // Оптимистичное обновление - сразу изменяем в UI
+      setLocalHideSidePanel(value);
       setIsSaving(true);
+
       try {
         const response = await fetch('/api/settings', {
           method: 'POST',
@@ -194,8 +198,12 @@ function General() {
 
         // Обновляем startupConfig после успешного сохранения
         await refetchConfig();
+        // Очищаем локальное состояние, чтобы использовать значение с сервера
+        setLocalHideSidePanel(null);
       } catch (error) {
         console.error('Error saving hideSidePanel setting:', error);
+        // При ошибке откатываем локальное состояние
+        setLocalHideSidePanel(null);
       } finally {
         setIsSaving(false);
       }
@@ -204,6 +212,9 @@ function General() {
   );
 
   const filteredConfigs = toggleSwitchConfigs;
+
+  // Используем локальное состояние если есть, иначе берем из startupConfig
+  const hideSidePanelValue = localHideSidePanel !== null ? localHideSidePanel : (startupConfig?.hideSidePanel ?? false);
 
   return (
     <div className="flex flex-col gap-3 p-1 text-sm text-text-primary">
@@ -232,7 +243,7 @@ function General() {
             </div>
             <Switch
               id="hideSidePanel"
-              checked={startupConfig?.hideSidePanel ?? false}
+              checked={hideSidePanelValue}
               onCheckedChange={handleHideSidePanelChange}
               disabled={isSaving}
               className="ml-4"
