@@ -414,6 +414,13 @@ router.patch('/plans/:planId', requireJwtAuth, requireAdminRole, async (req, res
         console.log('[DIAGNOSTIC:PATCH/plans] allowedModels from req:', allowedModels);
         console.log('[DIAGNOSTIC:PATCH/plans] cleanedModels after map/filter:', cleanedModels);
 
+        // 🔍 ПРОВЕРКА: Убедиться что AiModel загружен корректно
+        if (!AiModel) {
+          console.error('[ERROR] AiModel is undefined! Cannot call .find()');
+          throw new Error('AiModel model not loaded from ~/db/models');
+        }
+        console.log('[DIAGNOSTIC:PATCH/plans] AiModel is loaded, calling find()');
+
         const existingModels = await AiModel.find({ modelId: { $in: cleanedModels } }, 'modelId').lean();
 
         console.log('[DIAGNOSTIC:PATCH/plans] After AiModel.find()', {
