@@ -235,7 +235,12 @@ router.get('/:serverName/oauth/callback', async (req, res) => {
     }
 
     try {
-      const mcpManager = getMCPManager(flowState.userId);
+      // Get server config to determine ownerId
+      const serverConfig = await getServerConfigWithAdminFallback(serverName, flowState.userId);
+      const ownerId = serverConfig?.userId || flowState.userId;
+
+      const mcpManager = getMCPManager(ownerId);
+      logger.info(`[MCP AUDIT] getMCPManager initialized with ownerId=${ownerId} for OAuth reconnection`);
       logger.debug(`[MCP OAuth] Attempting to reconnect ${serverName} with new OAuth tokens`);
 
       if (flowState.userId !== 'system') {
@@ -245,6 +250,7 @@ router.get('/:serverName/oauth/callback', async (req, res) => {
           user,
           serverName,
           flowManager,
+          ownerId,
           tokenMethods: {
             findToken,
             updateToken,
@@ -263,7 +269,7 @@ router.get('/:serverName/oauth/callback', async (req, res) => {
 
         const tools = await userConnection.fetchTools();
         await updateMCPServerTools({
-          userId: flowState.userId,
+          ownerId,
           serverName,
           tools,
         });

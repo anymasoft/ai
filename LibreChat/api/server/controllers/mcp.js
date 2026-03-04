@@ -77,8 +77,6 @@ const getMCPTools = async (req, res) => {
       return res.status(200).json({ servers: {} });
     }
 
-    const mcpManager = getMCPManager(userId);
-    logger.info(`[MCP AUDIT] getMCPManager initialized with userId=${userId}`);
     const mcpServers = {};
 
     // Get ownerId for each server
@@ -87,6 +85,7 @@ const getMCPTools = async (req, res) => {
       const rawServerConfig = await getServerConfigWithAdminFallback(serverName, userId);
       const ownerId = rawServerConfig?.userId || userId;
       serverOwnerMap.set(serverName, ownerId);
+    }
     }
 
     const cachePromises = configuredServers.map((serverName) => {
@@ -104,6 +103,9 @@ const getMCPTools = async (req, res) => {
 
       let serverTools;
       try {
+        const ownerId = serverOwnerMap.get(serverName);
+        const mcpManager = getMCPManager(ownerId);
+        logger.info(`[MCP AUDIT] getMCPManager initialized with ownerId=${ownerId} for server=${serverName}`);
         serverTools = await mcpManager.getServerToolFunctions(userId, serverName);
       } catch (error) {
         logger.error(`[getMCPTools] Error fetching tools for server ${serverName}:`, error);
