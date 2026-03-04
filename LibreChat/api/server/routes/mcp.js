@@ -459,6 +459,7 @@ router.post('/:serverName/reinitialize', requireJwtAuth, setOAuthSession, async 
     const ownerId = serverConfig.userId;
     const mcpManager = getMCPManager(ownerId);
 
+    logger.info(`[MCP EXECUTION FIX] userId=${user.id} ownerId=${ownerId}`);
     logger.info(`[MCP Reinitialize] Disconnecting user=${user.id} from server=${serverName} (ownerId=${ownerId})`);
 
     await mcpManager.disconnectUserConnection(user.id, serverName);

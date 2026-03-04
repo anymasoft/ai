@@ -524,8 +524,15 @@ function createToolInstance({
 
       // Get server config to determine ownerId (admin's userId if server is admin-created)
       const execServerConfig = serverConfig ?? (await getServerConfigWithAdminFallback(serverName, userId));
-      const ownerId = execServerConfig?.userId || userId;
 
+      if (!execServerConfig) {
+        logger.error(`[MCP EXECUTION FIX] CRITICAL: No server config found for ${serverName} (userId=${userId})`);
+        throw new Error(`Configuration for server "${serverName}" not found`);
+      }
+
+      const ownerId = execServerConfig.userId;  // ← ТОЛЬКО из config, БЕЗ fallback!
+
+      logger.info(`[MCP EXECUTION FIX] userId=${userId} ownerId=${ownerId}`);
       logger.info(`[MCP EXECUTION] Tool call for ${serverName}.${toolName} by user=${userId}, ownerId=${ownerId}`);
 
       const mcpManager = getMCPManager(ownerId);
