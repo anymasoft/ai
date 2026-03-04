@@ -298,6 +298,50 @@ async function reconnectServer({
  * @param {Record<string, Record<string, string>>} [params.userMCPAuthMap]
  * @returns { Promise<Array<typeof tool | { _call: (toolInput: Object | string) => unknown}>> } An object with `_call` method to execute the tool input.
  */
+
+/**
+ * Get MCP server config for a user, with fallback to admin-created servers
+ * @param {string} serverName - The MCP server name
+ * @param {string} userId - The current user's ID
+ * @returns {Promise<Object|null>} Server config object or null if not found
+ */
+async function getServerConfigWithAdminFallback(serverName, userId) {
+  try {
+    // First, try to get user's own server config
+    let serverConfig = await getMCPServersRegistry().getServerConfig(serverName, userId);
+
+    if (serverConfig) {
+      logger.info(`[MCP] Found user server config for ${serverName} (userId=${userId})`);
+      return serverConfig;
+    }
+
+    logger.info(`[MCP] User config not found for ${serverName}, checking admin configs...`);
+
+    // If not found, fallback to admin servers
+    const admins = await User.find({ role: SystemRoles.ADMIN }, '_id').lean().exec();
+
+    if (!admins || admins.length === 0) {
+      logger.warn(`[MCP] No admin server config found for ${serverName}`);
+      return null;
+    }
+
+    // Try each admin's server config
+    for (const admin of admins) {
+      serverConfig = await getMCPServersRegistry().getServerConfig(serverName, admin._id.toString());
+      if (serverConfig) {
+        logger.info(`[MCP] Found admin server config for ${serverName} (adminId=${admin._id})`);
+        return serverConfig;
+      }
+    }
+
+    logger.warn(`[MCP] No server config found for ${serverName} in any admin account`);
+    return null;
+  } catch (error) {
+    logger.error(`[MCP] Error getting server config for ${serverName}:`, error);
+    return null;
+  }
+}
+
 async function createMCPTools({
   res,
   user,
@@ -314,7 +358,7 @@ async function createMCPTools({
   // Early domain validation before reconnecting server (avoid wasted work on disallowed domains)
   // Use getAppConfig() to support per-user/role domain restrictions
   const serverConfig =
-    config ?? (await getMCPServersRegistry().getServerConfig(serverName, user?.id));
+    config ?? (await getServerConfigWithAdminFallback(serverName, user?.id));
 
   logger.info(`[MCP AUDIT] serverConfig found for ${serverName}: ${!!serverConfig}`);
 
@@ -765,6 +809,7 @@ module.exports = {
   createMCPTools,
   getMCPSetupData,
   getMCPServersWithAdmins,
+  getServerConfigWithAdminFallback,
   checkOAuthFlowStatus,
   getServerConnectionStatus,
 };

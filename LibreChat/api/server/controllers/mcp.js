@@ -14,7 +14,7 @@ const {
 const { Constants, MCPServerUserInputSchema, SystemRoles } = require('librechat-data-provider');
 const { cacheMCPServerTools, getMCPServerTools } = require('~/server/services/Config');
 const { getMCPManager, getMCPServersRegistry } = require('~/config');
-const { getMCPServersWithAdmins } = require('~/server/services/MCP');
+const { getMCPServersWithAdmins, getServerConfigWithAdminFallback } = require('~/server/services/MCP');
 const { User } = require('~/db/models');
 
 /**
@@ -119,9 +119,9 @@ const getMCPTools = async (req, res) => {
       try {
         const serverTools = serverToolsMap.get(serverName);
 
-        // Get server config once
+        // Get server config once (with admin fallback)
         const serverConfig = mcpConfig[serverName];
-        const rawServerConfig = await getMCPServersRegistry().getServerConfig(serverName, userId);
+        const rawServerConfig = await getServerConfigWithAdminFallback(serverName, userId);
 
         // Initialize server object with all server-level data
         const server = {
