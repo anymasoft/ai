@@ -123,8 +123,10 @@ const getMCPTools = async (req, res) => {
           logger.info(
             `[MCP DIAG] getServerToolFunctions returned no tools for ${serverName}, attempting reinitMCPServer...`,
           );
+          logger.info(`[MCP DIAG] Calling reinitMCPServer for ${serverName}`);
+
           const reinitResult = await reinitMCPServer({
-            user: { id: userId },
+            user: req.user,
             serverName,
             userMCPAuthMap: req.user?.mcp_auth_map || {},
           });
