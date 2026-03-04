@@ -1,6 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo, memo } from 'react';
 import throttle from 'lodash/throttle';
-import { useRecoilValue } from 'recoil';
 import { getConfigDefaults } from 'librechat-data-provider';
 import { ResizablePanel, ResizablePanelGroup, useMediaQuery } from '@librechat/client';
 import type { ImperativePanelHandle } from 'react-resizable-panels';
@@ -9,7 +8,6 @@ import { useIsAdmin } from '~/hooks';
 import ArtifactsPanel from './ArtifactsPanel';
 import { normalizeLayout, cn } from '~/utils';
 import SidePanel from './SidePanel';
-import store from '~/store';
 
 interface SidePanelProps {
   defaultLayout?: number[] | undefined;
@@ -46,13 +44,13 @@ const SidePanelGroup = memo(
     const [shouldRenderArtifacts, setShouldRenderArtifacts] = useState(artifacts != null);
 
     const isSmallScreen = useMediaQuery('(max-width: 767px)');
-    const hideSidePanelSetting = useRecoilValue(store.hideSidePanel);
     const isAdmin = useIsAdmin();
+    const globalHideSidePanel = startupConfig?.hideSidePanel ?? false;
 
     // SaaS security: админ может скрывать панель для обычных пользователей
-    // ADMIN: всегда видит панель (независимо от hideSidePanelSetting)
-    // USER: видит панель, если админ её не скрыл
-    const hideSidePanel = !isAdmin && hideSidePanelSetting;
+    // ADMIN: всегда видит панель
+    // USER: видит панель, только если админ не скрыл (глобальная настройка на сервере)
+    const hideSidePanel = !isAdmin && globalHideSidePanel;
 
     const calculateLayout = useCallback(() => {
       if (artifacts == null) {
