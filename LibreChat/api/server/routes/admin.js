@@ -348,8 +348,14 @@ router.get('/plans', requireJwtAuth, requireAdminRole, async (req, res) => {
  */
 router.patch('/plans/:planId', requireJwtAuth, requireAdminRole, async (req, res) => {
   try {
-    let { planId } = req.params;
+    // 🔍 ДИАГНОСТИКА: Логируем информацию о пользователе и auth
+    console.log('[DIAGNOSTIC] PATCH /api/admin/mvp/plans/:planId');
+    console.log('[DIAGNOSTIC] req.user:', JSON.stringify(req.user, null, 2));
+    console.log('[DIAGNOSTIC] req.user?.role:', req.user?.role);
+    console.log('[DIAGNOSTIC] req.user?.role === "ADMIN":', req.user?.role === 'ADMIN');
+    console.log('[DIAGNOSTIC] Authorization header:', req.headers.authorization?.substring(0, 50) + '...');
 
+    let { planId } = req.params;
     // ✅ NORMALIZE: Convert planId to lowercase for safety
     // Allows: "Business" → "business", "BUSINESS" → "business"
     const normalizedPlanId = String(planId || '').toLowerCase();
@@ -361,8 +367,7 @@ router.patch('/plans/:planId', requireJwtAuth, requireAdminRole, async (req, res
         received: planId,
       });
     }
-
-    planId = normalizedPlanId; // Use normalized ID for rest of handler
+    planId = normalizedPlanId;
 
     const { priceRub, tokenCreditsOnPurchase, allowedModels, isActive } = req.body;
     const update = {};
