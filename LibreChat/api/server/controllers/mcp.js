@@ -14,6 +14,7 @@ const {
 const { Constants, MCPServerUserInputSchema, SystemRoles } = require('librechat-data-provider');
 const { cacheMCPServerTools, getMCPServerTools } = require('~/server/services/Config');
 const { getMCPManager, getMCPServersRegistry } = require('~/config');
+const { User } = require('~/db/models');
 
 /**
  * Handles MCP-specific errors and sends appropriate HTTP responses.
@@ -55,6 +56,40 @@ function handleMCPError(error, res) {
 }
 
 /**
+ * Helper function to get admin-created MCP servers
+ * Returns combined MCP servers from user and all admins
+ */
+async function getMCPServersWithAdmins(userId) {
+  try {
+    // Get user's own MCP servers
+    const userConfigs = await getMCPServersRegistry().getAllServerConfigs(userId);
+
+    // Get all admin users
+    const admins = await User.find({ role: SystemRoles.ADMIN }, '_id').lean().exec();
+
+    if (!admins || admins.length === 0) {
+      return userConfigs;
+    }
+
+    // Get MCP servers from all admins
+    const adminConfigs = {};
+    for (const admin of admins) {
+      const configs = await getMCPServersRegistry().getAllServerConfigs(admin._id.toString());
+      if (configs) {
+        Object.assign(adminConfigs, configs);
+      }
+    }
+
+    // Merge: admin servers first, then user servers (user servers can override)
+    return { ...adminConfigs, ...userConfigs };
+  } catch (error) {
+    logger.error('[getMCPServersWithAdmins] Error getting admin MCP servers:', error);
+    // Fallback to user's own servers if admin lookup fails
+    return await getMCPServersRegistry().getAllServerConfigs(userId);
+  }
+}
+
+/**
  * Get all MCP tools available to the user (user-specific + admin-created global)
  */
 const getMCPTools = async (req, res) => {
@@ -65,11 +100,9 @@ const getMCPTools = async (req, res) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    // Get user-specific server configs (includes YAML + DB)
-    const mcpConfig = await getMCPServersRegistry().getAllServerConfigs(userId);
+    // Get user-specific server configs + admin-created servers
+    const mcpConfig = await getMCPServersWithAdmins(userId);
     const configuredServers = mcpConfig ? Object.keys(mcpConfig) : [];
-    // TODO: Add logic to include admin-created MCP servers for all users
-    // This will be implemented by querying for users with ADMIN role and including their servers
 
     if (!mcpConfig || Object.keys(mcpConfig).length == 0) {
       return res.status(200).json({ servers: {} });
@@ -174,9 +207,9 @@ const getMCPTools = async (req, res) => {
   }
 };
 /**
- * Get all MCP servers with permissions (user-specific + admin-created global)
+ * Get all MCP servers (user-specific + admin-created global)
  * @route GET /api/mcp/servers
- * Returns both user's personal servers and admin-created global servers (userId=null)
+ * Returns both user's personal servers and admin-created servers
  */
 const getMCPServersList = async (req, res) => {
   try {
@@ -185,10 +218,8 @@ const getMCPServersList = async (req, res) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    // Get user-specific server configs from registry (YAML + DB)
-    const serverConfigs = await getMCPServersRegistry().getAllServerConfigs(userId);
-    // TODO: Add logic to include admin-created MCP servers for all users
-    // This will be implemented by querying for users with ADMIN role and including their servers
+    // Get user-specific server configs + admin-created servers
+    const serverConfigs = await getMCPServersWithAdmins(userId);
 
     return res.json(serverConfigs);
   } catch (error) {
@@ -198,22 +229,13 @@ const getMCPServersList = async (req, res) => {
 };
 
 /**
- * Create MCP server (ADMIN ONLY)
+ * Create MCP server
  * @route POST /api/mcp/servers
  */
 const createMCPServerController = async (req, res) => {
   try {
     const userId = req.user?.id;
-    const userRole = req.user?.role;
     const { config } = req.body;
-
-    // SaaS security: Only ADMIN can create MCP servers
-    if (userRole !== SystemRoles.ADMIN) {
-      return res.status(403).json({
-        message: 'Only administrators can create MCP servers',
-        code: 'FORBIDDEN_MCP_CREATE',
-      });
-    }
 
     const validation = MCPServerUserInputSchema.safeParse(config);
     if (!validation.success) {
@@ -223,8 +245,8 @@ const createMCPServerController = async (req, res) => {
       });
     }
 
-    // Admin-created servers are saved with admin's userId
-    // They will be accessible to all users via getAllServerConfigs query
+    // MCP servers are saved with user's userId
+    // Admin-created servers will be accessible to all users via getAllServerConfigs query
     const result = await getMCPServersRegistry().addServer(
       'temp_server_name',
       validation.data,
@@ -257,12 +279,32 @@ const getMCPServerById = async (req, res) => {
     }
 
     // Get user-specific server config
-    const parsedConfig = await getMCPServersRegistry().getServerConfig(serverName, userId);
+    let parsedConfig = await getMCPServersRegistry().getServerConfig(serverName, userId);
+
+    // If not found in user's servers, check admin servers
+    if (!parsedConfig) {
+      try {
+        const admins = await User.find({ role: SystemRoles.ADMIN }, '_id').lean().exec();
+        if (admins && admins.length > 0) {
+          for (const admin of admins) {
+            const adminConfig = await getMCPServersRegistry().getServerConfig(
+              serverName,
+              admin._id.toString(),
+            );
+            if (adminConfig) {
+              parsedConfig = adminConfig;
+              break;
+            }
+          }
+        }
+      } catch (error) {
+        logger.debug('[getMCPServerById] Error checking admin servers:', error);
+      }
+    }
 
     if (!parsedConfig) {
       return res.status(404).json({ message: 'MCP server not found' });
     }
-    // TODO: Add logic to also allow access to admin-created MCP servers
 
     res.status(200).json(parsedConfig);
   } catch (error) {
@@ -272,23 +314,14 @@ const getMCPServerById = async (req, res) => {
 };
 
 /**
- * Update MCP server (ADMIN ONLY)
+ * Update MCP server
  * @route PATCH /api/mcp/servers/:serverName
  */
 const updateMCPServerController = async (req, res) => {
   try {
     const userId = req.user?.id;
-    const userRole = req.user?.role;
     const { serverName } = req.params;
     const { config } = req.body;
-
-    // SaaS security: Only ADMIN can update MCP servers
-    if (userRole !== SystemRoles.ADMIN) {
-      return res.status(403).json({
-        message: 'Only administrators can update MCP servers',
-        code: 'FORBIDDEN_MCP_UPDATE',
-      });
-    }
 
     const validation = MCPServerUserInputSchema.safeParse(config);
     if (!validation.success) {
@@ -298,8 +331,7 @@ const updateMCPServerController = async (req, res) => {
       });
     }
 
-    // Admin-updated servers are saved with admin's userId
-    // They will be accessible to all users via getAllServerConfigs query
+    // MCP servers are updated with user's userId
     const parsedConfig = await getMCPServersRegistry().updateServer(
       serverName,
       validation.data,
@@ -319,24 +351,15 @@ const updateMCPServerController = async (req, res) => {
 };
 
 /**
- * Delete MCP server (ADMIN ONLY)
+ * Delete MCP server
  * @route DELETE /api/mcp/servers/:serverName
  */
 const deleteMCPServerController = async (req, res) => {
   try {
     const userId = req.user?.id;
-    const userRole = req.user?.role;
     const { serverName } = req.params;
 
-    // SaaS security: Only ADMIN can delete MCP servers
-    if (userRole !== SystemRoles.ADMIN) {
-      return res.status(403).json({
-        message: 'Only administrators can delete MCP servers',
-        code: 'FORBIDDEN_MCP_DELETE',
-      });
-    }
-
-    // Admin-deleted servers are removed using admin's userId
+    // MCP servers are removed using user's userId
     await getMCPServersRegistry().removeServer(serverName, 'DB', userId);
     res.status(200).json({ message: 'MCP server deleted successfully' });
   } catch (error) {
