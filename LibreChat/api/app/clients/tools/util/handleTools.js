@@ -444,7 +444,10 @@ const loadTools = async ({
         }
         if (!availableTools) {
           try {
-            availableTools = await getMCPServerTools(safeUser.id, serverName);
+            const { getServerConfigWithAdminFallback } = require('~/server/services/MCP');
+            const serverConfig = await getServerConfigWithAdminFallback(serverName, safeUser.id);
+            const ownerId = serverConfig?.userId || safeUser.id;
+            availableTools = await getMCPServerTools(ownerId, serverName);
           } catch (error) {
             logger.error(`Error fetching available tools for MCP server ${serverName}:`, error);
           }
