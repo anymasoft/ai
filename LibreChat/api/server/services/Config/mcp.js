@@ -6,20 +6,20 @@ const { getLogStores } = require('~/cache');
 /**
  * Updates MCP tools in the cache for a specific server
  * @param {Object} params - Parameters for updating MCP tools
- * @param {string} params.userId - User ID for user-specific caching
+ * @param {string} params.ownerId - Server owner ID for caching
  * @param {string} params.serverName - MCP server name
  * @param {Array} params.tools - Array of tool objects from MCP server
  * @returns {Promise<LCAvailableTools>}
  */
-async function updateMCPServerTools({ userId, serverName, tools }) {
+async function updateMCPServerTools({ ownerId, serverName, tools }) {
   try {
     const serverTools = {};
     const mcpDelimiter = Constants.mcp_delimiter;
 
-    logger.info(`[MCP AUDIT] Step 3 - Tools cached for serverName=${serverName}, userId=${userId}`);
+    logger.info(`[MCP TOOLS CACHE] server=${serverName} ownerId=${ownerId}`);
 
     if (tools == null || tools.length === 0) {
-      logger.debug(`[MCP Cache] No tools to update for server ${serverName} (user: ${userId})`);
+      logger.debug(`[MCP Cache] No tools to update for server ${serverName} (owner: ${ownerId})`);
       logger.info(`[MCP AUDIT] WARNING: No tools found for ${serverName}!`);
       return serverTools;
     }
@@ -38,17 +38,17 @@ async function updateMCPServerTools({ userId, serverName, tools }) {
 
     logger.info(`[MCP AUDIT] Building tool definitions: ${Object.keys(serverTools).join(', ')}`);
 
-    await setCachedTools(serverTools, { userId, serverName });
+    await setCachedTools(serverTools, { ownerId, serverName });
 
     const cache = getLogStores(CacheKeys.TOOL_CACHE);
     await cache.delete(CacheKeys.TOOLS);
     logger.debug(
-      `[MCP Cache] Updated ${tools.length} tools for server ${serverName} (user: ${userId})`,
+      `[MCP Cache] Updated ${tools.length} tools for server ${serverName} (owner: ${ownerId})`,
     );
     logger.info(`[MCP AUDIT] Tools cached successfully: ${tools.length} tools`);
     return serverTools;
   } catch (error) {
-    logger.error(`[MCP Cache] Failed to update tools for ${serverName} (user: ${userId}):`, error);
+    logger.error(`[MCP Cache] Failed to update tools for ${serverName} (owner: ${ownerId}):`, error);
     throw error;
   }
 }
@@ -79,22 +79,22 @@ async function mergeAppTools(appTools) {
 /**
  * Caches MCP server tools (no longer merges with global)
  * @param {object} params
- * @param {string} params.userId - User ID for user-specific caching
+ * @param {string} params.ownerId - Server owner ID for caching
  * @param {string} params.serverName
  * @param {import('@librechat/api').LCAvailableTools} params.serverTools
  * @returns {Promise<void>}
  */
-async function cacheMCPServerTools({ userId, serverName, serverTools }) {
+async function cacheMCPServerTools({ ownerId, serverName, serverTools }) {
   try {
     const count = Object.keys(serverTools).length;
     if (!count) {
       return;
     }
     // Only cache server-specific tools, no merging with global
-    await setCachedTools(serverTools, { userId, serverName });
-    logger.debug(`Cached ${count} MCP server tools for ${serverName} (user: ${userId})`);
+    await setCachedTools(serverTools, { ownerId, serverName });
+    logger.debug(`Cached ${count} MCP server tools for ${serverName} (owner: ${ownerId})`);
   } catch (error) {
-    logger.error(`Failed to cache MCP server tools for ${serverName} (user: ${userId}):`, error);
+    logger.error(`Failed to cache MCP server tools for ${serverName} (owner: ${ownerId}):`, error);
     throw error;
   }
 }

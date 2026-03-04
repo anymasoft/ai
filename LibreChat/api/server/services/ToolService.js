@@ -542,7 +542,14 @@ async function loadToolDefinitionsWrapper({ req, res, agent, streamId = null, to
   };
 
   const getOrFetchMCPServerTools = async (userId, serverName) => {
-    const cached = await getMCPServerTools(userId, serverName);
+    // Get server config to determine ownerId
+    const { getServerConfigWithAdminFallback } = require('~/server/services/MCP');
+    const serverConfig = await getServerConfigWithAdminFallback(serverName, userId);
+    const ownerId = serverConfig?.userId || userId;
+
+    logger.info(`[MCP TOOLS CACHE] getOrFetchMCPServerTools: server=${serverName} userId=${userId} ownerId=${ownerId}`);
+
+    const cached = await getMCPServerTools(ownerId, serverName);
     if (cached) {
       return cached;
     }
