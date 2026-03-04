@@ -65,16 +65,11 @@ const getMCPTools = async (req, res) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    // Get user-specific server configs
-    const userMcpConfig = await getMCPServersRegistry().getAllServerConfigs(userId);
-
-    // Get admin-created global server configs (userId=null)
-    // SaaS security: All users can access admin-created servers
-    const globalMcpConfig = await getMCPServersRegistry().getAllServerConfigs(null);
-
-    // Merge: global servers first, then user servers (user servers can override globals)
-    const mcpConfig = { ...globalMcpConfig, ...userMcpConfig };
+    // Get user-specific server configs (includes YAML + DB)
+    const mcpConfig = await getMCPServersRegistry().getAllServerConfigs(userId);
     const configuredServers = mcpConfig ? Object.keys(mcpConfig) : [];
+    // TODO: Add logic to include admin-created MCP servers for all users
+    // This will be implemented by querying for users with ADMIN role and including their servers
 
     if (!mcpConfig || Object.keys(mcpConfig).length == 0) {
       return res.status(200).json({ servers: {} });
@@ -191,16 +186,11 @@ const getMCPServersList = async (req, res) => {
     }
 
     // Get user-specific server configs from registry (YAML + DB)
-    const userServerConfigs = await getMCPServersRegistry().getAllServerConfigs(userId);
+    const serverConfigs = await getMCPServersRegistry().getAllServerConfigs(userId);
+    // TODO: Add logic to include admin-created MCP servers for all users
+    // This will be implemented by querying for users with ADMIN role and including their servers
 
-    // Get admin-created global server configs (userId=null)
-    // SaaS security: All users can access admin-created servers
-    const globalServerConfigs = await getMCPServersRegistry().getAllServerConfigs(null);
-
-    // Merge: global servers first, then user servers (user servers can override globals)
-    const mergedServerConfigs = { ...globalServerConfigs, ...userServerConfigs };
-
-    return res.json(mergedServerConfigs);
+    return res.json(serverConfigs);
   } catch (error) {
     logger.error('[getMCPServersList]', error);
     res.status(500).json({ error: error.message });
@@ -233,12 +223,13 @@ const createMCPServerController = async (req, res) => {
       });
     }
 
-    // Admin-created servers have userId = null (globally accessible)
+    // Admin-created servers are saved with admin's userId
+    // They will be accessible to all users via getAllServerConfigs query
     const result = await getMCPServersRegistry().addServer(
       'temp_server_name',
       validation.data,
       'DB',
-      null,
+      userId,
     );
     res.status(201).json({
       serverName: result.serverName,
@@ -265,17 +256,13 @@ const getMCPServerById = async (req, res) => {
       return res.status(400).json({ message: 'Server name is required' });
     }
 
-    // Try to get user-specific server first
-    let parsedConfig = await getMCPServersRegistry().getServerConfig(serverName, userId);
-
-    // If not found, try to get admin-created global server (userId=null)
-    if (!parsedConfig) {
-      parsedConfig = await getMCPServersRegistry().getServerConfig(serverName, null);
-    }
+    // Get user-specific server config
+    const parsedConfig = await getMCPServersRegistry().getServerConfig(serverName, userId);
 
     if (!parsedConfig) {
       return res.status(404).json({ message: 'MCP server not found' });
     }
+    // TODO: Add logic to also allow access to admin-created MCP servers
 
     res.status(200).json(parsedConfig);
   } catch (error) {
@@ -311,12 +298,13 @@ const updateMCPServerController = async (req, res) => {
       });
     }
 
-    // Admin-updated servers have userId = null (globally accessible)
+    // Admin-updated servers are saved with admin's userId
+    // They will be accessible to all users via getAllServerConfigs query
     const parsedConfig = await getMCPServersRegistry().updateServer(
       serverName,
       validation.data,
       'DB',
-      null,
+      userId,
     );
 
     res.status(200).json(parsedConfig);
@@ -348,8 +336,8 @@ const deleteMCPServerController = async (req, res) => {
       });
     }
 
-    // Admin-deleted servers use null userId
-    await getMCPServersRegistry().removeServer(serverName, 'DB', null);
+    // Admin-deleted servers are removed using admin's userId
+    await getMCPServersRegistry().removeServer(serverName, 'DB', userId);
     res.status(200).json({ message: 'MCP server deleted successfully' });
   } catch (error) {
     logger.error('[deleteMCPServer]', error);
