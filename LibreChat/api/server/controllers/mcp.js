@@ -71,11 +71,14 @@ const getMCPTools = async (req, res) => {
     const mcpConfig = await getMCPServersWithAdmins(userId);
     const configuredServers = mcpConfig ? Object.keys(mcpConfig) : [];
 
+    logger.info(`[MCP AUDIT] getMCPTools: userId=${userId}, configured servers: ${configuredServers.join(', ')}`);
+
     if (!mcpConfig || Object.keys(mcpConfig).length == 0) {
       return res.status(200).json({ servers: {} });
     }
 
-    const mcpManager = getMCPManager();
+    const mcpManager = getMCPManager(userId);
+    logger.info(`[MCP AUDIT] getMCPManager initialized with userId=${userId}`);
     const mcpServers = {};
 
     const cachePromises = configuredServers.map((serverName) =>
