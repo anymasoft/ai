@@ -73,10 +73,13 @@ async function reinitMCPServer({
       });
 
     try {
+      logger.info(`[MCP CONNECTION] server=${serverName} ownerId=${ownerId} user=${user?.id}`);
+
       connection = await mcpManager.getConnection({
         user,
         signal,
         forceNew,
+        ownerId,
         oauthStart,
         serverName,
         flowManager,
@@ -110,6 +113,7 @@ async function reinitMCPServer({
           const discoveryResult = await mcpManager.discoverServerTools({
             user,
             signal,
+            ownerId,
             serverName,
             flowManager,
             tokenMethods,
