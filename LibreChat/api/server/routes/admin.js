@@ -355,6 +355,15 @@ router.patch('/plans/:planId', requireJwtAuth, requireAdminRole, async (req, res
     console.log('[DIAGNOSTIC] req.user?.role === "ADMIN":', req.user?.role === 'ADMIN');
     console.log('[DIAGNOSTIC] Authorization header:', req.headers.authorization?.substring(0, 50) + '...');
 
+    // 🔍 ДИАГНОСТИКА: Проверяем модели перед использованием
+    console.log('[DIAGNOSTIC] Models at route entry:', {
+      AiModelExists: !!AiModel,
+      AiModelType: typeof AiModel,
+      AiModelConstructor: AiModel?.constructor?.name,
+      PlanExists: !!Plan,
+      PlanType: typeof Plan,
+    });
+
     let { planId } = req.params;
     // ✅ NORMALIZE: Convert planId to lowercase for safety
     // Allows: "Business" → "business", "BUSINESS" → "business"
@@ -394,7 +403,25 @@ router.patch('/plans/:planId', requireJwtAuth, requireAdminRole, async (req, res
       const cleanedModels = allowedModels.map((m) => String(m).trim()).filter(Boolean);
       // Валидация: все modelId должны существовать в коллекции AiModel
       if (cleanedModels.length > 0) {
+        // 🔍 ДИАГНОСТИКА: Логируем перед .find()
+        console.log('[DIAGNOSTIC:PATCH/plans] About to call AiModel.find()', {
+          cleanedModels,
+          cleanedModelsLength: cleanedModels.length,
+          AiModelExists: !!AiModel,
+          AiModelType: typeof AiModel,
+        });
+        console.log('[DIAGNOSTIC:PATCH/plans] req.body:', JSON.stringify(req.body, null, 2));
+        console.log('[DIAGNOSTIC:PATCH/plans] allowedModels from req:', allowedModels);
+        console.log('[DIAGNOSTIC:PATCH/plans] cleanedModels after map/filter:', cleanedModels);
+
         const existingModels = await AiModel.find({ modelId: { $in: cleanedModels } }, 'modelId').lean();
+
+        console.log('[DIAGNOSTIC:PATCH/plans] After AiModel.find()', {
+          existingModelsCount: existingModels?.length,
+          existingModelsExists: !!existingModels,
+          existingModels: existingModels,
+        });
+
         const existingIds = new Set(existingModels.map((m) => m.modelId));
         const unknown = cleanedModels.filter((id) => !existingIds.has(id));
         if (unknown.length > 0) {
