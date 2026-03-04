@@ -5,6 +5,7 @@ import { getConfigDefaults } from 'librechat-data-provider';
 import { ResizablePanel, ResizablePanelGroup, useMediaQuery } from '@librechat/client';
 import type { ImperativePanelHandle } from 'react-resizable-panels';
 import { useGetStartupConfig } from '~/data-provider';
+import { useIsAdmin } from '~/hooks';
 import ArtifactsPanel from './ArtifactsPanel';
 import { normalizeLayout, cn } from '~/utils';
 import SidePanel from './SidePanel';
@@ -45,7 +46,11 @@ const SidePanelGroup = memo(
     const [shouldRenderArtifacts, setShouldRenderArtifacts] = useState(artifacts != null);
 
     const isSmallScreen = useMediaQuery('(max-width: 767px)');
-    const hideSidePanel = useRecoilValue(store.hideSidePanel);
+    const hideSidePanelSetting = useRecoilValue(store.hideSidePanel);
+    const isAdmin = useIsAdmin();
+
+    // SaaS security: скрыть панель для не-админов, админ может контролировать видимость
+    const hideSidePanel = !isAdmin || hideSidePanelSetting;
 
     const calculateLayout = useCallback(() => {
       if (artifacts == null) {
