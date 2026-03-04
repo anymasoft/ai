@@ -14,7 +14,7 @@ const {
 const { Constants, MCPServerUserInputSchema, SystemRoles } = require('librechat-data-provider');
 const { cacheMCPServerTools, getMCPServerTools } = require('~/server/services/Config');
 const { getMCPManager, getMCPServersRegistry } = require('~/config');
-const { getMCPServersWithAdmins, getServerConfigWithAdminFallback, getAdminId } = require('~/server/services/MCP');
+const { getMCPServersWithAdmins, getServerConfigWithAdminFallback, getAdminId, reinitMCPServer } = require('~/server/services/MCP');
 const { User } = require('~/db/models');
 
 /**
@@ -118,6 +118,26 @@ const getMCPTools = async (req, res) => {
           const toolNames = Object.keys(serverTools);
           logger.info(`[MCP DIAG] Tools discovered from server ${serverName}: ${toolNames.length} tools`);
           logger.info(`[MCP DIAG] Tool list: ${toolNames.join(', ')}`);
+        } else {
+          // Fallback: если tools не найдены напрямую, использовать reinitMCPServer
+          logger.info(
+            `[MCP DIAG] getServerToolFunctions returned no tools for ${serverName}, attempting reinitMCPServer...`,
+          );
+          const reinitResult = await reinitMCPServer({
+            user: { id: userId },
+            serverName,
+            userMCPAuthMap: req.user?.mcp_auth_map || {},
+          });
+
+          if (reinitResult?.availableTools) {
+            serverTools = reinitResult.availableTools;
+            logger.info(
+              `[MCP DIAG] After reinitMCPServer - obtained ${Object.keys(serverTools).length} tools for ${serverName}`,
+            );
+            logger.info(`[MCP DIAG] Tool list after reinit: ${Object.keys(serverTools).join(', ')}`);
+          } else {
+            logger.warn(`[MCP DIAG] reinitMCPServer also returned no tools for ${serverName}`);
+          }
         }
       } catch (error) {
         logger.error(`[getMCPTools] Error fetching tools for server ${serverName}:`, error);

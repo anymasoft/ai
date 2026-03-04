@@ -888,6 +888,7 @@ module.exports = {
   createMCPTool,
   createMCPTools,
   getAdminId,
+  reinitMCPServer,
   getMCPSetupData,
   getMCPServersWithAdmins,
   getServerConfigWithAdminFallback,
