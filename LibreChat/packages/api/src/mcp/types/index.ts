@@ -193,6 +193,7 @@ export interface ToolDiscoveryOptions {
   customUserVars?: Record<string, string>;
   requestBody?: RequestBody;
   connectionTimeout?: number;
+  ownerId?: string;
 }
 
 export interface ToolDiscoveryResult {

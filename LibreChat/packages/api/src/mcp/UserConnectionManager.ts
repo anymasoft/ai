@@ -45,9 +45,11 @@ export abstract class UserConnectionManager {
     signal,
     returnOnOAuth = false,
     connectionTimeout,
+    ownerId,
   }: {
     serverName: string;
     forceNew?: boolean;
+    ownerId?: string;
   } & Omit<t.OAuthConnectionOptions, 'useOAuth'>): Promise<MCPConnection> {
     const userId = user?.id;
     if (!userId) {
@@ -61,7 +63,8 @@ export abstract class UserConnectionManager {
       );
     }
 
-    const config = await MCPServersRegistry.getInstance().getServerConfig(serverName, userId);
+    const configOwnerId = ownerId ?? userId;
+    const config = await MCPServersRegistry.getInstance().getServerConfig(serverName, configOwnerId);
 
     const userServerMap = this.userConnections.get(userId);
     let connection = forceNew ? undefined : userServerMap?.get(serverName);

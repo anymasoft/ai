@@ -53,6 +53,7 @@ export class MCPManager extends UserConnectionManager {
       user?: IUser;
       forceNew?: boolean;
       flowManager?: FlowStateManager<MCPOAuthTokens | null>;
+      ownerId?: string;
     } & Omit<t.OAuthConnectionOptions, 'useOAuth' | 'user' | 'flowManager'>,
   ): Promise<MCPConnection> {
     //the get method checks if the config is still valid as app level
@@ -75,7 +76,7 @@ export class MCPManager extends UserConnectionManager {
    * Use this for agent initialization to get tool schemas before OAuth flow.
    */
   public async discoverServerTools(args: t.ToolDiscoveryOptions): Promise<t.ToolDiscoveryResult> {
-    const { serverName, user } = args;
+    const { serverName, user, ownerId } = args;
     const logPrefix = user?.id ? `[MCP][User: ${user.id}][${serverName}]` : `[MCP][${serverName}]`;
 
     try {
@@ -88,9 +89,10 @@ export class MCPManager extends UserConnectionManager {
       logger.debug(`${logPrefix} [Discovery] App connection not available, trying discovery mode`);
     }
 
+    const configOwnerId = ownerId ?? user?.id;
     const serverConfig = (await MCPServersRegistry.getInstance().getServerConfig(
       serverName,
-      user?.id,
+      configOwnerId,
     )) as t.MCPOptions | null;
 
     if (!serverConfig) {
@@ -247,6 +249,7 @@ Please follow these instructions when using tools from the respective MCP server
     oauthEnd,
     customUserVars,
     graphTokenResolver,
+    ownerId,
   }: {
     user?: IUser;
     serverName: string;
@@ -261,6 +264,7 @@ Please follow these instructions when using tools from the respective MCP server
     oauthStart?: (authURL: string) => Promise<void>;
     oauthEnd?: () => Promise<void>;
     graphTokenResolver?: GraphTokenResolver;
+    ownerId?: string;
   }): Promise<t.FormattedToolResponse> {
     /** User-specific connection */
     let connection: MCPConnection | undefined;
@@ -280,6 +284,7 @@ Please follow these instructions when using tools from the respective MCP server
         signal: options?.signal,
         customUserVars,
         requestBody,
+        ownerId,
       });
 
       if (!(await connection.isConnected())) {
@@ -290,9 +295,10 @@ Please follow these instructions when using tools from the respective MCP server
         );
       }
 
+      const configOwnerId = ownerId ?? userId;
       const rawConfig = (await MCPServersRegistry.getInstance().getServerConfig(
         serverName,
-        userId,
+        configOwnerId,
       )) as t.MCPOptions;
 
       // Pre-process Graph token placeholders (async) before sync processMCPEnv

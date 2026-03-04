@@ -573,6 +573,7 @@ function createToolInstance({
         serverName,
         toolName,
         provider,
+        ownerId,
         toolArguments,
         options: {
           signal: derivedSignal,
