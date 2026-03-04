@@ -14,6 +14,7 @@ const {
 const { Constants, MCPServerUserInputSchema, SystemRoles } = require('librechat-data-provider');
 const { cacheMCPServerTools, getMCPServerTools } = require('~/server/services/Config');
 const { getMCPManager, getMCPServersRegistry } = require('~/config');
+const { getMCPServersWithAdmins } = require('~/server/services/MCP');
 const { User } = require('~/db/models');
 
 /**
@@ -53,40 +54,6 @@ function handleMCPError(error, res) {
   }
 
   return null;
-}
-
-/**
- * Helper function to get admin-created MCP servers
- * Returns combined MCP servers from user and all admins
- */
-async function getMCPServersWithAdmins(userId) {
-  try {
-    // Get user's own MCP servers
-    const userConfigs = await getMCPServersRegistry().getAllServerConfigs(userId);
-
-    // Get all admin users
-    const admins = await User.find({ role: SystemRoles.ADMIN }, '_id').lean().exec();
-
-    if (!admins || admins.length === 0) {
-      return userConfigs;
-    }
-
-    // Get MCP servers from all admins
-    const adminConfigs = {};
-    for (const admin of admins) {
-      const configs = await getMCPServersRegistry().getAllServerConfigs(admin._id.toString());
-      if (configs) {
-        Object.assign(adminConfigs, configs);
-      }
-    }
-
-    // Merge: admin servers first, then user servers (user servers can override)
-    return { ...adminConfigs, ...userConfigs };
-  } catch (error) {
-    logger.error('[getMCPServersWithAdmins] Error getting admin MCP servers:', error);
-    // Fallback to user's own servers if admin lookup fails
-    return await getMCPServersRegistry().getAllServerConfigs(userId);
-  }
 }
 
 /**
