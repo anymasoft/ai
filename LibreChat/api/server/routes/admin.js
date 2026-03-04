@@ -332,10 +332,18 @@ router.patch('/plans/:planId', requireJwtAuth, requireAdminRole, async (req, res
     console.log('[DIAGNOSTIC] req.user?.role === "ADMIN":', req.user?.role === 'ADMIN');
     console.log('[DIAGNOSTIC] Authorization header:', req.headers.authorization?.substring(0, 50) + '...');
 
-    const { planId } = req.params;
-    if (!['free', 'pro', 'business'].includes(planId)) {
-      return res.status(400).json({ error: 'Недопустимый planId' });
+    let { planId } = req.params;
+    // ✅ NORMALIZE: Convert planId to lowercase for safety
+    // Allows: "Business" → "business", "BUSINESS" → "business"
+    const normalizedPlanId = String(planId || '').toLowerCase();
+    if (!['free', 'pro', 'business'].includes(normalizedPlanId)) {
+      logger.warn(`[admin/plans] Invalid planId: original="${planId}" normalized="${normalizedPlanId}"`);
+      return res.status(400).json({
+        error: 'Недопустимый planId',
+        received: planId,
+      });
     }
+    planId = normalizedPlanId;
 
     const { priceRub, tokenCreditsOnPurchase, allowedModels, isActive } = req.body;
     const update = {};
