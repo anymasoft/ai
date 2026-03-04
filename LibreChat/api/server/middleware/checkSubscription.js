@@ -160,4 +160,20 @@ async function checkSubscription(req, res, next) {
   }
 }
 
+/**
+ * Инвалидирует план пользователя в памяти (если есть кэш)
+ * Сейчас это no-op функция, но остаётся для совместимости
+ * Если в будущем добавится in-memory кэш, здесь будет очистка
+ */
+async function invalidatePlanCache(userId) {
+  // SSOT архитектура: нет in-memory кэша, всегда читаем из БД
+  // Эта функция остаётся как placeholder для совместимости с payment.js
+  if (!userId) {
+    return;
+  }
+  // В будущем, если добавится кэш:
+  // cache.del(`plan:${userId}`);
+}
+
 module.exports = checkSubscription;
+module.exports.invalidatePlanCache = invalidatePlanCache;

@@ -301,6 +301,11 @@ router.get('/check', requireJwtAuth, async (req, res) => {
       ? await Payment.findOne({ externalPaymentId: paymentId, userId, status: 'pending' }).lean()
       : await Payment.findOne({ userId, status: 'pending' }, null, { sort: { createdAt: -1 } }).lean();
 
+    // 🔄 ВАЖНО: НЕ КЭШИРУЕМ ответ проверки платежа (может измениться на следующий запрос)
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+
     if (!pending) {
       // Вебхук мог уже зачислить платёж — ищем недавно успешный (последние 30 минут)
       const recentDone = await Payment.findOne(
