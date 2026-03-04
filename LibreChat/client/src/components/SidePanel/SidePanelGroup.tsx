@@ -52,7 +52,18 @@ const SidePanelGroup = memo(
     // SaaS security: админ может скрывать панель для обычных пользователей
     // ADMIN: всегда видит панель (независимо от hideSidePanelSetting)
     // USER: видит панель, если админ её не скрыл
-    const hideSidePanel = !isAdmin && hideSidePanelSetting;
+    const hideSidePanel = isAdmin ? false : hideSidePanelSetting;
+
+    // Диагностика для отладки
+    if (process.env.NODE_ENV === 'development') {
+      console.log('SidePanelGroup Debug:', {
+        isAdmin,
+        hideSidePanelSetting,
+        hideSidePanel,
+        'interfaceConfig.sidePanel': interfaceConfig.sidePanel,
+        shouldShowPanel: !hideSidePanel && interfaceConfig.sidePanel === true,
+      });
+    }
 
     const calculateLayout = useCallback(() => {
       if (artifacts == null) {
