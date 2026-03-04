@@ -115,34 +115,57 @@ router.patch('/users/:userId/role', requireJwtAuth, requireAdminRole, async (req
  * PATCH /api/admin/users/:userId/plan
  * Вручную переключить тариф: { plan: 'free' | 'pro' | 'business', durationDays?: number }
  * durationDays по умолчанию 30.
+ *
+ * ✅ FIX: Plan is normalized to lowercase to prevent case-sensitivity issues
  */
 router.patch('/users/:userId/plan', requireJwtAuth, requireAdminRole, async (req, res) => {
   try {
-    const { plan, durationDays } = req.body;
-    if (!['free', 'pro', 'business'].includes(plan)) {
-      return res.status(400).json({ error: 'Недопустимый тариф. Используйте free, pro или business' });
+    let { plan, durationDays } = req.body;
+
+    // ✅ NORMALIZE: Convert plan to lowercase
+    // Allows: "Business" → "business", "BUSINESS" → "business", "Free" → "free"
+    const normalizedPlan = String(plan || '').toLowerCase();
+
+    if (!['free', 'pro', 'business'].includes(normalizedPlan)) {
+      logger.warn(`[admin/plan] Invalid plan received: original="${plan}" normalized="${normalizedPlan}"`);
+      return res.status(400).json({
+        error: 'Недопустимый тариф. Используйте free, pro или business',
+        received: plan,
+        normalized: normalizedPlan,
+      });
     }
+
     const userId = req.params.userId;
     const days = parseInt(durationDays) || 30;
 
     let planStartedAt = null;
     let planExpiresAt = null;
 
-    if (plan !== 'free') {
+    if (normalizedPlan !== 'free') {
       const now = new Date();
       planStartedAt = now;
       planExpiresAt = new Date(now);
       planExpiresAt.setDate(planExpiresAt.getDate() + days);
     }
 
+    // 📝 DEBUG LOG: Track plan normalization
+    logger.info('[PLAN DEBUG] Admin setting user plan', {
+      userId,
+      originalPlan: plan,
+      normalizedPlan,
+      planStartedAt,
+      planExpiresAt,
+      admin: req.user?.email,
+    });
+
     await Subscription.findOneAndUpdate(
       { userId },
-      { plan, planStartedAt, planExpiresAt },
+      { plan: normalizedPlan, planStartedAt, planExpiresAt },
       { upsert: true, new: true },
     );
 
-    logger.info(`[admin] ${req.user.email} переключил план userId=${userId} → ${plan} (до ${planExpiresAt || 'бессрочно'})`);
-    res.json({ ok: true, plan, planExpiresAt });
+    logger.info(`[admin] ${req.user.email} переключил план userId=${userId} → ${normalizedPlan} (до ${planExpiresAt || 'бессрочно'})`);
+    res.json({ ok: true, plan: normalizedPlan, planExpiresAt });
   } catch (err) {
     logger.error('[admin/plan]', err);
     res.status(500).json({ error: 'Ошибка сервера' });
@@ -332,10 +355,20 @@ router.patch('/plans/:planId', requireJwtAuth, requireAdminRole, async (req, res
     console.log('[DIAGNOSTIC] req.user?.role === "ADMIN":', req.user?.role === 'ADMIN');
     console.log('[DIAGNOSTIC] Authorization header:', req.headers.authorization?.substring(0, 50) + '...');
 
+    // 🔍 ДИАГНОСТИКА: Проверяем модели перед использованием
+    console.log('[DIAGNOSTIC] Models at route entry:', {
+      AiModelExists: !!AiModel,
+      AiModelType: typeof AiModel,
+      AiModelConstructor: AiModel?.constructor?.name,
+      PlanExists: !!Plan,
+      PlanType: typeof Plan,
+    });
+
     let { planId } = req.params;
     // ✅ NORMALIZE: Convert planId to lowercase for safety
     // Allows: "Business" → "business", "BUSINESS" → "business"
     const normalizedPlanId = String(planId || '').toLowerCase();
+
     if (!['free', 'pro', 'business'].includes(normalizedPlanId)) {
       logger.warn(`[admin/plans] Invalid planId: original="${planId}" normalized="${normalizedPlanId}"`);
       return res.status(400).json({
@@ -370,7 +403,32 @@ router.patch('/plans/:planId', requireJwtAuth, requireAdminRole, async (req, res
       const cleanedModels = allowedModels.map((m) => String(m).trim()).filter(Boolean);
       // Валидация: все modelId должны существовать в коллекции AiModel
       if (cleanedModels.length > 0) {
+        // 🔍 ДИАГНОСТИКА: Логируем перед .find()
+        console.log('[DIAGNOSTIC:PATCH/plans] About to call AiModel.find()', {
+          cleanedModels,
+          cleanedModelsLength: cleanedModels.length,
+          AiModelExists: !!AiModel,
+          AiModelType: typeof AiModel,
+        });
+        console.log('[DIAGNOSTIC:PATCH/plans] req.body:', JSON.stringify(req.body, null, 2));
+        console.log('[DIAGNOSTIC:PATCH/plans] allowedModels from req:', allowedModels);
+        console.log('[DIAGNOSTIC:PATCH/plans] cleanedModels after map/filter:', cleanedModels);
+
+        // 🔍 ПРОВЕРКА: Убедиться что AiModel загружен корректно
+        if (!AiModel) {
+          console.error('[ERROR] AiModel is undefined! Cannot call .find()');
+          throw new Error('AiModel model not loaded from ~/db/models');
+        }
+        console.log('[DIAGNOSTIC:PATCH/plans] AiModel is loaded, calling find()');
+
         const existingModels = await AiModel.find({ modelId: { $in: cleanedModels } }, 'modelId').lean();
+
+        console.log('[DIAGNOSTIC:PATCH/plans] After AiModel.find()', {
+          existingModelsCount: existingModels?.length,
+          existingModelsExists: !!existingModels,
+          existingModels: existingModels,
+        });
+
         const existingIds = new Set(existingModels.map((m) => m.modelId));
         const unknown = cleanedModels.filter((id) => !existingIds.has(id));
         if (unknown.length > 0) {
@@ -396,7 +454,13 @@ router.patch('/plans/:planId', requireJwtAuth, requireAdminRole, async (req, res
     const updated = await Plan.findOneAndUpdate({ planId }, update, { new: true }).lean();
     if (!updated) return res.status(404).json({ error: 'Тариф не найден' });
 
-    invalidatePlanCache(); // Немедленно применяем изменение allowedModels
+    // 🔍 ПРОВЕРКА: Убедиться что invalidatePlanCache это функция
+    console.log('[DIAGNOSTIC] invalidatePlanCache type:', typeof invalidatePlanCache);
+    if (typeof invalidatePlanCache !== 'function') {
+      console.error('[ERROR] invalidatePlanCache is not a function!', { invalidatePlanCache });
+      throw new Error('invalidatePlanCache is not properly exported from checkSubscription middleware');
+    }
+    invalidatePlanCache(); // Немедленно применяем изменение allowedModels (no-op in SSOT)
 
     logger.info(`[admin/plans] ${req.user.email} обновил тариф "${planId}": ${JSON.stringify(update)}`);
     res.json({ ok: true, plan: updated });
