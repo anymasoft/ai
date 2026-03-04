@@ -6,6 +6,7 @@ const { getLdapConfig } = require('~/server/services/Config/ldap');
 const { getAppConfig } = require('~/server/services/Config/app');
 const { getProjectByName } = require('~/models/Project');
 const { getLogStores } = require('~/cache');
+const SystemSettings = require('~/models/SystemSettings');
 
 const router = express.Router();
 const emailLoginEnabled =
@@ -43,6 +44,7 @@ router.get('/', async function (req, res) {
 
   try {
     const appConfig = await getAppConfig({ role: req.user?.role });
+    const hideSidePanel = await SystemSettings.getValue('hideSidePanel', false);
 
     const isOpenIdEnabled =
       !!process.env.OPENID_CLIENT_ID &&
@@ -112,6 +114,7 @@ router.get('/', async function (req, res) {
       conversationImportMaxFileSize: process.env.CONVERSATION_IMPORT_MAX_FILE_SIZE_BYTES
         ? parseInt(process.env.CONVERSATION_IMPORT_MAX_FILE_SIZE_BYTES, 10)
         : 0,
+      hideSidePanel,
     };
 
     const minPasswordLength = parseInt(process.env.MIN_PASSWORD_LENGTH, 10);
