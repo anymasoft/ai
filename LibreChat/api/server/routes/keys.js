@@ -1,6 +1,7 @@
 const express = require('express');
 const { updateUserKey, deleteUserKey, getUserKeyExpiry } = require('~/models');
 const { requireJwtAuth } = require('~/server/middleware');
+const requireAdminRole = require('~/server/middleware/requireAdminRole');
 
 const router = express.Router();
 
@@ -13,13 +14,15 @@ router.put('/', requireJwtAuth, async (req, res) => {
   res.status(201).send();
 });
 
-router.delete('/:name', requireJwtAuth, async (req, res) => {
+// RevokeKeys: Delete specific key (Admin only)
+router.delete('/:name', requireJwtAuth, requireAdminRole, async (req, res) => {
   const { name } = req.params;
   await deleteUserKey({ userId: req.user.id, name });
   res.status(204).send();
 });
 
-router.delete('/', requireJwtAuth, async (req, res) => {
+// RevokeKeys: Delete all keys (Admin only)
+router.delete('/', requireJwtAuth, requireAdminRole, async (req, res) => {
   const { all } = req.query;
 
   if (all !== 'true') {

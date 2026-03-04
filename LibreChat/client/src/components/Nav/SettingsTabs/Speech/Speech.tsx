@@ -22,12 +22,14 @@ import {
   DecibelSelector,
 } from './STT';
 import ConversationModeSwitch from './ConversationModeSwitch';
+import useIsAdmin from '~/hooks/useIsAdmin';
 import { useLocalize } from '~/hooks';
 import { cn } from '~/utils';
 import store from '~/store';
 
 function Speech() {
   const localize = useLocalize();
+  const isAdmin = useIsAdmin();
 
   const [confirmClear, setConfirmClear] = useState(false);
   const { data } = useGetCustomConfigSpeechQuery();
@@ -153,7 +155,7 @@ function Speech() {
     <Tabs.Root
       defaultValue={'simple'}
       orientation="horizontal"
-      value={advancedMode ? 'advanced' : 'simple'}
+      value={isAdmin && advancedMode ? 'advanced' : 'simple'}
     >
       <div className="sticky -top-1 z-50 mb-4 bg-white dark:bg-gray-700">
         <Tabs.List className="flex justify-center bg-background">
@@ -170,19 +172,21 @@ function Speech() {
             <Lightbulb aria-hidden="true" />
             {localize('com_ui_simple')}
           </Tabs.Trigger>
-          <Tabs.Trigger
-            onClick={() => setAdvancedMode(true)}
-            className={cn(
-              'group m-1 flex items-center justify-center gap-2 bg-transparent px-4 py-2 text-sm text-text-secondary transition-all duration-200 ease-in-out radix-state-active:bg-secondary radix-state-active:text-foreground radix-state-active:shadow-lg',
-              isSmallScreen ? 'flex-row rounded-lg' : 'rounded-xl',
-              'w-full',
-            )}
-            value="advanced"
-            style={{ userSelect: 'none' }}
-          >
-            <Cog aria-hidden="true" />
-            {localize('com_ui_advanced')}
-          </Tabs.Trigger>
+          {isAdmin && (
+            <Tabs.Trigger
+              onClick={() => setAdvancedMode(true)}
+              className={cn(
+                'group m-1 flex items-center justify-center gap-2 bg-transparent px-4 py-2 text-sm text-text-secondary transition-all duration-200 ease-in-out radix-state-active:bg-secondary radix-state-active:text-foreground radix-state-active:shadow-lg',
+                isSmallScreen ? 'flex-row rounded-lg' : 'rounded-xl',
+                'w-full',
+              )}
+              value="advanced"
+              style={{ userSelect: 'none' }}
+            >
+              <Cog aria-hidden="true" />
+              {localize('com_ui_advanced')}
+            </Tabs.Trigger>
+          )}
         </Tabs.List>
       </div>
 
