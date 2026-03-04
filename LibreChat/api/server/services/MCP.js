@@ -472,7 +472,16 @@ async function createMCPTool({
   config,
   streamId = null,
 }) {
-  const [toolName, serverName] = toolKey.split(Constants.mcp_delimiter);
+  // toolKey format: tavily_search_mcp_tavily (tool_mcp_server)
+  // Split from right to get serverName as last part
+  const lastDelimiterIndex = toolKey.lastIndexOf(Constants.mcp_delimiter);
+  const serverName = toolKey.substring(lastDelimiterIndex + 1);
+  const toolNamePart = toolKey.substring(0, lastDelimiterIndex);
+
+  // For logging, we use the full toolKey as the tool identifier
+  const toolName = toolKey;
+
+  logger.info(`[MCP DIAG] Creating tool - full name: ${toolName}, server: ${serverName}`);
 
   // Runtime domain validation: check if the server's domain is still allowed
   // Use getAppConfig() to support per-user/role domain restrictions
@@ -545,7 +554,9 @@ function createToolInstance({
     };
   }
 
-  const normalizedToolKey = `${toolName}${Constants.mcp_delimiter}${normalizeServerName(serverName)}`;
+  // Use the full tool name (toolName) which already includes the mcp suffix
+  // Do not re-construct it with server name
+  const normalizedToolKey = toolName;
 
   /** @type {(toolArguments: Object | string, config?: GraphRunnableConfig) => Promise<unknown>} */
   const _call = async (toolArguments, config) => {
@@ -561,7 +572,8 @@ function createToolInstance({
       derivedSignal = config?.signal ? AbortSignal.any([config.signal]) : undefined;
 
       // ДИАГНОСТИКА: ШАГ 4 - Tool Execution
-      logger.info(`[MCP DIAG] ===== Tool execution requested: ${serverName}.${toolName}`);
+      logger.info(`[MCP DIAG] ===== Tool execution requested: ${normalizedToolKey}`);
+      logger.info(`[MCP DIAG] Tool name in registry: ${normalizedToolKey}`);
       logger.info(`[MCP DIAG] userId: ${userId}, toolArguments: ${JSON.stringify(toolArguments).substring(0, 100)}`);
 
       // Verify server config exists
@@ -680,6 +692,9 @@ function createToolInstance({
     description: description || '',
     responseFormat: AgentConstants.CONTENT_AND_ARTIFACT,
   });
+
+  logger.info(`[MCP DIAG] Tool instance created - function.name: ${toolInstance.function.name}`);
+
   toolInstance.mcp = true;
   toolInstance.mcpRawServerName = serverName;
   toolInstance.mcpJsonSchema = parameters;

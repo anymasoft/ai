@@ -180,11 +180,12 @@ const getMCPTools = async (req, res) => {
               continue;
             }
 
-            const toolName = toolKey.split(Constants.mcp_delimiter)[0];
-            logger.info(`[MCP DIAG] Adding tool: ${toolName} (key: ${toolKey})`);
+            // Use full tool name (e.g., tavily_search_mcp_tavily) instead of short name
+            const toolName = toolKey;
+            logger.info(`[MCP DIAG] Adding tool: ${toolName} (full key: ${toolKey})`);
 
             server.tools.push({
-              name: toolName,
+              name: toolName,  // Full name with mcp suffix
               pluginKey: toolKey,
               description: toolData.function.description || '',
             });
