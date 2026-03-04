@@ -11,6 +11,7 @@ const {
   configMiddleware,
   buildEndpointOption,
 } = require('~/server/middleware');
+const requireAdminRole = require('~/server/middleware/requireAdminRole');
 const { getConvosByCursor, deleteConvos, getConvo, saveConvo } = require('~/models/Conversation');
 const { forkConversation, duplicateConversation } = require('~/server/utils/import/fork');
 const { storage, importFileFilter } = require('~/server/routes/files/multer');
@@ -165,7 +166,8 @@ router.delete('/', async (req, res) => {
   }
 });
 
-router.delete('/all', async (req, res) => {
+// ClearChats: Delete all conversations (Admin only)
+router.delete('/all', requireAdminRole, async (req, res) => {
   try {
     const dbResponse = await deleteConvos(req.user.id, {});
     await deleteToolCalls(req.user.id);
@@ -258,8 +260,10 @@ const upload = multer({ storage: storage, fileFilter: importFileFilter });
  * @param {Express.Multer.File} req.file - The JSON file to import.
  * @returns {object} 201 - success response - application/json
  */
+// ImportConversations: Import conversations from file (Admin only)
 router.post(
   '/import',
+  requireAdminRole,
   importIpLimiter,
   importUserLimiter,
   configMiddleware,

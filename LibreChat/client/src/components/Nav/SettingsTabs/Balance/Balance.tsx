@@ -1,11 +1,13 @@
 import React from 'react';
 import { useGetStartupConfig, useGetUserBalance } from '~/data-provider';
 import { useAuthContext, useLocalize } from '~/hooks';
+import useIsAdmin from '~/hooks/useIsAdmin';
 import TokenCreditsItem from './TokenCreditsItem';
 import AutoRefillSettings from './AutoRefillSettings';
 
 function Balance() {
   const localize = useLocalize();
+  const isAdmin = useIsAdmin();
   const { isAuthenticated } = useAuthContext();
   const { data: startupConfig } = useGetStartupConfig();
 
@@ -36,24 +38,28 @@ function Balance() {
       {/* Token credits display */}
       <TokenCreditsItem tokenCredits={tokenCredits} />
 
-      {/* Auto-refill display */}
-      {autoRefillEnabled ? (
-        hasValidRefillSettings ? (
-          <AutoRefillSettings
-            lastRefill={lastRefill}
-            refillAmount={refillAmount}
-            refillIntervalUnit={refillIntervalUnit}
-            refillIntervalValue={refillIntervalValue}
-          />
-        ) : (
-          <div className="text-sm text-red-600">
-            {localize('com_nav_balance_auto_refill_error')}
-          </div>
-        )
-      ) : (
-        <div className="text-sm text-gray-600">
-          {localize('com_nav_balance_auto_refill_disabled')}
-        </div>
+      {/* Auto-refill display - Admin only */}
+      {isAdmin && (
+        <>
+          {autoRefillEnabled ? (
+            hasValidRefillSettings ? (
+              <AutoRefillSettings
+                lastRefill={lastRefill}
+                refillAmount={refillAmount}
+                refillIntervalUnit={refillIntervalUnit}
+                refillIntervalValue={refillIntervalValue}
+              />
+            ) : (
+              <div className="text-sm text-red-600">
+                {localize('com_nav_balance_auto_refill_error')}
+              </div>
+            )
+          ) : (
+            <div className="text-sm text-gray-600">
+              {localize('com_nav_balance_auto_refill_disabled')}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

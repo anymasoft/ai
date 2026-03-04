@@ -23,6 +23,7 @@ import {
   Account,
 } from './SettingsTabs';
 import usePersonalizationAccess from '~/hooks/usePersonalizationAccess';
+import useIsAdmin from '~/hooks/useIsAdmin';
 import { useLocalize, TranslationKeys } from '~/hooks';
 import { useGetStartupConfig } from '~/data-provider';
 import { cn } from '~/utils';
@@ -31,6 +32,7 @@ export default function Settings({ open, onOpenChange }: TDialogProps) {
   const isSmallScreen = useMediaQuery('(max-width: 767px)');
   const { data: startupConfig } = useGetStartupConfig();
   const localize = useLocalize();
+  const isAdmin = useIsAdmin();
   const [activeTab, setActiveTab] = useState(SettingsTabValues.GENERAL);
   const tabRefs = useRef({});
   const { hasAnyPersonalizationFeature, hasMemoryOptOut } = usePersonalizationAccess();
@@ -42,8 +44,8 @@ export default function Settings({ open, onOpenChange }: TDialogProps) {
       SettingsTabValues.COMMANDS,
       SettingsTabValues.SPEECH,
       ...(hasAnyPersonalizationFeature ? [SettingsTabValues.PERSONALIZATION] : []),
-      SettingsTabValues.DATA,
-      ...(startupConfig?.balance?.enabled ? [SettingsTabValues.BALANCE] : []),
+      ...(isAdmin ? [SettingsTabValues.DATA] : []),
+      ...(isAdmin && startupConfig?.balance?.enabled ? [SettingsTabValues.BALANCE] : []),
       SettingsTabValues.ACCOUNT,
     ];
     const currentIndex = tabs.indexOf(activeTab);
@@ -102,12 +104,16 @@ export default function Settings({ open, onOpenChange }: TDialogProps) {
           },
         ]
       : []),
-    {
-      value: SettingsTabValues.DATA,
-      icon: <DataIcon />,
-      label: 'com_nav_setting_data',
-    },
-    ...(startupConfig?.balance?.enabled
+    ...(isAdmin
+      ? [
+          {
+            value: SettingsTabValues.DATA,
+            icon: <DataIcon />,
+            label: 'com_nav_setting_data',
+          },
+        ]
+      : []),
+    ...(isAdmin && startupConfig?.balance?.enabled
       ? [
           {
             value: SettingsTabValues.BALANCE,
