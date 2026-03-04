@@ -134,7 +134,10 @@ const loadEphemeralAgent = async ({ req, spec, endpoint, model_parameters: _m })
       if (addedServers.has(mcpServer)) {
         continue;
       }
-      const serverTools = await getMCPServerTools(userId, mcpServer);
+      const { getServerConfigWithAdminFallback } = require('~/server/services/MCP');
+      const serverConfig = await getServerConfigWithAdminFallback(mcpServer, userId);
+      const ownerId = serverConfig?.userId || userId;
+      const serverTools = await getMCPServerTools(ownerId, mcpServer);
       if (!serverTools) {
         tools.push(`${mcp_all}${mcp_delimiter}${mcpServer}`);
         addedServers.add(mcpServer);
