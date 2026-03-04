@@ -643,6 +643,31 @@ async function loadToolDefinitionsWrapper({ req, res, agent, streamId = null, to
     },
   );
 
+  // ВАЖНО: Явно зарегистрировать MCP tools в toolRegistry
+  // loadToolDefinitions может не добавлять MCP tools в registry по умолчанию
+  logger.info(
+    `[MCP DIAG] Post-loadToolDefinitions - toolRegistry size: ${toolRegistry?.size ?? 0}, toolDefinitions: ${toolDefinitions?.length ?? 0}`,
+  );
+
+  if (toolRegistry && toolDefinitions) {
+    for (const toolDef of toolDefinitions) {
+      const toolName = toolDef?.function?.name;
+      if (toolName && toolName.includes('_mcp_')) {
+        if (!toolRegistry.has(toolName)) {
+          logger.info(`[MCP DIAG] Manually registering MCP tool in registry: ${toolName}`);
+          // toolDef is a LCTool object, register it
+          toolRegistry.set(toolName, toolDef);
+        } else {
+          logger.info(`[MCP DIAG] MCP tool already in registry: ${toolName}`);
+        }
+      }
+    }
+  }
+
+  logger.info(
+    `[MCP DIAG] After MCP registration - toolRegistry size: ${toolRegistry?.size ?? 0}, registry tools: ${toolRegistry ? Array.from(toolRegistry.keys()).join(', ') : 'EMPTY'}`,
+  );
+
   if (pendingOAuthServers.size > 0 && (res || streamId)) {
     const serverNames = Array.from(pendingOAuthServers);
     logger.info(
@@ -699,6 +724,22 @@ async function loadToolDefinitionsWrapper({ req, res, agent, streamId = null, to
       toolDefinitions = reloadResult.toolDefinitions;
       toolRegistry = reloadResult.toolRegistry;
       hasDeferredTools = reloadResult.hasDeferredTools;
+
+      // После OAuth - снова зарегистрировать MCP tools в registry
+      logger.info(
+        `[MCP DIAG] Post-OAuth reload - toolRegistry size: ${toolRegistry?.size ?? 0}, toolDefinitions: ${toolDefinitions?.length ?? 0}`,
+      );
+      if (toolRegistry && toolDefinitions) {
+        for (const toolDef of toolDefinitions) {
+          const toolName = toolDef?.function?.name;
+          if (toolName && toolName.includes('_mcp_')) {
+            if (!toolRegistry.has(toolName)) {
+              logger.info(`[MCP DIAG] After OAuth: Manually registering MCP tool: ${toolName}`);
+              toolRegistry.set(toolName, toolDef);
+            }
+          }
+        }
+      }
     }
   }
 
