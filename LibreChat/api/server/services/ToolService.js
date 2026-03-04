@@ -643,6 +643,31 @@ async function loadToolDefinitionsWrapper({ req, res, agent, streamId = null, to
     },
   );
 
+  // ВАЖНО: Явно зарегистрировать MCP tools в toolRegistry
+  // loadToolDefinitions может не добавлять MCP tools в registry по умолчанию
+  logger.info(
+    `[MCP DIAG] Post-loadToolDefinitions - toolRegistry size: ${toolRegistry?.size ?? 0}, toolDefinitions: ${toolDefinitions?.length ?? 0}`,
+  );
+
+  if (toolRegistry && toolDefinitions) {
+    for (const toolDef of toolDefinitions) {
+      const toolName = toolDef?.function?.name;
+      if (toolName && toolName.includes('_mcp_')) {
+        if (!toolRegistry.has(toolName)) {
+          logger.info(`[MCP DIAG] Manually registering MCP tool in registry: ${toolName}`);
+          // toolDef is a LCTool object, register it
+          toolRegistry.set(toolName, toolDef);
+        } else {
+          logger.info(`[MCP DIAG] MCP tool already in registry: ${toolName}`);
+        }
+      }
+    }
+  }
+
+  logger.info(
+    `[MCP DIAG] After MCP registration - toolRegistry size: ${toolRegistry?.size ?? 0}, registry tools: ${toolRegistry ? Array.from(toolRegistry.keys()).join(', ') : 'EMPTY'}`,
+  );
+
   if (pendingOAuthServers.size > 0 && (res || streamId)) {
     const serverNames = Array.from(pendingOAuthServers);
     logger.info(
@@ -699,6 +724,22 @@ async function loadToolDefinitionsWrapper({ req, res, agent, streamId = null, to
       toolDefinitions = reloadResult.toolDefinitions;
       toolRegistry = reloadResult.toolRegistry;
       hasDeferredTools = reloadResult.hasDeferredTools;
+
+      // После OAuth - снова зарегистрировать MCP tools в registry
+      logger.info(
+        `[MCP DIAG] Post-OAuth reload - toolRegistry size: ${toolRegistry?.size ?? 0}, toolDefinitions: ${toolDefinitions?.length ?? 0}`,
+      );
+      if (toolRegistry && toolDefinitions) {
+        for (const toolDef of toolDefinitions) {
+          const toolName = toolDef?.function?.name;
+          if (toolName && toolName.includes('_mcp_')) {
+            if (!toolRegistry.has(toolName)) {
+              logger.info(`[MCP DIAG] After OAuth: Manually registering MCP tool: ${toolName}`);
+              toolRegistry.set(toolName, toolDef);
+            }
+          }
+        }
+      }
     }
   }
 
@@ -1160,8 +1201,15 @@ async function loadToolsForExecution({
   const isToolSearch = toolNames.includes(AgentConstants.TOOL_SEARCH);
   const isPTC = toolNames.includes(AgentConstants.PROGRAMMATIC_TOOL_CALLING);
 
-  logger.debug(
-    `[loadToolsForExecution] isToolSearch: ${isToolSearch}, toolRegistry: ${toolRegistry?.size ?? 'undefined'}`,
+  logger.info(
+    `[loadToolsForExecution] START - isToolSearch: ${isToolSearch}, toolRegistry size: ${toolRegistry?.size ?? 'undefined'}`,
+  );
+  logger.info(
+    `[MCP DIAG] Registry tools available:`,
+    toolRegistry ? Array.from(toolRegistry.keys()).join(', ') : 'NO REGISTRY'
+  );
+  logger.info(
+    `[MCP DIAG] Tools requested: ${toolNames.join(', ')}`,
   );
 
   if (isToolSearch && toolRegistry) {
@@ -1213,12 +1261,18 @@ async function loadToolsForExecution({
   const actionToolNames = allToolNamesToLoad.filter((name) => name.includes(actionDelimiter));
   const regularToolNames = allToolNamesToLoad.filter((name) => !name.includes(actionDelimiter));
 
+  logger.info(
+    `[MCP DIAG] Loading tools - regularTools: ${regularToolNames.join(', ')}, actionTools: ${actionToolNames.join(', ')}`,
+  );
+
   /** @type {Record<string, unknown>} */
   if (regularToolNames.length > 0) {
     const includesWebSearch = regularToolNames.includes(Tools.web_search);
     const webSearchCallbacks = includesWebSearch ? createOnSearchResults(res, streamId) : undefined;
 
-    const { loadedTools } = await loadTools({
+    logger.info(`[MCP DIAG] Calling loadTools for tools: ${regularToolNames.join(', ')}`);
+
+    const { loadedTools, toolRegistry: returnedRegistry } = await loadTools({
       agent,
       signal,
       userMCPAuthMap,
@@ -1238,6 +1292,13 @@ async function loadToolsForExecution({
       fileStrategy: appConfig?.fileStrategy,
       imageOutputType: appConfig?.imageOutputType,
     });
+
+    logger.info(`[MCP DIAG] loadTools returned ${loadedTools?.length ?? 0} tools`);
+    if (returnedRegistry) {
+      logger.info(
+        `[MCP DIAG] loadTools returned registry with: ${Array.from(returnedRegistry.keys()).join(', ')}`,
+      );
+    }
 
     if (loadedTools) {
       allLoadedTools.push(...loadedTools);

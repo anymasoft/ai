@@ -206,6 +206,16 @@ const initializeClient = async ({ req, res, signal, endpointOption }) => {
   logger.debug(
     `[initializeClient] Storing tool context for ${primaryConfig.id}: ${primaryConfig.toolDefinitions?.length ?? 0} tools, registry size: ${primaryConfig.toolRegistry?.size ?? '0'}`,
   );
+  logger.info(
+    `[MCP DIAG] Registering agent ${primaryConfig.id} - toolRegistry size: ${primaryConfig.toolRegistry?.size ?? 'undefined'}`,
+  );
+  if (primaryConfig.toolRegistry) {
+    logger.info(
+      `[MCP DIAG] Tools in registry:`,
+      Array.from(primaryConfig.toolRegistry.keys()).join(', ')
+    );
+  }
+
   agentToolContexts.set(primaryConfig.id, {
     agent: primaryAgent,
     toolRegistry: primaryConfig.toolRegistry,
