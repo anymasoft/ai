@@ -35,7 +35,7 @@ const {
   getFlowStateManager,
   getMCPManager,
 } = require('~/config');
-const { getMCPSetupData, getServerConnectionStatus } = require('~/server/services/MCP');
+const { getMCPSetupData, getServerConnectionStatus, getServerConfigWithAdminFallback } = require('~/server/services/MCP');
 const { requireJwtAuth, canAccessMCPServerResource } = require('~/server/middleware');
 const { findToken, updateToken, createToken, deleteTokens } = require('~/models');
 const { getUserPluginAuthValue } = require('~/server/services/PluginService');
@@ -447,13 +447,19 @@ router.post('/:serverName/reinitialize', requireJwtAuth, setOAuthSession, async 
 
     logger.info(`[MCP Reinitialize] Reinitializing server: ${serverName}`);
 
-    const mcpManager = getMCPManager();
-    const serverConfig = await getMCPServersRegistry().getServerConfig(serverName, user.id);
+    // Get server config with admin fallback
+    const serverConfig = await getServerConfigWithAdminFallback(serverName, user.id);
     if (!serverConfig) {
       return res.status(404).json({
         error: `MCP server '${serverName}' not found in configuration`,
       });
     }
+
+    // Use ownerId from server config (admin's userId if server is admin-created)
+    const ownerId = serverConfig.userId;
+    const mcpManager = getMCPManager(ownerId);
+
+    logger.info(`[MCP Reinitialize] Disconnecting user=${user.id} from server=${serverName} (ownerId=${ownerId})`);
 
     await mcpManager.disconnectUserConnection(user.id, serverName);
     logger.info(

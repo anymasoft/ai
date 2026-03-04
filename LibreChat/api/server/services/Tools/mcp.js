@@ -3,6 +3,7 @@ const { CacheKeys, Constants } = require('librechat-data-provider');
 const { findToken, createToken, updateToken, deleteTokens } = require('~/models');
 const { updateMCPServerTools } = require('~/server/services/Config');
 const { getMCPManager, getFlowStateManager } = require('~/config');
+const { getServerConfigWithAdminFallback } = require('~/server/services/MCP');
 const { getLogStores } = require('~/cache');
 
 /**
@@ -43,10 +44,16 @@ async function reinitMCPServer({
   try {
     const customUserVars = userMCPAuthMap?.[`${Constants.mcp_prefix}${serverName}`];
     const flowManager = _flowManager ?? getFlowStateManager(getLogStores(CacheKeys.FLOWS));
-    const mcpManager = getMCPManager();
 
-    logger.info(`[MCP AUDIT] Step 4 - Tool Execution for serverName=${serverName}, userId=${user?.id}`);
-    logger.info(`[MCP AUDIT] MCPManager initialized: ${!!mcpManager}`);
+    // Get server config to determine ownerId (admin's userId if server is admin-created)
+    const serverConfig = await getServerConfigWithAdminFallback(serverName, user?.id);
+    const ownerId = serverConfig?.userId || user?.id;
+
+    logger.info(`[MCP AUDIT] Step 4 - Tool Execution for serverName=${serverName}, userId=${user?.id}, ownerId=${ownerId}`);
+
+    const mcpManager = getMCPManager(ownerId);
+
+    logger.info(`[MCP AUDIT] MCPManager initialized with ownerId=${ownerId}: ${!!mcpManager}`);
 
     const tokenMethods = { findToken, updateToken, createToken, deleteTokens };
 
