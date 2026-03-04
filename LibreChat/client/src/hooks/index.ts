@@ -17,6 +17,7 @@ export * from './Roles';
 export * from './Sharing';
 export * from './SSE';
 export * from './AuthContext';
+export { default as useIsAdmin } from './useIsAdmin';
 export * from './ScreenshotContext';
 export * from './ApiErrorBoundaryContext';
 export * from './Endpoint';
