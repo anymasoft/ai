@@ -24,6 +24,7 @@ const {
 const { connectDb, indexSync } = require('~/db');
 const initializeOAuthReconnectManager = require('./services/initializeOAuthReconnectManager');
 const createValidateImageRequest = require('./middleware/validateImageRequest');
+const { requireJwtAuth } = require('~/server/middleware');
 const { jwtLogin, ldapLogin, passportLogin } = require('~/strategies');
 const { updateInterfacePermissions } = require('~/models/interface');
 const { checkMigrations } = require('./services/start/migration');
@@ -204,7 +205,7 @@ const startServer = async () => {
   logger.debug('[app.use] Mounting /api/mcp', typeof routes.mcp);
   app.use('/api/mcp', routes.mcp);
   logger.debug('[app.use] Mounting /api/settings', typeof routes.settings);
-  app.use('/api/settings', routes.settings);
+  app.use('/api/settings', requireJwtAuth, routes.settings);
 
   /** 404 for unmatched API routes */
   app.use('/api', apiNotFound);
