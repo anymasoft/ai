@@ -10,17 +10,6 @@ const requireJwtAuth = (req, res, next) => {
   const cookieHeader = req.headers.cookie;
   const tokenProvider = cookieHeader ? cookies.parse(cookieHeader).token_provider : null;
 
-  // 🔍 ДИАГНОСТИКА: Логируем информацию о запросе и токене (только в разработке)
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[DIAGNOSTIC:requireJwtAuth]', {
-      path: req.path,
-      method: req.method,
-      hasAuthHeader: !!req.headers.authorization,
-      authHeaderPrefix: req.headers.authorization?.substring(0, 30),
-      tokenProvider,
-      cookies: Object.keys(req.cookies || {}),
-    });
-  }
 
   if (tokenProvider === 'openid' && isEnabled(process.env.OPENID_REUSE_TOKENS)) {
     return passport.authenticate('openidJwt', { session: false })(req, res, next);

@@ -49,10 +49,10 @@ const SidePanelGroup = memo(
     const hideSidePanelSetting = useRecoilValue(store.hideSidePanel);
     const isAdmin = useIsAdmin();
 
-    // SaaS security: Только не-админы могут скрывать панель через toggle
-    // ADMIN: всегда видит панель (hideSidePanel = false)
-    // USER: видит панель только если hideSidePanelSetting = false
-    const hideSidePanel = !isAdmin && hideSidePanelSetting;
+    // SaaS security: переключатель панели видит только админ
+    // ADMIN: может скрывать/показывать панель через toggle
+    // USER: всегда видит панель (independent от hideSidePanelSetting админа)
+    const hideSidePanel = isAdmin && hideSidePanelSetting;
 
     const calculateLayout = useCallback(() => {
       if (artifacts == null) {

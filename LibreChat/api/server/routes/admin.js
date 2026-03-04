@@ -348,24 +348,6 @@ router.get('/plans', requireJwtAuth, requireAdminRole, async (req, res) => {
  */
 router.patch('/plans/:planId', requireJwtAuth, requireAdminRole, async (req, res) => {
   try {
-    // 🔍 ДИАГНОСТИКА: Логируем информацию о пользователе и auth (только в разработке)
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[DIAGNOSTIC] PATCH /api/admin/mvp/plans/:planId');
-      console.log('[DIAGNOSTIC] req.user:', JSON.stringify(req.user, null, 2));
-      console.log('[DIAGNOSTIC] req.user?.role:', req.user?.role);
-      console.log('[DIAGNOSTIC] req.user?.role === "ADMIN":', req.user?.role === 'ADMIN');
-      console.log('[DIAGNOSTIC] Authorization header:', req.headers.authorization?.substring(0, 50) + '...');
-
-      // 🔍 ДИАГНОСТИКА: Проверяем модели перед использованием
-      console.log('[DIAGNOSTIC] Models at route entry:', {
-        AiModelExists: !!AiModel,
-        AiModelType: typeof AiModel,
-        AiModelConstructor: AiModel?.constructor?.name,
-        PlanExists: !!Plan,
-        PlanType: typeof Plan,
-      });
-    }
-
     let { planId } = req.params;
     // ✅ NORMALIZE: Convert planId to lowercase for safety
     // Allows: "Business" → "business", "BUSINESS" → "business"
@@ -405,37 +387,13 @@ router.patch('/plans/:planId', requireJwtAuth, requireAdminRole, async (req, res
       const cleanedModels = allowedModels.map((m) => String(m).trim()).filter(Boolean);
       // Валидация: все modelId должны существовать в коллекции AiModel
       if (cleanedModels.length > 0) {
-        // 🔍 ДИАГНОСТИКА: Логируем перед .find() (только в разработке)
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[DIAGNOSTIC:PATCH/plans] About to call AiModel.find()', {
-            cleanedModels,
-            cleanedModelsLength: cleanedModels.length,
-            AiModelExists: !!AiModel,
-            AiModelType: typeof AiModel,
-          });
-          console.log('[DIAGNOSTIC:PATCH/plans] req.body:', JSON.stringify(req.body, null, 2));
-          console.log('[DIAGNOSTIC:PATCH/plans] allowedModels from req:', allowedModels);
-          console.log('[DIAGNOSTIC:PATCH/plans] cleanedModels after map/filter:', cleanedModels);
-        }
-
         // 🔍 ПРОВЕРКА: Убедиться что AiModel загружен корректно
         if (!AiModel) {
           console.error('[ERROR] AiModel is undefined! Cannot call .find()');
           throw new Error('AiModel model not loaded from ~/db/models');
         }
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[DIAGNOSTIC:PATCH/plans] AiModel is loaded, calling find()');
-        }
 
         const existingModels = await AiModel.find({ modelId: { $in: cleanedModels } }, 'modelId').lean();
-
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[DIAGNOSTIC:PATCH/plans] After AiModel.find()', {
-            existingModelsCount: existingModels?.length,
-            existingModelsExists: !!existingModels,
-            existingModels: existingModels,
-          });
-        }
 
         const existingIds = new Set(existingModels.map((m) => m.modelId));
         const unknown = cleanedModels.filter((id) => !existingIds.has(id));
@@ -463,9 +421,6 @@ router.patch('/plans/:planId', requireJwtAuth, requireAdminRole, async (req, res
     if (!updated) return res.status(404).json({ error: 'Тариф не найден' });
 
     // 🔍 ПРОВЕРКА: Убедиться что invalidatePlanCache это функция
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[DIAGNOSTIC] invalidatePlanCache type:', typeof invalidatePlanCache);
-    }
     if (typeof invalidatePlanCache !== 'function') {
       console.error('[ERROR] invalidatePlanCache is not a function!', { invalidatePlanCache });
       throw new Error('invalidatePlanCache is not properly exported from checkSubscription middleware');
