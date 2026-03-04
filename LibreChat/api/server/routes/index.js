@@ -30,6 +30,7 @@ const user = require('./user');
 const mcp = require('./mcp');
 const payment = require('./payment');
 const subscription = require('./subscription');
+const settings = require('./settings');
 
 module.exports = {
   mcp,
@@ -64,4 +65,5 @@ module.exports = {
   accessPermissions,
   payment,
   subscription,
+  settings,
 };

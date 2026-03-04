@@ -203,6 +203,8 @@ const startServer = async () => {
   app.use('/api/tags', routes.tags);
   logger.debug('[app.use] Mounting /api/mcp', typeof routes.mcp);
   app.use('/api/mcp', routes.mcp);
+  logger.debug('[app.use] Mounting /api/settings', typeof routes.settings);
+  app.use('/api/settings', routes.settings);
 
   /** 404 for unmatched API routes */
   app.use('/api', apiNotFound);
