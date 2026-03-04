@@ -309,10 +309,15 @@ async function createMCPTools({
   userMCPAuthMap,
   streamId = null,
 }) {
+  logger.info(`[MCP AUDIT] Step 2 - Building tools for serverName=${serverName}, userId=${user?.id}`);
+
   // Early domain validation before reconnecting server (avoid wasted work on disallowed domains)
   // Use getAppConfig() to support per-user/role domain restrictions
   const serverConfig =
     config ?? (await getMCPServersRegistry().getServerConfig(serverName, user?.id));
+
+  logger.info(`[MCP AUDIT] serverConfig found for ${serverName}: ${!!serverConfig}`);
+
   if (serverConfig?.url) {
     const appConfig = await getAppConfig({ role: user?.role });
     const allowedDomains = appConfig?.mcpSettings?.allowedDomains;
@@ -616,6 +621,10 @@ async function getMCPServersWithAdmins(userId) {
  */
 async function getMCPSetupData(userId) {
   const mcpConfig = await getMCPServersWithAdmins(userId);
+
+  logger.info(`[MCP AUDIT] Step 1 - MCP Servers Loaded for userId=${userId}`);
+  logger.info(`[MCP AUDIT] MCP servers available: ${Object.keys(mcpConfig || {}).join(', ')}`);
+  logger.info(`[MCP AUDIT] Total servers: ${Object.keys(mcpConfig || {}).length}`);
 
   if (!mcpConfig) {
     throw new Error('MCP config not found');

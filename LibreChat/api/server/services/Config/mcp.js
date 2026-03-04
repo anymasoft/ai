@@ -16,8 +16,11 @@ async function updateMCPServerTools({ userId, serverName, tools }) {
     const serverTools = {};
     const mcpDelimiter = Constants.mcp_delimiter;
 
+    logger.info(`[MCP AUDIT] Step 3 - Tools cached for serverName=${serverName}, userId=${userId}`);
+
     if (tools == null || tools.length === 0) {
       logger.debug(`[MCP Cache] No tools to update for server ${serverName} (user: ${userId})`);
+      logger.info(`[MCP AUDIT] WARNING: No tools found for ${serverName}!`);
       return serverTools;
     }
 
@@ -33,6 +36,8 @@ async function updateMCPServerTools({ userId, serverName, tools }) {
       };
     }
 
+    logger.info(`[MCP AUDIT] Building tool definitions: ${Object.keys(serverTools).join(', ')}`);
+
     await setCachedTools(serverTools, { userId, serverName });
 
     const cache = getLogStores(CacheKeys.TOOL_CACHE);
@@ -40,6 +45,7 @@ async function updateMCPServerTools({ userId, serverName, tools }) {
     logger.debug(
       `[MCP Cache] Updated ${tools.length} tools for server ${serverName} (user: ${userId})`,
     );
+    logger.info(`[MCP AUDIT] Tools cached successfully: ${tools.length} tools`);
     return serverTools;
   } catch (error) {
     logger.error(`[MCP Cache] Failed to update tools for ${serverName} (user: ${userId}):`, error);

@@ -25,10 +25,19 @@ async function getCachedTools(options = {}) {
 
   // Return MCP server-specific tools if requested
   if (serverName && userId) {
-    return await cache.get(ToolCacheKeys.MCP_SERVER(userId, serverName));
+    const cacheKey = ToolCacheKeys.MCP_SERVER(userId, serverName);
+    console.log(`[MCP AUDIT] getCachedTools: Looking for userId=${userId}, serverName=${serverName}`);
+    console.log(`[MCP AUDIT] getCachedTools: Cache key = ${cacheKey}`);
+    const result = await cache.get(cacheKey);
+    console.log(`[MCP AUDIT] getCachedTools: Found tools? ${!!result}`);
+    if (result) {
+      console.log(`[MCP AUDIT] getCachedTools: Tools available: ${Object.keys(result).join(', ')}`);
+    }
+    return result;
   }
 
   // Default to global tools
+  console.log(`[MCP AUDIT] getCachedTools: Getting GLOBAL tools (no userId/serverName specified)`);
   return await cache.get(ToolCacheKeys.GLOBAL);
 }
 

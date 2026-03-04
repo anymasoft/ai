@@ -44,6 +44,10 @@ async function reinitMCPServer({
     const customUserVars = userMCPAuthMap?.[`${Constants.mcp_prefix}${serverName}`];
     const flowManager = _flowManager ?? getFlowStateManager(getLogStores(CacheKeys.FLOWS));
     const mcpManager = getMCPManager();
+
+    logger.info(`[MCP AUDIT] Step 4 - Tool Execution for serverName=${serverName}, userId=${user?.id}`);
+    logger.info(`[MCP AUDIT] MCPManager initialized: ${!!mcpManager}`);
+
     const tokenMethods = { findToken, updateToken, createToken, deleteTokens };
 
     const oauthStart =
