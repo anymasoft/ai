@@ -21,6 +21,7 @@ const {
   Constants,
   ContentTypes,
   isAssistantsEndpoint,
+  SystemRoles,
 } = require('librechat-data-provider');
 const {
   getOAuthReconnectionManager,
@@ -29,6 +30,7 @@ const {
   getMCPManager,
 } = require('~/config');
 const { findToken, createToken, updateToken } = require('~/models');
+const { User } = require('~/db/models');
 const { getGraphApiToken } = require('./GraphTokenService');
 const { reinitMCPServer } = require('./Tools/mcp');
 const { getAppConfig } = require('./Config');
@@ -573,12 +575,47 @@ function createToolInstance({
 }
 
 /**
+ * Get MCP servers for a user, including their own and all admin-created servers
+ * @param {string} userId - The user ID
+ * @returns {Promise<Object>} Combined MCP server configurations
+ */
+async function getMCPServersWithAdmins(userId) {
+  try {
+    // Get user's own MCP servers
+    const userConfigs = await getMCPServersRegistry().getAllServerConfigs(userId);
+
+    // Get all admin users
+    const admins = await User.find({ role: SystemRoles.ADMIN }, '_id').lean().exec();
+
+    if (!admins || admins.length === 0) {
+      return userConfigs;
+    }
+
+    // Get MCP servers from all admins
+    const adminConfigs = {};
+    for (const admin of admins) {
+      const configs = await getMCPServersRegistry().getAllServerConfigs(admin._id.toString());
+      if (configs) {
+        Object.assign(adminConfigs, configs);
+      }
+    }
+
+    // Merge: admin servers first, then user servers (user servers can override)
+    return { ...adminConfigs, ...userConfigs };
+  } catch (error) {
+    logger.error('[getMCPServersWithAdmins] Error getting admin MCP servers:', error);
+    // Fallback to user's own servers if admin lookup fails
+    return await getMCPServersRegistry().getAllServerConfigs(userId);
+  }
+}
+
+/**
  * Get MCP setup data including config, connections, and OAuth servers
  * @param {string} userId - The user ID
  * @returns {Object} Object containing mcpConfig, appConnections, userConnections, and oauthServers
  */
 async function getMCPSetupData(userId) {
-  const mcpConfig = await getMCPServersRegistry().getAllServerConfigs(userId);
+  const mcpConfig = await getMCPServersWithAdmins(userId);
 
   if (!mcpConfig) {
     throw new Error('MCP config not found');
@@ -718,6 +755,7 @@ module.exports = {
   createMCPTool,
   createMCPTools,
   getMCPSetupData,
+  getMCPServersWithAdmins,
   checkOAuthFlowStatus,
   getServerConnectionStatus,
 };
