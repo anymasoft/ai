@@ -302,15 +302,31 @@ async function reconnectServer({
 /**
  * Get the ID of the admin user for executing MCP tools
  * All MCP tool execution happens through the admin's MCP manager
+ * Tries to use ADMIN_EMAIL from environment, falls back to first ADMIN user
  * @returns {Promise<string>} Admin user ID
  * @throws {Error} If no admin user is found
  */
 async function getAdminId() {
   try {
-    const admin = await User.findOne({ role: SystemRoles.ADMIN }, '_id').lean().exec();
-    if (!admin) {
-      throw new Error('Admin user not found');
+    const adminEmail = process.env.ADMIN_EMAIL;
+    let admin;
+
+    // First, try to find admin by ADMIN_EMAIL if defined
+    if (adminEmail) {
+      admin = await User.findOne({ email: adminEmail }, '_id').lean().exec();
+      if (admin) {
+        logger.info(`[MCP ADMIN] Admin user resolved by ADMIN_EMAIL: ${adminEmail}`);
+        return admin._id.toString();
+      }
+      logger.warn(`[MCP ADMIN] Admin user not found for ADMIN_EMAIL: ${adminEmail}, falling back to role-based lookup`);
     }
+
+    // Fallback: find first user with ADMIN role
+    admin = await User.findOne({ role: SystemRoles.ADMIN }, '_id').lean().exec();
+    if (!admin) {
+      throw new Error('Admin user not found by ADMIN_EMAIL or ADMIN role');
+    }
+    logger.info(`[MCP ADMIN] Admin user resolved by role: ${admin._id.toString()}`);
     return admin._id.toString();
   } catch (error) {
     logger.error('[MCP] Error getting admin ID:', error);
@@ -846,6 +862,7 @@ async function getServerConnectionStatus(
 module.exports = {
   createMCPTool,
   createMCPTools,
+  getAdminId,
   getMCPSetupData,
   getMCPServersWithAdmins,
   getServerConfigWithAdminFallback,
