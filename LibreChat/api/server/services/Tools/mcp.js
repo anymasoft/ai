@@ -47,8 +47,15 @@ async function reinitMCPServer({
 
     // Get server config to determine ownerId (admin's userId if server is admin-created)
     const serverConfig = await getServerConfigWithAdminFallback(serverName, user?.id);
-    const ownerId = serverConfig?.userId || user?.id;
 
+    if (!serverConfig) {
+      logger.error(`[MCP EXECUTION FIX] CRITICAL: No server config found for ${serverName} (userId=${user?.id})`);
+      throw new Error(`Configuration for server "${serverName}" not found`);
+    }
+
+    const ownerId = serverConfig.userId;  // ← ТОЛЬКО из config, БЕЗ fallback!
+
+    logger.info(`[MCP EXECUTION FIX] userId=${user?.id} ownerId=${ownerId}`);
     logger.info(`[MCP AUDIT] Step 4 - Tool Execution for serverName=${serverName}, userId=${user?.id}, ownerId=${ownerId}`);
 
     const mcpManager = getMCPManager(ownerId);
