@@ -547,11 +547,16 @@ async function loadToolDefinitionsWrapper({ req, res, agent, streamId = null, to
     const adminId = await getAdminId();
 
     logger.info(`[MCP TOOLS CACHE] getOrFetchMCPServerTools: server=${serverName} userId=${userId} adminId=${adminId}`);
+    logger.info(`[MCP DIAG] Fetching MCP tools for server: ${serverName}`);
 
     const cached = await getMCPServerTools(adminId, serverName);
     if (cached) {
+      logger.info(`[MCP DIAG] Found cached tools for ${serverName}: ${Object.keys(cached).length} tools`);
+      logger.info(`[MCP DIAG] Cached tool names: ${Object.keys(cached).slice(0, 5).join(', ')}${Object.keys(cached).length > 5 ? '...' : ''}`);
       return cached;
     }
+
+    logger.info(`[MCP DIAG] No cached tools for ${serverName}, reinitializing...`);
 
     const oauthStart = async () => {
       pendingOAuthServers.add(serverName);
@@ -564,6 +569,12 @@ async function loadToolDefinitionsWrapper({ req, res, agent, streamId = null, to
       serverName,
       userMCPAuthMap,
     });
+
+    if (result?.availableTools) {
+      logger.info(`[MCP DIAG] reinitMCPServer returned ${Object.keys(result.availableTools).length} tools`);
+    } else {
+      logger.warn(`[MCP DIAG] reinitMCPServer returned no tools`);
+    }
 
     return result?.availableTools || null;
   };

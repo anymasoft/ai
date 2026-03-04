@@ -560,20 +560,30 @@ function createToolInstance({
       const flowManager = getFlowStateManager(flowsCache);
       derivedSignal = config?.signal ? AbortSignal.any([config.signal]) : undefined;
 
+      // ДИАГНОСТИКА: ШАГ 4 - Tool Execution
+      logger.info(`[MCP DIAG] ===== Tool execution requested: ${serverName}.${toolName}`);
+      logger.info(`[MCP DIAG] userId: ${userId}, toolArguments: ${JSON.stringify(toolArguments).substring(0, 100)}`);
+
       // Verify server config exists
       const execServerConfig = serverConfig ?? (await getServerConfigWithAdminFallback(serverName, userId));
 
       if (!execServerConfig) {
         logger.error(`[MCP EXECUTION] CRITICAL: No server config found for ${serverName} (userId=${userId})`);
+        logger.error(`[MCP DIAG] Server config lookup failed for ${serverName}`);
         throw new Error(`Configuration for server "${serverName}" not found`);
       }
 
+      logger.info(`[MCP DIAG] Server config found for ${serverName}`);
+
       // All MCP tools execute through admin's MCP manager
       const adminId = await getAdminId();
+      logger.info(`[MCP DIAG] Admin ID resolved: ${adminId}`);
 
       logger.info(`[MCP EXECUTION] user=${userId} executed via admin MCP for tool=${serverName}.${toolName}`);
+      logger.info(`[MCP DIAG] MCPManager will be created for adminId: ${adminId}`);
 
       const mcpManager = getMCPManager(adminId);
+      logger.info(`[MCP DIAG] MCPManager created successfully`);
       const provider = (config?.metadata?.provider || _provider)?.toLowerCase();
 
       const { args: _args, stepId, ...toolCall } = config.toolCall ?? {};

@@ -67,13 +67,18 @@ const getMCPTools = async (req, res) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
+    // ДИАГНОСТИКА: ШАГ 1 - Точка входа
+    logger.info(`[MCP DIAG] ===== getMCPTools called for user: ${userId}`);
+
     // Get user-specific server configs + admin-created servers
     const mcpConfig = await getMCPServersWithAdmins(userId);
     const configuredServers = mcpConfig ? Object.keys(mcpConfig) : [];
 
     logger.info(`[MCP AUDIT] getMCPTools: userId=${userId}, configured servers: ${configuredServers.join(', ')}`);
+    logger.info(`[MCP DIAG] MCP servers configured: ${JSON.stringify(configuredServers)}`);
 
     if (!mcpConfig || Object.keys(mcpConfig).length == 0) {
+      logger.warn(`[MCP DIAG] No MCP servers configured for user ${userId}`);
       return res.status(200).json({ servers: {} });
     }
 
@@ -82,6 +87,7 @@ const getMCPTools = async (req, res) => {
     // All MCP tools execute through admin's MCP manager
     const adminId = await getAdminId();
     logger.info(`[MCP AUDIT] getMCPTools: using adminId=${adminId}`);
+    logger.info(`[MCP DIAG] Admin resolved: ${adminId}`);
 
     const cachePromises = configuredServers.map((serverName) => {
       return getMCPServerTools(adminId, serverName).then((tools) => ({ serverName, tools }));
@@ -90,7 +96,12 @@ const getMCPTools = async (req, res) => {
 
     const serverToolsMap = new Map();
     for (const { serverName, tools } of cacheResults) {
+      // ДИАГНОСТИКА: ШАГ 2 - Обработка cached tools
+      logger.info(`[MCP DIAG] Processing server: ${serverName}`);
+
       if (tools) {
+        logger.info(`[MCP DIAG] Found cached tools for ${serverName}: ${Object.keys(tools).length} tools`);
+        logger.info(`[MCP DIAG] Tool names: ${Object.keys(tools).slice(0, 5).join(', ')}${Object.keys(tools).length > 5 ? '...' : ''}`);
         serverToolsMap.set(serverName, tools);
         continue;
       }
@@ -99,13 +110,23 @@ const getMCPTools = async (req, res) => {
       try {
         const mcpManager = getMCPManager(adminId);
         logger.info(`[MCP AUDIT] getMCPManager initialized with adminId=${adminId} for server=${serverName}`);
+        logger.info(`[MCP DIAG] Discovering tools from server: ${serverName}`);
+
         serverTools = await mcpManager.getServerToolFunctions(userId, serverName);
+
+        if (serverTools) {
+          const toolNames = Object.keys(serverTools);
+          logger.info(`[MCP DIAG] Tools discovered from server ${serverName}: ${toolNames.length} tools`);
+          logger.info(`[MCP DIAG] Tool list: ${toolNames.join(', ')}`);
+        }
       } catch (error) {
         logger.error(`[getMCPTools] Error fetching tools for server ${serverName}:`, error);
+        logger.error(`[MCP DIAG] Failed to fetch tools for ${serverName}`);
         continue;
       }
       if (!serverTools) {
         logger.debug(`[getMCPTools] No tools found for server ${serverName}`);
+        logger.warn(`[MCP DIAG] serverTools is null/undefined for ${serverName}`);
         continue;
       }
       serverToolsMap.set(serverName, serverTools);
@@ -151,28 +172,43 @@ const getMCPTools = async (req, res) => {
 
         // Process tools efficiently - no need for convertMCPToolToPlugin
         if (serverTools) {
+          logger.info(`[MCP DIAG] Processing ${Object.keys(serverTools).length} tools from server ${serverName}`);
+
           for (const [toolKey, toolData] of Object.entries(serverTools)) {
             if (!toolData.function || !toolKey.includes(Constants.mcp_delimiter)) {
+              logger.debug(`[MCP DIAG] Skipping tool: ${toolKey} (missing function or delimiter)`);
               continue;
             }
 
             const toolName = toolKey.split(Constants.mcp_delimiter)[0];
+            logger.info(`[MCP DIAG] Adding tool: ${toolName} (key: ${toolKey})`);
+
             server.tools.push({
               name: toolName,
               pluginKey: toolKey,
               description: toolData.function.description || '',
             });
           }
+          logger.info(`[MCP DIAG] Server ${serverName} has ${server.tools.length} tools after processing`);
+        } else {
+          logger.warn(`[MCP DIAG] No serverTools found for ${serverName}`);
         }
 
         // Only add server if it has tools or is configured
         if (server.tools.length > 0 || serverConfig) {
           mcpServers[serverName] = server;
+          logger.info(`[MCP DIAG] Added server ${serverName} with ${server.tools.length} tools`);
         }
       } catch (error) {
         logger.error(`[getMCPTools] Error loading tools for server ${serverName}:`, error);
+        logger.error(`[MCP DIAG] Exception processing server ${serverName}`);
       }
     }
+
+    // ДИАГНОСТИКА: ШАГ 3 - Результат перед возвратом
+    const allTools = Object.values(mcpServers).flatMap(s => s.tools);
+    logger.info(`[MCP DIAG] ===== getMCPTools completed. Total servers: ${Object.keys(mcpServers).length}, Total tools: ${allTools.length}`);
+    logger.info(`[MCP DIAG] All tool names: ${allTools.map(t => t.name).join(', ')}`);
 
     res.status(200).json({ servers: mcpServers });
   } catch (error) {
