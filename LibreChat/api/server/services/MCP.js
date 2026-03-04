@@ -312,7 +312,8 @@ async function getServerConfigWithAdminFallback(serverName, userId) {
 
     if (serverConfig) {
       logger.info(`[MCP] Found user server config for ${serverName} (userId=${userId})`);
-      return serverConfig;
+      logger.info(`[MCP CONFIG] server=${serverName} ownerId=${userId}`);
+      return { ...serverConfig, userId };
     }
 
     logger.info(`[MCP] User config not found for ${serverName}, checking admin configs...`);
@@ -329,8 +330,10 @@ async function getServerConfigWithAdminFallback(serverName, userId) {
     for (const admin of admins) {
       serverConfig = await getMCPServersRegistry().getServerConfig(serverName, admin._id.toString());
       if (serverConfig) {
-        logger.info(`[MCP] Found admin server config for ${serverName} (adminId=${admin._id})`);
-        return serverConfig;
+        const adminId = admin._id.toString();
+        logger.info(`[MCP] Found admin server config for ${serverName} (adminId=${adminId})`);
+        logger.info(`[MCP CONFIG] server=${serverName} ownerId=${adminId}`);
+        return { ...serverConfig, userId: adminId };
       }
     }
 
