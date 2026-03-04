@@ -86,7 +86,6 @@ const getMCPTools = async (req, res) => {
       const ownerId = rawServerConfig?.userId || userId;
       serverOwnerMap.set(serverName, ownerId);
     }
-    }
 
     const cachePromises = configuredServers.map((serverName) => {
       const ownerId = serverOwnerMap.get(serverName);
