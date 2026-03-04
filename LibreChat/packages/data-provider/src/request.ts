@@ -84,6 +84,9 @@ const processQueue = (error: AxiosError | null, token: string | null = null) => 
 };
 
 if (typeof window !== 'undefined') {
+  // Enable credentials for all requests (cookies, auth headers)
+  axios.defaults.withCredentials = true;
+
   axios.interceptors.response.use(
     (response) => response,
     async (error) => {

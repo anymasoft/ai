@@ -186,6 +186,7 @@ function General() {
       try {
         const response = await fetch('/api/settings', {
           method: 'POST',
+          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
           },
