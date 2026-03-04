@@ -74,6 +74,9 @@ router.get('/allowed', requireJwtAuth, async (req, res) => {
 
     // ⚠️ НЕ КЭШИРУЕМ И НЕ ВОЗВРАЩАЕМ ПЛАН
     // План берётся из /api/user/subscription, а не отсюда!
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
     return res.json({
       ...modelsByEndpoint,
       models, // Плоский массив для фильтрации в компонентах

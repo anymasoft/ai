@@ -24,6 +24,7 @@ const Payment = require('~/models/Payment');
 const Subscription = require('~/models/Subscription');
 const Plan = require('~/models/Plan');
 const TokenPackage = require('~/models/TokenPackage');
+const { invalidatePlanCache } = require('../middleware/checkSubscription');
 
 const router = express.Router();
 const YUKASSA_API = 'https://api.yookassa.ru/v3';
@@ -158,6 +159,19 @@ async function applySuccessfulPayment(externalPaymentId) {
       `plan=${planPurchased || '—'} +${creditsNum} TC newBalance=${updatedBalance.tokenCredits}`,
     );
 
+    // 🔄 ВАЖНО: Инвалидируем кеш плана в памяти для SSOT архитектуры
+    if (type === 'subscription' && planPurchased) {
+      if (typeof invalidatePlanCache === 'function') {
+        try {
+          await invalidatePlanCache(userId);
+          logger.debug(`[payment/apply] Plan cache invalidated for userId=${userId}`);
+        } catch (cacheErr) {
+          logger.warn(`[payment/apply] Cache invalidation failed:`, cacheErr);
+          // Не прерываем обработку платежа из-за ошибки кеша
+        }
+      }
+    }
+
     return {
       ok: true,
       alreadyDone: false,
@@ -165,6 +179,7 @@ async function applySuccessfulPayment(externalPaymentId) {
       newBalance: updatedBalance.tokenCredits,
       plan: planPurchased,
       planExpiresAt: subscription?.planExpiresAt || null,
+      cacheInvalidated: type === 'subscription' && planPurchased,
     };
   } catch (err) {
     // ОШИБКА → ОТКАТЫВАЕМ ВСЮ ТРАНЗАКЦИЮ
@@ -298,6 +313,11 @@ router.get('/check', requireJwtAuth, async (req, res) => {
     const pending = paymentId
       ? await Payment.findOne({ externalPaymentId: paymentId, userId, status: 'pending' }).lean()
       : await Payment.findOne({ userId, status: 'pending' }, null, { sort: { createdAt: -1 } }).lean();
+
+    // 🔄 ВАЖНО: НЕ КЭШИРУЕМ ответ проверки платежа (может измениться на следующий запрос)
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
 
     if (!pending) {
       // Вебхук мог уже зачислить платёж — ищем недавно успешный (последние 30 минут)

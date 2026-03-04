@@ -121,12 +121,12 @@ export default function Pricing() {
     })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (d?.tokenCredits != null) {
-          // ✅ SSOT: план берётся из subscription hook, не из /api/balance
+        if (d?.tokenCredits != null && subscription?.planId) {
+          // ✅ SSOT: план берётся ТОЛЬКО из subscription hook, не из /api/balance
           setBalance({
             tokenCredits: d.tokenCredits,
-            plan: subscription?.planId || 'free',
-            planExpiresAt: subscription?.expiresAt || null,
+            plan: subscription.planId,
+            planExpiresAt: subscription.expiresAt,
           });
           queryClient.invalidateQueries([QueryKeys.balance]);
         }
@@ -139,6 +139,17 @@ export default function Pricing() {
     fetchAllModels();
     fetchBalance();
   }, [token, subscription]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 🔄 При успешном платеже инвалидируем кеш подписки для SSOT
+  useEffect(() => {
+    if (paymentCheck?.status === 'ok') {
+      // Инвалидируем кеш подписки для пересчёта данных в реальном времени
+      queryClient.invalidateQueries({ queryKey: ['subscription'] });
+      // Очищаем статус платежа через 3 секунды
+      const timer = setTimeout(() => setPaymentCheck(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [paymentCheck?.status, queryClient]);
 
   // Fallback-поллинг для localhost: ONE-TIME check после редиректа с ?payment=success
   useEffect(() => {
@@ -167,6 +178,10 @@ export default function Pricing() {
               ? `Подписка активирована. Зачислено ${credits} токенов`
               : `Токены зачислены: +${credits}`;
           setPaymentCheck({ status: 'ok', message: successMsg });
+          // 🔄 Инвалидируем кеш подписки если платеж успешен и кеш был инвалидирован на backend
+          if (data.cacheInvalidated) {
+            queryClient.invalidateQueries({ queryKey: ['subscription'] });
+          }
           fetchBalance();
         } else if (data.status === 'not_found') {
           setPaymentCheck(null);
@@ -210,7 +225,8 @@ export default function Pricing() {
     [allModels],
   );
 
-  const currentPlan = balance?.plan || 'free';
+  // ✅ SSOT: используем ТОЛЬКО данные из subscription hook, без fallback
+  const currentPlan = subscription?.planId ?? 'free';
   const currentPlanStyle = PLAN_STYLE[currentPlan] ?? PLAN_STYLE.free;
   const credits = balance?.tokenCredits ?? 0;
   const msgEstimate = creditsToMessages(credits);
@@ -225,8 +241,9 @@ export default function Pricing() {
   );
   const isZeroBalance = credits <= 0 && currentPlan !== 'free';
 
-  const planExpiresAt = balance?.planExpiresAt
-    ? new Date(balance.planExpiresAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
+  // ✅ SSOT: используем ТОЛЬКО данные из subscription hook
+  const planExpiresAt = subscription?.expiresAt
+    ? new Date(subscription.expiresAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
     : null;
 
   return (

@@ -24,6 +24,9 @@ async function balanceController(req, res) {
 
   // ⚠️ АРХИТЕКТУРА SSOT: План больше НЕ возвращается отсюда!
   // План берётся из /api/user/subscription, а не из /api/balance!
+  res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
   res.status(200).json(balanceData);
 }
 
