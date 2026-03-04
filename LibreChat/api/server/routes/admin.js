@@ -325,6 +325,13 @@ router.get('/plans', requireJwtAuth, requireAdminRole, async (req, res) => {
  */
 router.patch('/plans/:planId', requireJwtAuth, requireAdminRole, async (req, res) => {
   try {
+    // 🔍 ДИАГНОСТИКА: Логируем информацию о пользователе и auth
+    console.log('[DIAGNOSTIC] PATCH /api/admin/mvp/plans/:planId');
+    console.log('[DIAGNOSTIC] req.user:', JSON.stringify(req.user, null, 2));
+    console.log('[DIAGNOSTIC] req.user?.role:', req.user?.role);
+    console.log('[DIAGNOSTIC] req.user?.role === "ADMIN":', req.user?.role === 'ADMIN');
+    console.log('[DIAGNOSTIC] Authorization header:', req.headers.authorization?.substring(0, 50) + '...');
+
     const { planId } = req.params;
     if (!['free', 'pro', 'business'].includes(planId)) {
       return res.status(400).json({ error: 'Недопустимый planId' });
