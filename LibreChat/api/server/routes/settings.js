@@ -4,7 +4,8 @@ const {
   updateFavoritesController,
   getFavoritesController,
 } = require('~/server/controllers/FavoritesController');
-const { requireJwtAuth, requireAdmin } = require('~/server/middleware');
+const { requireJwtAuth } = require('~/server/middleware');
+const requireAdminRole = require('~/server/middleware/requireAdminRole');
 const SystemSettings = require('~/models/SystemSettings');
 const { getLogStores } = require('~/cache');
 const { CacheKeys } = require('librechat-data-provider');
@@ -20,7 +21,7 @@ router.post('/favorites', requireJwtAuth, updateFavoritesController);
  * Supports:
  * - hideSidePanel: boolean
  */
-router.post('/', requireJwtAuth, requireAdmin, async (req, res) => {
+router.post('/', requireJwtAuth, requireAdminRole, async (req, res) => {
   try {
     const { hideSidePanel } = req.body;
 
