@@ -43,12 +43,18 @@ export function EndpointModelItem({ modelId, endpoint, isSelected }: EndpointMod
   let modelName = modelId;
   const avatarUrl = endpoint?.modelIcons?.[modelId ?? ''] || null;
 
+  // ✅ Получить displayName из моделей endpoint'а (если доступно)
+  const modelInfo = endpoint?.models?.find((m) => m.name === modelId);
+  if (modelInfo?.label) {
+    modelName = modelInfo.label;
+  }
+
   // Use custom names if available
   if (endpoint && modelId && isAgentsEndpoint(endpoint.value) && endpoint.agentNames?.[modelId]) {
     modelName = endpoint.agentNames[modelId];
 
-    const modelInfo = endpoint?.models?.find((m) => m.name === modelId);
-    isGlobal = modelInfo?.isGlobal ?? false;
+    const agentInfo = endpoint?.models?.find((m) => m.name === modelId);
+    isGlobal = agentInfo?.isGlobal ?? false;
   } else if (
     endpoint &&
     modelId &&

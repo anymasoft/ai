@@ -306,7 +306,9 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
         return endpoint.assistantNames?.[model] ?? model;
       }
 
-      return model;
+      // ✅ Для обычных моделей, получить label (displayName) из endpoint.models
+      const modelInfo = endpoint.models?.find((m) => m.name === model);
+      return modelInfo?.label ?? model;
     },
     [agentsMap],
   );

@@ -143,13 +143,19 @@ export function SearchResults({ results, localize, searchValue }: SearchResultsP
 
                   let isGlobal = false;
                   let modelName = modelId;
+
+                  // ✅ Получить displayName из моделей endpoint'а (если доступно)
+                  const modelInfo = endpoint?.models?.find((m) => m.name === modelId);
+                  if (modelInfo?.label) {
+                    modelName = modelInfo.label;
+                  }
+
                   if (
                     isAgentsEndpoint(endpoint.value) &&
                     endpoint.agentNames &&
                     endpoint.agentNames[modelId]
                   ) {
                     modelName = endpoint.agentNames[modelId];
-                    const modelInfo = endpoint?.models?.find((m) => m.name === modelId);
                     isGlobal = modelInfo?.isGlobal ?? false;
                   } else if (
                     isAssistantsEndpoint(endpoint.value) &&
