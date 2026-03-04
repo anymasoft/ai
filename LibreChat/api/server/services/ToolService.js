@@ -1160,8 +1160,15 @@ async function loadToolsForExecution({
   const isToolSearch = toolNames.includes(AgentConstants.TOOL_SEARCH);
   const isPTC = toolNames.includes(AgentConstants.PROGRAMMATIC_TOOL_CALLING);
 
-  logger.debug(
-    `[loadToolsForExecution] isToolSearch: ${isToolSearch}, toolRegistry: ${toolRegistry?.size ?? 'undefined'}`,
+  logger.info(
+    `[loadToolsForExecution] START - isToolSearch: ${isToolSearch}, toolRegistry size: ${toolRegistry?.size ?? 'undefined'}`,
+  );
+  logger.info(
+    `[MCP DIAG] Registry tools available:`,
+    toolRegistry ? Array.from(toolRegistry.keys()).join(', ') : 'NO REGISTRY'
+  );
+  logger.info(
+    `[MCP DIAG] Tools requested: ${toolNames.join(', ')}`,
   );
 
   if (isToolSearch && toolRegistry) {
@@ -1213,12 +1220,18 @@ async function loadToolsForExecution({
   const actionToolNames = allToolNamesToLoad.filter((name) => name.includes(actionDelimiter));
   const regularToolNames = allToolNamesToLoad.filter((name) => !name.includes(actionDelimiter));
 
+  logger.info(
+    `[MCP DIAG] Loading tools - regularTools: ${regularToolNames.join(', ')}, actionTools: ${actionToolNames.join(', ')}`,
+  );
+
   /** @type {Record<string, unknown>} */
   if (regularToolNames.length > 0) {
     const includesWebSearch = regularToolNames.includes(Tools.web_search);
     const webSearchCallbacks = includesWebSearch ? createOnSearchResults(res, streamId) : undefined;
 
-    const { loadedTools } = await loadTools({
+    logger.info(`[MCP DIAG] Calling loadTools for tools: ${regularToolNames.join(', ')}`);
+
+    const { loadedTools, toolRegistry: returnedRegistry } = await loadTools({
       agent,
       signal,
       userMCPAuthMap,
@@ -1238,6 +1251,13 @@ async function loadToolsForExecution({
       fileStrategy: appConfig?.fileStrategy,
       imageOutputType: appConfig?.imageOutputType,
     });
+
+    logger.info(`[MCP DIAG] loadTools returned ${loadedTools?.length ?? 0} tools`);
+    if (returnedRegistry) {
+      logger.info(
+        `[MCP DIAG] loadTools returned registry with: ${Array.from(returnedRegistry.keys()).join(', ')}`,
+      );
+    }
 
     if (loadedTools) {
       allLoadedTools.push(...loadedTools);
