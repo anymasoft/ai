@@ -454,7 +454,13 @@ router.patch('/plans/:planId', requireJwtAuth, requireAdminRole, async (req, res
     const updated = await Plan.findOneAndUpdate({ planId }, update, { new: true }).lean();
     if (!updated) return res.status(404).json({ error: 'Тариф не найден' });
 
-    invalidatePlanCache(); // Немедленно применяем изменение allowedModels
+    // 🔍 ПРОВЕРКА: Убедиться что invalidatePlanCache это функция
+    console.log('[DIAGNOSTIC] invalidatePlanCache type:', typeof invalidatePlanCache);
+    if (typeof invalidatePlanCache !== 'function') {
+      console.error('[ERROR] invalidatePlanCache is not a function!', { invalidatePlanCache });
+      throw new Error('invalidatePlanCache is not properly exported from checkSubscription middleware');
+    }
+    invalidatePlanCache(); // Немедленно применяем изменение allowedModels (no-op in SSOT)
 
     logger.info(`[admin/plans] ${req.user.email} обновил тариф "${planId}": ${JSON.stringify(update)}`);
     res.json({ ok: true, plan: updated });

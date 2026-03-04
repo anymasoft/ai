@@ -160,4 +160,17 @@ async function checkSubscription(req, res, next) {
   }
 }
 
+/**
+ * ✅ SSOT АРХИТЕКТУРА: В-memory TTL кэши удалены.
+ * Каждый запрос читает ПРЯМО из MongoDB (~1ms).
+ * invalidatePlanCache() теперь это no-op (ничего не делает).
+ * Оставлена для обратной совместимости с вызовами в admin.js.
+ */
+function invalidatePlanCache() {
+  console.log('[PLAN CACHE] Invalidate called (no-op in SSOT architecture)');
+  // No-op: в SSOT нет in-memory кэша для инвалидации
+  // Каждый запрос читает свежие данные из БД
+}
+
 module.exports = checkSubscription;
+module.exports.invalidatePlanCache = invalidatePlanCache;
