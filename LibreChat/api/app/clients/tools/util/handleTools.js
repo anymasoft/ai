@@ -41,7 +41,7 @@ const {
 const { primeFiles: primeCodeFiles } = require('~/server/services/Files/Code/process');
 const { createFileSearchTool, primeFiles: primeSearchFiles } = require('./fileSearch');
 const { getUserPluginAuthValue } = require('~/server/services/PluginService');
-const { createMCPTool, createMCPTools, getServerConfigWithAdminFallback } = require('~/server/services/MCP');
+const { createMCPTool, createMCPTools } = require('~/server/services/MCP');
 const { loadAuthValues } = require('~/server/services/Tools/credentials');
 const { getMCPServerTools } = require('~/server/services/Config');
 const { getRoleByName } = require('~/models/Role');
@@ -339,8 +339,8 @@ const loadTools = async ({
         /** Placeholder used for UI purposes */
         continue;
       }
-      let serverConfig = serverName
-        ? await getServerConfigWithAdminFallback(serverName, user)
+      const serverConfig = serverName
+        ? await getMCPServersRegistry().getServerConfig(serverName, user)
         : null;
       if (!serverConfig) {
         logger.warn(
@@ -348,7 +348,6 @@ const loadTools = async ({
         );
         continue;
       }
-      logger.info(`[MCP DIAG] Using MCP server config owner: ${serverConfig.userId}`);
       if (toolName === Constants.mcp_all) {
         requestedMCPTools[serverName] = [
           {
@@ -445,9 +444,7 @@ const loadTools = async ({
         }
         if (!availableTools) {
           try {
-            const serverConfig = await getServerConfigWithAdminFallback(serverName, safeUser.id);
-            const ownerId = serverConfig?.userId || safeUser.id;
-            availableTools = await getMCPServerTools(ownerId, serverName);
+            availableTools = await getMCPServerTools(safeUser.id, serverName);
           } catch (error) {
             logger.error(`Error fetching available tools for MCP server ${serverName}:`, error);
           }

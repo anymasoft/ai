@@ -3,7 +3,6 @@ const { CacheKeys, Constants } = require('librechat-data-provider');
 const { findToken, createToken, updateToken, deleteTokens } = require('~/models');
 const { updateMCPServerTools } = require('~/server/services/Config');
 const { getMCPManager, getFlowStateManager } = require('~/config');
-const { getServerConfigWithAdminFallback, getAdminId } = require('~/server/services/MCP');
 const { getLogStores } = require('~/cache');
 
 /**
@@ -44,25 +43,7 @@ async function reinitMCPServer({
   try {
     const customUserVars = userMCPAuthMap?.[`${Constants.mcp_prefix}${serverName}`];
     const flowManager = _flowManager ?? getFlowStateManager(getLogStores(CacheKeys.FLOWS));
-
-    // Verify server config exists
-    const serverConfig = await getServerConfigWithAdminFallback(serverName, user?.id);
-
-    if (!serverConfig) {
-      logger.error(`[MCP EXECUTION] CRITICAL: No server config found for ${serverName} (userId=${user?.id})`);
-      throw new Error(`Configuration for server "${serverName}" not found`);
-    }
-
-    // All MCP tools execute through admin's MCP manager
-    const adminId = await getAdminId();
-
-    logger.info(`[MCP EXECUTION] user=${user?.id} executed via admin MCP for server=${serverName}`);
-    logger.info(`[MCP AUDIT] Step 4 - Tool Execution for serverName=${serverName}, userId=${user?.id}, adminId=${adminId}`);
-
-    const mcpManager = getMCPManager(adminId);
-
-    logger.info(`[MCP AUDIT] MCPManager initialized with adminId=${adminId}: ${!!mcpManager}`);
-
+    const mcpManager = getMCPManager();
     const tokenMethods = { findToken, updateToken, createToken, deleteTokens };
 
     const oauthStart =
@@ -74,14 +55,10 @@ async function reinitMCPServer({
       });
 
     try {
-      logger.info(`[MCP CONNECTION] server=${serverName} adminId=${adminId} user=${user?.id}`);
-      logger.info(`[MCP DIAG] Attempting getConnection for server: ${serverName}`);
-
       connection = await mcpManager.getConnection({
         user,
         signal,
         forceNew,
-        ownerId: adminId,
         oauthStart,
         serverName,
         flowManager,
@@ -92,7 +69,6 @@ async function reinitMCPServer({
       });
 
       logger.info(`[MCP Reinitialize] Successfully established connection for ${serverName}`);
-      logger.info(`[MCP DIAG] Connection established successfully for ${serverName}`);
     } catch (err) {
       logger.info(`[MCP Reinitialize] getConnection threw error: ${err.message}`);
       logger.info(
@@ -113,12 +89,9 @@ async function reinitMCPServer({
         oauthRequired = true;
 
         try {
-          logger.info(`[MCP DIAG] Attempting discoverServerTools for ${serverName}`);
-
           const discoveryResult = await mcpManager.discoverServerTools({
             user,
             signal,
-            ownerId: adminId,
             serverName,
             flowManager,
             tokenMethods,
@@ -132,15 +105,11 @@ async function reinitMCPServer({
             logger.info(
               `[MCP Reinitialize] Discovered ${tools.length} tools for ${serverName} without full auth`,
             );
-            logger.info(`[MCP DIAG] Tools discovered: ${tools.map(t => t.name || t).join(', ')}`);
-          } else {
-            logger.warn(`[MCP DIAG] No tools discovered from ${serverName}`);
           }
         } catch (discoveryErr) {
           logger.debug(
             `[MCP Reinitialize] Tool discovery failed for ${serverName}: ${discoveryErr?.message ?? String(discoveryErr)}`,
           );
-          logger.error(`[MCP DIAG] discoverServerTools error for ${serverName}:`, discoveryErr);
         }
       } else {
         logger.error(
@@ -156,7 +125,7 @@ async function reinitMCPServer({
 
     if (tools && tools.length > 0) {
       availableTools = await updateMCPServerTools({
-        ownerId: adminId,
+        userId: user.id,
         serverName,
         tools,
       });

@@ -11,16 +11,9 @@ const {
   isMCPInspectionFailedError,
   MCPErrorCodes,
 } = require('@librechat/api');
-const { Constants, MCPServerUserInputSchema, SystemRoles } = require('librechat-data-provider');
+const { Constants, MCPServerUserInputSchema } = require('librechat-data-provider');
 const { cacheMCPServerTools, getMCPServerTools } = require('~/server/services/Config');
 const { getMCPManager, getMCPServersRegistry } = require('~/config');
-const {
-  getMCPServersWithAdmins,
-  getServerConfigWithAdminFallback,
-  getAdminId,
-} = require('../services/MCP');
-const { reinitMCPServer } = require('../services/Tools/mcp');
-const { User } = require('~/db/models');
 
 /**
  * Handles MCP-specific errors and sends appropriate HTTP responses.
@@ -62,7 +55,7 @@ function handleMCPError(error, res) {
 }
 
 /**
- * Get all MCP tools available to the user (user-specific + admin-created global)
+ * Get all MCP tools available to the user
  */
 const getMCPTools = async (req, res) => {
   try {
@@ -72,95 +65,44 @@ const getMCPTools = async (req, res) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    // ДИАГНОСТИКА: ШАГ 1 - Точка входа
-    logger.info(`[MCP DIAG] ===== getMCPTools called for user: ${userId}`);
-
-    // Get user-specific server configs + admin-created servers
-    const mcpConfig = await getMCPServersWithAdmins(userId);
+    const mcpConfig = await getMCPServersRegistry().getAllServerConfigs(userId);
     const configuredServers = mcpConfig ? Object.keys(mcpConfig) : [];
 
-    logger.info(`[MCP AUDIT] getMCPTools: userId=${userId}, configured servers: ${configuredServers.join(', ')}`);
-    logger.info(`[MCP DIAG] MCP servers configured: ${JSON.stringify(configuredServers)}`);
-
     if (!mcpConfig || Object.keys(mcpConfig).length == 0) {
-      logger.warn(`[MCP DIAG] No MCP servers configured for user ${userId}`);
       return res.status(200).json({ servers: {} });
     }
 
+    const mcpManager = getMCPManager();
     const mcpServers = {};
 
-    // All MCP tools execute through admin's MCP manager
-    const adminId = await getAdminId();
-    logger.info(`[MCP AUDIT] getMCPTools: using adminId=${adminId}`);
-    logger.info(`[MCP DIAG] Admin resolved: ${adminId}`);
-
-    const cachePromises = configuredServers.map((serverName) => {
-      return getMCPServerTools(adminId, serverName).then((tools) => ({ serverName, tools }));
-    });
+    const cachePromises = configuredServers.map((serverName) =>
+      getMCPServerTools(userId, serverName).then((tools) => ({ serverName, tools })),
+    );
     const cacheResults = await Promise.all(cachePromises);
 
     const serverToolsMap = new Map();
     for (const { serverName, tools } of cacheResults) {
-      // ДИАГНОСТИКА: ШАГ 2 - Обработка cached tools
-      logger.info(`[MCP DIAG] Processing server: ${serverName}`);
-
       if (tools) {
-        logger.info(`[MCP DIAG] Found cached tools for ${serverName}: ${Object.keys(tools).length} tools`);
-        logger.info(`[MCP DIAG] Tool names: ${Object.keys(tools).slice(0, 5).join(', ')}${Object.keys(tools).length > 5 ? '...' : ''}`);
         serverToolsMap.set(serverName, tools);
         continue;
       }
 
       let serverTools;
       try {
-        const mcpManager = getMCPManager(adminId);
-        logger.info(`[MCP AUDIT] getMCPManager initialized with adminId=${adminId} for server=${serverName}`);
-        logger.info(`[MCP DIAG] Discovering tools from server: ${serverName}`);
-
         serverTools = await mcpManager.getServerToolFunctions(userId, serverName);
-
-        if (serverTools) {
-          const toolNames = Object.keys(serverTools);
-          logger.info(`[MCP DIAG] Tools discovered from server ${serverName}: ${toolNames.length} tools`);
-          logger.info(`[MCP DIAG] Tool list: ${toolNames.join(', ')}`);
-        } else {
-          // Fallback: если tools не найдены напрямую, использовать reinitMCPServer
-          logger.info(
-            `[MCP DIAG] getServerToolFunctions returned no tools for ${serverName}, attempting reinitMCPServer...`,
-          );
-          logger.info(`[MCP DIAG] Calling reinitMCPServer for ${serverName}`);
-
-          const reinitResult = await reinitMCPServer({
-            user: req.user,
-            serverName,
-            userMCPAuthMap: req.user?.mcp_auth_map || {},
-          });
-
-          if (reinitResult?.availableTools) {
-            serverTools = reinitResult.availableTools;
-            logger.info(
-              `[MCP DIAG] After reinitMCPServer - obtained ${Object.keys(serverTools).length} tools for ${serverName}`,
-            );
-            logger.info(`[MCP DIAG] Tool list after reinit: ${Object.keys(serverTools).join(', ')}`);
-          } else {
-            logger.warn(`[MCP DIAG] reinitMCPServer also returned no tools for ${serverName}`);
-          }
-        }
       } catch (error) {
         logger.error(`[getMCPTools] Error fetching tools for server ${serverName}:`, error);
-        logger.error(`[MCP DIAG] Failed to fetch tools for ${serverName}`);
         continue;
       }
       if (!serverTools) {
         logger.debug(`[getMCPTools] No tools found for server ${serverName}`);
-        logger.warn(`[MCP DIAG] serverTools is null/undefined for ${serverName}`);
         continue;
       }
       serverToolsMap.set(serverName, serverTools);
 
       if (Object.keys(serverTools).length > 0) {
         // Cache asynchronously without blocking
-        cacheMCPServerTools({ ownerId: adminId, serverName, serverTools }).catch((err) =>
+        cacheMCPServerTools({ userId, serverName, serverTools }).catch((err) =>
           logger.error(`[getMCPTools] Failed to cache tools for ${serverName}:`, err),
         );
       }
@@ -173,7 +115,7 @@ const getMCPTools = async (req, res) => {
 
         // Get server config once
         const serverConfig = mcpConfig[serverName];
-        const rawServerConfig = await getServerConfigWithAdminFallback(serverName, userId);
+        const rawServerConfig = await getMCPServersRegistry().getServerConfig(serverName, userId);
 
         // Initialize server object with all server-level data
         const server = {
@@ -199,44 +141,28 @@ const getMCPTools = async (req, res) => {
 
         // Process tools efficiently - no need for convertMCPToolToPlugin
         if (serverTools) {
-          logger.info(`[MCP DIAG] Processing ${Object.keys(serverTools).length} tools from server ${serverName}`);
-
           for (const [toolKey, toolData] of Object.entries(serverTools)) {
             if (!toolData.function || !toolKey.includes(Constants.mcp_delimiter)) {
-              logger.debug(`[MCP DIAG] Skipping tool: ${toolKey} (missing function or delimiter)`);
               continue;
             }
 
-            // Use full tool name (e.g., tavily_search_mcp_tavily) instead of short name
-            const toolName = toolKey;
-            logger.info(`[MCP DIAG] Adding tool: ${toolName} (full key: ${toolKey})`);
-
+            const toolName = toolKey.split(Constants.mcp_delimiter)[0];
             server.tools.push({
-              name: toolName,  // Full name with mcp suffix
+              name: toolName,
               pluginKey: toolKey,
               description: toolData.function.description || '',
             });
           }
-          logger.info(`[MCP DIAG] Server ${serverName} has ${server.tools.length} tools after processing`);
-        } else {
-          logger.warn(`[MCP DIAG] No serverTools found for ${serverName}`);
         }
 
         // Only add server if it has tools or is configured
         if (server.tools.length > 0 || serverConfig) {
           mcpServers[serverName] = server;
-          logger.info(`[MCP DIAG] Added server ${serverName} with ${server.tools.length} tools`);
         }
       } catch (error) {
         logger.error(`[getMCPTools] Error loading tools for server ${serverName}:`, error);
-        logger.error(`[MCP DIAG] Exception processing server ${serverName}`);
       }
     }
-
-    // ДИАГНОСТИКА: ШАГ 3 - Результат перед возвратом
-    const allTools = Object.values(mcpServers).flatMap(s => s.tools);
-    logger.info(`[MCP DIAG] ===== getMCPTools completed. Total servers: ${Object.keys(mcpServers).length}, Total tools: ${allTools.length}`);
-    logger.info(`[MCP DIAG] All tool names: ${allTools.map(t => t.name).join(', ')}`);
 
     res.status(200).json({ servers: mcpServers });
   } catch (error) {
@@ -245,9 +171,8 @@ const getMCPTools = async (req, res) => {
   }
 };
 /**
- * Get all MCP servers (user-specific + admin-created global)
+ * Get all MCP servers with permissions
  * @route GET /api/mcp/servers
- * Returns both user's personal servers and admin-created servers
  */
 const getMCPServersList = async (req, res) => {
   try {
@@ -256,8 +181,8 @@ const getMCPServersList = async (req, res) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    // Get user-specific server configs + admin-created servers
-    const serverConfigs = await getMCPServersWithAdmins(userId);
+    // 2. Get all server configs from registry (YAML + DB)
+    const serverConfigs = await getMCPServersRegistry().getAllServerConfigs(userId);
 
     return res.json(serverConfigs);
   } catch (error) {
@@ -282,9 +207,6 @@ const createMCPServerController = async (req, res) => {
         errors: validation.error.errors,
       });
     }
-
-    // MCP servers are saved with user's userId
-    // Admin-created servers will be accessible to all users via getAllServerConfigs query
     const result = await getMCPServersRegistry().addServer(
       'temp_server_name',
       validation.data,
@@ -306,7 +228,7 @@ const createMCPServerController = async (req, res) => {
 };
 
 /**
- * Get MCP server by ID (user-specific or admin-created global)
+ * Get MCP server by ID
  */
 const getMCPServerById = async (req, res) => {
   try {
@@ -315,30 +237,7 @@ const getMCPServerById = async (req, res) => {
     if (!serverName) {
       return res.status(400).json({ message: 'Server name is required' });
     }
-
-    // Get user-specific server config
-    let parsedConfig = await getMCPServersRegistry().getServerConfig(serverName, userId);
-
-    // If not found in user's servers, check admin servers
-    if (!parsedConfig) {
-      try {
-        const admins = await User.find({ role: SystemRoles.ADMIN }, '_id').lean().exec();
-        if (admins && admins.length > 0) {
-          for (const admin of admins) {
-            const adminConfig = await getMCPServersRegistry().getServerConfig(
-              serverName,
-              admin._id.toString(),
-            );
-            if (adminConfig) {
-              parsedConfig = adminConfig;
-              break;
-            }
-          }
-        }
-      } catch (error) {
-        logger.debug('[getMCPServerById] Error checking admin servers:', error);
-      }
-    }
+    const parsedConfig = await getMCPServersRegistry().getServerConfig(serverName, userId);
 
     if (!parsedConfig) {
       return res.status(404).json({ message: 'MCP server not found' });
@@ -368,8 +267,6 @@ const updateMCPServerController = async (req, res) => {
         errors: validation.error.errors,
       });
     }
-
-    // MCP servers are updated with user's userId
     const parsedConfig = await getMCPServersRegistry().updateServer(
       serverName,
       validation.data,
@@ -396,8 +293,6 @@ const deleteMCPServerController = async (req, res) => {
   try {
     const userId = req.user?.id;
     const { serverName } = req.params;
-
-    // MCP servers are removed using user's userId
     await getMCPServersRegistry().removeServer(serverName, 'DB', userId);
     res.status(200).json({ message: 'MCP server deleted successfully' });
   } catch (error) {
