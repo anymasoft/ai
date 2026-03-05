@@ -23,13 +23,13 @@ const {
   isAssistantsEndpoint,
 } = require('librechat-data-provider');
 const {
+  getAdminId,
   getOAuthReconnectionManager,
   getMCPServersRegistry,
   getFlowStateManager,
   getMCPManager,
 } = require('~/config');
 const { findToken, createToken, updateToken } = require('~/models');
-const { User } = require('~/db/models');
 const { getGraphApiToken } = require('./GraphTokenService');
 const { reinitMCPServer } = require('./Tools/mcp');
 const { getAppConfig } = require('./Config');
@@ -502,35 +502,22 @@ function createToolInstance({
       const customUserVars =
         config?.configurable?.userMCPAuthMap?.[`${Constants.mcp_prefix}${serverName}`];
 
-      // Determine if user needs to execute via admin connection
-      let ownerId = undefined;
-      const currentUser = config?.configurable?.user;
-
-      if (currentUser?.id && currentUser?.role) {
-        // Check if user is NOT an admin (case-insensitive)
-        const isAdmin = /^admin$/i.test(currentUser.role);
-
-        if (!isAdmin) {
-          try {
-            // Find admin user for shared MCP execution
-            const admin = await User.findOne(
-              { role: { $regex: /^admin$/i } },
-              '_id'
-            ).lean().exec();
-
-            if (admin) {
-              ownerId = admin._id.toString();
-              logger.info(
-                `[MCP EXECUTION] user=${userId} executing via admin MCP connection server=${serverName}`,
-              );
-            }
-          } catch (err) {
-            logger.warn(
-              `[MCP EXECUTION] Failed to find admin user for shared execution: ${err.message}`,
-            );
-          }
-        }
+      // MVP: All MCP execution through admin connection (resolved at startup)
+      let adminId;
+      try {
+        adminId = getAdminId();
+      } catch (err) {
+        logger.error(`[MCP] Critical error getting admin ID: ${err.message}`);
+        throw new Error('MCP system not properly initialized. Admin user configuration missing.');
       }
+
+      if (!adminId) {
+        throw new Error('Admin ID is null. This should not happen.');
+      }
+
+      logger.info(
+        `[MCP EXECUTION] user=${userId} executing via admin connection`,
+      );
 
       const result = await mcpManager.callTool({
         serverName,
@@ -540,7 +527,9 @@ function createToolInstance({
         options: {
           signal: derivedSignal,
         },
-        user: config?.configurable?.user,
+        user: {
+          id: adminId,
+        },
         requestBody: config?.configurable?.requestBody,
         customUserVars,
         flowManager,
@@ -552,7 +541,6 @@ function createToolInstance({
         oauthStart,
         oauthEnd,
         graphTokenResolver: getGraphApiToken,
-        ownerId,
       });
 
       if (isAssistantsEndpoint(provider) && Array.isArray(result)) {

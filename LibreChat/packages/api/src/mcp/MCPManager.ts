@@ -249,7 +249,6 @@ Please follow these instructions when using tools from the respective MCP server
     oauthEnd,
     customUserVars,
     graphTokenResolver,
-    ownerId,
   }: {
     user?: IUser;
     serverName: string;
@@ -264,19 +263,11 @@ Please follow these instructions when using tools from the respective MCP server
     oauthStart?: (authURL: string) => Promise<void>;
     oauthEnd?: () => Promise<void>;
     graphTokenResolver?: GraphTokenResolver;
-    ownerId?: string;
   }): Promise<t.FormattedToolResponse> {
     /** User-specific connection */
     let connection: MCPConnection | undefined;
     const userId = user?.id;
     const logPrefix = userId ? `[MCP][User: ${userId}][${serverName}]` : `[MCP][${serverName}]`;
-
-    // Diagnostic: log if execution is via admin connection
-    if (userId && ownerId && ownerId !== userId) {
-      logger.debug(
-        `[MCP EXECUTION TRACE] callTool: user=${userId} executing via admin owner=${ownerId}`,
-      );
-    }
 
     try {
       if (userId && user) this.updateUserLastActivity(userId);
@@ -291,7 +282,6 @@ Please follow these instructions when using tools from the respective MCP server
         signal: options?.signal,
         customUserVars,
         requestBody,
-        ownerId,
       });
 
       if (!(await connection.isConnected())) {
@@ -302,10 +292,9 @@ Please follow these instructions when using tools from the respective MCP server
         );
       }
 
-      const configOwnerId = ownerId ?? userId;
       const rawConfig = (await MCPServersRegistry.getInstance().getServerConfig(
         serverName,
-        configOwnerId,
+        userId,
       )) as t.MCPOptions;
 
       // Pre-process Graph token placeholders (async) before sync processMCPEnv
