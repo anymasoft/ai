@@ -26,9 +26,14 @@ async function getAllMCPConfigs(userId) {
   const userConfig = await getMCPServersRegistry().getAllServerConfigs(userId);
 
   // Find admin user and get their server configs
-  const admin = await User.findOne({ role: 'admin' }, '_id').lean().exec();
+  // Use case-insensitive regex to handle 'admin', 'ADMIN', 'Admin', etc.
+  const admin = await User.findOne(
+    { role: { $regex: /^admin$/i } },
+    '_id'
+  ).lean().exec();
 
   if (!admin) {
+    logger.warn('[MCP SHARED] Admin user not found in database');
     return userConfig || {};
   }
 
@@ -37,11 +42,9 @@ async function getAllMCPConfigs(userId) {
   // Merge configs: user's own + admin's shared
   const combined = { ...userConfig, ...adminConfig };
 
-  if (adminConfig && Object.keys(adminConfig).length > 0) {
-    logger.info(
-      `[MCP SHARED] User ${userId} has access to ${Object.keys(adminConfig).length} admin servers`,
-    );
-  }
+  logger.info(
+    `[MCP SHARED] user=${userId} admin=${admin._id} adminServers=${Object.keys(adminConfig).length}`,
+  );
 
   return combined;
 }
