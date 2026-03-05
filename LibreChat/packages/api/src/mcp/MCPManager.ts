@@ -50,56 +50,66 @@ export class MCPManager extends UserConnectionManager {
     this.appConnections = new ConnectionsRepository(undefined);
   }
 
-  /** Retrieves an app-level or user-specific connection based on provided arguments */
+  /** Retrieves an app-level connection. For MVP, all connections use admin credentials. */
   public async getConnection(
     args: {
       serverName: string;
-      user?: IUser;
       forceNew?: boolean;
       flowManager?: FlowStateManager<MCPOAuthTokens | null>;
-      ownerId?: string;
     } & Omit<t.OAuthConnectionOptions, 'useOAuth' | 'user' | 'flowManager'>,
   ): Promise<MCPConnection> {
-    //the get method checks if the config is still valid as app level
+    if (!this.adminId) {
+      throw new McpError(
+        ErrorCode.InvalidRequest,
+        `MVP: Admin ID not set. Cannot establish MCP connection.`,
+      );
+    }
+
+    // Always use app-level connections for MVP architecture
     const existingAppConnection = await this.appConnections!.get(args.serverName);
     if (existingAppConnection) {
       return existingAppConnection;
-    } else if (args.user?.id) {
-      return this.getUserConnection(args as Parameters<typeof this.getUserConnection>[0]);
-    } else {
-      throw new McpError(
-        ErrorCode.InvalidRequest,
-        `No connection found for server ${args.serverName}`,
-      );
     }
+
+    throw new McpError(
+      ErrorCode.InvalidRequest,
+      `[MCP MVP] App connection not found for server ${args.serverName}. Only admin-configured servers are available.`,
+    );
   }
 
   /**
-   * Discovers tools from an MCP server, even when OAuth is required.
-   * Per MCP spec, tool listing should be possible without authentication.
-   * Use this for agent initialization to get tool schemas before OAuth flow.
+   * Discovers tools from an MCP server using admin credentials.
+   * For MVP: All tool discovery uses admin configuration.
    */
   public async discoverServerTools(args: t.ToolDiscoveryOptions): Promise<t.ToolDiscoveryResult> {
-    const { serverName, user, ownerId } = args;
-    const adminId = this.adminId || user?.id;
-    const logPrefix = adminId ? `[MCP][User: ${adminId}][${serverName}]` : `[MCP][${serverName}]`;
+    if (!this.adminId) {
+      throw new Error('[MCP MVP] Admin ID not initialized. Cannot discover tools.');
+    }
+
+    const { serverName, user, flowManager } = args;
+    const logPrefix = `[MCP MVP][Admin: ${this.adminId}][${serverName}]`;
+
+    logger.info(`${logPrefix} Discovering tools (user requesting: ${user?.id || 'anonymous'})`);
 
     try {
+      // Try app-level connection first
       const existingAppConnection = await this.appConnections?.get(serverName);
       if (existingAppConnection && (await existingAppConnection.isConnected())) {
         const tools = await existingAppConnection.fetchTools();
         return { tools, oauthRequired: false, oauthUrl: null };
       }
     } catch {
-      logger.debug(`${logPrefix} [Discovery] App connection not available, trying discovery mode`);
+      logger.debug(`${logPrefix} App connection not available`);
     }
+
+    // Get admin config
     const serverConfig = (await MCPServersRegistry.getInstance().getServerConfig(
       serverName,
-      adminId,
+      this.adminId,
     )) as t.MCPOptions | null;
 
     if (!serverConfig) {
-      logger.warn(`${logPrefix} [Discovery] Server config not found`);
+      logger.warn(`${logPrefix} Server config not found (admin has no config for this server)`);
       return { tools: null, oauthRequired: false, oauthUrl: null };
     }
 
@@ -119,15 +129,16 @@ export class MCPManager extends UserConnectionManager {
       };
     }
 
-    if (!user || !args.flowManager) {
-      logger.warn(`${logPrefix} [Discovery] OAuth server requires user and flowManager`);
+    // OAuth discovery - use admin for authentication
+    if (!flowManager) {
+      logger.warn(`${logPrefix} OAuth required but no flowManager provided`);
       return { tools: null, oauthRequired: true, oauthUrl: null };
     }
 
     const result = await MCPConnectionFactory.discoverTools(basic, {
-      user,
+      user: { id: this.adminId } as IUser,
       useOAuth: true,
-      flowManager: args.flowManager,
+      flowManager,
       tokenMethods: args.tokenMethods,
       signal: args.signal,
       oauthStart: args.oauthStart,
@@ -151,30 +162,28 @@ export class MCPManager extends UserConnectionManager {
     return toolFunctions;
   }
 
-  /** Returns all available tool functions from all connections available to user */
+  /** Returns tool functions from admin app-level connection. For MVP, only admin connections are available. */
   public async getServerToolFunctions(
     userId: string,
     serverName: string,
   ): Promise<t.LCAvailableTools | null> {
     try {
-      //try get the appConnection (if the config is not in the app level anymore any existing connection will disconnect and get will return null)
+      // MVP: Only use app-level admin connections
       const existingAppConnection = await this.appConnections?.get(serverName);
       if (existingAppConnection) {
+        logger.debug(
+          `[MCP MVP] getServerToolFunctions for user=${userId} using admin app connection for server=${serverName}`,
+        );
         return MCPServerInspector.getToolFunctions(serverName, existingAppConnection);
       }
 
-      const userConnections = this.getUserConnections(userId);
-      if (!userConnections || userConnections.size === 0) {
-        return null;
-      }
-      if (!userConnections.has(serverName)) {
-        return null;
-      }
-
-      return MCPServerInspector.getToolFunctions(serverName, userConnections.get(serverName)!);
+      logger.warn(
+        `[MCP MVP] getServerToolFunctions: No admin app connection for server=${serverName}`,
+      );
+      return null;
     } catch (error) {
       logger.warn(
-        `[getServerToolFunctions] Error getting tool functions for server ${serverName}`,
+        `[MCP MVP][getServerToolFunctions] Error getting tool functions for server ${serverName}`,
         error,
       );
       return null;
@@ -230,13 +239,13 @@ Please follow these instructions when using tools from the respective MCP server
   }
 
   /**
-   * Calls a tool on an MCP server, using either a user-specific connection
-   * (if userId is provided) or an app-level connection. Updates the last activity timestamp
-   * for user-specific connections upon successful call initiation.
+   * Calls a tool on an MCP server using admin credentials.
+   * For MVP: All tool execution uses admin configuration, regardless of who invoked it.
    *
-   * @param graphTokenResolver - Optional function to resolve Graph API tokens via OBO flow.
-   *   When provided and the server config contains `{{LIBRECHAT_GRAPH_ACCESS_TOKEN}}` placeholders,
-   *   they will be resolved to actual Graph API tokens before the tool call.
+   * @param user - The requesting user (for logging only, not for connection)
+   * @param serverName - The MCP server name
+   * @param toolName - The tool to execute
+   * @param graphTokenResolver - Optional function to resolve Graph API tokens via OBO flow
    */
   async callTool({
     user,
@@ -267,18 +276,24 @@ Please follow these instructions when using tools from the respective MCP server
     oauthEnd?: () => Promise<void>;
     graphTokenResolver?: GraphTokenResolver;
   }): Promise<t.FormattedToolResponse> {
-    /** User-specific connection */
+    if (!this.adminId) {
+      throw new McpError(
+        ErrorCode.InvalidRequest,
+        `[MCP MVP] Admin ID not initialized. Cannot execute tool.`,
+      );
+    }
+
+    const requestingUserId = user?.id || 'anonymous';
+    const logPrefix = `[MCP MVP][Requesting: ${requestingUserId}][Admin: ${this.adminId}][${serverName}][${toolName}]`;
+
+    logger.info(`${logPrefix} Executing tool...`);
+
     let connection: MCPConnection | undefined;
-    const userId = user?.id;
-    const adminId = this.adminId || userId;
-    const logPrefix = adminId ? `[MCP][User: ${adminId}][${serverName}]` : `[MCP][${serverName}]`;
 
     try {
-      if (userId && user) this.updateUserLastActivity(userId);
-
+      // Get admin connection
       connection = await this.getConnection({
         serverName,
-        user,
         flowManager,
         tokenMethods,
         oauthStart,
@@ -289,30 +304,32 @@ Please follow these instructions when using tools from the respective MCP server
       });
 
       if (!(await connection.isConnected())) {
-        /** May happen if getUserConnection failed silently or app connection dropped */
         throw new McpError(
-          ErrorCode.InternalError, // Use InternalError for connection issues
-          `${logPrefix} Connection is not active. Cannot execute tool ${toolName}.`,
+          ErrorCode.InternalError,
+          `${logPrefix} Connection not active.`,
         );
       }
 
+      // Get admin config
       const rawConfig = (await MCPServersRegistry.getInstance().getServerConfig(
         serverName,
-        adminId,
+        this.adminId,
       )) as t.MCPOptions;
 
-      // Pre-process Graph token placeholders (async) before sync processMCPEnv
+      // Pre-process Graph tokens using admin context
       const graphProcessedConfig = await preProcessGraphTokens(rawConfig, {
-        user,
+        user: { id: this.adminId } as IUser,
         graphTokenResolver,
         scopes: process.env.GRAPH_API_SCOPES,
       });
+
       const currentOptions = processMCPEnv({
-        user,
+        user: { id: this.adminId } as IUser,
         options: graphProcessedConfig,
-        customUserVars: customUserVars,
+        customUserVars,
         body: requestBody,
       });
+
       if ('headers' in currentOptions) {
         connection.setRequestHeaders(currentOptions.headers || {});
       }
@@ -332,15 +349,12 @@ Please follow these instructions when using tools from the respective MCP server
           ...options,
         },
       );
-      if (userId) {
-        this.updateUserLastActivity(userId);
-      }
+
       this.checkIdleConnections();
+      logger.info(`${logPrefix} Executed successfully`);
       return formatToolContent(result as t.MCPToolCallResponse, provider);
     } catch (error) {
-      // Log with context and re-throw or handle as needed
-      logger.error(`${logPrefix}[${toolName}] Tool call failed`, error);
-      // Rethrowing allows the caller (createMCPTool) to handle the final user message
+      logger.error(`${logPrefix} Tool call failed`, error);
       throw error;
     }
   }
