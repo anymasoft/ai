@@ -1,11 +1,16 @@
 const { EventSource } = require('eventsource');
 const { Time } = require('librechat-data-provider');
+const path = require('path');
 const {
   MCPManager,
   FlowStateManager,
   OAuthReconnectionManager,
 } = require('@librechat/api');
-const { MCPServersRegistry } = require('../../packages/api/dist/mcp/registry/MCPServersRegistry');
+
+// Import MCPServersRegistry directly from compiled dist to avoid bundling issues
+const apiDist = require(path.resolve(__dirname, '../../packages/api/dist/index.js'));
+const { MCPServersRegistry } = apiDist;
+
 const logger = require('./winston');
 
 global.EventSource = EventSource;
