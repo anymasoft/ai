@@ -47,7 +47,8 @@ export class MCPManager extends UserConnectionManager {
   /** Initializes the MCPManager by setting up server registry and app connections */
   public async initialize(configs: t.MCPServers) {
     await MCPServersInitializer.initialize(configs);
-    this.appConnections = new ConnectionsRepository(undefined);
+    // For MVP: appConnections must use adminId to fetch admin-only server configs
+    this.appConnections = new ConnectionsRepository(this.adminId ?? undefined);
   }
 
   /** Retrieves an app-level connection. For MVP, all connections use admin credentials. */
@@ -168,21 +169,25 @@ export class MCPManager extends UserConnectionManager {
     serverName: string,
   ): Promise<t.LCAvailableTools | null> {
     try {
-      // MVP: Only use app-level admin connections
-      const existingAppConnection = await this.appConnections?.get(serverName);
-      if (existingAppConnection) {
-        logger.debug(
-          `[MCP MVP] getServerToolFunctions for user=${userId} using admin app connection for server=${serverName}`,
+      // MVP: Get or create admin app-level connection
+      logger.info(
+        `[MCP MVP] getServerToolFunctions for user=${userId}, server=${serverName}, admin=${this.adminId}`,
+      );
+
+      const appConnection = await this.appConnections?.get(serverName);
+      if (!appConnection) {
+        logger.warn(
+          `[MCP MVP] getServerToolFunctions: Admin has no config for server=${serverName}`,
         );
-        return MCPServerInspector.getToolFunctions(serverName, existingAppConnection);
+        return null;
       }
 
-      logger.warn(
-        `[MCP MVP] getServerToolFunctions: No admin app connection for server=${serverName}`,
+      logger.debug(
+        `[MCP MVP] getServerToolFunctions for user=${userId} using admin app connection for server=${serverName}`,
       );
-      return null;
+      return MCPServerInspector.getToolFunctions(serverName, appConnection);
     } catch (error) {
-      logger.warn(
+      logger.error(
         `[MCP MVP][getServerToolFunctions] Error getting tool functions for server ${serverName}`,
         error,
       );
