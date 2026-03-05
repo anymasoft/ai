@@ -26,14 +26,21 @@ async function updateMCPServerTools({ ownerId, serverName, tools }) {
 
     for (const tool of tools) {
       const name = `${tool.name}${mcpDelimiter}${serverName}`;
+      const parameters = tool.inputSchema || tool.input_schema;
       serverTools[name] = {
         type: 'function',
         ['function']: {
           name,
-          description: tool.description,
-          parameters: tool.inputSchema,
+          description: tool.description || '',
+          parameters: parameters || {
+            type: 'object',
+            properties: {},
+          },
         },
       };
+      logger.info(
+        `[MCP DIAG] Normalized MCP tool: ${name}`
+      );
     }
 
     logger.info(`[MCP AUDIT] Building tool definitions: ${Object.keys(serverTools).join(', ')}`);
