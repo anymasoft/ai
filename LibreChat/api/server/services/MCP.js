@@ -29,6 +29,7 @@ const {
   getMCPManager,
 } = require('~/config');
 const { findToken, createToken, updateToken } = require('~/models');
+const { User } = require('~/db/models');
 const { getGraphApiToken } = require('./GraphTokenService');
 const { reinitMCPServer } = require('./Tools/mcp');
 const { getAppConfig } = require('./Config');
@@ -501,6 +502,36 @@ function createToolInstance({
       const customUserVars =
         config?.configurable?.userMCPAuthMap?.[`${Constants.mcp_prefix}${serverName}`];
 
+      // Determine if user needs to execute via admin connection
+      let ownerId = undefined;
+      const currentUser = config?.configurable?.user;
+
+      if (currentUser?.id && currentUser?.role) {
+        // Check if user is NOT an admin (case-insensitive)
+        const isAdmin = /^admin$/i.test(currentUser.role);
+
+        if (!isAdmin) {
+          try {
+            // Find admin user for shared MCP execution
+            const admin = await User.findOne(
+              { role: { $regex: /^admin$/i } },
+              '_id'
+            ).lean().exec();
+
+            if (admin) {
+              ownerId = admin._id.toString();
+              logger.info(
+                `[MCP EXECUTION] user=${userId} executing via admin MCP connection server=${serverName}`,
+              );
+            }
+          } catch (err) {
+            logger.warn(
+              `[MCP EXECUTION] Failed to find admin user for shared execution: ${err.message}`,
+            );
+          }
+        }
+      }
+
       const result = await mcpManager.callTool({
         serverName,
         toolName,
@@ -521,6 +552,7 @@ function createToolInstance({
         oauthStart,
         oauthEnd,
         graphTokenResolver: getGraphApiToken,
+        ownerId,
       });
 
       if (isAssistantsEndpoint(provider) && Array.isArray(result)) {
