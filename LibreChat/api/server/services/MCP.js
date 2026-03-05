@@ -473,10 +473,11 @@ async function createMCPTool({
   streamId = null,
 }) {
   // toolKey format: tavily_search_mcp_tavily (tool_mcp_server)
-  // Split from right to get serverName as last part
-  const lastDelimiterIndex = toolKey.lastIndexOf(Constants.mcp_delimiter);
-  const serverName = toolKey.substring(lastDelimiterIndex + 1);
-  const toolNamePart = toolKey.substring(0, lastDelimiterIndex);
+  const [toolNamePart, serverName] = toolKey.split('_mcp_');
+
+  logger.info(
+    `[MCP DIAG] Parsed MCP tool: tool=${toolNamePart} server=${serverName}`
+  );
 
   // For logging, we use the full toolKey as the tool identifier
   const toolName = toolKey;
