@@ -14,6 +14,37 @@ const {
 const { Constants, MCPServerUserInputSchema } = require('librechat-data-provider');
 const { cacheMCPServerTools, getMCPServerTools } = require('~/server/services/Config');
 const { getMCPManager, getMCPServersRegistry } = require('~/config');
+const { User } = require('~/db/models');
+
+/**
+ * Get all MCP server configs for user, including admin servers
+ * Admin-created MCP servers are visible to all users (shared visibility)
+ * @param {string} userId - The user ID
+ * @returns {Promise<Object>} Combined server configs
+ */
+async function getAllMCPConfigs(userId) {
+  const userConfig = await getMCPServersRegistry().getAllServerConfigs(userId);
+
+  // Find admin user and get their server configs
+  const admin = await User.findOne({ role: 'admin' }, '_id').lean().exec();
+
+  if (!admin) {
+    return userConfig || {};
+  }
+
+  const adminConfig = await getMCPServersRegistry().getAllServerConfigs(admin._id.toString());
+
+  // Merge configs: user's own + admin's shared
+  const combined = { ...userConfig, ...adminConfig };
+
+  if (adminConfig && Object.keys(adminConfig).length > 0) {
+    logger.info(
+      `[MCP SHARED] User ${userId} has access to ${Object.keys(adminConfig).length} admin servers`,
+    );
+  }
+
+  return combined;
+}
 
 /**
  * Handles MCP-specific errors and sends appropriate HTTP responses.
@@ -65,7 +96,7 @@ const getMCPTools = async (req, res) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const mcpConfig = await getMCPServersRegistry().getAllServerConfigs(userId);
+    const mcpConfig = await getAllMCPConfigs(userId);
     const configuredServers = mcpConfig ? Object.keys(mcpConfig) : [];
 
     if (!mcpConfig || Object.keys(mcpConfig).length == 0) {
@@ -181,8 +212,8 @@ const getMCPServersList = async (req, res) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    // 2. Get all server configs from registry (YAML + DB)
-    const serverConfigs = await getMCPServersRegistry().getAllServerConfigs(userId);
+    // 2. Get all server configs from registry (YAML + DB) including admin servers
+    const serverConfigs = await getAllMCPConfigs(userId);
 
     return res.json(serverConfigs);
   } catch (error) {
