@@ -498,6 +498,9 @@ async function createMCPTool({
     }
   }
 
+  logger.info(`[MCP DIAG] Available tools keys: ${Object.keys(availableTools || {}).join(', ')}`);
+  logger.info(`[MCP DIAG] Looking for toolKey: ${toolKey}`);
+
   /** @type {LCTool | undefined} */
   let toolDefinition = availableTools?.[toolKey]?.function;
   if (!toolDefinition) {
