@@ -146,10 +146,7 @@ const loadAddedAgent = async ({ req, conversation, primaryAgent }) => {
       if (addedServers.has(mcpServer)) {
         continue;
       }
-      const { getServerConfigWithAdminFallback } = require('~/server/services/MCP');
-      const serverConfig = await getServerConfigWithAdminFallback(mcpServer, userId);
-      const ownerId = serverConfig?.userId || userId;
-      const serverTools = await getMCPServerTools(ownerId, mcpServer);
+      const serverTools = await getMCPServerTools(userId, mcpServer);
       if (!serverTools) {
         tools.push(`${mcp_all}${mcp_delimiter}${mcpServer}`);
         addedServers.add(mcpServer);
