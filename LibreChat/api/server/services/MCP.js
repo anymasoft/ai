@@ -516,7 +516,7 @@ function createToolInstance({
       }
 
       logger.info(
-        `[MCP EXECUTION] user=${userId} executing via admin connection`,
+        `[MCP EXECUTION] user=${userId} executing via admin connection admin=${adminId}`,
       );
 
       const result = await mcpManager.callTool({
@@ -524,11 +524,9 @@ function createToolInstance({
         toolName,
         provider,
         toolArguments,
+        userId: adminId,
         options: {
           signal: derivedSignal,
-        },
-        user: {
-          id: adminId,
         },
         requestBody: config?.configurable?.requestBody,
         customUserVars,
