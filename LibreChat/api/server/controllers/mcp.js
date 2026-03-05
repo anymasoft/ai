@@ -17,15 +17,14 @@ const { getMCPManager, getMCPServersRegistry } = require('~/config');
 const { User } = require('~/db/models');
 
 /**
- * Get all MCP server configs for user, including admin servers
- * Admin-created MCP servers are visible to all users (shared visibility)
- * @param {string} userId - The user ID
- * @returns {Promise<Object>} Combined server configs
+ * Get all MCP server configs - MVP implementation
+ * For MVP, all MCP servers are created and managed by admin only.
+ * Regular users can see and execute these admin servers.
+ * @param {string} userId - The user ID (only used for logging)
+ * @returns {Promise<Object>} Admin server configs only
  */
 async function getAllMCPConfigs(userId) {
-  const userConfig = await getMCPServersRegistry().getAllServerConfigs(userId);
-
-  // Find admin user and get their server configs
+  // Find admin user
   // Use case-insensitive regex to handle 'admin', 'ADMIN', 'Admin', etc.
   const admin = await User.findOne(
     { role: { $regex: /^admin$/i } },
@@ -33,20 +32,18 @@ async function getAllMCPConfigs(userId) {
   ).lean().exec();
 
   if (!admin) {
-    logger.warn('[MCP SHARED] Admin user not found in database');
-    return userConfig || {};
+    logger.warn('[MCP MVP] Admin user not found in database');
+    return {};
   }
 
+  // Get only admin's MCP server configs (MVP: no per-user configs)
   const adminConfig = await getMCPServersRegistry().getAllServerConfigs(admin._id.toString());
 
-  // Merge configs: user's own + admin's shared
-  const combined = { ...userConfig, ...adminConfig };
-
   logger.info(
-    `[MCP SHARED] user=${userId} admin=${admin._id} adminServers=${Object.keys(adminConfig).length}`,
+    `[MCP MVP] user=${userId} accessing admin servers count=${Object.keys(adminConfig).length}`,
   );
 
-  return combined;
+  return adminConfig;
 }
 
 /**
@@ -99,6 +96,19 @@ const getMCPTools = async (req, res) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
+    // Get admin user for MCP config (MVP: all configs are admin-owned)
+    const admin = await User.findOne(
+      { role: { $regex: /^admin$/i } },
+      '_id'
+    ).lean().exec();
+
+    if (!admin) {
+      logger.warn('[getMCPTools] Admin user not found for MCP config');
+      return res.status(200).json({ servers: {} });
+    }
+
+    const adminId = admin._id.toString();
+
     const mcpConfig = await getAllMCPConfigs(userId);
     const configuredServers = mcpConfig ? Object.keys(mcpConfig) : [];
 
@@ -147,9 +157,13 @@ const getMCPTools = async (req, res) => {
       try {
         const serverTools = serverToolsMap.get(serverName);
 
-        // Get server config once
+        // Get server config from admin (MVP: all configs are admin-owned)
         const serverConfig = mcpConfig[serverName];
-        const rawServerConfig = await getMCPServersRegistry().getServerConfig(serverName, userId);
+        const rawServerConfig = await getMCPServersRegistry().getServerConfig(serverName, adminId);
+
+        logger.info(
+          `[MCP EXECUTION] user=${userId} executing MCP via admin server ${serverName}`,
+        );
 
         // Initialize server object with all server-level data
         const server = {
@@ -271,11 +285,28 @@ const getMCPServerById = async (req, res) => {
     if (!serverName) {
       return res.status(400).json({ message: 'Server name is required' });
     }
-    const parsedConfig = await getMCPServersRegistry().getServerConfig(serverName, userId);
+
+    // Get admin user for MCP config (MVP: all configs are admin-owned)
+    const admin = await User.findOne(
+      { role: { $regex: /^admin$/i } },
+      '_id'
+    ).lean().exec();
+
+    if (!admin) {
+      return res.status(404).json({ message: 'Admin MCP configuration not available' });
+    }
+
+    const adminId = admin._id.toString();
+
+    const parsedConfig = await getMCPServersRegistry().getServerConfig(serverName, adminId);
 
     if (!parsedConfig) {
       return res.status(404).json({ message: 'MCP server not found' });
     }
+
+    logger.info(
+      `[MCP EXECUTION] user=${userId} accessing MCP server config ${serverName}`,
+    );
 
     res.status(200).json(parsedConfig);
   } catch (error) {

@@ -171,6 +171,23 @@ const loadTools = async ({
   fileStrategy,
   imageOutputType,
 }) => {
+  // Get admin user for MCP config (MVP: all configs are admin-owned)
+  let adminId = user; // Default to user
+  try {
+    const { User } = require('~/db/models');
+    const admin = await User.findOne(
+      { role: { $regex: /^admin$/i } },
+      '_id'
+    ).lean().exec();
+
+    if (admin) {
+      adminId = admin._id.toString();
+    }
+  } catch (err) {
+    logger.warn('[loadTools] Failed to get admin user for MCP config:', err.message);
+    // Continue with user ID as fallback
+    adminId = user;
+  }
   const toolConstructors = {
     flux: FluxAPI,
     calculator: Calculator,
@@ -340,7 +357,7 @@ const loadTools = async ({
         continue;
       }
       const serverConfig = serverName
-        ? await getMCPServersRegistry().getServerConfig(serverName, user)
+        ? await getMCPServersRegistry().getServerConfig(serverName, adminId)
         : null;
       if (!serverConfig) {
         logger.warn(

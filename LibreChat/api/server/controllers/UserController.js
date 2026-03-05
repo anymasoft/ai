@@ -317,11 +317,29 @@ const maybeUninstallOAuthMCP = async (userId, pluginKey, appConfig) => {
     return;
   }
 
+  // Get admin user for MCP config (MVP: all configs are admin-owned)
+  let adminId = userId;
+  try {
+    const { User } = require('~/db/models');
+    const admin = await User.findOne(
+      { role: { $regex: /^admin$/i } },
+      '_id'
+    ).lean().exec();
+
+    if (admin) {
+      adminId = admin._id.toString();
+    }
+  } catch (err) {
+    logger.warn('[maybeUninstallOAuthMCP] Failed to get admin user:', err.message);
+    // Continue with userId as fallback
+    adminId = userId;
+  }
+
   const serverName = pluginKey.replace(Constants.mcp_prefix, '');
   const serverConfig =
-    (await getMCPServersRegistry().getServerConfig(serverName, userId)) ??
+    (await getMCPServersRegistry().getServerConfig(serverName, adminId)) ??
     appConfig?.mcpServers?.[serverName];
-  const oauthServers = await getMCPServersRegistry().getOAuthServers(userId);
+  const oauthServers = await getMCPServersRegistry().getOAuthServers(adminId);
   if (!oauthServers.has(serverName)) {
     // this server does not use OAuth, so nothing to do here as well
     return;
