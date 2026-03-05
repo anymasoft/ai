@@ -19,6 +19,10 @@ import { formatToolContent } from './parsers';
 import { MCPConnection } from './connection';
 import { processMCPEnv } from '~/utils/env';
 
+// Get Admin ID for MCP execution (resolved at server startup)
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { getAdminId } = require('~/config');
+
 /**
  * Centralized manager for MCP server connections and tool execution.
  * Extends UserConnectionManager to handle both app-level and user-specific connections.
@@ -264,17 +268,40 @@ Please follow these instructions when using tools from the respective MCP server
     oauthEnd?: () => Promise<void>;
     graphTokenResolver?: GraphTokenResolver;
   }): Promise<t.FormattedToolResponse> {
-    /** User-specific connection */
-    let connection: MCPConnection | undefined;
+    // MVP: ALL MCP execution uses ADMIN connection
+    // Regardless of which user makes the request, MCP tools execute with admin credentials
+    let adminId: string;
     const userId = user?.id;
-    const logPrefix = userId ? `[MCP][User: ${userId}][${serverName}]` : `[MCP][${serverName}]`;
+    try {
+      adminId = getAdminId();
+      if (!adminId) {
+        throw new Error('ADMIN_ID not initialized');
+      }
+    } catch (err) {
+      logger.error(`[MCP] Critical error getting admin ID: ${err instanceof Error ? err.message : String(err)}`);
+      throw new McpError(
+        ErrorCode.InternalError,
+        'MCP system not properly initialized. Admin user configuration missing.',
+      );
+    }
+
+    logger.info(
+      `[MCP EXECUTION CHECK] user=${userId || 'unknown'} server=${serverName} using ADMIN connection admin=${adminId}`,
+    );
+
+    /** Admin connection for MCP execution */
+    let connection: MCPConnection | undefined;
+    const logPrefix = `[MCP][User: ${adminId}][${serverName}]`;
 
     try {
       if (userId && user) this.updateUserLastActivity(userId);
 
+      // Use admin user for MCP connection, not the requesting user
+      const adminUser: IUser = user ? { ...user, id: adminId } : { id: adminId };
+
       connection = await this.getConnection({
         serverName,
-        user,
+        user: adminUser,
         flowManager,
         tokenMethods,
         oauthStart,
@@ -294,17 +321,18 @@ Please follow these instructions when using tools from the respective MCP server
 
       const rawConfig = (await MCPServersRegistry.getInstance().getServerConfig(
         serverName,
-        userId,
+        adminId,
       )) as t.MCPOptions;
 
       // Pre-process Graph token placeholders (async) before sync processMCPEnv
+      // Use admin user for token resolution and environment processing
       const graphProcessedConfig = await preProcessGraphTokens(rawConfig, {
-        user,
+        user: adminUser,
         graphTokenResolver,
         scopes: process.env.GRAPH_API_SCOPES,
       });
       const currentOptions = processMCPEnv({
-        user,
+        user: adminUser,
         options: graphProcessedConfig,
         customUserVars: customUserVars,
         body: requestBody,
