@@ -1,0 +1,32 @@
+{
+    "name": "viio",
+    "type": "module",
+    "version": "0.0.1",
+    "scripts": {
+        "dev": "astro dev",
+        "build": "astro build",
+        "preview": "astro preview",
+        "astro": "astro"
+    },
+    "dependencies": {
+        "@csstools/postcss-global-data": "^3.0.0",
+        "@pmndrs/vanilla": "^1.25.0",
+        "astro": "^5.16.11",
+        "cssnano": "^7.0.7",
+        "gsap": "^3.13.0",
+        "lenis": "^1.3.4",
+        "ogl": "^1.0.11",
+        "postcss-extend-rule": "^4.0.0",
+        "postcss-preset-env": "^10.2.4",
+        "three": "^0.180.0",
+        "three-stdlib": "^2.36.0"
+    },
+    "devDependencies": {
+        "@types/three": "^0.180.0",
+        "prettier": "3.6.2",
+        "prettier-plugin-astro": "0.14.1"
+    },
+    "browserslist": [
+        "defaults"
+    ]
+}
