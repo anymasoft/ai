@@ -55,7 +55,9 @@ module.exports = {
   logger,
   createMCPServersRegistry: MCPServersRegistry.createInstance,
   getMCPServersRegistry: MCPServersRegistry.getInstance,
-  createMCPManager: MCPManager.createInstance,
+  createMCPManager: async (configs) => {
+    return MCPManager.createInstance(configs, ADMIN_ID);
+  },
   getMCPManager: MCPManager.getInstance,
   getFlowStateManager,
   setAdminId,
