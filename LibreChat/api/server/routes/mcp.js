@@ -35,7 +35,7 @@ const {
   getFlowStateManager,
   getMCPManager,
 } = require('~/config');
-const { getMCPSetupData, getServerConnectionStatus, getServerConfigWithAdminFallback, getAdminId } = require('~/server/services/MCP');
+const { getMCPSetupData, getServerConnectionStatus } = require('~/server/services/MCP');
 const { requireJwtAuth, canAccessMCPServerResource } = require('~/server/middleware');
 const { findToken, updateToken, createToken, deleteTokens } = require('~/models');
 const { getUserPluginAuthValue } = require('~/server/services/PluginService');
@@ -235,14 +235,7 @@ router.get('/:serverName/oauth/callback', async (req, res) => {
     }
 
     try {
-      // Verify server config exists
-      const serverConfig = await getServerConfigWithAdminFallback(serverName, flowState.userId);
-
-      // All MCP tools execute through admin's MCP manager
-      const adminId = await getAdminId();
-
-      const mcpManager = getMCPManager(adminId);
-      logger.info(`[MCP AUDIT] getMCPManager initialized with adminId=${adminId} for OAuth reconnection`);
+      const mcpManager = getMCPManager(flowState.userId);
       logger.debug(`[MCP OAuth] Attempting to reconnect ${serverName} with new OAuth tokens`);
 
       if (flowState.userId !== 'system') {
@@ -252,7 +245,6 @@ router.get('/:serverName/oauth/callback', async (req, res) => {
           user,
           serverName,
           flowManager,
-          ownerId: adminId,
           tokenMethods: {
             findToken,
             updateToken,
@@ -271,7 +263,7 @@ router.get('/:serverName/oauth/callback', async (req, res) => {
 
         const tools = await userConnection.fetchTools();
         await updateMCPServerTools({
-          ownerId: adminId,
+          userId: flowState.userId,
           serverName,
           tools,
         });
@@ -455,20 +447,13 @@ router.post('/:serverName/reinitialize', requireJwtAuth, setOAuthSession, async 
 
     logger.info(`[MCP Reinitialize] Reinitializing server: ${serverName}`);
 
-    // Get server config with admin fallback
-    const serverConfig = await getServerConfigWithAdminFallback(serverName, user.id);
+    const mcpManager = getMCPManager();
+    const serverConfig = await getMCPServersRegistry().getServerConfig(serverName, user.id);
     if (!serverConfig) {
       return res.status(404).json({
         error: `MCP server '${serverName}' not found in configuration`,
       });
     }
-
-    // All MCP tools execute through admin's MCP manager
-    const adminId = await getAdminId();
-    const mcpManager = getMCPManager(adminId);
-
-    logger.info(`[MCP EXECUTION] user=${user.id} executed via admin MCP`);
-    logger.info(`[MCP Reinitialize] Disconnecting user=${user.id} from server=${serverName} (adminId=${adminId})`);
 
     await mcpManager.disconnectUserConnection(user.id, serverName);
     logger.info(

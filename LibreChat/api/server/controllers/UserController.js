@@ -208,19 +208,15 @@ const updateUserPluginsController = async (req, res) => {
       // If auth was updated successfully, disconnect MCP sessions as they might use these credentials
       if (pluginKey.startsWith(Constants.mcp_prefix)) {
         try {
-          // Extract server name from pluginKey (format: "mcp_<serverName>")
-          const serverName = pluginKey.replace(Constants.mcp_prefix, '');
-          const { getServerConfigWithAdminFallback } = require('~/server/services/MCP');
-          const serverConfig = await getServerConfigWithAdminFallback(serverName, user.id);
-          const ownerId = serverConfig?.userId || user.id;
-
-          const mcpManager = getMCPManager(ownerId);
+          const mcpManager = getMCPManager();
           if (mcpManager) {
+            // Extract server name from pluginKey (format: "mcp_<serverName>")
+            const serverName = pluginKey.replace(Constants.mcp_prefix, '');
             logger.info(
               `[updateUserPluginsController] Attempting disconnect of MCP server "${serverName}" for user ${user.id} after plugin auth update.`,
             );
             await mcpManager.disconnectUserConnection(user.id, serverName);
-            await invalidateCachedTools({ ownerId, serverName });
+            await invalidateCachedTools({ userId: user.id, serverName });
           }
         } catch (disconnectError) {
           logger.error(
