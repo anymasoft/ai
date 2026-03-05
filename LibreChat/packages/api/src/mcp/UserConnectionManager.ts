@@ -115,6 +115,13 @@ export abstract class UserConnectionManager {
     // If no valid connection exists, create a new one
     logger.info(`[MCP][User: ${userId}][${serverName}] Establishing new connection`);
 
+    // Diagnostic log for shared execution (admin connection)
+    if (configOwnerId !== userId) {
+      logger.info(
+        `[MCP EXECUTION CHECK] server=${serverName} user=${userId} owner=${configOwnerId} (using admin config)`,
+      );
+    }
+
     try {
       connection = await MCPConnectionFactory.create(
         {

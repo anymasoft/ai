@@ -271,6 +271,13 @@ Please follow these instructions when using tools from the respective MCP server
     const userId = user?.id;
     const logPrefix = userId ? `[MCP][User: ${userId}][${serverName}]` : `[MCP][${serverName}]`;
 
+    // Diagnostic: log if execution is via admin connection
+    if (userId && ownerId && ownerId !== userId) {
+      logger.debug(
+        `[MCP EXECUTION TRACE] callTool: user=${userId} executing via admin owner=${ownerId}`,
+      );
+    }
+
     try {
       if (userId && user) this.updateUserLastActivity(userId);
 
