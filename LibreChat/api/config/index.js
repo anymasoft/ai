@@ -27,10 +27,13 @@ function setAdminId(adminId) {
 /**
  * Get ADMIN_ID for MCP execution
  * @returns {string} Admin user ID
+ * @throws {Error} If ADMIN_ID was not initialized at server startup
  */
 function getAdminId() {
   if (!ADMIN_ID) {
-    throw new Error('Admin ID not yet initialized. This should not happen if server started correctly.');
+    const error = 'FATAL: Admin ID not initialized. Server startup incomplete or failed. Cannot execute MCP tools.';
+    logger.error(error);
+    throw new Error(error);
   }
   return ADMIN_ID;
 }

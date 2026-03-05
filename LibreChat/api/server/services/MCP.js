@@ -503,7 +503,17 @@ function createToolInstance({
         config?.configurable?.userMCPAuthMap?.[`${Constants.mcp_prefix}${serverName}`];
 
       // MVP: All MCP execution through admin connection (resolved at startup)
-      const adminId = getAdminId();
+      let adminId;
+      try {
+        adminId = getAdminId();
+      } catch (err) {
+        logger.error(`[MCP] Critical error getting admin ID: ${err.message}`);
+        throw new Error('MCP system not properly initialized. Admin user configuration missing.');
+      }
+
+      if (!adminId) {
+        throw new Error('Admin ID is null. This should not happen.');
+      }
 
       logger.info(
         `[MCP EXECUTION] user=${userId} executing via admin connection`,

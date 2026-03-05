@@ -42,12 +42,17 @@ const { PORT, HOST, ALLOW_SOCIAL_LOGIN, DISABLE_COMPRESSION, TRUST_PROXY } = pro
 /**
  * Resolve ADMIN_ID from ADMIN_EMAIL once at server startup
  * This eliminates repeated database queries during MCP execution
+ * CRITICAL: Server will not start if admin is not found
  */
 async function resolveAdminId() {
   const adminEmail = process.env.ADMIN_EMAIL;
   if (!adminEmail) {
-    throw new Error('ADMIN_EMAIL environment variable not set');
+    const error = 'FATAL: ADMIN_EMAIL environment variable not set. Cannot start MCP system.';
+    logger.error(error);
+    throw new Error(error);
   }
+
+  logger.debug(`[MCP] Looking for admin user with email: ${adminEmail}`);
 
   const admin = await User.findOne(
     { email: adminEmail },
@@ -55,12 +60,14 @@ async function resolveAdminId() {
   ).lean().exec();
 
   if (!admin) {
-    throw new Error(`Admin user not found for email: ${adminEmail}`);
+    const error = `FATAL: Admin user with email "${adminEmail}" not found in database. Cannot start MCP system.`;
+    logger.error(error);
+    throw new Error(error);
   }
 
   const adminId = admin._id.toString();
   setAdminId(adminId);
-  logger.info(`[MCP] Resolved Admin ID: ${adminId}`);
+  logger.info(`[MCP] ✓ Resolved Admin ID: ${adminId}`);
 }
 
 // Allow PORT=0 to be used for automatic free port assignment
