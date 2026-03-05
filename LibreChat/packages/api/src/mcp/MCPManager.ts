@@ -25,11 +25,15 @@ import { processMCPEnv } from '~/utils/env';
  */
 export class MCPManager extends UserConnectionManager {
   private static instance: MCPManager | null;
+  private adminId: string | null = null;
 
   /** Creates and initializes the singleton MCPManager instance */
-  public static async createInstance(configs: t.MCPServers): Promise<MCPManager> {
+  public static async createInstance(configs: t.MCPServers, adminId?: string): Promise<MCPManager> {
     if (MCPManager.instance) throw new Error('MCPManager has already been initialized.');
     MCPManager.instance = new MCPManager();
+    if (adminId) {
+      MCPManager.instance.adminId = adminId;
+    }
     await MCPManager.instance.initialize(configs);
     return MCPManager.instance;
   }
@@ -77,7 +81,8 @@ export class MCPManager extends UserConnectionManager {
    */
   public async discoverServerTools(args: t.ToolDiscoveryOptions): Promise<t.ToolDiscoveryResult> {
     const { serverName, user, ownerId } = args;
-    const logPrefix = user?.id ? `[MCP][User: ${user.id}][${serverName}]` : `[MCP][${serverName}]`;
+    const adminId = this.adminId || user?.id;
+    const logPrefix = adminId ? `[MCP][User: ${adminId}][${serverName}]` : `[MCP][${serverName}]`;
 
     try {
       const existingAppConnection = await this.appConnections?.get(serverName);
@@ -88,11 +93,9 @@ export class MCPManager extends UserConnectionManager {
     } catch {
       logger.debug(`${logPrefix} [Discovery] App connection not available, trying discovery mode`);
     }
-
-    const configOwnerId = ownerId ?? user?.id;
     const serverConfig = (await MCPServersRegistry.getInstance().getServerConfig(
       serverName,
-      configOwnerId,
+      adminId,
     )) as t.MCPOptions | null;
 
     if (!serverConfig) {
@@ -267,7 +270,8 @@ Please follow these instructions when using tools from the respective MCP server
     /** User-specific connection */
     let connection: MCPConnection | undefined;
     const userId = user?.id;
-    const logPrefix = userId ? `[MCP][User: ${userId}][${serverName}]` : `[MCP][${serverName}]`;
+    const adminId = this.adminId || userId;
+    const logPrefix = adminId ? `[MCP][User: ${adminId}][${serverName}]` : `[MCP][${serverName}]`;
 
     try {
       if (userId && user) this.updateUserLastActivity(userId);
@@ -294,7 +298,7 @@ Please follow these instructions when using tools from the respective MCP server
 
       const rawConfig = (await MCPServersRegistry.getInstance().getServerConfig(
         serverName,
-        userId,
+        adminId,
       )) as t.MCPOptions;
 
       // Pre-process Graph token placeholders (async) before sync processMCPEnv
