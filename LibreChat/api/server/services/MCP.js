@@ -23,13 +23,13 @@ const {
   isAssistantsEndpoint,
 } = require('librechat-data-provider');
 const {
+  getAdminId,
   getOAuthReconnectionManager,
   getMCPServersRegistry,
   getFlowStateManager,
   getMCPManager,
 } = require('~/config');
 const { findToken, createToken, updateToken } = require('~/models');
-const { User } = require('~/db/models');
 const { getGraphApiToken } = require('./GraphTokenService');
 const { reinitMCPServer } = require('./Tools/mcp');
 const { getAppConfig } = require('./Config');
@@ -502,45 +502,12 @@ function createToolInstance({
       const customUserVars =
         config?.configurable?.userMCPAuthMap?.[`${Constants.mcp_prefix}${serverName}`];
 
-      // MVP: Always execute MCP through admin connection
-      let adminUser = config?.configurable?.user;
-      let executingAsAdmin = false;
+      // MVP: All MCP execution through admin connection (resolved at startup)
+      const adminId = getAdminId();
 
-      // Check if user is NOT an admin (case-insensitive)
-      const currentUser = config?.configurable?.user;
-      if (currentUser?.id && currentUser?.role) {
-        const isAdmin = /^admin$/i.test(currentUser.role);
-
-        if (!isAdmin) {
-          try {
-            // Find admin user for MCP execution
-            const admin = await User.findOne(
-              { role: { $regex: /^admin$/i } },
-              '-password'
-            ).lean().exec();
-
-            if (admin) {
-              adminUser = {
-                id: admin._id.toString(),
-                email: admin.email,
-                role: admin.role,
-              };
-              executingAsAdmin = true;
-
-              logger.info(
-                `[MCP EXECUTION] user=${userId} executing via admin connection admin=${admin._id}`,
-              );
-            } else {
-              throw new Error('Admin user not found for MCP execution');
-            }
-          } catch (err) {
-            logger.error(
-              `[MCP EXECUTION] Failed to find admin user for execution: ${err.message}`,
-            );
-            throw err;
-          }
-        }
-      }
+      logger.info(
+        `[MCP EXECUTION] user=${userId} executing via admin connection`,
+      );
 
       const result = await mcpManager.callTool({
         serverName,
@@ -550,7 +517,9 @@ function createToolInstance({
         options: {
           signal: derivedSignal,
         },
-        user: adminUser,
+        user: {
+          id: adminId,
+        },
         requestBody: config?.configurable?.requestBody,
         customUserVars,
         flowManager,

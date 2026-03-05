@@ -34,8 +34,34 @@ const staticCache = require('./utils/staticCache');
 const noIndex = require('./middleware/noIndex');
 const { seedDatabase } = require('~/models');
 const routes = require('./routes');
+const { User } = require('~/db/models');
+const { setAdminId } = require('~/config');
 
 const { PORT, HOST, ALLOW_SOCIAL_LOGIN, DISABLE_COMPRESSION, TRUST_PROXY } = process.env ?? {};
+
+/**
+ * Resolve ADMIN_ID from ADMIN_EMAIL once at server startup
+ * This eliminates repeated database queries during MCP execution
+ */
+async function resolveAdminId() {
+  const adminEmail = process.env.ADMIN_EMAIL;
+  if (!adminEmail) {
+    throw new Error('ADMIN_EMAIL environment variable not set');
+  }
+
+  const admin = await User.findOne(
+    { email: adminEmail },
+    '_id'
+  ).lean().exec();
+
+  if (!admin) {
+    throw new Error(`Admin user not found for email: ${adminEmail}`);
+  }
+
+  const adminId = admin._id.toString();
+  setAdminId(adminId);
+  logger.info(`[MCP] Resolved Admin ID: ${adminId}`);
+}
 
 // Allow PORT=0 to be used for automatic free port assignment
 const port = isNaN(Number(PORT)) ? 3080 : Number(PORT);
@@ -54,6 +80,9 @@ const startServer = async () => {
   indexSync().catch((err) => {
     logger.error('[indexSync] Background sync failed:', err);
   });
+
+  // Resolve ADMIN_ID for MCP execution
+  await resolveAdminId();
 
   app.disable('x-powered-by');
   app.set('trust proxy', trusted_proxy);
