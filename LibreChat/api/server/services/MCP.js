@@ -524,12 +524,31 @@ async function createMCPTool({
     return;
   }
 
+  // Normalize MCP toolDefinition if it doesn't have the 'function' wrapper
+  if (toolDefinition && !toolDefinition.function && toolDefinition.name) {
+    logger.info(`[MCP DIAG] Normalizing MCP toolDefinition for ${toolDefinition.name}`);
+    toolDefinition = {
+      type: 'function',
+      function: {
+        name: toolDefinition.name,
+        description: toolDefinition.description || '',
+        parameters: toolDefinition.input_schema || {
+          type: 'object',
+          properties: {},
+        },
+      },
+    };
+    logger.info(
+      `[MCP DIAG] Normalized MCP toolDefinition for ${toolDefinition.function.name}`
+    );
+  }
+
   return createToolInstance({
     res,
     provider,
     toolName,
     serverName,
-    toolDefinition,
+    toolDefinition: toolDefinition.function,
     streamId,
   });
 }
