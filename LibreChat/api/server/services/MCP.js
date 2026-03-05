@@ -21,7 +21,6 @@ const {
   Constants,
   ContentTypes,
   isAssistantsEndpoint,
-  SystemRoles,
 } = require('librechat-data-provider');
 const {
   getOAuthReconnectionManager,
@@ -30,7 +29,6 @@ const {
   getMCPManager,
 } = require('~/config');
 const { findToken, createToken, updateToken } = require('~/models');
-const { User } = require('~/db/models');
 const { getGraphApiToken } = require('./GraphTokenService');
 const { reinitMCPServer } = require('./Tools/mcp');
 const { getAppConfig } = require('./Config');
@@ -298,88 +296,6 @@ async function reconnectServer({
  * @param {Record<string, Record<string, string>>} [params.userMCPAuthMap]
  * @returns { Promise<Array<typeof tool | { _call: (toolInput: Object | string) => unknown}>> } An object with `_call` method to execute the tool input.
  */
-
-/**
- * Get the ID of the admin user for executing MCP tools
- * All MCP tool execution happens through the admin's MCP manager
- * Tries to use ADMIN_EMAIL from environment, falls back to first ADMIN user
- * @returns {Promise<string>} Admin user ID
- * @throws {Error} If no admin user is found
- */
-async function getAdminId() {
-  try {
-    const adminEmail = process.env.ADMIN_EMAIL;
-    let admin;
-
-    // First, try to find admin by ADMIN_EMAIL if defined
-    if (adminEmail) {
-      admin = await User.findOne({ email: adminEmail }, '_id').lean().exec();
-      if (admin) {
-        logger.info(`[MCP ADMIN] Admin user resolved by ADMIN_EMAIL: ${adminEmail}`);
-        return admin._id.toString();
-      }
-      logger.warn(`[MCP ADMIN] Admin user not found for ADMIN_EMAIL: ${adminEmail}, falling back to role-based lookup`);
-    }
-
-    // Fallback: find first user with ADMIN role
-    admin = await User.findOne({ role: SystemRoles.ADMIN }, '_id').lean().exec();
-    if (!admin) {
-      throw new Error('Admin user not found by ADMIN_EMAIL or ADMIN role');
-    }
-    logger.info(`[MCP ADMIN] Admin user resolved by role: ${admin._id.toString()}`);
-    return admin._id.toString();
-  } catch (error) {
-    logger.error('[MCP] Error getting admin ID:', error);
-    throw error;
-  }
-}
-
-/**
- * Get MCP server config for a user, with fallback to admin-created servers
- * @param {string} serverName - The MCP server name
- * @param {string} userId - The current user's ID
- * @returns {Promise<Object|null>} Server config object or null if not found
- */
-async function getServerConfigWithAdminFallback(serverName, userId) {
-  try {
-    // First, try to get user's own server config
-    let serverConfig = await getMCPServersRegistry().getServerConfig(serverName, userId);
-
-    if (serverConfig) {
-      logger.info(`[MCP] Found user server config for ${serverName} (userId=${userId})`);
-      logger.info(`[MCP CONFIG] server=${serverName} ownerId=${userId}`);
-      return { ...serverConfig, userId };
-    }
-
-    logger.info(`[MCP] User config not found for ${serverName}, checking admin configs...`);
-
-    // If not found, fallback to admin servers
-    const admins = await User.find({ role: SystemRoles.ADMIN }, '_id').lean().exec();
-
-    if (!admins || admins.length === 0) {
-      logger.warn(`[MCP] No admin server config found for ${serverName}`);
-      return null;
-    }
-
-    // Try each admin's server config
-    for (const admin of admins) {
-      serverConfig = await getMCPServersRegistry().getServerConfig(serverName, admin._id.toString());
-      if (serverConfig) {
-        const adminId = admin._id.toString();
-        logger.info(`[MCP] Found admin server config for ${serverName} (adminId=${adminId})`);
-        logger.info(`[MCP CONFIG] server=${serverName} ownerId=${adminId}`);
-        return { ...serverConfig, userId: adminId };
-      }
-    }
-
-    logger.warn(`[MCP] No server config found for ${serverName} in any admin account`);
-    return null;
-  } catch (error) {
-    logger.error(`[MCP] Error getting server config for ${serverName}:`, error);
-    return null;
-  }
-}
-
 async function createMCPTools({
   res,
   user,
@@ -391,15 +307,10 @@ async function createMCPTools({
   userMCPAuthMap,
   streamId = null,
 }) {
-  logger.info(`[MCP AUDIT] Step 2 - Building tools for serverName=${serverName}, userId=${user?.id}`);
-
   // Early domain validation before reconnecting server (avoid wasted work on disallowed domains)
   // Use getAppConfig() to support per-user/role domain restrictions
   const serverConfig =
-    config ?? (await getServerConfigWithAdminFallback(serverName, user?.id));
-
-  logger.info(`[MCP AUDIT] serverConfig found for ${serverName}: ${!!serverConfig}`);
-
+    config ?? (await getMCPServersRegistry().getServerConfig(serverName, user?.id));
   if (serverConfig?.url) {
     const appConfig = await getAppConfig({ role: user?.role });
     const allowedDomains = appConfig?.mcpSettings?.allowedDomains;
@@ -472,22 +383,12 @@ async function createMCPTool({
   config,
   streamId = null,
 }) {
-  // toolKey format: tavily_search_mcp_tavily (tool_mcp_server)
-  const [toolNamePart, serverName] = toolKey.split('_mcp_');
-
-  logger.info(
-    `[MCP DIAG] Parsed MCP tool: tool=${toolNamePart} server=${serverName}`
-  );
-
-  // For logging, we use the full toolKey as the tool identifier
-  const toolName = toolKey;
-
-  logger.info(`[MCP DIAG] Creating tool - full name: ${toolName}, server: ${serverName}`);
+  const [toolName, serverName] = toolKey.split(Constants.mcp_delimiter);
 
   // Runtime domain validation: check if the server's domain is still allowed
   // Use getAppConfig() to support per-user/role domain restrictions
   const serverConfig =
-    config ?? (await getServerConfigWithAdminFallback(serverName, user?.id));
+    config ?? (await getMCPServersRegistry().getServerConfig(serverName, user?.id));
   if (serverConfig?.url) {
     const appConfig = await getAppConfig({ role: user?.role });
     const allowedDomains = appConfig?.mcpSettings?.allowedDomains;
@@ -497,9 +398,6 @@ async function createMCPTool({
       return undefined;
     }
   }
-
-  logger.info(`[MCP DIAG] Available tools keys: ${Object.keys(availableTools || {}).join(', ')}`);
-  logger.info(`[MCP DIAG] Looking for toolKey: ${toolKey}`);
 
   /** @type {LCTool | undefined} */
   let toolDefinition = availableTools?.[toolKey]?.function;
@@ -524,31 +422,12 @@ async function createMCPTool({
     return;
   }
 
-  // Normalize MCP toolDefinition if it doesn't have the 'function' wrapper
-  if (toolDefinition && !toolDefinition.function && toolDefinition.name) {
-    logger.info(`[MCP DIAG] Normalizing MCP toolDefinition for ${toolDefinition.name}`);
-    toolDefinition = {
-      type: 'function',
-      function: {
-        name: toolDefinition.name,
-        description: toolDefinition.description || '',
-        parameters: toolDefinition.input_schema || {
-          type: 'object',
-          properties: {},
-        },
-      },
-    };
-    logger.info(
-      `[MCP DIAG] Normalized MCP toolDefinition for ${toolDefinition.function.name}`
-    );
-  }
-
   return createToolInstance({
     res,
     provider,
     toolName,
     serverName,
-    toolDefinition: toolDefinition.function,
+    toolDefinition,
     streamId,
   });
 }
@@ -577,9 +456,7 @@ function createToolInstance({
     };
   }
 
-  // Use the full tool name (toolName) which already includes the mcp suffix
-  // Do not re-construct it with server name
-  const normalizedToolKey = toolName;
+  const normalizedToolKey = `${toolName}${Constants.mcp_delimiter}${normalizeServerName(serverName)}`;
 
   /** @type {(toolArguments: Object | string, config?: GraphRunnableConfig) => Promise<unknown>} */
   const _call = async (toolArguments, config) => {
@@ -593,32 +470,7 @@ function createToolInstance({
       const flowsCache = getLogStores(CacheKeys.FLOWS);
       const flowManager = getFlowStateManager(flowsCache);
       derivedSignal = config?.signal ? AbortSignal.any([config.signal]) : undefined;
-
-      // ДИАГНОСТИКА: ШАГ 4 - Tool Execution
-      logger.info(`[MCP DIAG] ===== Tool execution requested: ${normalizedToolKey}`);
-      logger.info(`[MCP DIAG] Tool name in registry: ${normalizedToolKey}`);
-      logger.info(`[MCP DIAG] userId: ${userId}, toolArguments: ${JSON.stringify(toolArguments).substring(0, 100)}`);
-
-      // Verify server config exists
-      const execServerConfig = serverConfig ?? (await getServerConfigWithAdminFallback(serverName, userId));
-
-      if (!execServerConfig) {
-        logger.error(`[MCP EXECUTION] CRITICAL: No server config found for ${serverName} (userId=${userId})`);
-        logger.error(`[MCP DIAG] Server config lookup failed for ${serverName}`);
-        throw new Error(`Configuration for server "${serverName}" not found`);
-      }
-
-      logger.info(`[MCP DIAG] Server config found for ${serverName}`);
-
-      // All MCP tools execute through admin's MCP manager
-      const adminId = await getAdminId();
-      logger.info(`[MCP DIAG] Admin ID resolved: ${adminId}`);
-
-      logger.info(`[MCP EXECUTION] user=${userId} executed via admin MCP for tool=${serverName}.${toolName}`);
-      logger.info(`[MCP DIAG] MCPManager will be created for adminId: ${adminId}`);
-
-      const mcpManager = getMCPManager(adminId);
-      logger.info(`[MCP DIAG] MCPManager created successfully`);
+      const mcpManager = getMCPManager(userId);
       const provider = (config?.metadata?.provider || _provider)?.toLowerCase();
 
       const { args: _args, stepId, ...toolCall } = config.toolCall ?? {};
@@ -653,7 +505,6 @@ function createToolInstance({
         serverName,
         toolName,
         provider,
-        ownerId: adminId,
         toolArguments,
         options: {
           signal: derivedSignal,
@@ -715,48 +566,10 @@ function createToolInstance({
     description: description || '',
     responseFormat: AgentConstants.CONTENT_AND_ARTIFACT,
   });
-
-  logger.info(`[MCP DIAG] Tool instance created - function.name: ${toolInstance.function.name}`);
-
   toolInstance.mcp = true;
   toolInstance.mcpRawServerName = serverName;
   toolInstance.mcpJsonSchema = parameters;
   return toolInstance;
-}
-
-/**
- * Get MCP servers for a user, including their own and all admin-created servers
- * @param {string} userId - The user ID
- * @returns {Promise<Object>} Combined MCP server configurations
- */
-async function getMCPServersWithAdmins(userId) {
-  try {
-    // Get user's own MCP servers
-    const userConfigs = await getMCPServersRegistry().getAllServerConfigs(userId);
-
-    // Get all admin users
-    const admins = await User.find({ role: SystemRoles.ADMIN }, '_id').lean().exec();
-
-    if (!admins || admins.length === 0) {
-      return userConfigs;
-    }
-
-    // Get MCP servers from all admins
-    const adminConfigs = {};
-    for (const admin of admins) {
-      const configs = await getMCPServersRegistry().getAllServerConfigs(admin._id.toString());
-      if (configs) {
-        Object.assign(adminConfigs, configs);
-      }
-    }
-
-    // Merge: admin servers first, then user servers (user servers can override)
-    return { ...adminConfigs, ...userConfigs };
-  } catch (error) {
-    logger.error('[getMCPServersWithAdmins] Error getting admin MCP servers:', error);
-    // Fallback to user's own servers if admin lookup fails
-    return await getMCPServersRegistry().getAllServerConfigs(userId);
-  }
 }
 
 /**
@@ -765,19 +578,13 @@ async function getMCPServersWithAdmins(userId) {
  * @returns {Object} Object containing mcpConfig, appConnections, userConnections, and oauthServers
  */
 async function getMCPSetupData(userId) {
-  const mcpConfig = await getMCPServersWithAdmins(userId);
-
-  logger.info(`[MCP AUDIT] Step 1 - MCP Servers Loaded for userId=${userId}`);
-  logger.info(`[MCP AUDIT] MCP servers available: ${Object.keys(mcpConfig || {}).join(', ')}`);
-  logger.info(`[MCP AUDIT] Total servers: ${Object.keys(mcpConfig || {}).length}`);
+  const mcpConfig = await getMCPServersRegistry().getAllServerConfigs(userId);
 
   if (!mcpConfig) {
     throw new Error('MCP config not found');
   }
 
-  // Use admin's MCP manager for all server connections
-  const adminId = await getAdminId();
-  const mcpManager = getMCPManager(adminId);
+  const mcpManager = getMCPManager(userId);
   /** @type {Map<string, import('@librechat/api').MCPConnection>} */
   let appConnections = new Map();
   try {
@@ -910,11 +717,7 @@ async function getServerConnectionStatus(
 module.exports = {
   createMCPTool,
   createMCPTools,
-  getAdminId,
-  reinitMCPServer,
   getMCPSetupData,
-  getMCPServersWithAdmins,
-  getServerConfigWithAdminFallback,
   checkOAuthFlowStatus,
   getServerConnectionStatus,
 };
