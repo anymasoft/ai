@@ -26,7 +26,7 @@ async function getAllMCPConfigs(userId) {
   const userConfig = await getMCPServersRegistry().getAllServerConfigs(userId);
 
   // Find admin user and get their server configs
-  const admin = await User.findOne({ role: 'admin' }, '_id').lean().exec();
+  const admin = await User.findOne({ role: 'ADMIN' }, '_id').lean().exec();
 
   if (!admin) {
     return userConfig || {};
