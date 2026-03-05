@@ -55,7 +55,8 @@ const PLANS: PricingPlan[] = [
       'Claude Sonnet',
       'DeepSeek V3',
       'Web-поиск (Tavily)',
-      'Code Interpreter',
+      // MVP: Code Interpreter hidden
+      // 'Code Interpreter',
       '900 000 токен-кредитов',
     ],
     highlight: true,
@@ -73,7 +74,8 @@ const PLANS: PricingPlan[] = [
       'Claude Sonnet',
       'DeepSeek V3',
       'Web-поиск (Tavily)',
-      'Code Interpreter',
+      // MVP: Code Interpreter hidden
+      // 'Code Interpreter',
       'Приоритетная поддержка (email)',
       '2 000 000 токен-кредитов',
     ],
