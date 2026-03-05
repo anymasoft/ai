@@ -14,7 +14,12 @@ const {
 const { Constants, MCPServerUserInputSchema, SystemRoles } = require('librechat-data-provider');
 const { cacheMCPServerTools, getMCPServerTools } = require('~/server/services/Config');
 const { getMCPManager, getMCPServersRegistry } = require('~/config');
-const { getMCPServersWithAdmins, getServerConfigWithAdminFallback, getAdminId, reinitMCPServer } = require('~/server/services/MCP');
+const {
+  getMCPServersWithAdmins,
+  getServerConfigWithAdminFallback,
+  getAdminId,
+} = require('../services/MCP');
+const { reinitMCPServer } = require('../services/Tools/mcp');
 const { User } = require('~/db/models');
 
 /**
