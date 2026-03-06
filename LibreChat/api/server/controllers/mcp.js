@@ -158,7 +158,8 @@ const getMCPTools = async (req, res) => {
     // Process each configured server
     for (const serverName of configuredServers) {
       // Проверяем включен ли сервер пользователем
-      if (!enabledMcpServers.includes(serverName)) {
+      // Если enabledMcpServers не передан или пустой → блокировать все серверы
+      if (!enabledMcpServers || !enabledMcpServers.includes(serverName)) {
         logger.info(
           `[MCP BLOCKED] ${serverName} not enabled by user - skipping tool registration`,
         );
@@ -297,8 +298,9 @@ const getMCPServerById = async (req, res) => {
     }
 
     // Проверяем включен ли сервер пользователем
-    const enabledMcpServers = req.body?.enabledMcpServers || [];
-    if (!enabledMcpServers.includes(serverName)) {
+    // Если enabledMcpServers не передан или пустой → блокировать все серверы
+    const enabledMcpServers = req.body?.enabledMcpServers;
+    if (!enabledMcpServers || !enabledMcpServers.includes(serverName)) {
       logger.info(
         `[MCP BLOCKED] user=${userId} accessing disabled MCP server ${serverName}`,
       );

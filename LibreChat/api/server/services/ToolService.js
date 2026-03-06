@@ -129,7 +129,8 @@ async function processRequiredActions(client, requiredActions) {
     .filter((toolName) => !!toolName);
 
   // Получаем список включённых MCP серверов пользователем
-  const enabledMcpServers = client.req.body?.enabledMcpServers || [];
+  // Если не передан → undefined, что приведет к блокировке всех серверов
+  const enabledMcpServers = client.req.body?.enabledMcpServers;
 
   const { loadedTools } = await loadTools({
     user: client.req.user.id,
@@ -874,7 +875,8 @@ async function loadAgentTools({
   }
 
   // Получаем список включённых MCP серверов пользователем
-  const enabledMcpServers = req.body?.enabledMcpServers || [];
+  // Если не передан → undefined, что приведет к блокировке всех серверов
+  const enabledMcpServers = req.body?.enabledMcpServers;
 
   const { loadedTools, toolContextMap } = await loadTools({
     agent,
