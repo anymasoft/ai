@@ -164,7 +164,7 @@ const startServer = async () => {
     session({
       secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
       resave: false,
-      saveUninitialized: false,
+      saveUninitialized: true,  // Must be true for Passport state to work
       cookie: {
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
@@ -175,7 +175,6 @@ const startServer = async () => {
 
   /* OAUTH - Only Yandex enabled */
   app.use(passport.initialize());
-  app.use(passport.session());
   passport.use(jwtLogin());
   // [DISABLED] Email/Password login (passportLogin) - only Yandex OAuth is enabled
   // passport.use(passportLogin());
