@@ -6,6 +6,7 @@ import type { TLoginLayoutContext } from '~/common';
 import { getLoginError, persistRedirectToSession } from '~/utils';
 import { ErrorMessage } from '~/components/Auth/ErrorMessage';
 import SocialButton from '~/components/Auth/SocialButton';
+import SocialLoginRender from '~/components/Auth/SocialLoginRender';
 import { useAuthContext } from '~/hooks/AuthContext';
 import { useLocalize } from '~/hooks';
 import LoginForm from './LoginForm';
@@ -103,6 +104,14 @@ function Login() {
     <>
       {/* [DISABLED] Email/Password login - only Yandex OAuth is enabled */}
       {error != null && <ErrorMessage>{localize(getLoginError(error))}</ErrorMessage>}
+
+      {/* [ENABLED] Yandex OAuth button (Only enabled authentication method) */}
+      <div className="mt-8 text-center">
+        <h2 className="mb-6 text-2xl font-bold text-gray-900 dark:text-white">
+          {localize('com_auth_sign_in')}
+        </h2>
+        <SocialLoginRender startupConfig={startupConfig} />
+      </div>
 
       {/* [DISABLED] Email/Password login form */}
       {/* {startupConfig?.emailLoginEnabled === true && (
