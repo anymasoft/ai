@@ -207,7 +207,7 @@ const startServer = async () => {
     passport.authenticate('yandex', {
       failureRedirect: `${process.env.DOMAIN_CLIENT}/oauth/error`,
       failureMessage: true,
-      session: false,
+      
     }),
     setBalanceConfig,
     checkDomainAllowed,
