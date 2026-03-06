@@ -150,6 +150,11 @@ function SocialLoginRender({
     ),
   };
 
+  // [ENABLED] Show Yandex OAuth button if enabled (only enabled authentication method)
+  if (startupConfig.yandexLoginEnabled) {
+    return providerComponents.yandex;
+  }
+
   return (
     startupConfig.socialLoginEnabled && (
       <>
