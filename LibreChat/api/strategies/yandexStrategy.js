@@ -1,6 +1,5 @@
 const { Strategy: OAuth2Strategy } = require('passport-oauth2');
 const axios = require('axios');
-const crypto = require('crypto');
 const socialLogin = require('./socialLogin');
 
 /**
@@ -79,28 +78,6 @@ class YandexStrategy extends OAuth2Strategy {
     }
   }
 
-  /**
-   * Переопределяем authenticate для добавления custom параметров
-   * Yandex OAuth не требует scope в запросе авторизации
-   */
-  authenticate(req, options) {
-    // Генерируем state для CSRF защиты (как в Astro)
-    const state = crypto.randomBytes(32).toString('hex');
-
-    console.log(`[Yandex OAuth] Generated state: ${state.slice(0, 8)}...`);
-
-    // Сохраняем state в session для проверки при callback
-    if (!req.session) {
-      req.session = {};
-    }
-    req.session.oauth_state_yandex = state;
-
-    // Передаём state в authenticate опции
-    options = Object.assign({}, options, { state });
-
-    // Yandex OAuth не требует scope
-    super.authenticate(req, options);
-  }
 }
 
 // Создать обработчик для socialLogin
