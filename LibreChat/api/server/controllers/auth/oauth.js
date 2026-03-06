@@ -10,12 +10,16 @@ const { syncUserEntraGroupMemberships } = require('~/server/services/PermissionS
 const { setAuthTokens, setOpenIDAuthTokens } = require('~/server/services/AuthService');
 const getLogStores = require('~/cache/getLogStores');
 const { checkBan } = require('~/server/middleware');
-const { generateToken, User } = require('~/models');
+const { generateToken } = require('~/models');
+const { User } = require('~/db/models');
 
 const domains = {
   client: process.env.DOMAIN_CLIENT,
   server: process.env.DOMAIN_SERVER,
 };
+
+// 🔍 Отладка: проверяем что User модель загружена
+console.log('🔍 User model loaded in oauth.js:', !!User);
 
 function createOAuthHandler(redirectUri = domains.client) {
   /**

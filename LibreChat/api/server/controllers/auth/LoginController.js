@@ -1,7 +1,10 @@
 const { logger } = require('@librechat/data-schemas');
 const { generate2FATempToken } = require('~/server/services/twoFactorService');
 const { setAuthTokens } = require('~/server/services/AuthService');
-const { User } = require('~/models');
+const { User } = require('~/db/models');
+
+// 🔍 Отладка: проверяем что User модель загружена
+console.log('🔍 User model loaded in LoginController.js:', !!User);
 
 const loginController = async (req, res) => {
   try {
