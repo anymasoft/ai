@@ -199,4 +199,28 @@ router.post(
   oauthHandler,
 );
 
+/**
+ * Yandex Routes (Only enabled OAuth provider)
+ */
+router.get(
+  '/yandex',
+  passport.authenticate('yandex', {
+    scope: ['login:email', 'login:info'],
+    session: false,
+  }),
+);
+
+router.get(
+  '/yandex/callback',
+  passport.authenticate('yandex', {
+    failureRedirect: `${domains.client}/oauth/error`,
+    failureMessage: true,
+    session: false,
+    scope: ['login:email', 'login:info'],
+  }),
+  setBalanceConfig,
+  checkDomainAllowed,
+  oauthHandler,
+);
+
 module.exports = router;

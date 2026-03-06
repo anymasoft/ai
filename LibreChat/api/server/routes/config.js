@@ -9,8 +9,10 @@ const { getLogStores } = require('~/cache');
 const SystemSettings = require('~/models/SystemSettings');
 
 const router = express.Router();
-const emailLoginEnabled =
-  process.env.ALLOW_EMAIL_LOGIN === undefined || isEnabled(process.env.ALLOW_EMAIL_LOGIN);
+// [DISABLED] Email login - only Yandex OAuth is enabled
+// const emailLoginEnabled =
+//   process.env.ALLOW_EMAIL_LOGIN === undefined || isEnabled(process.env.ALLOW_EMAIL_LOGIN);
+const emailLoginEnabled = false; // Force disabled
 const passwordResetEnabled = isEnabled(process.env.ALLOW_PASSWORD_RESET);
 
 const sharedLinksEnabled =
@@ -64,27 +66,64 @@ router.get('/', async function (req, res) {
     const payload = {
       appTitle: process.env.APP_TITLE || 'LibreChat',
       socialLogins: appConfig?.registration?.socialLogins ?? defaultSocialLogins,
-      discordLoginEnabled: !!process.env.DISCORD_CLIENT_ID && !!process.env.DISCORD_CLIENT_SECRET,
-      facebookLoginEnabled:
-        !!process.env.FACEBOOK_CLIENT_ID && !!process.env.FACEBOOK_CLIENT_SECRET,
-      githubLoginEnabled: !!process.env.GITHUB_CLIENT_ID && !!process.env.GITHUB_CLIENT_SECRET,
-      googleLoginEnabled: !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET,
-      appleLoginEnabled:
-        !!process.env.APPLE_CLIENT_ID &&
-        !!process.env.APPLE_TEAM_ID &&
-        !!process.env.APPLE_KEY_ID &&
-        !!process.env.APPLE_PRIVATE_KEY_PATH,
-      openidLoginEnabled: isOpenIdEnabled,
-      openidLabel: process.env.OPENID_BUTTON_LABEL || 'Continue with OpenID',
-      openidImageUrl: process.env.OPENID_IMAGE_URL,
-      openidAutoRedirect: isEnabled(process.env.OPENID_AUTO_REDIRECT),
-      samlLoginEnabled: !isOpenIdEnabled && isSamlEnabled,
-      samlLabel: process.env.SAML_BUTTON_LABEL,
-      samlImageUrl: process.env.SAML_IMAGE_URL,
+
+      // [DISABLED] Discord OAuth
+      // discordLoginEnabled: !!process.env.DISCORD_CLIENT_ID && !!process.env.DISCORD_CLIENT_SECRET,
+      discordLoginEnabled: false,
+
+      // [DISABLED] Facebook OAuth
+      // facebookLoginEnabled:
+      //   !!process.env.FACEBOOK_CLIENT_ID && !!process.env.FACEBOOK_CLIENT_SECRET,
+      facebookLoginEnabled: false,
+
+      // [DISABLED] GitHub OAuth
+      // githubLoginEnabled: !!process.env.GITHUB_CLIENT_ID && !!process.env.GITHUB_CLIENT_SECRET,
+      githubLoginEnabled: false,
+
+      // [DISABLED] Google OAuth
+      // googleLoginEnabled: !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET,
+      googleLoginEnabled: false,
+
+      // [DISABLED] Apple OAuth
+      // appleLoginEnabled:
+      //   !!process.env.APPLE_CLIENT_ID &&
+      //   !!process.env.APPLE_TEAM_ID &&
+      //   !!process.env.APPLE_KEY_ID &&
+      //   !!process.env.APPLE_PRIVATE_KEY_PATH,
+      appleLoginEnabled: false,
+
+      // [DISABLED] OpenID Connect
+      // openidLoginEnabled: isOpenIdEnabled,
+      openidLoginEnabled: false,
+      // openidLabel: process.env.OPENID_BUTTON_LABEL || 'Continue with OpenID',
+      // openidImageUrl: process.env.OPENID_IMAGE_URL,
+      // openidAutoRedirect: isEnabled(process.env.OPENID_AUTO_REDIRECT),
+      openidLabel: '',
+      openidImageUrl: '',
+      openidAutoRedirect: false,
+
+      // [DISABLED] SAML
+      // samlLoginEnabled: !isOpenIdEnabled && isSamlEnabled,
+      samlLoginEnabled: false,
+      // samlLabel: process.env.SAML_BUTTON_LABEL,
+      // samlImageUrl: process.env.SAML_IMAGE_URL,
+      samlLabel: '',
+      samlImageUrl: '',
+
       serverDomain: process.env.DOMAIN_SERVER || 'http://localhost:3080',
+
+      // [DISABLED] Email login - only Yandex OAuth is enabled
       emailLoginEnabled,
-      registrationEnabled: !ldap?.enabled && isEnabled(process.env.ALLOW_REGISTRATION),
+
+      // [DISABLED] Email registration
+      // registrationEnabled: !ldap?.enabled && isEnabled(process.env.ALLOW_REGISTRATION),
+      registrationEnabled: false,
+
+      // [ENABLED] Social logins (required for Yandex OAuth)
       socialLoginEnabled: isEnabled(process.env.ALLOW_SOCIAL_LOGIN),
+
+      // [ENABLED] Yandex OAuth (Only enabled authentication method)
+      yandexLoginEnabled: !!process.env.YANDEX_CLIENT_ID && !!process.env.YANDEX_CLIENT_SECRET,
       emailEnabled:
         (!!process.env.EMAIL_SERVICE || !!process.env.EMAIL_HOST) &&
         !!process.env.EMAIL_USERNAME &&

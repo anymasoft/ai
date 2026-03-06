@@ -152,13 +152,14 @@ const startServer = async () => {
   app.use(staticCache(appConfig.paths.assets));
 
   if (!ALLOW_SOCIAL_LOGIN) {
-    console.warn('Social logins are disabled. Set ALLOW_SOCIAL_LOGIN=true to enable them.');
+    console.warn('⚠️  Social logins are disabled. Set ALLOW_SOCIAL_LOGIN=true to enable Yandex OAuth.');
   }
 
-  /* OAUTH */
+  /* OAUTH - Only Yandex enabled */
   app.use(passport.initialize());
   passport.use(jwtLogin());
-  passport.use(passportLogin());
+  // [DISABLED] Email/Password login (passportLogin) - only Yandex OAuth is enabled
+  // passport.use(passportLogin());
 
   /* LDAP Auth */
   if (process.env.LDAP_URL && process.env.LDAP_USER_SEARCH_BASE) {

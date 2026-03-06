@@ -1,27 +1,36 @@
 const { setupOpenId, getOpenIdConfig, getOpenIdEmail } = require('./openidStrategy');
 const openIdJwtLogin = require('./openIdJwtStrategy');
-const facebookLogin = require('./facebookStrategy');
-const discordLogin = require('./discordStrategy');
+// [DISABLED] facebookLogin,
+// const facebookLogin = require('./facebookStrategy');
+// [DISABLED] discordLogin
+// const discordLogin = require('./discordStrategy');
 const passportLogin = require('./localStrategy');
-const googleLogin = require('./googleStrategy');
-const githubLogin = require('./githubStrategy');
+// [DISABLED] googleLogin
+// const googleLogin = require('./googleStrategy');
+// [DISABLED] githubLogin
+// const githubLogin = require('./githubStrategy');
 const { setupSaml } = require('./samlStrategy');
-const appleLogin = require('./appleStrategy');
+// [DISABLED] appleLogin
+// const appleLogin = require('./appleStrategy');
 const ldapLogin = require('./ldapStrategy');
 const jwtLogin = require('./jwtStrategy');
+// [ENABLED] Yandex OAuth (Only enabled)
+const yandexLogin = require('./yandexStrategy');
 
 module.exports = {
-  appleLogin,
+  // [DISABLED] appleLogin,
   passportLogin,
-  googleLogin,
-  githubLogin,
-  discordLogin,
+  // [DISABLED] googleLogin,
+  // [DISABLED] githubLogin,
+  // [DISABLED] discordLogin,
   jwtLogin,
-  facebookLogin,
+  // [DISABLED] facebookLogin,
   setupOpenId,
   getOpenIdConfig,
   getOpenIdEmail,
   ldapLogin,
   setupSaml,
   openIdJwtLogin,
+  // [ENABLED] Yandex OAuth (Only enabled)
+  yandexLogin,
 };
