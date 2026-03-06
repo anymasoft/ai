@@ -1,6 +1,7 @@
 const { logger } = require('@librechat/data-schemas');
 const { generate2FATempToken } = require('~/server/services/twoFactorService');
 const { setAuthTokens } = require('~/server/services/AuthService');
+const { User } = require('~/models');
 
 const loginController = async (req, res) => {
   try {
@@ -15,9 +16,11 @@ const loginController = async (req, res) => {
 
     /** Check and assign admin role if email matches ADMIN_EMAIL */
     const adminEmail = process.env.ADMIN_EMAIL;
-    if (adminEmail && req.user.email === adminEmail) {
-      req.user.role = 'admin';
-      await req.user.save();
+    if (adminEmail && req.user.email === adminEmail && req.user.role !== 'admin') {
+      await User.updateOne(
+        { _id: req.user._id },
+        { $set: { role: 'admin' } }
+      );
       logger.info(`🔑 ADMIN ACCESS GRANTED: ${req.user.email}`);
     }
 
