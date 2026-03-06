@@ -87,9 +87,9 @@ const yandexLogin = socialLogin('yandex', getProfileDetails);
  * Экспортировать конструктор стратегии
  */
 module.exports = () => {
-  // Использовать YANDEX_URI если установлена, иначе сформировать из DOMAIN_SERVER
-  const callbackURL = process.env.YANDEX_URI ||
-    `${process.env.DOMAIN_SERVER}/oauth/yandex/callback`;
+  // Callback URL всегда /oauth/yandex/callback
+  // (маршруты OAuth регистрируются с префиксом /oauth в server/index.js)
+  const callbackURL = `${process.env.DOMAIN_SERVER}/oauth/yandex/callback`;
 
   return new YandexStrategy(
     {
