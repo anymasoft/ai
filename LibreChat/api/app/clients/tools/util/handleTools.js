@@ -360,7 +360,8 @@ const loadTools = async ({
       }
 
       // Проверяем включен ли сервер пользователем
-      if (!enabledMcpServers.includes(serverName)) {
+      // Если enabledMcpServers не передан или пустой → блокировать все серверы
+      if (!enabledMcpServers || !enabledMcpServers.includes(serverName)) {
         logger.info(
           `[MCP BLOCKED] ${serverName} not enabled by user - skipping tools registration`,
         );
