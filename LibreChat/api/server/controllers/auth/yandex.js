@@ -1,13 +1,17 @@
 const crypto = require('crypto');
 const { logger } = require('@librechat/data-schemas');
 const { isEnabled } = require('@librechat/api');
-const { getUserById, findUser, createUser, User } = require('~/models');
+const { getUserById, findUser, createUser } = require('~/models');
+const { User } = require('~/db/models');
 const { setAuthTokens } = require('~/server/services/AuthService');
 
 const domains = {
   client: process.env.DOMAIN_CLIENT,
   server: process.env.DOMAIN_SERVER,
 };
+
+// 🔍 Отладка: проверяем что User модель загружена
+console.log('🔍 User model loaded in yandex.js:', !!User);
 
 /**
  * ШАГ 1: Инициация Yandex OAuth redirect
