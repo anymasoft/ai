@@ -99,9 +99,9 @@ const refreshController = async (req, res) => {
 
       if (error || !user) {
         logger.warn(
-          `[refreshController] Redirecting to /login: error=${error ?? 'null'}, user=${user ? 'exists' : 'null'}`,
+          `[refreshController] Redirecting to /sign-in: error=${error ?? 'null'}, user=${user ? 'exists' : 'null'}`,
         );
-        return res.status(401).redirect('/login');
+        return res.status(401).redirect('/sign-in');
       }
 
       // Handle migration: update user with openidId if found by email without openidId
@@ -143,7 +143,7 @@ const refreshController = async (req, res) => {
     const payload = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
     const user = await getUserById(payload.id, '-password -__v -totpSecret -backupCodes');
     if (!user) {
-      return res.status(401).redirect('/login');
+      return res.status(401).redirect('/sign-in');
     }
 
     const userId = payload.id;
@@ -170,7 +170,7 @@ const refreshController = async (req, res) => {
       // Retrying from a refresh token request that failed (401)
       res.status(403).send('No session found');
     } else if (payload.exp < Date.now() / 1000) {
-      res.status(403).redirect('/login');
+      res.status(403).redirect('/sign-in');
     } else {
       res.status(401).send('Refresh token expired or not found for this user');
     }

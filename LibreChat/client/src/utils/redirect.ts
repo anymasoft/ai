@@ -1,8 +1,8 @@
 const REDIRECT_PARAM = 'redirect_to';
 const SESSION_KEY = 'post_login_redirect_to';
 
-/** Matches `/login` as a full path segment, with optional basename prefix (e.g. `/librechat/login/2fa`) */
-const LOGIN_PATH_RE = /(?:^|\/)login(?:\/|$)/;
+/** Matches `/sign-in` as a full path segment, with optional basename prefix (e.g. `/librechat/sign-in/2fa`) */
+const LOGIN_PATH_RE = /(?:^|\/)sign-in(?:\/|$)/;
 
 /** Validates that a redirect target is a safe relative path (not an absolute or protocol-relative URL) */
 function isSafeRedirect(url: string): boolean {
@@ -14,19 +14,19 @@ function isSafeRedirect(url: string): boolean {
 }
 
 /**
- * Builds a `/login?redirect_to=...` URL from the given or current location.
- * Returns plain `/login` (no param) when already on a login route to prevent recursive nesting.
+ * Builds a `/sign-in?redirect_to=...` URL from the given or current location.
+ * Returns plain `/sign-in` (no param) when already on a sign-in route to prevent recursive nesting.
  */
 function buildLoginRedirectUrl(pathname?: string, search?: string, hash?: string): string {
   const p = pathname ?? window.location.pathname;
   if (LOGIN_PATH_RE.test(p)) {
-    return '/login';
+    return '/sign-in';
   }
   const s = search ?? window.location.search;
   const h = hash ?? window.location.hash;
   const currentPath = `${p}${s}${h}`;
   const encoded = encodeURIComponent(currentPath || '/');
-  return `/login?${REDIRECT_PARAM}=${encoded}`;
+  return `/sign-in?${REDIRECT_PARAM}=${encoded}`;
 }
 
 /**

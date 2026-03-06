@@ -39,20 +39,20 @@ describe('isSafeRedirect', () => {
     expect(isSafeRedirect('')).toBe(false);
   });
 
-  it('rejects /login to prevent redirect loops', () => {
-    expect(isSafeRedirect('/login')).toBe(false);
+  it('rejects /sign-in to prevent redirect loops', () => {
+    expect(isSafeRedirect('/sign-in')).toBe(false);
   });
 
-  it('rejects /login with query params', () => {
-    expect(isSafeRedirect('/login?redirect_to=/c/new')).toBe(false);
+  it('rejects /sign-in with query params', () => {
+    expect(isSafeRedirect('/sign-in?redirect_to=/c/new')).toBe(false);
   });
 
-  it('rejects /login sub-paths', () => {
-    expect(isSafeRedirect('/login/2fa')).toBe(false);
+  it('rejects /sign-in sub-paths', () => {
+    expect(isSafeRedirect('/sign-in/2fa')).toBe(false);
   });
 
-  it('rejects /login with hash', () => {
-    expect(isSafeRedirect('/login#foo')).toBe(false);
+  it('rejects /sign-in with hash', () => {
+    expect(isSafeRedirect('/sign-in#foo')).toBe(false);
   });
 
   it('accepts the root path', () => {
@@ -76,7 +76,7 @@ describe('buildLoginRedirectUrl', () => {
 
   it('builds a login URL from explicit args', () => {
     const result = buildLoginRedirectUrl('/c/new', '?q=hello', '');
-    expect(result).toBe('/login?redirect_to=%2Fc%2Fnew%3Fq%3Dhello');
+    expect(result).toBe('/sign-in?redirect_to=%2Fc%2Fnew%3Fq%3Dhello');
   });
 
   it('encodes complex paths with query and hash', () => {
@@ -98,46 +98,46 @@ describe('buildLoginRedirectUrl', () => {
       writable: true,
     });
     const result = buildLoginRedirectUrl();
-    expect(result).toBe('/login?redirect_to=%2F');
+    expect(result).toBe('/sign-in?redirect_to=%2F');
   });
 
-  it('returns plain /login when pathname is /login (prevents recursive redirect)', () => {
-    const result = buildLoginRedirectUrl('/login', '?redirect_to=%2Fc%2Fnew', '');
-    expect(result).toBe('/login');
+  it('returns plain /sign-in when pathname is /sign-in (prevents recursive redirect)', () => {
+    const result = buildLoginRedirectUrl('/sign-in', '?redirect_to=%2Fc%2Fnew', '');
+    expect(result).toBe('/sign-in');
   });
 
-  it('returns plain /login when window.location is already /login', () => {
+  it('returns plain /sign-in when window.location is already /sign-in', () => {
     Object.defineProperty(window, 'location', {
-      value: { pathname: '/login', search: '?redirect_to=%2Fc%2Fabc', hash: '' },
+      value: { pathname: '/sign-in', search: '?redirect_to=%2Fc%2Fabc', hash: '' },
       writable: true,
     });
     const result = buildLoginRedirectUrl();
-    expect(result).toBe('/login');
+    expect(result).toBe('/sign-in');
   });
 
-  it('returns plain /login for /login sub-paths', () => {
-    const result = buildLoginRedirectUrl('/login/2fa', '', '');
-    expect(result).toBe('/login');
+  it('returns plain /sign-in for /sign-in sub-paths', () => {
+    const result = buildLoginRedirectUrl('/sign-in/2fa', '', '');
+    expect(result).toBe('/sign-in');
   });
 
-  it('returns plain /login for basename-prefixed /login (e.g. /librechat/login)', () => {
+  it('returns plain /sign-in for basename-prefixed /sign-in (e.g. /librechat/sign-in)', () => {
     Object.defineProperty(window, 'location', {
-      value: { pathname: '/librechat/login', search: '?redirect_to=%2Fc%2Fabc', hash: '' },
+      value: { pathname: '/librechat/sign-in', search: '?redirect_to=%2Fc%2Fabc', hash: '' },
       writable: true,
     });
     const result = buildLoginRedirectUrl();
-    expect(result).toBe('/login');
+    expect(result).toBe('/sign-in');
   });
 
-  it('returns plain /login for basename-prefixed /login sub-paths', () => {
-    const result = buildLoginRedirectUrl('/librechat/login/2fa', '', '');
-    expect(result).toBe('/login');
+  it('returns plain /sign-in for basename-prefixed /sign-in sub-paths', () => {
+    const result = buildLoginRedirectUrl('/librechat/sign-in/2fa', '', '');
+    expect(result).toBe('/sign-in');
   });
 
   it('does NOT match paths where "login" is a substring of a segment', () => {
-    const result = buildLoginRedirectUrl('/c/loginhistory', '', '');
+    const result = buildLoginRedirectUrl('/c/sign-inhistory', '', '');
     expect(result).toContain('redirect_to=');
-    expect(decodeURIComponent(result.split('redirect_to=')[1])).toBe('/c/loginhistory');
+    expect(decodeURIComponent(result.split('redirect_to=')[1])).toBe('/c/sign-inhistory');
   });
 });
 
@@ -191,12 +191,12 @@ describe('getPostLoginRedirect', () => {
     expect(getPostLoginRedirect(params)).toBeNull();
   });
 
-  it('rejects /login redirect to prevent loops', () => {
+  it('rejects /sign-in redirect to prevent loops', () => {
     const params = new URLSearchParams('redirect_to=%2Flogin');
     expect(getPostLoginRedirect(params)).toBeNull();
   });
 
-  it('rejects /login sub-path redirect', () => {
+  it('rejects /sign-in sub-path redirect', () => {
     const params = new URLSearchParams('redirect_to=%2Flogin%2F2fa');
     expect(getPostLoginRedirect(params)).toBeNull();
   });
@@ -214,28 +214,28 @@ describe('login error redirect_to preservation (AuthContext onError pattern)', (
   function buildLoginErrorPath(search: string): string {
     const redirectTo = new URLSearchParams(search).get('redirect_to');
     return redirectTo && isSafeRedirect(redirectTo)
-      ? `/login?redirect_to=${encodeURIComponent(redirectTo)}`
-      : '/login';
+      ? `/sign-in?redirect_to=${encodeURIComponent(redirectTo)}`
+      : '/sign-in';
   }
 
   it('preserves a valid redirect_to across login failure', () => {
     const result = buildLoginErrorPath('?redirect_to=%2Fc%2Fnew');
-    expect(result).toBe('/login?redirect_to=%2Fc%2Fnew');
+    expect(result).toBe('/sign-in?redirect_to=%2Fc%2Fnew');
   });
 
   it('drops an open-redirect attempt (absolute URL)', () => {
     const result = buildLoginErrorPath('?redirect_to=https%3A%2F%2Fevil.com');
-    expect(result).toBe('/login');
+    expect(result).toBe('/sign-in');
   });
 
-  it('drops a /login redirect_to to prevent loops', () => {
+  it('drops a /sign-in redirect_to to prevent loops', () => {
     const result = buildLoginErrorPath('?redirect_to=%2Flogin');
-    expect(result).toBe('/login');
+    expect(result).toBe('/sign-in');
   });
 
-  it('returns plain /login when no redirect_to param exists', () => {
+  it('returns plain /sign-in when no redirect_to param exists', () => {
     const result = buildLoginErrorPath('');
-    expect(result).toBe('/login');
+    expect(result).toBe('/sign-in');
   });
 });
 
@@ -259,8 +259,8 @@ describe('persistRedirectToSession', () => {
     expect(sessionStorage.getItem(SESSION_KEY)).toBeNull();
   });
 
-  it('rejects /login paths', () => {
-    persistRedirectToSession('/login?redirect_to=/c/new');
+  it('rejects /sign-in paths', () => {
+    persistRedirectToSession('/sign-in?redirect_to=/c/new');
     expect(sessionStorage.getItem(SESSION_KEY)).toBeNull();
   });
 });

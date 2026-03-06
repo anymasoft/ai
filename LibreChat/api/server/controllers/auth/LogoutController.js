@@ -42,9 +42,9 @@ const logoutController = async (req, res) => {
           : null;
         if (endSessionEndpoint) {
           const endSessionUrl = new URL(endSessionEndpoint);
-          /** Redirect back to app's login page after IdP logout */
+          /** Redirect back to app's sign-in page after IdP logout */
           const postLogoutRedirectUri =
-            process.env.OPENID_POST_LOGOUT_REDIRECT_URI || `${process.env.DOMAIN_CLIENT}/login`;
+            process.env.OPENID_POST_LOGOUT_REDIRECT_URI || `${process.env.DOMAIN_CLIENT}/sign-in`;
           endSessionUrl.searchParams.set('post_logout_redirect_uri', postLogoutRedirectUri);
           response.redirect = endSessionUrl.toString();
         } else {

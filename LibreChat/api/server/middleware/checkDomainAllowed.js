@@ -11,7 +11,7 @@ const { getAppConfig } = require('~/server/services/Config');
  * @param {Object} res - Express response object.
  * @param {Function} next - Next middleware function.
  *
- * @returns {Promise<void>} - Calls next middleware if the domain's email is allowed, otherwise redirects to login
+ * @returns {Promise<void>} - Calls next middleware if the domain's email is allowed, otherwise redirects to sign-in
  */
 const checkDomainAllowed = async (req, res, next) => {
   try {
@@ -22,13 +22,13 @@ const checkDomainAllowed = async (req, res, next) => {
 
     if (email && !isEmailDomainAllowed(email, appConfig?.registration?.allowedDomains)) {
       logger.error(`[Social Login] [Social Login not allowed] [Email: ${email}]`);
-      return res.redirect('/login');
+      return res.redirect('/sign-in');
     }
 
     next();
   } catch (error) {
     logger.error('[checkDomainAllowed] Error checking domain:', error);
-    return res.redirect('/login');
+    return res.redirect('/sign-in');
   }
 };
 

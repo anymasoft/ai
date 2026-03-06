@@ -59,7 +59,7 @@ export default function Root() {
 
   const handleDeclineTerms = () => {
     setShowTerms(false);
-    logout('/login?redirect=false');
+    logout('/sign-in?redirect=false');
   };
 
   if (!isAuthenticated) {
