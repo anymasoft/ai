@@ -202,18 +202,6 @@ const startServer = async () => {
   });
   const oauthHandler = createOAuthHandler();
 
-  app.get(
-    '/auth/yandex-callback',
-    passport.authenticate('yandex', {
-      failureRedirect: `${process.env.DOMAIN_CLIENT}/oauth/error`,
-      failureMessage: true,
-      
-    }),
-    setBalanceConfig,
-    checkDomainAllowed,
-    oauthHandler,
-  );
-
   /* API Endpoints */
   logger.debug('[app.use] Mounting /api/auth', typeof routes.auth);
   app.use('/api/auth', routes.auth);

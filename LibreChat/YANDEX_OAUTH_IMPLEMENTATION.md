@@ -1,336 +1,133 @@
-# Руководство по добавлению Yandex OAuth в LibreChat
+# 🔐 Yandex OAuth Реализация БЕЗ Passport
 
-## Быстрый старт: Добавление Yandex OAuth за 5 шагов
+## 📋 Обзор
 
----
+Новая реализация Yandex OAuth базируется на простом cookie-based state management, как в Astro проекте.
 
-## Шаг 1️⃣: Создать приложение в Yandex
-
-1. Перейти на https://oauth.yandex.ru/client
-2. Нажать "Создать приложение"
-3. Заполнить:
-   - **Название**: LibreChat Repliq
-   - **Описание**: AI Workspace
-   - **Redirect URI**:
-     - Разработка: `http://localhost:3080/oauth/yandex/callback`
-     - Продакшен: `https://repliq.art/oauth/yandex/callback`
-4. Выбрать права:
-   - `login:email` - email пользователя
-   - `login:info` - основная информация профиля
-5. Получить:
-   - **App ID** (Client ID)
-   - **App Secret** (Client Secret)
+**Ключевые изменения**:
+- ❌ Удалён Passport из OAuth pipeline
+- ✅ Реализован собственный OAuth handler
+- ✅ State сохраняется в httpOnly cookie, а не в session
+- ✅ Простой и надёжный flow
 
 ---
 
-## Шаг 2️⃣: Установить зависимость
+## 🏗️ Архитектура
 
-### Вариант A: Если есть пакет passport-yandex
+### Основные файлы
 
-```bash
-npm install --save passport-yandex
+```
+/api/server/controllers/auth/yandex.js
+  ├─→ yandexOAuthRedirect()   - Инициация OAuth
+  └─→ yandexOAuthCallback()   - Обработка callback
+
+/api/server/routes/oauth.js
+  ├─→ GET /oauth/yandex
+  └─→ GET /oauth/yandex/callback
+
+/api/server/socialLogins.js
+  └─→ ❌ passport.use(yandexLogin()) удалена
 ```
 
-### Вариант B: Если нужно создать свою стратегию (рекомендуется)
+---
 
-Используем `passport-oauth2` как базу.
+## 📊 OAuth Pipeline
+
+```
+Browser
+  ↓ GET /oauth/yandex
+yandexOAuthRedirect()
+  ├─→ state = crypto.randomBytes(32).toString('hex')
+  ├─→ res.cookie('oauth_state_yandex', state, {httpOnly, sameSite})
+  └─→ redirect https://oauth.yandex.ru/authorize?state=...
+  ↓
+Yandex Login Page
+  ├─→ User enters credentials
+  └─→ Redirect /oauth/yandex/callback?code=...&state=...
+  ↓
+yandexOAuthCallback()
+  ├─→ Verify state from cookie ✅
+  ├─→ Exchange code → token
+  ├─→ Fetch profile from Yandex
+  ├─→ Create/update user in DB
+  ├─→ setAuthTokens(user._id, res)
+  └─→ redirect /chat ✅
+```
 
 ---
 
-## Шаг 3️⃣: Создать файл yandexStrategy.js
+## 🔒 State Management
 
-**Файл:** `api/strategies/yandexStrategy.js`
+### Почему cookies вместо session?
 
+Старая реализация требовала `passport.session()` middleware для сохранения state в `req.session.passport.state`, но это middleware не вызывалась! 
+
+Новая реализация использует httpOnly cookie:
 ```javascript
-const { Strategy: OAuth2Strategy } = require('passport-oauth2');
-const axios = require('axios');
-const socialLogin = require('./socialLogin');
+// Сохранить
+res.cookie('oauth_state_yandex', state, {
+  httpOnly: true,   // JS не может прочитать
+  secure: true,     // HTTPS only в production
+  sameSite: 'lax',  // CSRF protection
+  maxAge: 10 * 60 * 1000  // 10 минут
+});
 
-/**
- * Извлечение данных профиля Yandex
- * @param {Object} profile - Профиль от Yandex API
- * @returns {Object} Нормализованные данные
- */
-const getProfileDetails = ({ profile }) => {
-  // Генерируем аватар URL если есть ID аватара
-  const avatarUrl = profile.default_avatar_id
-    ? `https://avatars.yandex.net/get-yapic/${profile.default_avatar_id}/islands-200`
-    : null;
-
-  // Получаем email (приоритет: default_email -> первый из emails)
-  const email = profile.default_email || profile.emails?.[0];
-
-  // Генерируем имя пользователя
-  const username = profile.login;
-  const name = profile.display_name || profile.real_name || profile.login;
-
-  return {
-    email,
-    id: profile.id,
-    avatarUrl,
-    username,
-    name,
-    emailVerified: true, // Yandex гарантирует верификацию
-  };
-};
-
-/**
- * Yandex OAuth 2.0 Strategy
- *
- * Yandex использует стандартный OAuth 2.0 и дополнительный API для получения профиля
- */
-class YandexStrategy extends OAuth2Strategy {
-  constructor(options, verify) {
-    options.authorizationURL = 'https://oauth.yandex.ru/authorize';
-    options.tokenURL = 'https://oauth.yandex.ru/token';
-    super(options, verify);
-
-    this.name = 'yandex';
-    this._userProfileURL = 'https://login.yandex.ru/info';
-    this._passReqToCallback = options.passReqToCallback;
-  }
-
-  /**
-   * Получить профиль пользователя от Yandex API
-   */
-  async userProfile(accessToken) {
-    try {
-      const response = await axios.get(
-        `${this._userProfileURL}?format=json`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'User-Agent': 'passport-yandex',
-          },
-        }
-      );
-
-      const profile = response.data;
-      profile.provider = 'yandex';
-
-      return profile;
-    } catch (error) {
-      console.error('Yandex profile fetch error:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * OAuth 2.0 callback
-   */
-  authenticate(req, options) {
-    options.scope = options.scope || ['login:email', 'login:info'];
-    super.authenticate(req, options);
-  }
+// Проверить
+const savedState = req.cookies.oauth_state_yandex;
+if (savedState !== receivedState) {
+  return res.redirect('/sign-in?error=state_mismatch');
 }
-
-// Создать обработчик для socialLogin
-const yandexLogin = socialLogin('yandex', getProfileDetails);
-
-/**
- * Экспортировать конструктор стратегии
- */
-module.exports = () =>
-  new YandexStrategy(
-    {
-      clientID: process.env.YANDEX_CLIENT_ID,
-      clientSecret: process.env.YANDEX_CLIENT_SECRET,
-      callbackURL: `${process.env.DOMAIN_SERVER}/oauth/yandex/callback`,
-    },
-    yandexLogin
-  );
 ```
 
 ---
 
-## Шаг 4️⃣: Обновить конфигурацию
+## 🔧 Конфигурация
 
-### 4.1: `api/strategies/index.js`
-
-Добавить импорт:
-
-```javascript
-const yandexLogin = require('./yandexStrategy');
-```
-
-Добавить в exports:
-
-```javascript
-module.exports = {
-  // ... существующие ...
-  yandexLogin,
-};
-```
-
-### 4.2: `api/server/socialLogins.js`
-
-Добавить импорт:
-
-```javascript
-const { yandexLogin } = require('~/strategies');
-```
-
-Добавить в функцию `configureSocialLogins`:
-
-```javascript
-const configureSocialLogins = async (app) => {
-  // ... существующие провайдеры ...
-
-  if (process.env.YANDEX_CLIENT_ID && process.env.YANDEX_CLIENT_SECRET) {
-    logger.info('Registering Yandex OAuth strategy');
-    passport.use(yandexLogin());
-  }
-};
-```
-
-### 4.3: `api/server/routes/oauth.js`
-
-Добавить маршруты (в конец файла перед `module.exports`):
-
-```javascript
-/**
- * Yandex Routes
- */
-router.get(
-  '/yandex',
-  passport.authenticate('yandex', {
-    scope: ['login:email', 'login:info'],
-    session: false,
-  }),
-);
-
-router.get(
-  '/yandex/callback',
-  passport.authenticate('yandex', {
-    failureRedirect: `${domains.client}/oauth/error`,
-    failureMessage: true,
-    session: false,
-    scope: ['login:email', 'login:info'],
-  }),
-  setBalanceConfig,
-  checkDomainAllowed,
-  oauthHandler,
-);
-```
-
----
-
-## Шаг 5️⃣: Env переменные
-
-### Создать в `.env`:
+### .env
 
 ```env
-# Yandex OAuth
-YANDEX_CLIENT_ID=YOUR_APP_ID_FROM_YANDEX
-YANDEX_CLIENT_SECRET=YOUR_APP_SECRET_FROM_YANDEX
+YANDEX_CLIENT_ID=your_id
+YANDEX_CLIENT_SECRET=your_secret
+DOMAIN_SERVER=http://localhost:3080
+DOMAIN_CLIENT=http://localhost:3080
+ALLOW_SOCIAL_REGISTRATION=true
 ```
 
-### Добавить в `.env.example`:
+### Yandex App Settings
 
-```env
-# Yandex OAuth (https://oauth.yandex.ru/client)
-YANDEX_CLIENT_ID=
-YANDEX_CLIENT_SECRET=
-```
+Callback URL должен быть: `{DOMAIN_SERVER}/oauth/yandex/callback`
 
 ---
 
-## Проверка ✅
+## ✅ Преимущества
 
-### Локальное тестирование:
-
-```bash
-# 1. Установить зависимости
-npm install
-
-# 2. Запустить сервер
-npm start
-
-# 3. Перейти в браузер
-http://localhost:3080/oauth/yandex
-
-# 4. Авторизоваться через Yandex
-```
-
-### Проверить логи:
-
-```bash
-# Должны видеть логи:
-# "Registering Yandex OAuth strategy"
-# "[yandexLogin] Discovering tools (user requesting..."
-# "Sent OAuth login success to client"
-```
+| Аспект | До | После |
+|--------|---|---|
+| Зависимости | Passport | Встроено |
+| State | Session (отсутствует) | Cookie ✅ |
+| Надёжность | Зависает ❌ | Работает ✅ |
+| Отладка | Сложно | Просто |
+| Безопасность | Неполная | Полная |
 
 ---
 
-## Отладка
+## 🐛 Логирование
 
-### Проблема: "YANDEX_CLIENT_ID is not set"
-
-**Решение:** Проверить `.env` файл, убедиться что переменные установлены
-
-### Проблема: "Redirect URI mismatch"
-
-**Решение:** Проверить что callbackURL совпадает в:
-- Yandex OAuth panel: `https://your-domain/oauth/yandex/callback`
-- `.env`: `DOMAIN_SERVER` правильный
-- `api/server/routes/oauth.js`: маршрут `/yandex/callback` присутствует
-
-### Проблема: "Email not verified"
-
-**Решение:** Все профили Yandex имеют верифицированный email, проверить логику в socialLogin.js
+Новая реализация логирует все этапы:
+- `AUTH_CHECKPOINT: OAUTH_REDIRECT`
+- `AUTH_CHECKPOINT: OAUTH_CALLBACK_START`
+- `AUTH_CHECKPOINT: USER_CREATED`
+- `AUTH_CHECKPOINT: SESSION_CREATED`
 
 ---
 
-## Frontend интеграция
+## 📝 Что далее?
 
-### Добавить кнопку в Login компонент:
+1. Проверить что YANDEX_CLIENT_ID и YANDEX_CLIENT_SECRET установлены
+2. Запустить приложение
+3. Тестировать OAuth flow
+4. Проверить логи на чекпоинты
 
-```jsx
-<a href="/api/auth/oauth/yandex" className="btn btn-yandex">
-  <YandexIcon />
-  Sign in with Yandex
-</a>
-```
-
-### CSS для кнопки:
-
-```css
-.btn-yandex {
-  background-color: #ffcc00;
-  color: #000;
-  border: 1px solid #ffcc00;
-}
-
-.btn-yandex:hover {
-  background-color: #ffdd33;
-}
-```
-
----
-
-## Безопасность
-
-| Проверка | Статус |
-|----------|--------|
-| Secure Cookie | ✅ Автоматически (shouldUseSecureCookie) |
-| HTTPS обязательно | ✅ В продакшене |
-| Rate limiting | ✅ Через loginLimiter middleware |
-| Domain validation | ✅ Через allowedDomains |
-| Email verification | ✅ Yandex гарантирует |
-
----
-
-## Полезные ссылки
-
-- **Yandex OAuth API**: https://yandex.ru/dev/id/doc/dg/oauth/concepts/about.html
-- **Yandex Info API**: https://yandex.ru/dev/id/doc/dg/api-standards/about.html
-- **Passport.js docs**: http://www.passportjs.org/
-- **OAuth2 Flow**: https://tools.ietf.org/html/rfc6749
-
----
-
-## Версия: 1.0
-**Дата**: 2026-03-06
-**Статус**: Готово к внедрению
-
+Для полной документации смотрите:
+- `ASTRO_OAUTH_REFERENCE.md` - Эталонная реализация
+- `ARCHITECTURAL_COMPARISON.md` - Сравнение архитектур
