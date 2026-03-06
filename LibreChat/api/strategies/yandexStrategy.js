@@ -42,6 +42,7 @@ class YandexStrategy extends OAuth2Strategy {
     options.tokenURL = 'https://oauth.yandex.ru/token';
     // Не используем scope для Yandex - права конфигурируются при регистрации приложения
     options.skipUserProfile = false;
+    options.state = true;  // ✅ КРИТИЧНО: Включить state для CSRF защиты
     super(options, verify);
 
     this.name = 'yandex';
