@@ -3,6 +3,7 @@ import { cloneDeep } from 'lodash';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSetRecoilState, useResetRecoilState, useRecoilValue } from 'recoil';
+import { useAtomValue } from 'jotai';
 import {
   Constants,
   QueryKeys,
@@ -30,6 +31,7 @@ import useSetFilesToDelete from '~/hooks/Files/useSetFilesToDelete';
 import useGetSender from '~/hooks/Conversations/useGetSender';
 import { logger, createDualMessageContent } from '~/utils';
 import store, { useGetEphemeralAgent } from '~/store';
+import { mcpValuesAtomFamily } from '~/store/mcp';
 import useUserKey from '~/hooks/Input/useUserKey';
 import { useAuthContext } from '~/hooks';
 
@@ -74,6 +76,10 @@ export default function useChatFunctions({
   const setIsSubmitting = useSetRecoilState(store.isSubmittingFamily(index));
   const setShowStopButton = useSetRecoilState(store.showStopButtonByIndex(index));
   const resetLatestMultiMessage = useResetRecoilState(store.latestMessageFamily(index + 1));
+
+  // Получаем список включённых MCP серверов пользователем на верхнем уровне
+  const conversationId = immutableConversation?.conversationId ?? null;
+  const enabledMcpServers = useAtomValue(mcpValuesAtomFamily(conversationId));
 
   const ask: TAskFunction = (
     {
@@ -331,6 +337,7 @@ export default function useChatFunctions({
       ephemeralAgent,
       editedContent,
       addedConvo,
+      enabledMcpServers,
     };
 
     if (isRegenerate) {

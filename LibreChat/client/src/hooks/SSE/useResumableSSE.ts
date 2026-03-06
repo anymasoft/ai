@@ -557,6 +557,12 @@ export default function useResumableSSE(
       let { payload } = payloadData;
       payload = removeNullishValues(payload) as TPayload;
 
+      // Добавляем список включённых MCP серверов пользователем
+      // Они хранятся в submission если были переданы, иначе пустой массив
+      if (!payload.enabledMcpServers) {
+        payload.enabledMcpServers = currentSubmission.enabledMcpServers ?? [];
+      }
+
       clearStepMaps();
 
       const url = payloadData.server;
