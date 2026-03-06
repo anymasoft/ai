@@ -10,7 +10,8 @@ const { syncUserEntraGroupMemberships } = require('~/server/services/PermissionS
 const { setAuthTokens, setOpenIDAuthTokens } = require('~/server/services/AuthService');
 const getLogStores = require('~/cache/getLogStores');
 const { checkBan } = require('~/server/middleware');
-const { generateToken } = require('~/models');
+const { generateToken, updateUser } = require('~/models');
+const { assignAdminIfEmailMatches } = require('~/server/utils/promoteAdmin');
 
 const domains = {
   client: process.env.DOMAIN_CLIENT,
@@ -35,6 +36,9 @@ function createOAuthHandler(redirectUri = domains.client) {
       if (req.banned) {
         return;
       }
+
+      /** Assign admin role if email matches ADMIN_EMAIL */
+      await assignAdminIfEmailMatches(req.user, { updateUser });
 
       /** Check if this is an admin panel redirect (cross-origin) */
       if (isAdminPanelRedirect(redirectUri, getAdminPanelUrl(), domains.client)) {

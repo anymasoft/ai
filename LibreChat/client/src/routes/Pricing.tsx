@@ -6,6 +6,7 @@ import { Check, X, AlertTriangle, Loader2, CheckCircle, Clock, Plus } from 'luci
 import { useAuthContext, useSubscription } from '~/hooks';
 import type { ContextType } from '~/common';
 import OpenSidebar from '~/components/Chat/Menus/OpenSidebar';
+import { UI_FEATURES } from '~/constants/featureFlags';
 
 const AVG_MSG_CREDITS = 4_392;
 
@@ -331,7 +332,11 @@ export default function Pricing() {
                   text: modelsMap[modelId]?.displayName ?? modelId,
                 }));
               // Нединамические фичи (web-поиск, code interpreter и т.д.)
-              const extraFeatures = PLAN_EXTRA_FEATURES[plan.planId] ?? [];
+              const extraFeatures = (PLAN_EXTRA_FEATURES[plan.planId] ?? []).filter(feature => {
+                if (feature.text.includes('Code Interpreter') && !UI_FEATURES.CODE_INTERPRETER) return false;
+                if (feature.text.includes('Web-поиск') && !UI_FEATURES.WEB_SEARCH) return false;
+                return true;
+              });
               const features = [...modelFeatures, ...extraFeatures];
               const msgEst = plan.tokenCreditsOnPurchase > 0
                 ? Math.floor(plan.tokenCreditsOnPurchase / AVG_MSG_CREDITS)
