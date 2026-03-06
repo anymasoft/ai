@@ -32,4 +32,15 @@ const limiterOptions = {
 
 const loginLimiter = rateLimit(limiterOptions);
 
-module.exports = loginLimiter;
+// Обернуть limiter для отключения в режиме разработки
+const wrappedLoginLimiter = (req, res, next) => {
+  // В режиме разработки пропустить rate limiting для OAuth авторизации
+  if (process.env.NODE_ENV === 'development') {
+    return next();
+  }
+  // В production применять rate limiting
+  return loginLimiter(req, res, next);
+};
+
+module.exports = wrappedLoginLimiter;
+
