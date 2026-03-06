@@ -15,6 +15,7 @@ import { AuthContextProvider } from '~/hooks/AuthContext';
 import RouteErrorBoundary from './RouteErrorBoundary';
 import StartupLayout from './Layouts/Startup';
 import LoginLayout from './Layouts/Login';
+import HomePage from './HomePage';
 import dashboardRoutes from './Dashboard';
 import ShareRoute from './ShareRoute';
 import ChatRoute from './ChatRoute';
@@ -42,8 +43,47 @@ export const router = createBrowserRouter(
     },
     {
       path: 'sign-in',
-      element: <SignIn />,
+      element: <StartupLayout />,
       errorElement: <RouteErrorBoundary />,
+      children: [
+        {
+          index: true,
+          element: <SignIn />,
+        },
+      ],
+    },
+    {
+      path: 'register',
+      element: <StartupLayout />,
+      errorElement: <RouteErrorBoundary />,
+      children: [
+        {
+          index: true,
+          element: <Registration />,
+        },
+      ],
+    },
+    {
+      path: 'forgot-password',
+      element: <StartupLayout />,
+      errorElement: <RouteErrorBoundary />,
+      children: [
+        {
+          index: true,
+          element: <RequestPasswordReset />,
+        },
+      ],
+    },
+    {
+      path: 'reset-password',
+      element: <StartupLayout />,
+      errorElement: <RouteErrorBoundary />,
+      children: [
+        {
+          index: true,
+          element: <ResetPassword />,
+        },
+      ],
     },
     {
       path: 'login',
@@ -69,22 +109,8 @@ export const router = createBrowserRouter(
     },
     {
       path: '/',
-      element: <StartupLayout />,
+      element: <HomePage />,
       errorElement: <RouteErrorBoundary />,
-      children: [
-        {
-          path: 'register',
-          element: <Registration />,
-        },
-        {
-          path: 'forgot-password',
-          element: <RequestPasswordReset />,
-        },
-        {
-          path: 'reset-password',
-          element: <ResetPassword />,
-        },
-      ],
     },
     {
       path: 'verify',
