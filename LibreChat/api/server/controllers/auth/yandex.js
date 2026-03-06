@@ -1,17 +1,14 @@
 const crypto = require('crypto');
 const { logger } = require('@librechat/data-schemas');
 const { isEnabled } = require('@librechat/api');
-const { getUserById, findUser, createUser } = require('~/models');
-const { User } = require('~/db/models');
+const { getUserById, findUser, createUser, updateUser } = require('~/models');
 const { setAuthTokens } = require('~/server/services/AuthService');
+const { assignAdminIfEmailMatches } = require('~/server/utils/promoteAdmin');
 
 const domains = {
   client: process.env.DOMAIN_CLIENT,
   server: process.env.DOMAIN_SERVER,
 };
-
-// 🔍 Отладка: проверяем что User модель загружена
-console.log('🔍 User model loaded in yandex.js:', !!User);
 
 /**
  * ШАГ 1: Инициация Yandex OAuth redirect
@@ -217,15 +214,8 @@ const yandexOAuthCallback = async (req, res) => {
         console.log(`✅ Existing user found: ${user.email}`);
       }
 
-      // Шаг 6.5: Проверяем ADMIN_EMAIL и назначаем роль администратора если совпадает
-      const adminEmail = process.env.ADMIN_EMAIL;
-      if (adminEmail && user.email === adminEmail && user.role !== 'admin') {
-        await User.updateOne(
-          { _id: user._id },
-          { $set: { role: 'admin' } }
-        );
-        console.log(`🔑 ADMIN ACCESS GRANTED: ${user.email}`);
-      }
+      // Назначаем админ роль, если email совпадает с ADMIN_EMAIL
+      await assignAdminIfEmailMatches(user, { updateUser });
 
       // Шаг 7: Устанавливаем auth tokens через AuthService (стандартный LibreChat способ)
       console.log(`📊 AUTH_CHECKPOINT: SESSION_CREATED`);

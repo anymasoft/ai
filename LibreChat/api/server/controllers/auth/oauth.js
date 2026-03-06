@@ -10,16 +10,13 @@ const { syncUserEntraGroupMemberships } = require('~/server/services/PermissionS
 const { setAuthTokens, setOpenIDAuthTokens } = require('~/server/services/AuthService');
 const getLogStores = require('~/cache/getLogStores');
 const { checkBan } = require('~/server/middleware');
-const { generateToken } = require('~/models');
-const { User } = require('~/db/models');
+const { generateToken, updateUser } = require('~/models');
+const { assignAdminIfEmailMatches } = require('~/server/utils/promoteAdmin');
 
 const domains = {
   client: process.env.DOMAIN_CLIENT,
   server: process.env.DOMAIN_SERVER,
 };
-
-// 🔍 Отладка: проверяем что User модель загружена
-console.log('🔍 User model loaded in oauth.js:', !!User);
 
 function createOAuthHandler(redirectUri = domains.client) {
   /**
@@ -40,15 +37,8 @@ function createOAuthHandler(redirectUri = domains.client) {
         return;
       }
 
-      /** Check and assign admin role if email matches ADMIN_EMAIL */
-      const adminEmail = process.env.ADMIN_EMAIL;
-      if (adminEmail && req.user && req.user.email === adminEmail && req.user.role !== 'admin') {
-        await User.updateOne(
-          { _id: req.user._id },
-          { $set: { role: 'admin' } }
-        );
-        logger.info(`🔑 ADMIN ACCESS GRANTED: ${req.user.email}`);
-      }
+      /** Assign admin role if email matches ADMIN_EMAIL */
+      await assignAdminIfEmailMatches(req.user, { updateUser });
 
       /** Check if this is an admin panel redirect (cross-origin) */
       if (isAdminPanelRedirect(redirectUri, getAdminPanelUrl(), domains.client)) {

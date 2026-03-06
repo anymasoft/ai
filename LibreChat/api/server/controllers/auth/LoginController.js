@@ -1,10 +1,8 @@
 const { logger } = require('@librechat/data-schemas');
 const { generate2FATempToken } = require('~/server/services/twoFactorService');
 const { setAuthTokens } = require('~/server/services/AuthService');
-const { User } = require('~/db/models');
-
-// 🔍 Отладка: проверяем что User модель загружена
-console.log('🔍 User model loaded in LoginController.js:', !!User);
+const { updateUser } = require('~/models');
+const { assignAdminIfEmailMatches } = require('~/server/utils/promoteAdmin');
 
 const loginController = async (req, res) => {
   try {
@@ -17,15 +15,8 @@ const loginController = async (req, res) => {
       return res.status(200).json({ twoFAPending: true, tempToken });
     }
 
-    /** Check and assign admin role if email matches ADMIN_EMAIL */
-    const adminEmail = process.env.ADMIN_EMAIL;
-    if (adminEmail && req.user.email === adminEmail && req.user.role !== 'admin') {
-      await User.updateOne(
-        { _id: req.user._id },
-        { $set: { role: 'admin' } }
-      );
-      logger.info(`🔑 ADMIN ACCESS GRANTED: ${req.user.email}`);
-    }
+    // Assign admin role if email matches ADMIN_EMAIL
+    await assignAdminIfEmailMatches(req.user, { updateUser });
 
     const { password: _p, totpSecret: _t, __v, ...user } = req.user;
     user.id = user._id.toString();
