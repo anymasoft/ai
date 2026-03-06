@@ -185,21 +185,12 @@ const yandexOAuthCallback = async (req, res) => {
     console.log(`   - name: ${userName}`);
     console.log(`   - yandexId: ${yandexUser.id}`);
 
-    // Шаг 6: Создаём или находим пользователя
+    // Шаг 6: Создаём или находим пользователя по email
     try {
-      const userId = `yandex_${yandexUser.id}`;
-
-      // Пытаемся найти пользователя по yandex ID
-      let user = await findUser({ _id: userId });
+      // Ищем пользователя по email (стандартный способ LibreChat)
+      let user = await findUser({ email: userEmail });
 
       if (!user) {
-        // Проверяем есть ли уже пользователь с таким email
-        const existingByEmail = await findUser({ email: userEmail });
-        if (existingByEmail) {
-          logger.warn(`User found by email but not by yandex ID: ${userEmail}`);
-          return res.redirect(`${domains.client}/sign-in?error=user_exists_different_provider&provider=yandex`);
-        }
-
         // Проверяем разрешена ли социальная регистрация
         const allowSocialRegistration = isEnabled(process.env.ALLOW_SOCIAL_REGISTRATION);
         if (!allowSocialRegistration) {
@@ -208,12 +199,10 @@ const yandexOAuthCallback = async (req, res) => {
         }
 
         // Создаём нового пользователя
+        // MongoDB автоматически генерирует ObjectId для _id
         user = await createUser({
-          _id: userId,
           email: userEmail,
           name: userName,
-          provider: 'yandex',
-          yandexId: yandexUser.id,
         });
 
         console.log(`✅ New user created: ${user.email} (id: ${user._id})`);
