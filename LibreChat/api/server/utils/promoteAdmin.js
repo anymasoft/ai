@@ -1,10 +1,11 @@
 'use strict';
 const { logger } = require('@librechat/data-schemas');
+const { SystemRoles } = require('librechat-data-provider');
 
 /**
  * При старте сервера: если ADMIN_EMAIL задан в .env,
- * находит пользователя по email и устанавливает роль admin.
- * Идемпотентно — повторный вызов не ломает уже существующего admin.
+ * находит пользователя по email и устанавливает роль ADMIN.
+ * Идемпотентно — повторный вызов не ломает уже существующего ADMIN.
  */
 async function promoteAdminByEmail({ findUser, updateUser }) {
   const adminEmail = process.env.ADMIN_EMAIL;
@@ -19,15 +20,15 @@ async function promoteAdminByEmail({ findUser, updateUser }) {
       return;
     }
 
-    if (user.role === 'admin') {
-      logger.info(`[promoteAdmin] ${adminEmail} уже admin — пропускаем.`);
+    if (user.role === SystemRoles.ADMIN) {
+      logger.info(`[promoteAdmin] ${adminEmail} уже ADMIN — пропускаем.`);
       return;
     }
 
-    await updateUser(user._id.toString(), { role: 'admin' });
-    logger.info(`[promoteAdmin] ${adminEmail} успешно назначен admin.`);
+    await updateUser(user._id.toString(), { role: SystemRoles.ADMIN });
+    logger.info(`[promoteAdmin] ${adminEmail} успешно назначен ADMIN.`);
   } catch (err) {
-    logger.error('[promoteAdmin] Ошибка при назначении admin:', err);
+    logger.error('[promoteAdmin] Ошибка при назначении ADMIN:', err);
   }
 }
 
@@ -49,13 +50,13 @@ async function assignAdminIfEmailMatches(user, { updateUser }) {
     }
 
     // Проверяем, не админ ли уже
-    if (user.role === 'admin') {
+    if (user.role === SystemRoles.ADMIN) {
       logger.debug(`[assignAdminIfEmailMatches] ${adminEmail} уже admin — пропускаем.`);
       return;
     }
 
     // Назначаем админ роль
-    await updateUser(user._id.toString(), { role: 'admin' });
+    await updateUser(user._id.toString(), { role: SystemRoles.ADMIN });
     logger.info(`[assignAdminIfEmailMatches] ${adminEmail} успешно назначен admin при логине.`);
   } catch (err) {
     logger.error('[assignAdminIfEmailMatches] Ошибка при назначении admin:', err);
