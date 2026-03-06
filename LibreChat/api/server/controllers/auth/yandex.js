@@ -36,9 +36,18 @@ const yandexOAuthRedirect = async (req, res) => {
     console.log(`   - redirectUri: ${redirectUri}`);
 
     // Сохраняем state в httpOnly cookie на 10 минут
+    console.log(`\n🍪 SETTING STATE COOKIE:`);
+    console.log(`   - name: oauth_state_yandex`);
+    console.log(`   - value: ${state.slice(0, 8)}...`);
+    console.log(`   - httpOnly: true`);
+    console.log(`   - secure: ${process.env.NODE_ENV === 'production'}`);
+    console.log(`   - sameSite: lax`);
+    console.log(`   - path: /`);
+    console.log(`   - maxAge: 600000 (10 min)`);
+
     res.cookie('oauth_state_yandex', state, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: false, // Для тестирования localhost
       sameSite: 'lax',
       path: '/',
       maxAge: 10 * 60 * 1000, // 10 минут
@@ -70,6 +79,12 @@ const yandexOAuthRedirect = async (req, res) => {
  */
 const yandexOAuthCallback = async (req, res) => {
   try {
+    // Отладка: проверяем что получили на callback
+    console.log(`\n🔍 DEBUG: CALLBACK HEADERS & COOKIES`);
+    console.log(`   - req.headers.cookie: ${req.headers.cookie || '❌ EMPTY'}`);
+    console.log(`   - req.cookies keys: ${Object.keys(req.cookies).join(', ') || '❌ EMPTY'}`);
+    console.log(`   - req.cookies.oauth_state_yandex: ${req.cookies.oauth_state_yandex ? req.cookies.oauth_state_yandex.slice(0, 8) + '...' : '❌ NOT FOUND'}`);
+
     const code = req.query.code;
     const state = req.query.state;
     const error = req.query.error;
