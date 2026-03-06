@@ -178,5 +178,8 @@
       "admin/",
       "packages/"
     ]
+  },
+  "dependencies": {
+    "express-session": "^1.19.0"
   }
 }
