@@ -2,11 +2,8 @@ import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import {
   SignIn,
   VerifyEmail,
-  Registration,
-  ResetPassword,
   ApiErrorWatcher,
   TwoFactorScreen,
-  RequestPasswordReset,
 } from '~/components/Auth';
 import { MarketplaceProvider } from '~/components/Agents/MarketplaceContext';
 import AgentMarketplace from '~/components/Agents/Marketplace';
@@ -49,39 +46,6 @@ export const router = createBrowserRouter(
         {
           index: true,
           element: <SignIn />,
-        },
-      ],
-    },
-    {
-      path: 'register',
-      element: <StartupLayout />,
-      errorElement: <RouteErrorBoundary />,
-      children: [
-        {
-          index: true,
-          element: <Registration />,
-        },
-      ],
-    },
-    {
-      path: 'forgot-password',
-      element: <StartupLayout />,
-      errorElement: <RouteErrorBoundary />,
-      children: [
-        {
-          index: true,
-          element: <RequestPasswordReset />,
-        },
-      ],
-    },
-    {
-      path: 'reset-password',
-      element: <StartupLayout />,
-      errorElement: <RouteErrorBoundary />,
-      children: [
-        {
-          index: true,
-          element: <ResetPassword />,
         },
       ],
     },
