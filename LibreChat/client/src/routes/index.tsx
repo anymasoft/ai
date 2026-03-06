@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import {
   Login,
+  SignIn,
   VerifyEmail,
   Registration,
   ResetPassword,
@@ -38,6 +39,11 @@ export const router = createBrowserRouter(
     {
       path: 'share/:shareId',
       element: <ShareRoute />,
+      errorElement: <RouteErrorBoundary />,
+    },
+    {
+      path: 'sign-in',
+      element: <SignIn />,
       errorElement: <RouteErrorBoundary />,
     },
     {
