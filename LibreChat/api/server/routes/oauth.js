@@ -9,6 +9,7 @@ const { checkDomainAllowed, loginLimiter, logHeaders } = require('~/server/middl
 const { createOAuthHandler } = require('~/server/controllers/auth/oauth');
 const { getAppConfig } = require('~/server/services/Config');
 const { Balance } = require('~/db/models');
+const { yandexOAuthRedirect, yandexOAuthCallback } = require('~/server/controllers/auth/yandex');
 
 const setBalanceConfig = createSetBalanceConfig({
   getAppConfig,
@@ -200,55 +201,19 @@ router.post(
 );
 
 /**
- * Yandex Routes (Only enabled OAuth provider)
- * Реализация соответствует Astro проекту
+ * Yandex Routes - Собственная реализация БЕЗ Passport
+ * Простой и безопасный OAuth pipeline как в Astro
+ *
+ * State хранится в httpOnly cookie, не в session
+ * Нет зависимости от Passport middleware
  */
 
 // ШАГ 1: Инициация OAuth редиректа на Yandex
-router.get(
-  '/yandex',
-  (req, res, next) => {
-    console.log(`\n📊 AUTH_CHECKPOINT: OAUTH_REDIRECT`);
-    console.log(`   - provider: yandex`);
-    console.log(`   - redirectUri: ${req.get('host')}/oauth/yandex/callback`);
-    next();
-  },
-  passport.authenticate('yandex', {
-    state: true,
-  }),
-);
+// GET /oauth/yandex → генерируем state → redirect на Yandex
+router.get('/yandex', yandexOAuthRedirect);
 
 // ШАГ 2: Callback обработка после авторизации на Yandex
-// Проверяем code, state и обмениваем на access_token
-router.get(
-  '/yandex/callback',
-  (req, res, next) => {
-    const code = req.query.code;
-    const state = req.query.state;
-    const error = req.query.error;
-
-    console.log(`\n📊 AUTH_CHECKPOINT: OAUTH_CALLBACK_START`);
-    console.log(`   - provider: yandex`);
-    console.log(`   - error: ${error || 'none'}`);
-    console.log(`   - code: ${code ? code.slice(0, 10) + '...' : 'missing'}`);
-    console.log(`   - state received: ${state ? state.slice(0, 8) + '...' : '❌ MISSING'}`);
-    console.log(`   - session state: ${req.session?.passport?.state ? req.session.passport.state.slice(0, 8) + '...' : 'none'}`);
-
-    if (error) {
-      console.error(`❌ AUTH_FAILED (Yandex error): ${error}`);
-      return res.redirect(`${domains.client}/oauth/error?error=yandex_auth_failed`);
-    }
-
-    next();
-  },
-  passport.authenticate('yandex', {
-    failureRedirect: `${domains.client}/oauth/error`,
-    failureMessage: true,
-    session: false,
-  }),
-  setBalanceConfig,
-  checkDomainAllowed,
-  oauthHandler,
-);
+// GET /oauth/yandex/callback?code=...&state=... → проверяем state → создаём session → redirect
+router.get('/yandex/callback', yandexOAuthCallback);
 
 module.exports = router;

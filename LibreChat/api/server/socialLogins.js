@@ -12,7 +12,7 @@ const {
   // githubLogin,
   // appleLogin,
   setupSaml,
-  yandexLogin,
+  // yandexLogin - НЕ ИСПОЛЬЗУЕТСЯ (Yandex OAuth реализован без Passport)
 } = require('~/strategies');
 const { getLogStores } = require('~/cache');
 
@@ -119,13 +119,13 @@ const configureSocialLogins = async (app) => {
   //   logger.info('SAML Connect configured.');
   // }
 
-  // [ENABLED] Yandex OAuth (Only enabled authentication method)
-  if (process.env.YANDEX_CLIENT_ID && process.env.YANDEX_CLIENT_SECRET) {
-    logger.info('Registering Yandex OAuth strategy');
-    passport.use(yandexLogin());
-    logger.info('Yandex OAuth configured successfully.');
+  // [DISABLED] Yandex OAuth is now handled without Passport (see /api/server/controllers/auth/yandex.js)
+  // This provides a simpler, more reliable OAuth flow based on cookie-based state management
+  // instead of Passport session management
+  if (!process.env.YANDEX_CLIENT_ID || !process.env.YANDEX_CLIENT_SECRET) {
+    logger.warn('⚠️  Yandex OAuth is the only enabled method, but YANDEX_CLIENT_ID or YANDEX_CLIENT_SECRET is not set!');
   } else {
-    logger.warn('Yandex OAuth is the only enabled method, but YANDEX_CLIENT_ID or YANDEX_CLIENT_SECRET is not set!');
+    logger.info('✅ Yandex OAuth is configured (using custom implementation without Passport)');
   }
 };
 
