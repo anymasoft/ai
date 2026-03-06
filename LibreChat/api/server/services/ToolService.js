@@ -128,12 +128,17 @@ async function processRequiredActions(client, requiredActions) {
     })
     .filter((toolName) => !!toolName);
 
+  // Получаем список включённых MCP серверов пользователем
+  // Если не передан → undefined, что приведет к блокировке всех серверов
+  const enabledMcpServers = client.req.body?.enabledMcpServers;
+
   const { loadedTools } = await loadTools({
     user: client.req.user.id,
     model: client.req.body.model ?? 'gpt-4o-mini',
     tools,
     functions: true,
     endpoint: client.req.body.endpoint,
+    enabledMcpServers,
     options: {
       processFileURL,
       req: client.req,
@@ -869,6 +874,10 @@ async function loadAgentTools({
     });
   }
 
+  // Получаем список включённых MCP серверов пользователем
+  // Если не передан → undefined, что приведет к блокировке всех серверов
+  const enabledMcpServers = req.body?.enabledMcpServers;
+
   const { loadedTools, toolContextMap } = await loadTools({
     agent,
     signal,
@@ -876,6 +885,7 @@ async function loadAgentTools({
     functions: true,
     user: req.user.id,
     tools: _agentTools,
+    enabledMcpServers,
     options: {
       req,
       res,
