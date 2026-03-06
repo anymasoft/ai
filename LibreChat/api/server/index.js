@@ -25,6 +25,9 @@ const { connectDb, indexSync } = require('~/db');
 const initializeOAuthReconnectManager = require('./services/initializeOAuthReconnectManager');
 const createValidateImageRequest = require('./middleware/validateImageRequest');
 const { jwtLogin, ldapLogin, passportLogin } = require('~/strategies');
+const { createOAuthHandler } = require('~/server/controllers/auth/oauth');
+const { checkDomainAllowed } = require('~/server/middleware');
+const { createSetBalanceConfig } = require('@librechat/api');
 const { updateInterfacePermissions } = require('~/models/interface');
 const { checkMigrations } = require('./services/start/migration');
 const initializeMCPs = require('./services/initializeMCPs');
@@ -34,7 +37,7 @@ const staticCache = require('./utils/staticCache');
 const noIndex = require('./middleware/noIndex');
 const { seedDatabase } = require('~/models');
 const routes = require('./routes');
-const { User } = require('~/db/models');
+const { User, Balance } = require('~/db/models');
 const { setAdminId } = require('~/config');
 
 const { PORT, HOST, ALLOW_SOCIAL_LOGIN, DISABLE_COMPRESSION, TRUST_PROXY } = process.env ?? {};
@@ -172,6 +175,30 @@ const startServer = async () => {
 
   logger.debug('[app.use] Mounting /oauth', typeof routes.oauth);
   app.use('/oauth', routes.oauth);
+
+  /**
+   * Yandex OAuth Callback Route
+   * Support for custom YANDEX_URI configuration
+   * Example: /auth/yandex-callback
+   */
+  const setBalanceConfig = createSetBalanceConfig({
+    getAppConfig,
+    Balance,
+  });
+  const oauthHandler = createOAuthHandler();
+
+  app.get(
+    '/auth/yandex-callback',
+    passport.authenticate('yandex', {
+      failureRedirect: `${process.env.DOMAIN_CLIENT}/oauth/error`,
+      failureMessage: true,
+      session: false,
+    }),
+    setBalanceConfig,
+    checkDomainAllowed,
+    oauthHandler,
+  );
+
   /* API Endpoints */
   logger.debug('[app.use] Mounting /api/auth', typeof routes.auth);
   app.use('/api/auth', routes.auth);
