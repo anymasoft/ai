@@ -29,39 +29,52 @@ const setBalanceConfig = createSetBalanceConfig({
 const router = express.Router();
 
 const ldapAuth = !!process.env.LDAP_URL && !!process.env.LDAP_USER_SEARCH_BASE;
-//Local
+
+// [DISABLED] Email/Password Authentication Routes
+// Only Yandex OAuth is enabled. These routes are disabled to enforce single sign-on method.
+
+// Logout (kept enabled for security)
 router.post('/logout', middleware.requireJwtAuth, logoutController);
-router.post(
-  '/login',
-  middleware.logHeaders,
-  middleware.loginLimiter,
-  middleware.checkBan,
-  ldapAuth ? middleware.requireLdapAuth : middleware.requireLocalAuth,
-  setBalanceConfig,
-  loginController,
-);
+
+// [DISABLED] Email/Password login
+// router.post(
+//   '/login',
+//   middleware.logHeaders,
+//   middleware.loginLimiter,
+//   middleware.checkBan,
+//   ldapAuth ? middleware.requireLdapAuth : middleware.requireLocalAuth,
+//   setBalanceConfig,
+//   loginController,
+// );
+
 router.post('/refresh', refreshController);
-router.post(
-  '/register',
-  middleware.registerLimiter,
-  middleware.checkBan,
-  middleware.checkInviteUser,
-  middleware.validateRegistration,
-  registrationController,
-);
-router.post(
-  '/requestPasswordReset',
-  middleware.resetPasswordLimiter,
-  middleware.checkBan,
-  middleware.validatePasswordReset,
-  resetPasswordRequestController,
-);
-router.post(
-  '/resetPassword',
-  middleware.checkBan,
-  middleware.validatePasswordReset,
-  resetPasswordController,
-);
+
+// [DISABLED] Email/Password registration
+// router.post(
+//   '/register',
+//   middleware.registerLimiter,
+//   middleware.checkBan,
+//   middleware.checkInviteUser,
+//   middleware.validateRegistration,
+//   registrationController,
+// );
+
+// [DISABLED] Password reset request
+// router.post(
+//   '/requestPasswordReset',
+//   middleware.resetPasswordLimiter,
+//   middleware.checkBan,
+//   middleware.validatePasswordReset,
+//   resetPasswordRequestController,
+// );
+
+// [DISABLED] Password reset
+// router.post(
+//   '/resetPassword',
+//   middleware.checkBan,
+//   middleware.validatePasswordReset,
+//   resetPasswordController,
+// );
 
 router.get('/2fa/enable', middleware.requireJwtAuth, enable2FA);
 router.post('/2fa/verify', middleware.requireJwtAuth, verify2FA);

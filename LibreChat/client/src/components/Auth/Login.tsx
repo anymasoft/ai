@@ -58,58 +58,64 @@ function Login() {
     }
   }, [disableAutoRedirect, searchParams, setSearchParams]);
 
-  const shouldAutoRedirect =
-    startupConfig?.openidLoginEnabled &&
-    startupConfig?.openidAutoRedirect &&
-    startupConfig?.serverDomain &&
-    !isAutoRedirectDisabled;
+  // [DISABLED] Auto-redirect to OpenID (only Yandex OAuth is enabled)
+  // const shouldAutoRedirect =
+  //   startupConfig?.openidLoginEnabled &&
+  //   startupConfig?.openidAutoRedirect &&
+  //   startupConfig?.serverDomain &&
+  //   !isAutoRedirectDisabled;
 
-  useEffect(() => {
-    if (shouldAutoRedirect) {
-      console.log('Auto-redirecting to OpenID provider...');
-      window.location.href = `${startupConfig.serverDomain}/oauth/openid`;
-    }
-  }, [shouldAutoRedirect, startupConfig]);
+  // useEffect(() => {
+  //   if (shouldAutoRedirect) {
+  //     console.log('Auto-redirecting to OpenID provider...');
+  //     window.location.href = `${startupConfig.serverDomain}/oauth/openid`;
+  //   }
+  // }, [shouldAutoRedirect, startupConfig]);
 
-  if (shouldAutoRedirect) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center p-4">
-        <p className="text-lg font-semibold">
-          {localize('com_ui_redirecting_to_provider', { 0: startupConfig.openidLabel })}
-        </p>
-        <div className="mt-4">
-          <SocialButton
-            key="openid"
-            enabled={startupConfig.openidLoginEnabled}
-            serverDomain={startupConfig.serverDomain}
-            oauthPath="openid"
-            Icon={() =>
-              startupConfig.openidImageUrl ? (
-                <img src={startupConfig.openidImageUrl} alt="OpenID Logo" className="h-5 w-5" />
-              ) : (
-                <OpenIDIcon />
-              )
-            }
-            label={startupConfig.openidLabel}
-            id="openid"
-          />
-        </div>
-      </div>
-    );
-  }
+  // if (shouldAutoRedirect) {
+  //   return (
+  //     <div className="flex min-h-screen flex-col items-center justify-center p-4">
+  //       <p className="text-lg font-semibold">
+  //         {localize('com_ui_redirecting_to_provider', { 0: startupConfig.openidLabel })}
+  //       </p>
+  //       <div className="mt-4">
+  //         <SocialButton
+  //           key="openid"
+  //           enabled={startupConfig.openidLoginEnabled}
+  //           serverDomain={startupConfig.serverDomain}
+  //           oauthPath="openid"
+  //           Icon={() =>
+  //             startupConfig.openidImageUrl ? (
+  //               <img src={startupConfig.openidImageUrl} alt="OpenID Logo" className="h-5 w-5" />
+  //             ) : (
+  //               <OpenIDIcon />
+  //             )
+  //           }
+  //           label={startupConfig.openidLabel}
+  //           id="openid"
+  //         />
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <>
+      {/* [DISABLED] Email/Password login - only Yandex OAuth is enabled */}
       {error != null && <ErrorMessage>{localize(getLoginError(error))}</ErrorMessage>}
-      {startupConfig?.emailLoginEnabled === true && (
+
+      {/* [DISABLED] Email/Password login form */}
+      {/* {startupConfig?.emailLoginEnabled === true && (
         <LoginForm
           onSubmit={login}
           startupConfig={startupConfig}
           error={error}
           setError={setError}
         />
-      )}
-      {startupConfig?.registrationEnabled === true && (
+      )} */}
+
+      {/* [DISABLED] Registration link */}
+      {/* {startupConfig?.registrationEnabled === true && (
         <p className="my-4 text-center text-sm font-light text-gray-700 dark:text-white">
           {' '}
           {localize('com_auth_no_account')}{' '}
@@ -120,7 +126,7 @@ function Login() {
             {localize('com_auth_sign_up')}
           </a>
         </p>
-      )}
+      )} */}
     </>
   );
 }

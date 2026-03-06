@@ -199,4 +199,43 @@ router.post(
   oauthHandler,
 );
 
+/**
+ * Yandex Routes (Only enabled OAuth provider)
+ */
+router.get(
+  '/yandex',
+  passport.authenticate('yandex', {
+    scope: ['login:email', 'login:info'],
+    session: false,
+  }),
+);
+
+// Стандартный callback маршрут (/oauth/yandex/callback)
+router.get(
+  '/yandex/callback',
+  passport.authenticate('yandex', {
+    failureRedirect: `${domains.client}/oauth/error`,
+    failureMessage: true,
+    session: false,
+    scope: ['login:email', 'login:info'],
+  }),
+  setBalanceConfig,
+  checkDomainAllowed,
+  oauthHandler,
+);
+
+// Альтернативный callback маршрут (/auth/yandex-callback) для совместимости с YANDEX_URI
+router.get(
+  '/auth/yandex-callback',
+  passport.authenticate('yandex', {
+    failureRedirect: `${domains.client}/oauth/error`,
+    failureMessage: true,
+    session: false,
+    scope: ['login:email', 'login:info'],
+  }),
+  setBalanceConfig,
+  checkDomainAllowed,
+  oauthHandler,
+);
+
 module.exports = router;
