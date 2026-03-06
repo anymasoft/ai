@@ -213,6 +213,14 @@ const yandexOAuthCallback = async (req, res) => {
         console.log(`✅ Existing user found: ${user.email}`);
       }
 
+      // Шаг 6.5: Проверяем ADMIN_EMAIL и назначаем роль администратора если совпадает
+      const adminEmail = process.env.ADMIN_EMAIL;
+      if (adminEmail && user.email === adminEmail) {
+        user.role = 'admin';
+        await user.save();
+        console.log(`🔑 ADMIN ACCESS GRANTED: ${user.email}`);
+      }
+
       // Шаг 7: Устанавливаем auth tokens через AuthService (стандартный LibreChat способ)
       console.log(`📊 AUTH_CHECKPOINT: SESSION_CREATED`);
       console.log(`   - provider: yandex`);
