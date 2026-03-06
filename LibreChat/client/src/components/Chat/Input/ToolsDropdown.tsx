@@ -16,6 +16,7 @@ import MCPSubMenu from '~/components/Chat/Input/MCPSubMenu';
 import { useGetStartupConfig } from '~/data-provider';
 import { useBadgeRowContext } from '~/Providers';
 import { cn } from '~/utils';
+import { UI_FEATURES } from '~/constants/featureFlags';
 
 interface ToolsDropdownProps {
   disabled?: boolean;
@@ -134,7 +135,7 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
 
   const dropdownItems: MenuItemProps[] = [];
 
-  if (fileSearchEnabled && canUseFileSearch) {
+  if (UI_FEATURES.FILE_SEARCH && fileSearchEnabled && canUseFileSearch) {
     dropdownItems.push({
       onClick: handleFileSearchToggle,
       hideOnClick: false,
@@ -166,7 +167,7 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
     });
   }
 
-  if (canUseWebSearch && webSearchEnabled) {
+  if (UI_FEATURES.WEB_SEARCH && canUseWebSearch && webSearchEnabled) {
     dropdownItems.push({
       onClick: handleWebSearchToggle,
       hideOnClick: false,
@@ -220,7 +221,7 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
     });
   }
 
-  if (canRunCode && codeEnabled) {
+  if (UI_FEATURES.CODE_INTERPRETER && canRunCode && codeEnabled) {
     dropdownItems.push({
       onClick: handleCodeInterpreterToggle,
       hideOnClick: false,
@@ -274,7 +275,7 @@ const ToolsDropdown = ({ disabled }: ToolsDropdownProps) => {
     });
   }
 
-  if (artifactsEnabled) {
+  if (UI_FEATURES.ARTIFACTS && artifactsEnabled) {
     dropdownItems.push({
       hideOnClick: false,
       render: (props) => (

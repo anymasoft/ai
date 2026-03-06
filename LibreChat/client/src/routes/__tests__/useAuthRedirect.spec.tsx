@@ -43,7 +43,7 @@ const createTestRouter = (basename = '/', initialEntry?: string) => {
         element: <TestComponent />,
       },
       {
-        path: '/login',
+        path: '/sign-in',
         element: <div data-testid="login-page">Login Page</div>,
       },
       {
@@ -88,7 +88,7 @@ describe('useAuthRedirect', () => {
     expect(getByTestId('test-component')).toBeInTheDocument();
   });
 
-  it('should redirect to /login when user is not authenticated', async () => {
+  it('should redirect to /sign-in when user is not authenticated', async () => {
     (useAuthContext as jest.Mock).mockReturnValue({
       user: null,
       isAuthenticated: false,
@@ -103,7 +103,7 @@ describe('useAuthRedirect', () => {
     // Wait for the redirect to happen (300ms timeout + navigation)
     await waitFor(
       () => {
-        expect(router.state.location.pathname).toBe('/login');
+        expect(router.state.location.pathname).toBe('/sign-in');
         expect(getByTestId('login-page')).toBeInTheDocument();
         expect(queryByTestId('test-component')).not.toBeInTheDocument();
       },
@@ -132,13 +132,13 @@ describe('useAuthRedirect', () => {
     await waitFor(
       () => {
         // Router state pathname includes the full path with basename
-        expect(router.state.location.pathname).toBe('/librechat/login');
+        expect(router.state.location.pathname).toBe('/librechat/sign-in');
         expect(getByTestId('login-page')).toBeInTheDocument();
       },
       { timeout: 1000 },
     );
 
-    // The key point: navigate('/login', { replace: true }) works correctly with basename
+    // The key point: navigate('/sign-in', { replace: true }) works correctly with basename
     // The router automatically prepends the basename to create the full URL
     expect(router.state.historyAction).toBe('REPLACE');
   });
@@ -154,7 +154,7 @@ describe('useAuthRedirect', () => {
 
     await waitFor(
       () => {
-        expect(router.state.location.pathname).toBe('/librechat/login');
+        expect(router.state.location.pathname).toBe('/librechat/sign-in');
         expect(getByTestId('login-page')).toBeInTheDocument();
       },
       { timeout: 1000 },
@@ -163,7 +163,7 @@ describe('useAuthRedirect', () => {
     // The fact that navigation worked within the router proves we're using
     // navigate() and not window.location.href (which would cause a full reload
     // and break the test entirely). This maintains the SPA experience.
-    expect(router.state.location.pathname).toBe('/librechat/login');
+    expect(router.state.location.pathname).toBe('/librechat/sign-in');
   });
 
   it('should clear timeout on unmount', async () => {
@@ -214,7 +214,7 @@ describe('useAuthRedirect', () => {
 
     await waitFor(
       () => {
-        expect(router.state.location.pathname).toBe('/login');
+        expect(router.state.location.pathname).toBe('/sign-in');
         const search = router.state.location.search;
         const params = new URLSearchParams(search);
         const redirectTo = params.get('redirect_to');
@@ -236,7 +236,7 @@ describe('useAuthRedirect', () => {
 
     await waitFor(
       () => {
-        expect(router.state.location.pathname).toBe('/login');
+        expect(router.state.location.pathname).toBe('/sign-in');
         const params = new URLSearchParams(router.state.location.search);
         const decoded = decodeURIComponent(params.get('redirect_to')!);
         expect(decoded).toBe('/c/abc123?q=hello&submit=true#section');
@@ -245,7 +245,7 @@ describe('useAuthRedirect', () => {
     );
   });
 
-  it('should not append redirect_to when already on /login', async () => {
+  it('should not append redirect_to when already on /sign-in', async () => {
     (useAuthContext as jest.Mock).mockReturnValue({
       user: null,
       isAuthenticated: false,
@@ -254,17 +254,17 @@ describe('useAuthRedirect', () => {
     const router = createMemoryRouter(
       [
         {
-          path: '/login',
+          path: '/sign-in',
           element: <TestComponent />,
         },
       ],
-      { initialEntries: ['/login'] },
+      { initialEntries: ['/sign-in'] },
     );
     render(<RouterProvider router={router} />);
 
     await waitFor(
       () => {
-        expect(router.state.location.pathname).toBe('/login');
+        expect(router.state.location.pathname).toBe('/sign-in');
       },
       { timeout: 1000 },
     );

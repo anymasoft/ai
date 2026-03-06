@@ -84,7 +84,7 @@ const AuthContextProvider = ({
     onSuccess: (data: t.TLoginResponse) => {
       const { user, token, twoFAPending, tempToken } = data;
       if (twoFAPending) {
-        navigate(`/login/2fa?tempToken=${tempToken}`, { replace: true });
+        navigate(`/sign-in/2fa?tempToken=${tempToken}`, { replace: true });
         return;
       }
       setError(undefined);
@@ -94,13 +94,13 @@ const AuthContextProvider = ({
       const resError = error as TResError;
       doSetError(resError.message);
       // Preserve a valid redirect_to across login failures so the deep link survives retries.
-      // Cannot use buildLoginRedirectUrl() here — it reads the current pathname (already /login)
-      // and would return plain /login, dropping the redirect_to destination.
+      // Cannot use buildLoginRedirectUrl() here — it reads the current pathname (already /sign-in)
+      // and would return plain /sign-in, dropping the redirect_to destination.
       const redirectTo = new URLSearchParams(window.location.search).get('redirect_to');
       const loginPath =
         redirectTo && isSafeRedirect(redirectTo)
-          ? `/login?redirect_to=${encodeURIComponent(redirectTo)}`
-          : '/login';
+          ? `/sign-in?redirect_to=${encodeURIComponent(redirectTo)}`
+          : '/sign-in';
       navigate(loginPath, { replace: true });
     },
   });
@@ -110,7 +110,7 @@ const AuthContextProvider = ({
         token: undefined,
         isAuthenticated: false,
         user: undefined,
-        redirect: data.redirect ?? '/login',
+        redirect: data.redirect ?? '/sign-in',
       });
     },
     onError: (error) => {
@@ -119,7 +119,7 @@ const AuthContextProvider = ({
         token: undefined,
         isAuthenticated: false,
         user: undefined,
-        redirect: '/login',
+        redirect: '/sign-in',
       });
     },
   });

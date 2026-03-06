@@ -44,7 +44,7 @@ jest.mock('~/data-provider', () => ({
   useGetRole: jest.fn(() => ({ data: null })),
 }));
 
-const authConfig: TAuthConfig = { loginRedirect: '/login', test: true };
+const authConfig: TAuthConfig = { loginRedirect: '/sign-in', test: true };
 
 function TestConsumer() {
   const ctx = useAuthContext();
@@ -75,7 +75,7 @@ describe('AuthContextProvider — login onError redirect handling', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     Object.defineProperty(window, 'location', {
-      value: { ...originalLocation, pathname: '/login', search: '', hash: '' },
+      value: { ...originalLocation, pathname: '/sign-in', search: '', hash: '' },
       writable: true,
       configurable: true,
     });
@@ -91,7 +91,7 @@ describe('AuthContextProvider — login onError redirect handling', () => {
 
   it('preserves a valid redirect_to param across login failure', () => {
     Object.defineProperty(window, 'location', {
-      value: { pathname: '/login', search: '?redirect_to=%2Fc%2Fabc123', hash: '' },
+      value: { pathname: '/sign-in', search: '?redirect_to=%2Fc%2Fabc123', hash: '' },
       writable: true,
       configurable: true,
     });
@@ -102,14 +102,14 @@ describe('AuthContextProvider — login onError redirect handling', () => {
       mockCapturedLoginOptions.onError({ message: 'Invalid credentials' });
     });
 
-    expect(mockNavigate).toHaveBeenCalledWith('/login?redirect_to=%2Fc%2Fabc123', {
+    expect(mockNavigate).toHaveBeenCalledWith('/sign-in?redirect_to=%2Fc%2Fabc123', {
       replace: true,
     });
   });
 
   it('drops redirect_to when it contains an absolute URL (open-redirect prevention)', () => {
     Object.defineProperty(window, 'location', {
-      value: { pathname: '/login', search: '?redirect_to=https%3A%2F%2Fevil.com', hash: '' },
+      value: { pathname: '/sign-in', search: '?redirect_to=https%3A%2F%2Fevil.com', hash: '' },
       writable: true,
       configurable: true,
     });
@@ -120,12 +120,12 @@ describe('AuthContextProvider — login onError redirect handling', () => {
       mockCapturedLoginOptions.onError({ message: 'Invalid credentials' });
     });
 
-    expect(mockNavigate).toHaveBeenCalledWith('/login', { replace: true });
+    expect(mockNavigate).toHaveBeenCalledWith('/sign-in', { replace: true });
   });
 
-  it('drops redirect_to when it points to /login (recursive redirect prevention)', () => {
+  it('drops redirect_to when it points to /sign-in (recursive redirect prevention)', () => {
     Object.defineProperty(window, 'location', {
-      value: { pathname: '/login', search: '?redirect_to=%2Flogin', hash: '' },
+      value: { pathname: '/sign-in', search: '?redirect_to=%2Flogin', hash: '' },
       writable: true,
       configurable: true,
     });
@@ -136,24 +136,24 @@ describe('AuthContextProvider — login onError redirect handling', () => {
       mockCapturedLoginOptions.onError({ message: 'Invalid credentials' });
     });
 
-    expect(mockNavigate).toHaveBeenCalledWith('/login', { replace: true });
+    expect(mockNavigate).toHaveBeenCalledWith('/sign-in', { replace: true });
   });
 
-  it('navigates to plain /login when no redirect_to param exists', () => {
+  it('navigates to plain /sign-in when no redirect_to param exists', () => {
     renderProvider();
 
     act(() => {
       mockCapturedLoginOptions.onError({ message: 'Server error' });
     });
 
-    expect(mockNavigate).toHaveBeenCalledWith('/login', { replace: true });
+    expect(mockNavigate).toHaveBeenCalledWith('/sign-in', { replace: true });
   });
 
   it('preserves redirect_to with query params and hash', () => {
     const target = '/c/abc123?model=gpt-4#section';
     Object.defineProperty(window, 'location', {
       value: {
-        pathname: '/login',
+        pathname: '/sign-in',
         search: `?redirect_to=${encodeURIComponent(target)}`,
         hash: '',
       },

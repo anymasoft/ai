@@ -45,7 +45,7 @@ const createTestRouter = (initialEntry: string, isAuthenticated: boolean) =>
   createMemoryRouter(
     [
       {
-        path: '/login',
+        path: '/sign-in',
         element: <StartupLayout isAuthenticated={isAuthenticated} />,
         children: [{ index: true, element: <ChildRoute /> }],
       },
@@ -75,7 +75,7 @@ describe('StartupLayout — redirect race condition', () => {
       writable: true,
     });
 
-    const router = createTestRouter('/login', true);
+    const router = createTestRouter('/sign-in', true);
     render(<RouterProvider router={router} />);
 
     await waitFor(() => {
@@ -89,12 +89,12 @@ describe('StartupLayout — redirect race condition', () => {
       writable: true,
     });
 
-    const router = createTestRouter('/login?redirect_to=%2Fc%2Fabc123', true);
+    const router = createTestRouter('/sign-in?redirect_to=%2Fc%2Fabc123', true);
     render(<RouterProvider router={router} />);
 
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    expect(router.state.location.pathname).toBe('/login');
+    expect(router.state.location.pathname).toBe('/sign-in');
   });
 
   it('does NOT navigate to /c/new when sessionStorage redirect is present', async () => {
@@ -104,12 +104,12 @@ describe('StartupLayout — redirect race condition', () => {
     });
     sessionStorage.setItem(SESSION_KEY, '/c/abc123');
 
-    const router = createTestRouter('/login', true);
+    const router = createTestRouter('/sign-in', true);
     render(<RouterProvider router={router} />);
 
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    expect(router.state.location.pathname).toBe('/login');
+    expect(router.state.location.pathname).toBe('/sign-in');
   });
 
   it('does NOT navigate when not authenticated', async () => {
@@ -118,11 +118,11 @@ describe('StartupLayout — redirect race condition', () => {
       writable: true,
     });
 
-    const router = createTestRouter('/login', false);
+    const router = createTestRouter('/sign-in', false);
     render(<RouterProvider router={router} />);
 
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    expect(router.state.location.pathname).toBe('/login');
+    expect(router.state.location.pathname).toBe('/sign-in');
   });
 });

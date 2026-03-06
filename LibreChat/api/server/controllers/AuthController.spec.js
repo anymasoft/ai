@@ -256,13 +256,13 @@ describe('refreshController – OpenID path', () => {
     expect(res.status).toHaveBeenCalledWith(200);
   });
 
-  it('should return 401 and redirect to /login when findOpenIDUser returns no user', async () => {
+  it('should return 401 and redirect to /sign-in when findOpenIDUser returns no user', async () => {
     findOpenIDUser.mockResolvedValue({ user: null, error: null, migration: false });
 
     await refreshController(req, res);
 
     expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.redirect).toHaveBeenCalledWith('/login');
+    expect(res.redirect).toHaveBeenCalledWith('/sign-in');
   });
 
   it('should return 401 and redirect when findOpenIDUser returns an error', async () => {
@@ -271,7 +271,7 @@ describe('refreshController – OpenID path', () => {
     await refreshController(req, res);
 
     expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.redirect).toHaveBeenCalledWith('/login');
+    expect(res.redirect).toHaveBeenCalledWith('/sign-in');
   });
 
   it('should skip OpenID path when token_provider is not openid', async () => {

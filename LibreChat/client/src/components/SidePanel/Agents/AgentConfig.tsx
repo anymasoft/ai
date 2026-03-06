@@ -11,6 +11,7 @@ import {
   getIconKey,
   cn,
 } from '~/utils';
+import { UI_FEATURES } from '~/constants/featureFlags';
 import { ToolSelectDialog, MCPToolSelectDialog } from '~/components/Tools';
 import useAgentCapabilities from '~/hooks/Agents/useAgentCapabilities';
 import { useFileMapContext, useAgentPanelContext } from '~/Providers';
@@ -294,15 +295,15 @@ export default function AgentConfig() {
               {localize('com_assistants_capabilities')}
             </label>
             {/* Code Execution */}
-            {codeEnabled && <CodeForm agent_id={agent_id} files={code_files} />}
+            {UI_FEATURES.CODE_INTERPRETER && codeEnabled && <CodeForm agent_id={agent_id} files={code_files} />}
             {/* Web Search */}
-            {webSearchEnabled && <SearchForm />}
+            {UI_FEATURES.WEB_SEARCH && webSearchEnabled && <SearchForm />}
             {/* File Context */}
             {contextEnabled && <FileContext agent_id={agent_id} files={context_files} />}
             {/* Artifacts */}
-            {artifactsEnabled && <Artifacts />}
+            {UI_FEATURES.ARTIFACTS && artifactsEnabled && <Artifacts />}
             {/* File Search */}
-            {fileSearchEnabled && <FileSearch agent_id={agent_id} files={knowledge_files} />}
+            {UI_FEATURES.FILE_SEARCH && fileSearchEnabled && <FileSearch agent_id={agent_id} files={knowledge_files} />}
           </div>
         )}
         {/* MCP Section */}

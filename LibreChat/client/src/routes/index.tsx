@@ -1,6 +1,5 @@
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import {
-  Login,
   SignIn,
   VerifyEmail,
   Registration,
@@ -45,6 +44,14 @@ export const router = createBrowserRouter(
       path: 'sign-in',
       element: <SignIn />,
       errorElement: <RouteErrorBoundary />,
+    },
+    {
+      path: 'login',
+      element: <Navigate to="/sign-in" replace={true} />,
+    },
+    {
+      path: 'login/2fa',
+      element: <Navigate to="/sign-in/2fa" replace={true} />,
     },
     {
       path: 'oauth',
@@ -93,11 +100,7 @@ export const router = createBrowserRouter(
           element: <LoginLayout />,
           children: [
             {
-              path: 'login',
-              element: <Login />,
-            },
-            {
-              path: 'login/2fa',
+              path: 'sign-in/2fa',
               element: <TwoFactorScreen />,
             },
           ],

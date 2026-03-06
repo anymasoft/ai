@@ -35,7 +35,7 @@ router.get('/error', (req, res) => {
     message: errorMessage,
   });
 
-  res.redirect(`${domains.client}/login?redirect=false&error=${ErrorTypes.AUTH_FAILED}`);
+  res.redirect(`${domains.client}/sign-in?redirect=false&error=${ErrorTypes.AUTH_FAILED}`);
 });
 
 /**
