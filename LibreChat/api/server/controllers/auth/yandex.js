@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const { logger } = require('@librechat/data-schemas');
 const { isEnabled } = require('@librechat/api');
-const { getUserById, findUser, createUser } = require('~/models');
+const { getUserById, findUser, createUser, User } = require('~/models');
 const { setAuthTokens } = require('~/server/services/AuthService');
 
 const domains = {
@@ -215,9 +215,11 @@ const yandexOAuthCallback = async (req, res) => {
 
       // Шаг 6.5: Проверяем ADMIN_EMAIL и назначаем роль администратора если совпадает
       const adminEmail = process.env.ADMIN_EMAIL;
-      if (adminEmail && user.email === adminEmail) {
-        user.role = 'admin';
-        await user.save();
+      if (adminEmail && user.email === adminEmail && user.role !== 'admin') {
+        await User.updateOne(
+          { _id: user._id },
+          { $set: { role: 'admin' } }
+        );
         console.log(`🔑 ADMIN ACCESS GRANTED: ${user.email}`);
       }
 

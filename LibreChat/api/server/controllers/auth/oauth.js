@@ -10,7 +10,7 @@ const { syncUserEntraGroupMemberships } = require('~/server/services/PermissionS
 const { setAuthTokens, setOpenIDAuthTokens } = require('~/server/services/AuthService');
 const getLogStores = require('~/cache/getLogStores');
 const { checkBan } = require('~/server/middleware');
-const { generateToken } = require('~/models');
+const { generateToken, User } = require('~/models');
 
 const domains = {
   client: process.env.DOMAIN_CLIENT,
@@ -38,9 +38,11 @@ function createOAuthHandler(redirectUri = domains.client) {
 
       /** Check and assign admin role if email matches ADMIN_EMAIL */
       const adminEmail = process.env.ADMIN_EMAIL;
-      if (adminEmail && req.user && req.user.email === adminEmail) {
-        req.user.role = 'admin';
-        await req.user.save();
+      if (adminEmail && req.user && req.user.email === adminEmail && req.user.role !== 'admin') {
+        await User.updateOne(
+          { _id: req.user._id },
+          { $set: { role: 'admin' } }
+        );
         logger.info(`🔑 ADMIN ACCESS GRANTED: ${req.user.email}`);
       }
 
