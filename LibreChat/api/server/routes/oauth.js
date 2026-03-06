@@ -216,7 +216,6 @@ router.get(
   passport.authenticate('yandex', {
     scope: [],
     state: true,
-    session: false,
   }),
 );
 
