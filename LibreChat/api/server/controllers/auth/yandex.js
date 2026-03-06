@@ -198,10 +198,13 @@ const yandexOAuthCallback = async (req, res) => {
           return res.redirect(`${domains.client}/sign-in?error=registration_disabled&provider=yandex`);
         }
 
-        // Создаём нового пользователя
-        // MongoDB автоматически генерирует ObjectId для _id
+        // Создаём нового пользователя со всеми необходимыми полями
+        // username: используем login из профиля Yandex или часть email
+        const username = yandexUser.login || userEmail.split('@')[0];
+
         user = await createUser({
           email: userEmail,
+          username: username,
           name: userName,
         });
 
@@ -210,19 +213,22 @@ const yandexOAuthCallback = async (req, res) => {
         console.log(`✅ Existing user found: ${user.email}`);
       }
 
-      // Шаг 7: Устанавливаем auth tokens через AuthService
+      // Шаг 7: Устанавливаем auth tokens через AuthService (стандартный LibreChat способ)
       console.log(`📊 AUTH_CHECKPOINT: SESSION_CREATED`);
       console.log(`   - provider: yandex`);
       console.log(`   - userId: ${user._id}`);
+      console.log(`   - email: ${user.email}`);
+      console.log(`   - username: ${user.username}`);
 
       await setAuthTokens(user._id, res);
       console.log(`🍪 Auth tokens set`);
 
       console.log(`✅ User logged in successfully via Yandex: ${user.email}`);
-      console.log(`🔄 Redirecting to ${domains.client}/chat`);
+      console.log(`🔄 Redirecting to ${domains.client}`);
 
-      // Редиректим на клиент (чат)
-      return res.redirect(`${domains.client}/chat?auth=1&provider=yandex`);
+      // Редиректим на клиент (стандартный способ как в oauth.js)
+      // Frontend сам обработает редирект на чат
+      return res.redirect(domains.client);
     } catch (dbError) {
       logger.error(`Failed to create/update user:`, dbError);
       return res.redirect(`${domains.client}/sign-in?error=user_creation_failed&provider=yandex`);
