@@ -205,12 +205,12 @@ router.post(
 router.get(
   '/yandex',
   passport.authenticate('yandex', {
-    scope: ['login:email', 'login:info'],
     session: false,
   }),
 );
 
 // Callback маршрут (/oauth/yandex/callback)
+// НЕ передаём scope в callback (как в astro реализации)
 router.get(
   '/yandex/callback',
   passport.authenticate('yandex', {

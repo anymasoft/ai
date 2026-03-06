@@ -55,7 +55,7 @@ class YandexStrategy extends OAuth2Strategy {
         `${this._userProfileURL}?format=json`,
         {
           headers: {
-            Authorization: `Bearer ${accessToken}`,
+            Authorization: `OAuth ${accessToken}`,
             'User-Agent': 'passport-yandex',
           },
         }
@@ -73,9 +73,11 @@ class YandexStrategy extends OAuth2Strategy {
 
   /**
    * OAuth 2.0 callback
+   * НЕ используем scope для Yandex OAuth (в отличие от Google/Facebook)
    */
   authenticate(req, options) {
-    options.scope = options.scope || ['login:email', 'login:info'];
+    // Yandex OAuth не требует scope в запросе авторизации
+    // Права доступа определяются при регистрации приложения
     super.authenticate(req, options);
   }
 }

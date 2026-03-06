@@ -32,128 +32,45 @@ function SocialLoginRender({
     return null;
   }
 
-  const providerComponents = {
-    // [DISABLED] Discord OAuth
-    // discord: startupConfig.discordLoginEnabled && (
-    //   <SocialButton
-    //     key="discord"
-    //     enabled={startupConfig.discordLoginEnabled}
-    //     serverDomain={startupConfig.serverDomain}
-    //     oauthPath="discord"
-    //     Icon={DiscordIcon}
-    //     label={localize('com_auth_discord_login')}
-    //     id="discord"
-    //   />
-    // ),
-
-    // [DISABLED] Facebook OAuth
-    // facebook: startupConfig.facebookLoginEnabled && (
-    //   <SocialButton
-    //     key="facebook"
-    //     enabled={startupConfig.facebookLoginEnabled}
-    //     serverDomain={startupConfig.serverDomain}
-    //     oauthPath="facebook"
-    //     Icon={FacebookIcon}
-    //     label={localize('com_auth_facebook_login')}
-    //     id="facebook"
-    //   />
-    // ),
-
-    // [DISABLED] GitHub OAuth
-    // github: startupConfig.githubLoginEnabled && (
-    //   <SocialButton
-    //     key="github"
-    //     enabled={startupConfig.githubLoginEnabled}
-    //     serverDomain={startupConfig.serverDomain}
-    //     oauthPath="github"
-    //     Icon={GithubIcon}
-    //     label={localize('com_auth_github_login')}
-    //     id="github"
-    //   />
-    // ),
-
-    // [DISABLED] Google OAuth
-    // google: startupConfig.googleLoginEnabled && (
-    //   <SocialButton
-    //     key="google"
-    //     enabled={startupConfig.googleLoginEnabled}
-    //     serverDomain={startupConfig.serverDomain}
-    //     oauthPath="google"
-    //     Icon={GoogleIcon}
-    //     label={localize('com_auth_google_login')}
-    //     id="google"
-    //   />
-    // ),
-
-    // [DISABLED] Apple OAuth
-    // apple: startupConfig.appleLoginEnabled && (
-    //   <SocialButton
-    //     key="apple"
-    //     enabled={startupConfig.appleLoginEnabled}
-    //     serverDomain={startupConfig.serverDomain}
-    //     oauthPath="apple"
-    //     Icon={AppleIcon}
-    //     label={localize('com_auth_apple_login')}
-    //     id="apple"
-    //   />
-    // ),
-
-    // [DISABLED] OpenID Connect
-    // openid: startupConfig.openidLoginEnabled && (
-    //   <SocialButton
-    //     key="openid"
-    //     enabled={startupConfig.openidLoginEnabled}
-    //     serverDomain={startupConfig.serverDomain}
-    //     oauthPath="openid"
-    //     Icon={() =>
-    //       startupConfig.openidImageUrl ? (
-    //         <img src={startupConfig.openidImageUrl} alt="OpenID Logo" className="h-5 w-5" />
-    //       ) : (
-    //         <OpenIDIcon />
-    //       )
-    //     }
-    //     label={startupConfig.openidLabel}
-    //     id="openid"
-    //   />
-    // ),
-
-    // [DISABLED] SAML
-    // saml: startupConfig.samlLoginEnabled && (
-    //   <SocialButton
-    //     key="saml"
-    //     enabled={startupConfig.samlLoginEnabled}
-    //     serverDomain={startupConfig.serverDomain}
-    //     oauthPath="saml"
-    //     Icon={() =>
-    //       startupConfig.samlImageUrl ? (
-    //         <img src={startupConfig.samlImageUrl} alt="SAML Logo" className="h-5 w-5" />
-    //       ) : (
-    //         <SamlIcon />
-    //       )
-    //     }
-    //     label={startupConfig.samlLabel ? startupConfig.samlLabel : localize('com_auth_saml_login')}
-    //     id="saml"
-    //   />
-    // ),
-
-    // [ENABLED] Yandex OAuth (Only enabled authentication method)
-    yandex: startupConfig.yandexLoginEnabled && (
+  // [ENABLED] Only Yandex OAuth is enabled
+  // Show Yandex button if configured
+  if (startupConfig.yandexLoginEnabled) {
+    return (
       <SocialButton
         key="yandex"
-        enabled={startupConfig.yandexLoginEnabled}
+        enabled={true}
         serverDomain={startupConfig.serverDomain}
         oauthPath="yandex"
         Icon={YandexIcon}
         label="Sign in with Yandex"
         id="yandex"
       />
-    ),
-  };
-
-  // [ENABLED] Show Yandex OAuth button if enabled (only enabled authentication method)
-  if (startupConfig.yandexLoginEnabled) {
-    return providerComponents.yandex;
+    );
   }
+
+  // Fallback: Show other social logins if Yandex is not configured
+  const providerComponents = {
+    // [DISABLED] Discord OAuth
+    // discord: ...
+
+    // [DISABLED] Facebook OAuth
+    // facebook: ...
+
+    // [DISABLED] GitHub OAuth
+    // github: ...
+
+    // [DISABLED] Google OAuth
+    // google: ...
+
+    // [DISABLED] Apple OAuth
+    // apple: ...
+
+    // [DISABLED] OpenID Connect
+    // openid: ...
+
+    // [DISABLED] SAML
+    // saml: ...
+  };
 
   return (
     startupConfig.socialLoginEnabled && (
