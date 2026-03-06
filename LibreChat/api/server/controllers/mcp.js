@@ -125,6 +125,9 @@ const getMCPTools = async (req, res) => {
     const cacheResults = await Promise.all(cachePromises);
 
     const serverToolsMap = new Map();
+    // Получаем список включённых MCP серверов пользователем
+    const enabledMcpServers = req.body?.enabledMcpServers || [];
+
     for (const { serverName, tools } of cacheResults) {
       if (tools) {
         serverToolsMap.set(serverName, tools);
@@ -154,6 +157,13 @@ const getMCPTools = async (req, res) => {
 
     // Process each configured server
     for (const serverName of configuredServers) {
+      // Проверяем включен ли сервер пользователем
+      if (!enabledMcpServers.includes(serverName)) {
+        logger.info(
+          `[MCP BLOCKED] ${serverName} not enabled by user - skipping tool registration`,
+        );
+        continue;
+      }
       try {
         const serverTools = serverToolsMap.get(serverName);
 
@@ -284,6 +294,15 @@ const getMCPServerById = async (req, res) => {
     const { serverName } = req.params;
     if (!serverName) {
       return res.status(400).json({ message: 'Server name is required' });
+    }
+
+    // Проверяем включен ли сервер пользователем
+    const enabledMcpServers = req.body?.enabledMcpServers || [];
+    if (!enabledMcpServers.includes(serverName)) {
+      logger.info(
+        `[MCP BLOCKED] user=${userId} accessing disabled MCP server ${serverName}`,
+      );
+      return res.status(403).json({ message: 'MCP server not enabled' });
     }
 
     // Get admin user for MCP config (MVP: all configs are admin-owned)

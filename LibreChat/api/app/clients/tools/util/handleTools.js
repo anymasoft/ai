@@ -151,6 +151,7 @@ const getAuthFields = (toolKey) => {
  * @param {Array<string>} params.tools
  * @param {boolean} [params.functions]
  * @param {boolean} [params.returnMap]
+ * @param {Array<string>} [params.enabledMcpServers] - List of MCP servers enabled by the user
  * @param {AppConfig['webSearch']} [params.webSearch]
  * @param {AppConfig['fileStrategy']} [params.fileStrategy]
  * @param {AppConfig['imageOutputType']} [params.imageOutputType]
@@ -167,6 +168,7 @@ const loadTools = async ({
   options = {},
   functions = true,
   returnMap = false,
+  enabledMcpServers = [],
   webSearch,
   fileStrategy,
   imageOutputType,
@@ -356,6 +358,15 @@ const loadTools = async ({
         /** Placeholder used for UI purposes */
         continue;
       }
+
+      // Проверяем включен ли сервер пользователем
+      if (!enabledMcpServers.includes(serverName)) {
+        logger.info(
+          `[MCP BLOCKED] ${serverName} not enabled by user - skipping tools registration`,
+        );
+        continue;
+      }
+
       const serverConfig = serverName
         ? await getMCPServersRegistry().getServerConfig(serverName, adminId)
         : null;
