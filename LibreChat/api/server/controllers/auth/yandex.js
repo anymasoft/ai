@@ -1,9 +1,9 @@
 const crypto = require('crypto');
 const { logger } = require('@librechat/data-schemas');
 const { isEnabled } = require('@librechat/api');
-const { SystemRoles } = require('librechat-data-provider');
 const { getUserById, findUser, createUser, updateUser } = require('~/models');
 const { setAuthTokens } = require('~/server/services/AuthService');
+const { assignAdminIfEmailMatches } = require('~/server/utils/promoteAdmin');
 
 const domains = {
   client: process.env.DOMAIN_CLIENT,
@@ -214,11 +214,8 @@ const yandexOAuthCallback = async (req, res) => {
         console.log(`✅ Existing user found: ${user.email}`);
       }
 
-      // Проверяем ADMIN_EMAIL и назначаем роль админа если совпадает
-      if (process.env.ADMIN_EMAIL && user.email === process.env.ADMIN_EMAIL) {
-        await updateUser(user._id, { role: SystemRoles.ADMIN });
-        console.log(`ADMIN_EMAIL matched for ${user.email}`);
-      }
+      // Назначаем админ роль, если email совпадает с ADMIN_EMAIL
+      await assignAdminIfEmailMatches(user, { updateUser });
 
       // Шаг 7: Устанавливаем auth tokens через AuthService (стандартный LibreChat способ)
       console.log(`📊 AUTH_CHECKPOINT: SESSION_CREATED`);
