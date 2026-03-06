@@ -86,12 +86,17 @@ const yandexLogin = socialLogin('yandex', getProfileDetails);
 /**
  * Экспортировать конструктор стратегии
  */
-module.exports = () =>
-  new YandexStrategy(
+module.exports = () => {
+  // Использовать YANDEX_URI если установлена, иначе сформировать из DOMAIN_SERVER
+  const callbackURL = process.env.YANDEX_URI ||
+    `${process.env.DOMAIN_SERVER}/oauth/yandex/callback`;
+
+  return new YandexStrategy(
     {
       clientID: process.env.YANDEX_CLIENT_ID,
       clientSecret: process.env.YANDEX_CLIENT_SECRET,
-      callbackURL: `${process.env.DOMAIN_SERVER}/oauth/yandex/callback`,
+      callbackURL,
     },
     yandexLogin
   );
+};
