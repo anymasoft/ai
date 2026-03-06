@@ -1,5 +1,6 @@
 const { Strategy: OAuth2Strategy } = require('passport-oauth2');
 const axios = require('axios');
+const crypto = require('crypto');
 const socialLogin = require('./socialLogin');
 
 /**
@@ -34,11 +35,14 @@ const getProfileDetails = ({ profile }) => {
  * Yandex OAuth 2.0 Strategy
  *
  * Yandex использует стандартный OAuth 2.0 и дополнительный API для получения профиля
+ * Соответствует реализации в Astro проекте
  */
 class YandexStrategy extends OAuth2Strategy {
   constructor(options, verify) {
     options.authorizationURL = 'https://oauth.yandex.ru/authorize';
     options.tokenURL = 'https://oauth.yandex.ru/token';
+    // Не используем scope для Yandex - права конфигурируются при регистрации приложения
+    options.skipUserProfile = false;
     super(options, verify);
 
     this.name = 'yandex';
@@ -48,13 +52,16 @@ class YandexStrategy extends OAuth2Strategy {
 
   /**
    * Получить профиль пользователя от Yandex API
+   * Используется после получения access_token
    */
   async userProfile(accessToken) {
     try {
+      console.log('[Yandex OAuth] Fetching user profile...');
       const response = await axios.get(
         `${this._userProfileURL}?format=json`,
         {
           headers: {
+            // ВАЖНО: Yandex требует OAuth формат, не Bearer!
             Authorization: `OAuth ${accessToken}`,
             'User-Agent': 'passport-yandex',
           },
@@ -64,20 +71,34 @@ class YandexStrategy extends OAuth2Strategy {
       const profile = response.data;
       profile.provider = 'yandex';
 
+      console.log(`[Yandex OAuth] Profile fetched successfully for user: ${profile.login}`);
       return profile;
     } catch (error) {
-      console.error('Yandex profile fetch error:', error);
+      console.error('[Yandex OAuth] Profile fetch error:', error.message);
       throw error;
     }
   }
 
   /**
-   * OAuth 2.0 callback
-   * НЕ используем scope для Yandex OAuth (в отличие от Google/Facebook)
+   * Переопределяем authenticate для добавления custom параметров
+   * Yandex OAuth не требует scope в запросе авторизации
    */
   authenticate(req, options) {
-    // Yandex OAuth не требует scope в запросе авторизации
-    // Права доступа определяются при регистрации приложения
+    // Генерируем state для CSRF защиты (как в Astro)
+    const state = crypto.randomBytes(32).toString('hex');
+
+    console.log(`[Yandex OAuth] Generated state: ${state.slice(0, 8)}...`);
+
+    // Сохраняем state в session для проверки при callback
+    if (!req.session) {
+      req.session = {};
+    }
+    req.session.oauth_state_yandex = state;
+
+    // Передаём state в authenticate опции
+    options = Object.assign({}, options, { state });
+
+    // Yandex OAuth не требует scope
     super.authenticate(req, options);
   }
 }
@@ -110,7 +131,10 @@ module.exports = () => {
       clientID: process.env.YANDEX_CLIENT_ID,
       clientSecret: process.env.YANDEX_CLIENT_SECRET,
       callbackURL,
+      // Не передаём scope - Yandex не принимает scope параметры
+      // skipUserProfile: false позволяет получить профиль после авторизации
     },
     yandexLogin
   );
 };
+

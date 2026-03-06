@@ -201,18 +201,45 @@ router.post(
 
 /**
  * Yandex Routes (Only enabled OAuth provider)
+ * Реализация соответствует Astro проекту
  */
+
+// ШАГ 1: Инициация OAuth редиректа на Yandex
 router.get(
   '/yandex',
+  (req, res, next) => {
+    console.log(`\n📊 AUTH_CHECKPOINT: OAUTH_REDIRECT`);
+    console.log(`   - provider: yandex`);
+    console.log(`   - redirectUri: ${req.get('host')}/oauth/yandex/callback`);
+    next();
+  },
   passport.authenticate('yandex', {
     session: false,
   }),
 );
 
-// Callback маршрут (/oauth/yandex/callback)
-// НЕ передаём scope в callback (как в astro реализации)
+// ШАГ 2: Callback обработка после авторизации на Yandex
+// Проверяем code, state и обмениваем на access_token
 router.get(
   '/yandex/callback',
+  (req, res, next) => {
+    const code = req.query.code;
+    const state = req.query.state;
+    const error = req.query.error;
+
+    console.log(`\n📊 AUTH_CHECKPOINT: OAUTH_CALLBACK_START`);
+    console.log(`   - provider: yandex`);
+    console.log(`   - error: ${error || 'none'}`);
+    console.log(`   - code: ${code ? code.slice(0, 10) + '...' : 'missing'}`);
+    console.log(`   - state: ${state ? state.slice(0, 8) + '...' : 'missing'}`);
+
+    if (error) {
+      console.error(`❌ AUTH_FAILED (Yandex error): ${error}`);
+      return res.redirect(`${domains.client}/oauth/error?error=yandex_auth_failed`);
+    }
+
+    next();
+  },
   passport.authenticate('yandex', {
     failureRedirect: `${domains.client}/oauth/error`,
     failureMessage: true,
