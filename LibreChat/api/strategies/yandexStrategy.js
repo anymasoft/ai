@@ -98,9 +98,11 @@ module.exports = () => {
   if (process.env.YANDEX_URI) {
     // Если YANDEX_URI установлена, использовать её как полный URL
     callbackURL = process.env.YANDEX_URI;
+    console.log('[Yandex OAuth] Using custom YANDEX_URI:', callbackURL);
   } else {
     // Иначе использовать стандартный путь
     callbackURL = `${process.env.DOMAIN_SERVER}/oauth/yandex/callback`;
+    console.log('[Yandex OAuth] Using default callback URL:', callbackURL);
   }
 
   return new YandexStrategy(
