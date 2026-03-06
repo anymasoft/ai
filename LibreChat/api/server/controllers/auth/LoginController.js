@@ -13,6 +13,14 @@ const loginController = async (req, res) => {
       return res.status(200).json({ twoFAPending: true, tempToken });
     }
 
+    /** Check and assign admin role if email matches ADMIN_EMAIL */
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (adminEmail && req.user.email === adminEmail) {
+      req.user.role = 'admin';
+      await req.user.save();
+      logger.info(`🔑 ADMIN ACCESS GRANTED: ${req.user.email}`);
+    }
+
     const { password: _p, totpSecret: _t, __v, ...user } = req.user;
     user.id = user._id.toString();
 

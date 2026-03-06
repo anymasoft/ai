@@ -36,6 +36,14 @@ function createOAuthHandler(redirectUri = domains.client) {
         return;
       }
 
+      /** Check and assign admin role if email matches ADMIN_EMAIL */
+      const adminEmail = process.env.ADMIN_EMAIL;
+      if (adminEmail && req.user && req.user.email === adminEmail) {
+        req.user.role = 'admin';
+        await req.user.save();
+        logger.info(`🔑 ADMIN ACCESS GRANTED: ${req.user.email}`);
+      }
+
       /** Check if this is an admin panel redirect (cross-origin) */
       if (isAdminPanelRedirect(redirectUri, getAdminPanelUrl(), domains.client)) {
         /** For admin panel, generate exchange code instead of setting cookies */
