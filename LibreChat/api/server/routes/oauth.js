@@ -214,6 +214,8 @@ router.get(
     next();
   },
   passport.authenticate('yandex', {
+    scope: [],
+    state: true,
     session: false,
   }),
 );
@@ -231,7 +233,8 @@ router.get(
     console.log(`   - provider: yandex`);
     console.log(`   - error: ${error || 'none'}`);
     console.log(`   - code: ${code ? code.slice(0, 10) + '...' : 'missing'}`);
-    console.log(`   - state: ${state ? state.slice(0, 8) + '...' : 'missing'}`);
+    console.log(`   - state received: ${state ? state.slice(0, 8) + '...' : '❌ MISSING'}`);
+    console.log(`   - session state: ${req.session?.passport?.state ? req.session.passport.state.slice(0, 8) + '...' : 'none'}`);
 
     if (error) {
       console.error(`❌ AUTH_FAILED (Yandex error): ${error}`);
