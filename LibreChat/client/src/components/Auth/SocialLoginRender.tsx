@@ -144,7 +144,7 @@ function SocialLoginRender({
         serverDomain={startupConfig.serverDomain}
         oauthPath="yandex"
         Icon={YandexIcon}
-        label={localize('com_auth_yandex_login') || 'Sign in with Yandex'}
+        label="Sign in with Yandex"
         id="yandex"
       />
     ),
