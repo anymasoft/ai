@@ -240,7 +240,7 @@ const AdminSettingsDialog: React.FC<AdminSettingsDialogProps> = ({
                             <span>{localize('com_ui_admin_access_warning')}</span>
                             {'\n'}
                             <a
-                              href="https://www.librechat.ai/docs/configuration/librechat_yaml/object_structure/interface"
+                              href="https://repliq.art"
                               target="_blank"
                               rel="noreferrer"
                               className="text-blue-500 underline"
