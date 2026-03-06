@@ -6,6 +6,7 @@ const cors = require('cors');
 const axios = require('axios');
 const express = require('express');
 const passport = require('passport');
+const session = require('express-session');
 const compression = require('compression');
 const cookieParser = require('cookie-parser');
 const { logger } = require('@librechat/data-schemas');
@@ -158,8 +159,23 @@ const startServer = async () => {
     console.warn('⚠️  Social logins are disabled. Set ALLOW_SOCIAL_LOGIN=true to enable Yandex OAuth.');
   }
 
+  /* SESSION - Required for Passport OAuth state management */
+  app.use(
+    session({
+      secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      },
+    })
+  );
+
   /* OAUTH - Only Yandex enabled */
   app.use(passport.initialize());
+  app.use(passport.session());
   passport.use(jwtLogin());
   // [DISABLED] Email/Password login (passportLogin) - only Yandex OAuth is enabled
   // passport.use(passportLogin());
