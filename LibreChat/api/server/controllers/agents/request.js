@@ -47,6 +47,7 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
     parentMessageId = null,
     overrideParentMessageId = null,
     responseMessageId: editedResponseMessageId = null,
+    enabledMcpServers = [],
   } = req.body;
 
   const userId = req.user.id;
