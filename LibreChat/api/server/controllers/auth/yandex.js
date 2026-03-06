@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const { logger } = require('@librechat/data-schemas');
 const { isEnabled } = require('@librechat/api');
+const { SystemRoles } = require('librechat-data-provider');
 const { getUserById, findUser, createUser, updateUser } = require('~/models');
 const { setAuthTokens } = require('~/server/services/AuthService');
 
@@ -215,7 +216,7 @@ const yandexOAuthCallback = async (req, res) => {
 
       // Проверяем ADMIN_EMAIL и назначаем роль админа если совпадает
       if (process.env.ADMIN_EMAIL && user.email === process.env.ADMIN_EMAIL) {
-        await updateUser(user._id, { role: 'admin' });
+        await updateUser(user._id, { role: SystemRoles.ADMIN });
         console.log(`ADMIN_EMAIL matched for ${user.email}`);
       }
 
