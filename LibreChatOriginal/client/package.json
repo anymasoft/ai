@@ -4,12 +4,10 @@
   "description": "",
   "type": "module",
   "scripts": {
-    "prepare": "npm run prepare:dependencies 2>/dev/null || true",
-    "prepare:dependencies": "cd .. && npm run build:data-provider && npm run build:data-schemas && cd packages/client && npm run build && cd ../../client",
     "typecheck": "tsc --noEmit",
     "data-provider": "cd .. && npm run build:data-provider",
     "build:file": "cross-env NODE_ENV=production vite build --debug > vite-output.log 2>&1",
-    "build": "npm run prepare:dependencies && cross-env NODE_ENV=production vite build && node ./scripts/post-build.cjs",
+    "build": "cross-env NODE_ENV=production vite build && node ./scripts/post-build.cjs",
     "build:ci": "cross-env NODE_ENV=development vite build --mode ci",
     "dev": "cross-env NODE_ENV=development vite",
     "preview-prod": "cross-env NODE_ENV=development vite preview",
