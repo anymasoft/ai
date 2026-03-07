@@ -254,6 +254,10 @@ const OpenAIChatCompletionController = async (req, res) => {
 
     const toolEndCallback = createToolEndCallback({ req, res, artifactPromises, streamId: null });
 
+    // Получаем список включённых MCP серверов пользователем
+    const enabledMcpServers = req.body?.enabledMcpServers ?? [];
+    logger.debug(`[OpenAI API] enabledMcpServers: ${JSON.stringify(enabledMcpServers)}`);
+
     const toolExecuteOptions = {
       loadTools: async (toolNames) => {
         return loadToolsForExecution({
@@ -265,6 +269,7 @@ const OpenAIChatCompletionController = async (req, res) => {
           toolRegistry: primaryConfig.toolRegistry,
           userMCPAuthMap: primaryConfig.userMCPAuthMap,
           tool_resources: primaryConfig.tool_resources,
+          enabledMcpServers,
         });
       },
       toolEndCallback,

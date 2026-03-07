@@ -418,6 +418,10 @@ const createResponse = async (req, res) => {
       });
 
       // Create tool execute options for event-driven tool execution
+      // Получаем список включённых MCP серверов пользователем
+      const enabledMcpServers = req.body?.enabledMcpServers ?? [];
+      logger.debug(`[Responses API] enabledMcpServers: ${JSON.stringify(enabledMcpServers)}`);
+
       const toolExecuteOptions = {
         loadTools: async (toolNames) => {
           return loadToolsForExecution({
@@ -429,6 +433,7 @@ const createResponse = async (req, res) => {
             toolRegistry: primaryConfig.toolRegistry,
             userMCPAuthMap: primaryConfig.userMCPAuthMap,
             tool_resources: primaryConfig.tool_resources,
+            enabledMcpServers,
           });
         },
         toolEndCallback,
@@ -586,6 +591,7 @@ const createResponse = async (req, res) => {
             toolRegistry: primaryConfig.toolRegistry,
             userMCPAuthMap: primaryConfig.userMCPAuthMap,
             tool_resources: primaryConfig.tool_resources,
+            enabledMcpServers,
           });
         },
         toolEndCallback,

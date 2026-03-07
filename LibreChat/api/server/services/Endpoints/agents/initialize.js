@@ -98,22 +98,28 @@ const initializeClient = async ({ req, res, signal, endpointOption }) => {
 
   /**
    * Agent context store - populated after initialization, accessed by callback via closure.
-   * Maps agentId -> { userMCPAuthMap, agent, tool_resources, toolRegistry, openAIApiKey }
+   * Maps agentId -> { userMCPAuthMap, agent, tool_resources, toolRegistry, enabledMcpServers, openAIApiKey }
    * @type {Map<string, {
    *   userMCPAuthMap?: Record<string, Record<string, string>>,
    *   agent?: object,
    *   tool_resources?: object,
    *   toolRegistry?: import('@librechat/agents').LCToolRegistry,
+   *   enabledMcpServers?: string[],
    *   openAIApiKey?: string
    * }>}
    */
   const agentToolContexts = new Map();
+
+  // Получаем список включённых MCP серверов пользователем
+  const enabledMcpServers = req.body?.enabledMcpServers ?? [];
+  logger.debug(`[initializeClient] enabledMcpServers: ${JSON.stringify(enabledMcpServers)}`);
 
   const toolExecuteOptions = {
     loadTools: async (toolNames, agentId) => {
       const ctx = agentToolContexts.get(agentId) ?? {};
       logger.debug(`[ON_TOOL_EXECUTE] ctx found: ${!!ctx.userMCPAuthMap}, agent: ${ctx.agent?.id}`);
       logger.debug(`[ON_TOOL_EXECUTE] toolRegistry size: ${ctx.toolRegistry?.size ?? 'undefined'}`);
+      logger.debug(`[ON_TOOL_EXECUTE] enabledMcpServers: ${JSON.stringify(ctx.enabledMcpServers ?? [])}`);
 
       const result = await loadToolsForExecution({
         req,
@@ -125,6 +131,7 @@ const initializeClient = async ({ req, res, signal, endpointOption }) => {
         toolRegistry: ctx.toolRegistry,
         userMCPAuthMap: ctx.userMCPAuthMap,
         tool_resources: ctx.tool_resources,
+        enabledMcpServers: ctx.enabledMcpServers ?? [],
       });
 
       logger.debug(`[ON_TOOL_EXECUTE] loaded ${result.loadedTools?.length ?? 0} tools`);
@@ -221,6 +228,7 @@ const initializeClient = async ({ req, res, signal, endpointOption }) => {
     toolRegistry: primaryConfig.toolRegistry,
     userMCPAuthMap: primaryConfig.userMCPAuthMap,
     tool_resources: primaryConfig.tool_resources,
+    enabledMcpServers,
   });
 
   const agent_ids = primaryConfig.agent_ids;
@@ -288,6 +296,7 @@ const initializeClient = async ({ req, res, signal, endpointOption }) => {
       toolRegistry: config.toolRegistry,
       userMCPAuthMap: config.userMCPAuthMap,
       tool_resources: config.tool_resources,
+      enabledMcpServers,
     });
 
     agentConfigs.set(agentId, config);
