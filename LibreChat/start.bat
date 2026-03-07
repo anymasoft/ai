@@ -19,7 +19,7 @@ if not exist ".env" (
     copy ".env.example" ".env" > nul
     if errorlevel 1 (
         echo [!] Ошибка при копировании .env.example
-        pause
+        
         exit /b 1
     )
     echo [+] .env создан
@@ -41,7 +41,7 @@ if errorlevel 1 (
     echo Пример:
     echo   MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/?appName=...
     echo.
-    pause
+    
     exit /b 1
 )
 
@@ -75,7 +75,7 @@ if not exist "node_modules" (
     if errorlevel 1 (
         echo.
         echo [!] Ошибка при установке зависимостей!
-        pause
+        
         exit /b 1
     )
     echo.
@@ -96,7 +96,7 @@ if errorlevel 1 (
     echo.
     echo [!] Ошибка при сборке проекта!
     echo [!] Попробуй: npm install && npm run build
-    pause
+    
     exit /b 1
 )
 echo.
@@ -122,7 +122,7 @@ if errorlevel 1 (
     echo.
     echo [!] Сервер упал с ошибкой!
     echo.
-    pause
+    
     exit /b 1
 )
 
