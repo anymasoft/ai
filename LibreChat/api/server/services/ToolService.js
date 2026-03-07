@@ -464,6 +464,12 @@ async function loadToolDefinitionsWrapper({ req, res, agent, streamId = null, to
   const areToolsEnabled = checkCapability(AgentCapabilities.tools);
   const deferredToolsEnabled = checkCapability(AgentCapabilities.deferred_tools);
 
+  // Получаем список включённых MCP серверов пользователем
+  const enabledMcpServers = req.body?.enabledMcpServers ?? [];
+  logger.debug(`[loadToolDefinitionsWrapper] enabledMcpServers: ${JSON.stringify(enabledMcpServers)}`);
+
+  const mcpToolPattern = /^[^:]+:[^:]+$/; // Pattern для MCP tools
+
   const filteredTools = agent.tools?.filter((tool) => {
     if (tool === Tools.file_search) {
       return checkCapability(AgentCapabilities.file_search);
@@ -477,6 +483,23 @@ async function loadToolDefinitionsWrapper({ req, res, agent, streamId = null, to
     if (!areToolsEnabled && !tool.includes(actionDelimiter)) {
       return false;
     }
+
+    // Фильтруем MCP инструменты по enabledMcpServers
+    if (tool && mcpToolPattern.test(tool)) {
+      const [toolName, serverName] = tool.split(Constants.mcp_delimiter);
+      if (toolName === Constants.mcp_server) {
+        // Placeholder - всегда пропускаем
+        return false;
+      }
+      // Проверяем включен ли сервер пользователем
+      if (!enabledMcpServers || !enabledMcpServers.includes(serverName)) {
+        logger.info(
+          `[loadToolDefinitionsWrapper] MCP server ${serverName} not enabled by user - filtering tool ${toolName}`,
+        );
+        return false;
+      }
+    }
+
     return true;
   });
 
@@ -1144,6 +1167,7 @@ async function loadToolsForExecution({
   toolRegistry,
   userMCPAuthMap,
   tool_resources,
+  enabledMcpServers = [],
   streamId = null,
 }) {
   const appConfig = req.config;
@@ -1218,6 +1242,7 @@ async function loadToolsForExecution({
       functions: true,
       tools: regularToolNames,
       user: req.user.id,
+      enabledMcpServers,
       options: {
         req,
         res,
