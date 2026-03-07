@@ -26,7 +26,8 @@
     "build:dev": "npm run clean && NODE_ENV=development rollup -c --bundleConfigAsCjs",
     "b:build": "bun run b:clean && bun run rollup -c --silent --bundleConfigAsCjs",
     "build:watch": "rollup -c -w --bundleConfigAsCjs",
-    "dev": "rollup -c -w --bundleConfigAsCjs"
+    "dev": "rollup -c -w --bundleConfigAsCjs",
+    "prepare": "echo 'Prepare script for @librechat/client'"
   },
   "peerDependencies": {
     "@ariakit/react": "^0.4.16",
