@@ -121,7 +121,6 @@ export const router = createBrowserRouter(
           errorElement: <RouteErrorBoundary />,
         },
         {
-          path: '/',
           element: <Root />,
           children: [
             {
