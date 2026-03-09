@@ -34,7 +34,7 @@ function AccountSettings() {
 
   // Handle feedback button click - open Telegram
   const handleFeedbackClick = () => {
-    const adminTelegram = import.meta.env.VITE_ADMIN_TELEGRAM;
+    const adminTelegram = import.meta.env.ADMIN_TELEGRAM;
     if (adminTelegram) {
       window.open(`https://t.me/${adminTelegram}`, '_blank');
     }
@@ -150,7 +150,7 @@ function AccountSettings() {
           <GearIcon className="icon-md" aria-hidden="true" />
           {localize('com_nav_settings')}
         </Select.SelectItem>
-        {import.meta.env.VITE_ADMIN_TELEGRAM && (
+        {import.meta.env.ADMIN_TELEGRAM && (
           <>
             <Select.SelectItem
               value=""
