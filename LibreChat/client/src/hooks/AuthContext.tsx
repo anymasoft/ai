@@ -157,11 +157,21 @@ const AuthContextProvider = ({
         if (authConfig?.test === true) {
           return;
         }
+        // Не редиректим на /sign-in если пользователь на публичном маршруте "/"
+        const currentPath = window.location.pathname;
+        if (currentPath === '/' || currentPath === '') {
+          return;
+        }
         navigate(buildLoginRedirectUrl());
       },
       onError: (error) => {
         console.log('refreshToken mutation error:', error);
         if (authConfig?.test === true) {
+          return;
+        }
+        // Не редиректим на /sign-in если пользователь на публичном маршруте "/"
+        const currentPath = window.location.pathname;
+        if (currentPath === '/' || currentPath === '') {
           return;
         }
         navigate(buildLoginRedirectUrl());
@@ -175,7 +185,11 @@ const AuthContextProvider = ({
       setUser(userQuery.data);
     } else if (userQuery.isError) {
       doSetError((userQuery.error as Error).message);
-      navigate(buildLoginRedirectUrl(), { replace: true });
+      // Не редиректим на /sign-in если пользователь на публичном маршруте "/"
+      const currentPath = window.location.pathname;
+      if (currentPath !== '/' && currentPath !== '') {
+        navigate(buildLoginRedirectUrl(), { replace: true });
+      }
     }
     if (error != null && error && isAuthenticated) {
       doSetError(undefined);
