@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RepliqAI - Chat with AI</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 600px;
+      width: 100%;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 60px 40px;
+      text-align: center;
+    }
+
+    .logo {
+      font-size: 48px;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      color: #333;
+      font-size: 32px;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    .subtitle {
+      color: #666;
+      font-size: 16px;
+      margin-bottom: 40px;
+      line-height: 1.6;
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 40px;
+      text-align: left;
+    }
+
+    .feature {
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border-left: 4px solid #667eea;
+    }
+
+    .feature-icon {
+      font-size: 20px;
+      margin-bottom: 8px;
+    }
+
+    .feature-title {
+      color: #333;
+      font-weight: 600;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+
+    .feature-desc {
+      color: #666;
+      font-size: 13px;
+    }
+
+    .cta-button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 16px 40px;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .cta-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+    }
+
+    .cta-button:active {
+      transform: translateY(0);
+    }
+
+    footer {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid #eee;
+      color: #999;
+      font-size: 13px;
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        padding: 40px 20px;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      .features {
+        grid-template-columns: 1fr;
+      }
+
+      .cta-button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">💬</div>
+
+    <h1>Welcome to RepliqAI</h1>
+
+    <p class="subtitle">
+      Experience the power of advanced AI chat. Fast, secure, and always available.
+    </p>
+
+    <div class="features">
+      <div class="feature">
+        <div class="feature-icon">⚡</div>
+        <div class="feature-title">Lightning Fast</div>
+        <div class="feature-desc">Instant responses powered by cutting-edge AI</div>
+      </div>
+
+      <div class="feature">
+        <div class="feature-icon">🔒</div>
+        <div class="feature-title">Private & Secure</div>
+        <div class="feature-desc">Your conversations are encrypted and private</div>
+      </div>
+
+      <div class="feature">
+        <div class="feature-icon">🎯</div>
+        <div class="feature-title">Smart Assistant</div>
+        <div class="feature-desc">Context-aware responses tailored to your needs</div>
+      </div>
+
+      <div class="feature">
+        <div class="feature-icon">🚀</div>
+        <div class="feature-title">Always Available</div>
+        <div class="feature-desc">24/7 access to your personal AI assistant</div>
+      </div>
+    </div>
+
+    <a href="/c/new" class="cta-button">Start Chatting Now</a>
+
+    <footer>
+      <p>&copy; 2024 RepliqAI. All rights reserved.</p>
+    </footer>
+  </div>
+</body>
+</html>

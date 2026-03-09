@@ -276,6 +276,16 @@ const startServer = async () => {
   /** 404 for unmatched API routes */
   app.use('/api', apiNotFound);
 
+  /** Landing page - serve static HTML on / */
+  app.get('/', (req, res) => {
+    const landingPath = path.join(__dirname, '../..', 'landing', 'index.html');
+    res.set({
+      'Cache-Control': 'public, max-age=3600',
+      'Content-Type': 'text/html; charset=utf-8',
+    });
+    res.sendFile(landingPath);
+  });
+
   /** SPA fallback - serve index.html for all unmatched routes */
   app.use((req, res) => {
     res.set({
