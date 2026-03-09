@@ -27,6 +27,14 @@ import store from '~/store';
 
 const AuthContext = createContext<TAuthContext | undefined>(undefined);
 
+// Список публичных маршрутов, доступных БЕЗ авторизации
+const PUBLIC_ROUTES = ['/', '/sign-in', '/register', '/forgot-password', '/reset-password', '/verify', '/login'];
+
+const isPublicRoute = (pathname: string): boolean => {
+  // Проверяем точное совпадение с публичными маршрутами
+  return PUBLIC_ROUTES.includes(pathname) || pathname.startsWith('/oauth') || pathname.startsWith('/share');
+};
+
 const AuthContextProvider = ({
   authConfig,
   children,
@@ -157,9 +165,9 @@ const AuthContextProvider = ({
         if (authConfig?.test === true) {
           return;
         }
-        // Не редиректим на /sign-in если пользователь на публичном маршруте "/"
+        // Не редиректим на /sign-in если пользователь на публичном маршруте
         const currentPath = window.location.pathname;
-        if (currentPath === '/' || currentPath === '') {
+        if (isPublicRoute(currentPath)) {
           return;
         }
         navigate(buildLoginRedirectUrl());
@@ -169,9 +177,9 @@ const AuthContextProvider = ({
         if (authConfig?.test === true) {
           return;
         }
-        // Не редиректим на /sign-in если пользователь на публичном маршруте "/"
+        // Не редиректим на /sign-in если пользователь на публичном маршруте
         const currentPath = window.location.pathname;
-        if (currentPath === '/' || currentPath === '') {
+        if (isPublicRoute(currentPath)) {
           return;
         }
         navigate(buildLoginRedirectUrl());
@@ -185,9 +193,9 @@ const AuthContextProvider = ({
       setUser(userQuery.data);
     } else if (userQuery.isError) {
       doSetError((userQuery.error as Error).message);
-      // Не редиректим на /sign-in если пользователь на публичном маршруте "/"
+      // Не редиректим на /sign-in если пользователь на публичном маршруте
       const currentPath = window.location.pathname;
-      if (currentPath !== '/' && currentPath !== '') {
+      if (!isPublicRoute(currentPath)) {
         navigate(buildLoginRedirectUrl(), { replace: true });
       }
     }
