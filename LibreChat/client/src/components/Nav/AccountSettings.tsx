@@ -1,7 +1,7 @@
 import { useState, memo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as Select from '@ariakit/react/select';
-import { FileText, LogOut, CreditCard, ShieldCheck } from 'lucide-react';
+import { FileText, LogOut, CreditCard, ShieldCheck, Send } from 'lucide-react';
 import { LinkIcon, GearIcon, DropdownMenuSeparator, Avatar } from '@librechat/client';
 import { MyFilesModal } from '~/components/Chat/Input/Files/MyFilesModal';
 import { useGetStartupConfig, useGetUserBalance } from '~/data-provider';
@@ -31,6 +31,14 @@ function AccountSettings() {
   const { data: subscription } = useSubscription();
 
   const planBadge = PLAN_BADGE[subscription?.planId ?? ''] ?? null;
+
+  // Handle feedback button click - open Telegram
+  const handleFeedbackClick = () => {
+    const adminTelegram = import.meta.env.VITE_ADMIN_TELEGRAM;
+    if (adminTelegram) {
+      window.open(`https://t.me/${adminTelegram}`, '_blank');
+    }
+  };
 
   return (
     <Select.SelectProvider>
@@ -142,7 +150,19 @@ function AccountSettings() {
           <GearIcon className="icon-md" aria-hidden="true" />
           {localize('com_nav_settings')}
         </Select.SelectItem>
-        <DropdownMenuSeparator />
+        {import.meta.env.VITE_ADMIN_TELEGRAM && (
+          <>
+            <Select.SelectItem
+              value=""
+              onClick={handleFeedbackClick}
+              className="select-item text-sm"
+            >
+              <Send className="icon-md" aria-hidden="true" />
+              Обратная связь
+            </Select.SelectItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
         <Select.SelectItem
           aria-selected={true}
           onClick={() => logout()}
