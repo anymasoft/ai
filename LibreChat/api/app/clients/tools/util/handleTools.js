@@ -45,6 +45,7 @@ const { createMCPTool, createMCPTools } = require('~/server/services/MCP');
 const { loadAuthValues } = require('~/server/services/Tools/credentials');
 const { getMCPServerTools } = require('~/server/services/Config');
 const { getRoleByName } = require('~/models/Role');
+const { createBilledTool } = require('./toolBilling');
 
 /**
  * Validates the availability and authentication of tools for a user based on environment variables or user-specific plugin authentication values.
@@ -425,10 +426,25 @@ const loadTools = async ({
     const validTool = requestedTools[tool];
     if (validTool) {
       toolPromises.push(
-        validTool().catch((error) => {
-          logger.error(`Error loading tool ${tool}:`, error);
-          return null;
-        }),
+        validTool()
+          .then((loadedTool) => {
+            // Apply billing wrapper to Tavily tool
+            if (tool === 'tavily_search_results_json' && loadedTool && user) {
+              const conversationId = options.req?.body?.conversationId;
+              const messageId = options.req?.body?.messageId;
+              return createBilledTool(
+                loadedTool,
+                tool,
+                user,
+                { conversationId, messageId },
+              );
+            }
+            return loadedTool;
+          })
+          .catch((error) => {
+            logger.error(`Error loading tool ${tool}:`, error);
+            return null;
+          }),
       );
     }
   }

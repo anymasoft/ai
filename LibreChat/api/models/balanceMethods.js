@@ -153,4 +153,5 @@ const checkBalance = async ({ req, res, txData }) => {
 
 module.exports = {
   checkBalance,
+  checkBalanceRecord,
 };
