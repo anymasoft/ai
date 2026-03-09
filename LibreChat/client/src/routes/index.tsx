@@ -36,6 +36,14 @@ const baseHref = baseEl?.getAttribute('href') || '/';
 
 export const router = createBrowserRouter(
   [
+    // ============================================
+    // PUBLIC ROUTES (without authentication)
+    // ============================================
+    {
+      path: '/',
+      element: <Landing />,
+      errorElement: <RouteErrorBoundary />,
+    },
     {
       path: 'share/:shareId',
       element: <ShareRoute />,
@@ -69,11 +77,6 @@ export const router = createBrowserRouter(
       ],
     },
     {
-      path: '/',
-      element: <Landing />,
-      errorElement: <RouteErrorBoundary />,
-    },
-    {
       path: 'register',
       element: <Registration />,
       errorElement: <RouteErrorBoundary />,
@@ -93,6 +96,10 @@ export const router = createBrowserRouter(
       element: <VerifyEmail />,
       errorElement: <RouteErrorBoundary />,
     },
+
+    // ============================================
+    // PROTECTED ROUTES (with AuthLayout)
+    // ============================================
     {
       element: <AuthLayout />,
       errorElement: <RouteErrorBoundary />,
