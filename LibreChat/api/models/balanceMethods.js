@@ -12,6 +12,9 @@ function isInvalidDate(date) {
 /**
  * Simple check method that calculates token cost and returns balance info.
  * The auto-refill logic has been moved to balanceMethods.js to prevent circular dependencies.
+ *
+ * For tools (tokenType='tool'), amount is the direct cost and no multiplier is applied.
+ * For model tokens, amount is multiplied by the model's rate from tokenValues.
  */
 const checkBalanceRecord = async function ({
   user,
@@ -22,8 +25,19 @@ const checkBalanceRecord = async function ({
   amount,
   endpointTokenConfig,
 }) {
-  const multiplier = getMultiplier({ valueKey, tokenType, model, endpoint, endpointTokenConfig });
-  const tokenCost = amount * multiplier;
+  // For tool tokens, amount is the direct cost (e.g., 1000 for Tavily)
+  // For model tokens, multiply by the model's multiplier rate
+  let tokenCost;
+  let multiplier;
+
+  if (tokenType === 'tool') {
+    // Tools use fixed costs, no multiplier calculation
+    tokenCost = amount;
+    multiplier = 1;
+  } else {
+    multiplier = getMultiplier({ valueKey, tokenType, model, endpoint, endpointTokenConfig });
+    tokenCost = amount * multiplier;
+  }
 
   // Retrieve the balance record
   let record = await Balance.findOne({ user }).lean();
