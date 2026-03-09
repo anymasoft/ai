@@ -22,6 +22,7 @@ import AdminPanel from './AdminPanel';
 import Search from './Search';
 import Root from './Root';
 import Pricing from './Pricing';
+import Landing from './Landing';
 
 const AuthLayout = () => (
   <AuthContextProvider>
@@ -69,22 +70,23 @@ export const router = createBrowserRouter(
     },
     {
       path: '/',
-      element: <StartupLayout />,
+      element: <Landing />,
       errorElement: <RouteErrorBoundary />,
-      children: [
-        {
-          path: 'register',
-          element: <Registration />,
-        },
-        {
-          path: 'forgot-password',
-          element: <RequestPasswordReset />,
-        },
-        {
-          path: 'reset-password',
-          element: <ResetPassword />,
-        },
-      ],
+    },
+    {
+      path: 'register',
+      element: <Registration />,
+      errorElement: <RouteErrorBoundary />,
+    },
+    {
+      path: 'forgot-password',
+      element: <RequestPasswordReset />,
+      errorElement: <RouteErrorBoundary />,
+    },
+    {
+      path: 'reset-password',
+      element: <ResetPassword />,
+      errorElement: <RouteErrorBoundary />,
     },
     {
       path: 'verify',
