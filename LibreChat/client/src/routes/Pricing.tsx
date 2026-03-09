@@ -14,6 +14,59 @@ function creditsToMessages(credits: number): number {
   return Math.max(0, Math.floor(credits / AVG_MSG_CREDITS));
 }
 
+/**
+ * Модели для показа примеров расхода токенов
+ * Ключ: имя модели, значение: { displayName, promptMultiplier, completionMultiplier }
+ */
+const MODEL_EXAMPLES = {
+  'gpt-4o-mini': {
+    displayName: 'GPT-4o Mini',
+    prompt: 0.15,
+    completion: 0.6,
+  },
+  'claude-sonnet': {
+    displayName: 'Claude Sonnet',
+    prompt: 3,
+    completion: 15,
+  },
+  'claude-opus': {
+    displayName: 'Claude Opus',
+    prompt: 5,
+    completion: 25,
+  },
+};
+
+/**
+ * Стоимость одного поиска в Tavily
+ */
+const TAVILY_SEARCH_COST = 1000;
+
+/**
+ * Средние значения для одного сообщения (для расчёта примеров)
+ */
+const AVG_INPUT_TOKENS = 1500;
+const AVG_OUTPUT_TOKENS = 500;
+
+/**
+ * Рассчитывает стоимость одного сообщения для модели
+ * cost = inputTokens * promptMultiplier + outputTokens * completionMultiplier
+ */
+function modelMessageCost(promptMult: number, completionMult: number): number {
+  return AVG_INPUT_TOKENS * promptMult + AVG_OUTPUT_TOKENS * completionMult;
+}
+
+/**
+ * Рассчитывает примерное количество сообщений по разным моделям
+ */
+function calculateModelExamples(credits: number): Record<string, number> {
+  const result: Record<string, number> = {};
+  for (const [key, model] of Object.entries(MODEL_EXAMPLES)) {
+    const cost = modelMessageCost(model.prompt, model.completion);
+    result[key] = Math.max(0, Math.floor(credits / cost));
+  }
+  return result;
+}
+
 const PLAN_STYLE: Record<string, { color: string; highlight: boolean }> = {
   free:     { color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300', highlight: false },
   pro:      { color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200', highlight: true },
@@ -313,9 +366,27 @@ export default function Pricing() {
             {planExpiresAt && <span className="opacity-75">· активен до {planExpiresAt}</span>}
           </div>
           {balance && (
-            <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-              Баланс: {credits.toLocaleString('ru-RU')} токенов
-              {msgEstimate > 0 && <span> · ≈ {msgEstimate.toLocaleString('ru-RU')} сообщений</span>}
+            <div className="mt-4 space-y-1.5 text-sm text-gray-600 dark:text-gray-400">
+              <div className="font-medium text-gray-900 dark:text-gray-100">
+                Баланс: {credits.toLocaleString('ru-RU')} токенов
+              </div>
+              {msgEstimate > 0 && (
+                <>
+                  <div className="space-y-0.5 text-xs">
+                    {Object.entries(MODEL_EXAMPLES).map(([key, model]) => {
+                      const msgCount = calculateModelExamples(credits)[key];
+                      return (
+                        <div key={key} className="text-gray-500 dark:text-gray-500">
+                          ≈ {msgCount.toLocaleString('ru-RU')} сообщений {model.displayName}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="pt-1 text-xs text-gray-500 dark:text-gray-500">
+                    1 поиск Tavily = {TAVILY_SEARCH_COST.toLocaleString('ru-RU')} токенов
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
