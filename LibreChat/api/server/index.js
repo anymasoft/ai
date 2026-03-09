@@ -276,6 +276,9 @@ const startServer = async () => {
   /** 404 for unmatched API routes */
   app.use('/api', apiNotFound);
 
+  /** Landing page static files - serve assets from /landing directory */
+  app.use(express.static(path.join(__dirname, '../..', 'landing')));
+
   /** Landing page - serve static HTML on / */
   app.get('/', (req, res) => {
     const landingPath = path.join(__dirname, '../..', 'landing', 'index.html');
