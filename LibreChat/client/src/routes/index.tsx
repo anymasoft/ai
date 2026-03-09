@@ -12,6 +12,7 @@ import { MarketplaceProvider } from '~/components/Agents/MarketplaceContext';
 import AgentMarketplace from '~/components/Agents/Marketplace';
 import { OAuthSuccess, OAuthError } from '~/components/OAuth';
 import RouteErrorBoundary from './RouteErrorBoundary';
+import RootLayout from './RootLayout';
 import StartupLayout from './Layouts/Startup';
 import LoginLayout from './Layouts/Login';
 import dashboardRoutes from './Dashboard';
@@ -35,124 +36,130 @@ const baseHref = baseEl?.getAttribute('href') || '/';
 
 export const router = createBrowserRouter(
   [
-    // ============================================
-    // PUBLIC ROUTES (without authentication)
-    // ============================================
     {
-      path: '/',
-      element: <Landing />,
-      errorElement: <RouteErrorBoundary />,
-    },
-    {
-      path: 'share/:shareId',
-      element: <ShareRoute />,
-      errorElement: <RouteErrorBoundary />,
-    },
-    {
-      path: 'sign-in',
-      element: <SignIn />,
-      errorElement: <RouteErrorBoundary />,
-    },
-    {
-      path: 'login',
-      element: <Navigate to="/sign-in" replace={true} />,
-    },
-    {
-      path: 'login/2fa',
-      element: <Navigate to="/sign-in/2fa" replace={true} />,
-    },
-    {
-      path: 'oauth',
+      element: <RootLayout />,
       errorElement: <RouteErrorBoundary />,
       children: [
-        {
-          path: 'success',
-          element: <OAuthSuccess />,
-        },
-        {
-          path: 'error',
-          element: <OAuthError />,
-        },
-      ],
-    },
-    {
-      path: 'register',
-      element: <Registration />,
-      errorElement: <RouteErrorBoundary />,
-    },
-    {
-      path: 'forgot-password',
-      element: <RequestPasswordReset />,
-      errorElement: <RouteErrorBoundary />,
-    },
-    {
-      path: 'reset-password',
-      element: <ResetPassword />,
-      errorElement: <RouteErrorBoundary />,
-    },
-    {
-      path: 'verify',
-      element: <VerifyEmail />,
-      errorElement: <RouteErrorBoundary />,
-    },
-
-    // ============================================
-    // PROTECTED ROUTES (with AuthLayout)
-    // ============================================
-    {
-      element: <AuthLayout />,
-      errorElement: <RouteErrorBoundary />,
-      children: [
+        // ============================================
+        // PUBLIC ROUTES (without authentication)
+        // ============================================
         {
           path: '/',
-          element: <LoginLayout />,
-          children: [
-            {
-              path: 'sign-in/2fa',
-              element: <TwoFactorScreen />,
-            },
-          ],
-        },
-        dashboardRoutes,
-        {
-          path: 'admin',
-          element: <AdminPanel />,
+          element: <Landing />,
           errorElement: <RouteErrorBoundary />,
         },
         {
-          element: <Root />,
+          path: 'share/:shareId',
+          element: <ShareRoute />,
+          errorElement: <RouteErrorBoundary />,
+        },
+        {
+          path: 'sign-in',
+          element: <SignIn />,
+          errorElement: <RouteErrorBoundary />,
+        },
+        {
+          path: 'login',
+          element: <Navigate to="/sign-in" replace={true} />,
+        },
+        {
+          path: 'login/2fa',
+          element: <Navigate to="/sign-in/2fa" replace={true} />,
+        },
+        {
+          path: 'oauth',
+          errorElement: <RouteErrorBoundary />,
           children: [
             {
-              index: true,
-              element: <Navigate to="/c/new" replace={true} />,
+              path: 'success',
+              element: <OAuthSuccess />,
             },
             {
-              path: 'c/:conversationId?',
-              element: <ChatRoute />,
+              path: 'error',
+              element: <OAuthError />,
+            },
+          ],
+        },
+        {
+          path: 'register',
+          element: <Registration />,
+          errorElement: <RouteErrorBoundary />,
+        },
+        {
+          path: 'forgot-password',
+          element: <RequestPasswordReset />,
+          errorElement: <RouteErrorBoundary />,
+        },
+        {
+          path: 'reset-password',
+          element: <ResetPassword />,
+          errorElement: <RouteErrorBoundary />,
+        },
+        {
+          path: 'verify',
+          element: <VerifyEmail />,
+          errorElement: <RouteErrorBoundary />,
+        },
+
+        // ============================================
+        // PROTECTED ROUTES (with AuthLayout)
+        // ============================================
+        {
+          element: <AuthLayout />,
+          errorElement: <RouteErrorBoundary />,
+          children: [
+            {
+              path: '/',
+              element: <LoginLayout />,
+              children: [
+                {
+                  path: 'sign-in/2fa',
+                  element: <TwoFactorScreen />,
+                },
+              ],
+            },
+            dashboardRoutes,
+            {
+              path: 'admin',
+              element: <AdminPanel />,
+              errorElement: <RouteErrorBoundary />,
             },
             {
-              path: 'search',
-              element: <Search />,
-            },
-            {
-              path: 'agents',
-              element: (
-                <MarketplaceProvider>
-                  <AgentMarketplace />
-                </MarketplaceProvider>
-              ),
-            },
-            {
-              path: 'agents/:category',
-              element: (
-                <MarketplaceProvider>
-                  <AgentMarketplace />
-                </MarketplaceProvider>
-              ),
-            },
-            {
-              path: 'pricing',
-              element: <Pricing />,
+              element: <Root />,
+              children: [
+                {
+                  index: true,
+                  element: <Navigate to="/c/new" replace={true} />,
+                },
+                {
+                  path: 'c/:conversationId?',
+                  element: <ChatRoute />,
+                },
+                {
+                  path: 'search',
+                  element: <Search />,
+                },
+                {
+                  path: 'agents',
+                  element: (
+                    <MarketplaceProvider>
+                      <AgentMarketplace />
+                    </MarketplaceProvider>
+                  ),
+                },
+                {
+                  path: 'agents/:category',
+                  element: (
+                    <MarketplaceProvider>
+                      <AgentMarketplace />
+                    </MarketplaceProvider>
+                  ),
+                },
+                {
+                  path: 'pricing',
+                  element: <Pricing />,
+                },
+              ],
             },
           ],
         },
