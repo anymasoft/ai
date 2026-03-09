@@ -375,6 +375,8 @@ export default function Pricing() {
                   )}
                   {plan.planId === 'free' && (
                     <p className="mb-5 mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                      300 000 токенов
+                      <br />
                       стартовый баланс при регистрации
                     </p>
                   )}
@@ -409,7 +411,9 @@ export default function Pricing() {
                     </button>
                   ) : (
                     <div className="w-full rounded-xl border border-gray-200 py-2.5 text-center text-sm text-gray-400 dark:border-gray-700 dark:text-gray-500">
-                      Стартовый баланс при регистрации
+                      300 000 токенов
+                      <br />
+                      стартовый баланс при регистрации
                     </div>
                   )}
                 </div>
