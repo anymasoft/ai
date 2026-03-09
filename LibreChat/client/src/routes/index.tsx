@@ -11,7 +11,6 @@ import {
 import { MarketplaceProvider } from '~/components/Agents/MarketplaceContext';
 import AgentMarketplace from '~/components/Agents/Marketplace';
 import { OAuthSuccess, OAuthError } from '~/components/OAuth';
-import { AuthContextProvider } from '~/hooks/AuthContext';
 import RouteErrorBoundary from './RouteErrorBoundary';
 import StartupLayout from './Layouts/Startup';
 import LoginLayout from './Layouts/Login';
@@ -25,10 +24,10 @@ import Pricing from './Pricing';
 import Landing from './Landing';
 
 const AuthLayout = () => (
-  <AuthContextProvider>
+  <>
     <Outlet />
     <ApiErrorWatcher />
-  </AuthContextProvider>
+  </>
 );
 
 const baseEl = document.querySelector('base');
