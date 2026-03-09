@@ -22,6 +22,7 @@ import AdminPanel from './AdminPanel';
 import Search from './Search';
 import Root from './Root';
 import Pricing from './Pricing';
+import LandingPage from '~/landing/LandingPage';
 
 const AuthLayout = () => (
   <AuthContextProvider>
@@ -117,7 +118,7 @@ export const router = createBrowserRouter(
           children: [
             {
               index: true,
-              element: <Navigate to="/c/new" replace={true} />,
+              element: <LandingPage />,
             },
             {
               path: 'c/:conversationId?',
