@@ -228,11 +228,10 @@ const yandexOAuthCallback = async (req, res) => {
       console.log(`🍪 Auth tokens set`);
 
       console.log(`✅ User logged in successfully via Yandex: ${user.email}`);
-      console.log(`🔄 Redirecting to ${domains.client}`);
+      console.log(`🔄 Redirecting to ${domains.client}/c/new`);
 
-      // Редиректим на клиент (стандартный способ как в oauth.js)
-      // Frontend сам обработает редирект на чат
-      return res.redirect(domains.client);
+      // Редиректим на интерфейс чата
+      return res.redirect(`${domains.client}/c/new`);
     } catch (dbError) {
       logger.error(`Failed to create/update user:`, dbError);
       return res.redirect(`${domains.client}/sign-in?error=user_creation_failed&provider=yandex`);

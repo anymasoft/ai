@@ -32,10 +32,6 @@
     <meta name="msapplication-TileColor" content="#da532c">
     <meta name="theme-color" content="#ffffff">
     <link href="/output.css" rel="stylesheet">
-    <script>
-        // Подставить значение ADMIN_TELEGRAM из переменной окружения
-        window.__ADMIN_TELEGRAM__ = '%ADMIN_TELEGRAM%';
-    </script>
 </head>
 <body>
     <header class="fixed w-full">
@@ -508,7 +504,7 @@
                     RepliqAI
                 </a>
                 <div class="flex items-center justify-center mb-5">
-                    <a href="https://t.me/%ADMIN_TELEGRAM%" target="_blank" class="inline-flex items-center justify-center w-10 h-10 text-gray-500 hover:text-purple-600 dark:text-gray-400 dark:hover:text-purple-500 transition-colors">
+                    <a href="https://t.me/giottas" target="_blank" class="inline-flex items-center justify-center w-10 h-10 text-gray-500 hover:text-purple-600 dark:text-gray-400 dark:hover:text-purple-500 transition-colors">
                         <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.16.16-.295.295-.605.295-.397 0-.33-.149-.465-.526l-1.063-3.482-2.952-.916c-.64-.197-.658-.64.135-.953l11.53-4.45c.53-.197 1.005.128.832.953z"/>
                         </svg>
@@ -520,14 +516,5 @@
         </div>
     </footer>
     <script src="https://unpkg.com/flowbite@1.4.1/dist/flowbite.js"></script>
-    <script>
-        // Подставить значение переменной окружения ADMIN_TELEGRAM в ссылку Telegram
-        if (window.__ADMIN_TELEGRAM__ && window.__ADMIN_TELEGRAM__ !== '%ADMIN_TELEGRAM%') {
-            const telegramLink = document.querySelector('a[href*="%ADMIN_TELEGRAM%"]');
-            if (telegramLink) {
-                telegramLink.href = `https://t.me/${window.__ADMIN_TELEGRAM__}`;
-            }
-        }
-    </script>
 </body>
 </html>
