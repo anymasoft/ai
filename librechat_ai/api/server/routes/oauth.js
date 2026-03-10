@@ -25,7 +25,7 @@ const domains = {
 router.use(logHeaders);
 router.use(loginLimiter);
 
-const oauthHandler = createOAuthHandler();
+const oauthHandler = createOAuthHandler(`${domains.client}/c/new`);
 
 router.get('/error', (req, res) => {
   /** A single error message is pushed by passport when authentication fails. */
