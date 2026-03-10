@@ -520,5 +520,14 @@
         </div>
     </footer>
     <script src="https://unpkg.com/flowbite@1.4.1/dist/flowbite.js"></script>
+    <script>
+        // Подставить значение переменной окружения ADMIN_TELEGRAM в ссылку Telegram
+        if (window.__ADMIN_TELEGRAM__ && window.__ADMIN_TELEGRAM__ !== '%VITE_ADMIN_TELEGRAM%') {
+            const telegramLink = document.querySelector('a[href*="%VITE_ADMIN_TELEGRAM%"]');
+            if (telegramLink) {
+                telegramLink.href = `https://t.me/${window.__ADMIN_TELEGRAM__}`;
+            }
+        }
+    </script>
 </body>
 </html>
