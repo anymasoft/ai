@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+
+# Yandex bot
+User-agent: Yandex
+Allow: /
+Crawl-delay: 1
+
+# Google bot
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 0.5
+
+# Sitemap location
+Sitemap: https://repliq.art/sitemap.xml
