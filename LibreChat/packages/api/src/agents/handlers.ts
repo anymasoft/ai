@@ -10,6 +10,16 @@ import type {
 } from '@librechat/agents';
 import type { StructuredToolInterface } from '@langchain/core/tools';
 import { runOutsideTracing } from '~/utils';
+import {
+  createExecutionState,
+  checkToolCallLimit,
+  checkToolTimeout,
+  recordToolCallStart,
+  recordToolCallEnd,
+  getDefaultLimits,
+  getExecutionStats,
+} from './guardrails';
+import { withTimeout } from './toolTimeout';
 
 export interface ToolEndCallbackData {
   output: {
@@ -49,6 +59,7 @@ export interface ToolExecuteOptions {
  * Creates the ON_TOOL_EXECUTE handler for event-driven tool execution.
  * This handler receives batched tool calls, loads the required tools,
  * executes them in parallel, and resolves with the results.
+ * Includes guard rails to prevent infinite loops and resource exhaustion.
  */
 export function createToolExecuteHandler(options: ToolExecuteOptions): EventHandler {
   const { loadTools, toolEndCallback } = options;
@@ -60,7 +71,35 @@ export function createToolExecuteHandler(options: ToolExecuteOptions): EventHand
       try {
         await runOutsideTracing(async () => {
           try {
-            const toolNames = [...new Set(toolCalls.map((tc: ToolCallRequest) => tc.name))];
+            // Initialize execution state and limits for this message
+            const executionState = createExecutionState();
+            const limits = getDefaultLimits();
+
+            // Apply guard rails: filter tool calls that exceed limits
+            const allowedToolCalls: ToolCallRequest[] = [];
+            const blockedToolCalls: Array<{ tc: ToolCallRequest; reason: string }> = [];
+
+            for (const tc of toolCalls) {
+              const limitError = checkToolCallLimit(executionState, limits, tc.name);
+              if (limitError) {
+                blockedToolCalls.push({ tc, reason: limitError });
+                logger.info(
+                  `[ON_TOOL_EXECUTE][GUARD_RAIL] Tool call blocked for "${tc.name}": ${limitError}`,
+                );
+              } else {
+                allowedToolCalls.push(tc);
+                recordToolCallStart(executionState, tc.id, tc.name);
+              }
+            }
+
+            // Log statistics
+            const stats = getExecutionStats(executionState);
+            logger.info(
+              `[ON_TOOL_EXECUTE][LIMITS] Tool calls: ${stats.toolCallCount}/${limits.maxToolCallsPerMessage}, ` +
+                `Tavily searches: ${stats.tavilySearchCount}/${limits.maxTavilySearchesPerMessage}`,
+            );
+
+            const toolNames = [...new Set(allowedToolCalls.map((tc: ToolCallRequest) => tc.name))];
             const { loadedTools, configurable: toolConfigurable } = await loadTools(
               toolNames,
               agentId,
@@ -69,7 +108,7 @@ export function createToolExecuteHandler(options: ToolExecuteOptions): EventHand
             const mergedConfigurable = { ...configurable, ...toolConfigurable };
 
             const results: ToolExecuteResult[] = await Promise.all(
-              toolCalls.map(async (tc: ToolCallRequest) => {
+              allowedToolCalls.map(async (tc: ToolCallRequest) => {
                 const tool = toolMap.get(tc.name);
 
                 if (!tool) {
@@ -120,11 +159,16 @@ export function createToolExecuteHandler(options: ToolExecuteOptions): EventHand
                     }
                   }
 
-                  const result = await tool.invoke(tc.args, {
-                    toolCall: toolCallConfig,
-                    configurable: mergedConfigurable,
-                    metadata,
-                  } as Record<string, unknown>);
+                  // Apply timeout guard rail for tool execution
+                  const result = await withTimeout(
+                    tool.invoke(tc.args, {
+                      toolCall: toolCallConfig,
+                      configurable: mergedConfigurable,
+                      metadata,
+                    } as Record<string, unknown>),
+                    limits.toolTimeoutMs,
+                    tc.name,
+                  );
 
                   if (toolEndCallback) {
                     await toolEndCallback(
@@ -146,6 +190,7 @@ export function createToolExecuteHandler(options: ToolExecuteOptions): EventHand
                     );
                   }
 
+                  recordToolCallEnd(executionState, tc.id);
                   return {
                     toolCallId: tc.id,
                     content: result.content,
@@ -153,6 +198,7 @@ export function createToolExecuteHandler(options: ToolExecuteOptions): EventHand
                     status: 'success' as const,
                   };
                 } catch (toolError) {
+                  recordToolCallEnd(executionState, tc.id);
                   const error = toolError as Error;
                   logger.error(`[ON_TOOL_EXECUTE] Tool ${tc.name} error:`, error);
                   return {
@@ -165,7 +211,32 @@ export function createToolExecuteHandler(options: ToolExecuteOptions): EventHand
               }),
             );
 
-            resolve(results);
+            // Add results for blocked tool calls
+            const blockedResults: ToolExecuteResult[] = blockedToolCalls.map(({ tc, reason }) => ({
+              toolCallId: tc.id,
+              status: 'error' as const,
+              content: '',
+              errorMessage: reason,
+            }));
+
+            // Combine results from allowed and blocked tool calls, maintaining original order
+            const allResults = toolCalls.map((tc) => {
+              const allowedResult = results.find((r) => r.toolCallId === tc.id);
+              if (allowedResult) {
+                return allowedResult;
+              }
+              const blockedResult = blockedResults.find((r) => r.toolCallId === tc.id);
+              return (
+                blockedResult || {
+                  toolCallId: tc.id,
+                  status: 'error' as const,
+                  content: '',
+                  errorMessage: 'Unknown error',
+                }
+              );
+            });
+
+            resolve(allResults);
           } catch (error) {
             logger.error('[ON_TOOL_EXECUTE] Fatal error:', error);
             reject(error as Error);
