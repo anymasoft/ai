@@ -325,7 +325,10 @@ export const openAISettings = {
     default: undefined,
   },
   max_tokens: {
-    default: undefined,
+    min: 1 as const,
+    max: 128000 as const,
+    step: 1 as const,
+    default: 4096 as const,
   },
   imageDetail: {
     default: ImageDetail.auto as const,
