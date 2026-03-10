@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { QueryKeys } from 'librechat-data-provider';
@@ -145,6 +145,8 @@ export default function Pricing() {
   const [paymentCheck, setPaymentCheck] = useState<
     { status: 'checking' | 'ok' | 'error' | 'pending'; message?: string } | null
   >(null);
+  // ⏱️ Таймер для автоматической очистки pending статуса через 90 сек
+  const paymentCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchPlans = async () => {
     try {
@@ -204,6 +206,34 @@ export default function Pricing() {
       return () => clearTimeout(timer);
     }
   }, [paymentCheck?.status, queryClient]);
+
+  // ⏱️ Автоматическая очистка pending статуса через 90 сек
+  // Если платёж не завершился за это время - убираем бейдж
+  useEffect(() => {
+    // Очищаем старый таймер если он был
+    if (paymentCheckTimeoutRef.current) {
+      clearTimeout(paymentCheckTimeoutRef.current);
+      paymentCheckTimeoutRef.current = null;
+    }
+
+    // Если статус 'checking' или 'pending' - запускаем таймер
+    if (paymentCheck?.status === 'checking' || paymentCheck?.status === 'pending') {
+      paymentCheckTimeoutRef.current = setTimeout(() => {
+        // Через 90 сек очищаем бейдж и sessionStorage
+        setPaymentCheck(null);
+        sessionStorage.removeItem('pendingPaymentId');
+        paymentCheckTimeoutRef.current = null;
+      }, 90000); // 90 секунд
+    }
+
+    // При размонтировании очищаем таймер
+    return () => {
+      if (paymentCheckTimeoutRef.current) {
+        clearTimeout(paymentCheckTimeoutRef.current);
+        paymentCheckTimeoutRef.current = null;
+      }
+    };
+  }, [paymentCheck?.status]);
 
   // Fallback-поллинг для localhost: ONE-TIME check после редиректа с ?payment=success
   useEffect(() => {
