@@ -593,5 +593,36 @@
         </div>
     </footer>
     <script src="https://unpkg.com/flowbite@1.4.1/dist/flowbite.js"></script>
+
+    <!-- Yandex.Metrika Goal Tracking for Start Chat Buttons -->
+    <script>
+    (function() {
+        // Counter ID for Yandex.Metrika
+        const COUNTER_ID = 107234870;
+        const GOAL_ID = 'start_chat';
+
+        // Find all "Начать чат" buttons and add click handlers
+        function initStartChatTracking() {
+            // Select all links with href="/c/new"
+            const startChatLinks = document.querySelectorAll('a[href="/c/new"]');
+
+            startChatLinks.forEach(link => {
+                link.addEventListener('click', function() {
+                    // Check if Yandex.Metrika is loaded
+                    if (typeof ym === 'function') {
+                        ym(COUNTER_ID, 'reachGoal', GOAL_ID);
+                    }
+                });
+            });
+        }
+
+        // Initialize tracking when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initStartChatTracking);
+        } else {
+            initStartChatTracking();
+        }
+    })();
+    </script>
 </body>
 </html>
