@@ -12,7 +12,7 @@ interface:
   parameters: false       # скрываем параметры модели (темп., top_p и т.д.)
   sidePanel: true
   bookmarks: true
-  multiConvo: false       # отключаем мульти-конво для Free
+  multiConvo: true       # отключаем мульти-конво для Free
 
   # webSearch: НЕ указан → USER=false, ADMIN=true (автоматически)
   # runCode:   НЕ указан → USER=false, ADMIN=true (автоматически)
@@ -26,13 +26,13 @@ modelSpecs:
   enforce: true
   list:
     # --- OpenAI ---
-    - name: "gpt-4o"
-      label: "GPT-4o"
-      preset:
-        endpoint: "openAI"
-        model: "gpt-4o"
-        temperature: 0.7
-        max_tokens: 4096
+    # - name: "gpt-4o"
+    #  label: "GPT-4o"
+    #  preset:
+    #    endpoint: "openAI"
+    #    model: "gpt-4o"
+    #    temperature: 0.7
+    #    max_tokens: 4096
 
     - name: "gpt-4o-mini"
       label: "GPT-4o Mini"
@@ -50,29 +50,29 @@ modelSpecs:
         temperature: 0.7
         max_tokens: 4096
 
-    - name: "gpt-4-turbo"
-      label: "GPT-4 Turbo"
-      preset:
-        endpoint: "openAI"
-        model: "gpt-4-turbo"
-        temperature: 0.7
-        max_tokens: 4096
+    #- name: "gpt-4-turbo"
+    #  label: "GPT-4 Turbo"
+    #  preset:
+    #    endpoint: "openAI"
+    #    model: "gpt-4-turbo"
+    #    temperature: 0.7
+    #    max_tokens: 4096
 
-    - name: "gpt-4"
-      label: "GPT-4"
-      preset:
-        endpoint: "openAI"
-        model: "gpt-4"
-        temperature: 0.7
-        max_tokens: 4096
+#    - name: "gpt-4"
+#      label: "GPT-4"
+#      preset:
+#        endpoint: "openAI"
+#        model: "gpt-4"
+#        temperature: 0.7
+#        max_tokens: 4096
 
-    - name: "gpt-3.5-turbo"
-      label: "GPT-3.5 Turbo"
-      preset:
-        endpoint: "openAI"
-        model: "gpt-3.5-turbo"
-        temperature: 0.7
-        max_tokens: 4096
+#    - name: "gpt-3.5-turbo"
+#      label: "GPT-3.5 Turbo"
+#      preset:
+#        endpoint: "openAI"
+#        model: "gpt-3.5-turbo"
+#        temperature: 0.7
+#        max_tokens: 4096
 
     - name: "gpt-5.2"
       label: "GPT-5.2"
@@ -125,38 +125,38 @@ modelSpecs:
         max_tokens: 8192
 
     # --- Google ---
-    - name: "gemini-2.0-flash"
-      label: "Gemini 2.0 Flash"
-      preset:
-        endpoint: "google"
-        model: "gemini-2.0-flash"
-        temperature: 0.7
-        max_tokens: 8192
+#    - name: "gemini-2.0-flash"
+#      label: "Gemini 2.0 Flash"
+#      preset:
+#        endpoint: "google"
+#        model: "gemini-2.0-flash"
+#        temperature: 0.7
+#        max_tokens: 8192
 
-    - name: "gemini-1.5-pro"
-      label: "Gemini 1.5 Pro"
-      preset:
-        endpoint: "google"
-        model: "gemini-1.5-pro"
-        temperature: 0.7
-        max_tokens: 8192
+#    - name: "gemini-1.5-pro"
+#      label: "Gemini 1.5 Pro"
+#      preset:
+#        endpoint: "google"
+#        model: "gemini-1.5-pro"
+#        temperature: 0.7
+#        max_tokens: 8192
 
     # --- Groq ---
-    - name: "llama-3.1-70b-versatile"
-      label: "Llama 3.1 70B Versatile"
-      preset:
-        endpoint: "groq"
-        model: "llama-3.1-70b-versatile"
-        temperature: 0.7
-        max_tokens: 8192
+#    - name: "llama-3.1-70b-versatile"
+#      label: "Llama 3.1 70B Versatile"
+#      preset:
+#        endpoint: "groq"
+#        model: "llama-3.1-70b-versatile"
+#        temperature: 0.7
+#        max_tokens: 8192
 
-    - name: "mixtral-8x7b-32768"
-      label: "Mixtral 8x7B"
-      preset:
-        endpoint: "groq"
-        model: "mixtral-8x7b-32768"
-        temperature: 0.7
-        max_tokens: 8192
+#    - name: "mixtral-8x7b-32768"
+#      label: "Mixtral 8x7B"
+#      preset:
+#        endpoint: "groq"
+#        model: "mixtral-8x7b-32768"
+#        temperature: 0.7
+#        max_tokens: 8192
 
 # =============================================================================
 # БАЛАНС
