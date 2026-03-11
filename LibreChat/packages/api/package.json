@@ -2,7 +2,7 @@
   "name": "@librechat/api",
   "version": "1.7.23",
   "type": "commonjs",
-  "description": "MCP services for LibreChat",
+  "description": "MCP services for RepliqAI",
   "main": "dist/index.js",
   "module": "dist/index.es.js",
   "types": "./dist/types/index.d.ts",
