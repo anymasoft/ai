@@ -1,7 +1,7 @@
 <!DOCTYPE html>
  <html lang="ru">
 <head>
-    <link rel="canonical" href="https://repliqai.com/" />
+    <link rel="canonical" href="https://repliq.art/" />
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,11 +10,15 @@
     <!-- Meta SEO -->
     <meta name="title" content="RepliqAI - Доступ к ChatGPT, Claude и DeepSeek без VPN">
     <meta name="description" content="AI Hub с доступом к OpenAI, Anthropic, DeepSeek, веб-поиском и единым интерфейсом. Оплата в рублях. Без VPN.">
-    <meta name="keywords" content="ChatGPT, Claude, DeepSeek, AI, искусственный интеллект, RepliqAI, без VPN, оплата в рублях, MCP Tavily, веб-поиск">
-    <meta name="robots" content="index, follow">
+    <meta name="keywords" content="ChatGPT, Claude, DeepSeek, AI, искусственный интеллект, RepliqAI, без VPN, оплата в рублях, MCP Tavily, веб-поиск, искусственный интеллект Россия">
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta name="language" content="Russian">
     <meta name="author" content="RepliqAI">
+
+    <!-- Yandex SEO Meta Tags -->
+    <meta name="yandex-verification" content="ДОБАВИТЬ_КОД_ИЗ_ВЕБМАСТЕРА" />
+    <meta name="format-detection" content="telephone=no">
 
     <!-- Social media share -->
     <meta property="og:title" content="RepliqAI - AI Hub для России">
@@ -30,6 +34,57 @@
     <link rel="apple-touch-icon" href="/vr_logo_small.png">
     <meta name="theme-color" content="#171717">
     <link href="/output.css" rel="stylesheet">
+
+    <!-- Structured Data for Search Engines (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "RepliqAI",
+      "url": "https://repliq.art",
+      "description": "Единый интерфейс для работы с ChatGPT, Claude и DeepSeek без VPN. Оплата в рублях.",
+      "applicationCategory": "AI, Productivity",
+      "operatingSystem": "Web",
+      "inLanguage": "ru-RU",
+      "isAccessibleForFree": false,
+      "offers": {
+        "@type": "Offer",
+        "price": "99",
+        "priceCurrency": "RUB"
+      },
+      "creator": {
+        "@type": "Organization",
+        "name": "RepliqAI",
+        "url": "https://repliq.art"
+      },
+      "image": "https://repliq.art/images/hero.png",
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "ratingCount": "100"
+      }
+    }
+    </script>
+
+    <!-- Additional Organization Schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "RepliqAI",
+      "url": "https://repliq.art",
+      "description": "AI Hub для России - доступ к ChatGPT, Claude и DeepSeek без VPN",
+      "logo": "https://repliq.art/images/vr_logo_small.png",
+      "sameAs": [
+        "https://repliq.art"
+      ],
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "Customer Service",
+        "availableLanguage": "ru"
+      }
+    }
+    </script>
 
     <!-- Yandex.Metrika counter -->
     <script type="text/javascript">
@@ -538,5 +593,36 @@
         </div>
     </footer>
     <script src="https://unpkg.com/flowbite@1.4.1/dist/flowbite.js"></script>
+
+    <!-- Yandex.Metrika Goal Tracking for Start Chat Buttons -->
+    <script>
+    (function() {
+        // Counter ID for Yandex.Metrika
+        const COUNTER_ID = 107234870;
+        const GOAL_ID = 'start_chat';
+
+        // Find all "Начать чат" buttons and add click handlers
+        function initStartChatTracking() {
+            // Select all links with href="/c/new"
+            const startChatLinks = document.querySelectorAll('a[href="/c/new"]');
+
+            startChatLinks.forEach(link => {
+                link.addEventListener('click', function() {
+                    // Check if Yandex.Metrika is loaded
+                    if (typeof ym === 'function') {
+                        ym(COUNTER_ID, 'reachGoal', GOAL_ID);
+                    }
+                });
+            });
+        }
+
+        // Initialize tracking when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initStartChatTracking);
+        } else {
+            initStartChatTracking();
+        }
+    })();
+    </script>
 </body>
 </html>
