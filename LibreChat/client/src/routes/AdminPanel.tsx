@@ -401,6 +401,8 @@ export default function AdminPanel() {
             <button
               onClick={() => {
                 clearAllConversations(true);
+                // Очистить URL параметры перед навигацией, чтобы не повторить автоматическую отправку
+                window.history.replaceState({}, '', '/c/new');
                 navigate('/c/new');
               }}
               className="mb-1 block text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
