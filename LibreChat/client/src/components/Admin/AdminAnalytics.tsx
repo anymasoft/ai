@@ -265,7 +265,7 @@ export default function AdminAnalytics() {
                     key={idx}
                     className="border-b border-gray-100 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
                   >
-                    <td className="px-4 py-2 font-medium text-gray-900 dark:text-white">{row.model}</td>
+                    <td className="px-4 py-2 font-medium text-gray-900 dark:text-white">{row.model || 'N/A'}</td>
                     <td className="px-4 py-2 text-right text-gray-600 dark:text-gray-400">
                       {formatNumber(row.requests)}
                     </td>
@@ -275,7 +275,7 @@ export default function AdminAnalytics() {
                     <td className="px-4 py-2 text-right text-gray-600 dark:text-gray-400">
                       {formatNumber(row.totalTokens)}
                     </td>
-                    <td className="px-4 py-2 text-gray-600 dark:text-gray-400">{row.endpoint}</td>
+                    <td className="px-4 py-2 text-gray-600 dark:text-gray-400">{row.endpoint || 'N/A'}</td>
                   </tr>
                 ))
               )}
@@ -311,7 +311,7 @@ export default function AdminAnalytics() {
               <tbody>
                 {usersData
                   .filter((row) =>
-                    row.email.toLowerCase().includes(usersSearchEmail.toLowerCase())
+                    String(row.email ?? '').toLowerCase().includes(String(usersSearchEmail ?? '').toLowerCase())
                   )
                   .slice(0, 100)
                   .length === 0 ? (
@@ -323,7 +323,7 @@ export default function AdminAnalytics() {
                 ) : (
                   usersData
                     .filter((row) =>
-                      row.email.toLowerCase().includes(usersSearchEmail.toLowerCase())
+                      String(row.email ?? '').toLowerCase().includes(String(usersSearchEmail ?? '').toLowerCase())
                     )
                     .slice(0, 100)
                     .map((row, idx) => (
@@ -405,7 +405,7 @@ export default function AdminAnalytics() {
                     <td className="px-4 py-2 text-right text-gray-600 dark:text-gray-400">
                       {formatNumber(row.totalTokens)}
                     </td>
-                    <td className="px-4 py-2 text-gray-600 dark:text-gray-400">{row.model}</td>
+                    <td className="px-4 py-2 text-gray-600 dark:text-gray-400">{row.model || 'N/A'}</td>
                     <td className="px-4 py-2 text-gray-600 dark:text-gray-400">
                       {new Date(row.lastActive).toLocaleDateString('ru-RU')}
                     </td>
@@ -463,7 +463,7 @@ export default function AdminAnalytics() {
                         className="border-b border-gray-100 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
                       >
                         <td className="px-4 py-2 font-medium text-gray-900 dark:text-white">
-                          {row.model}
+                          {row.model || 'N/A'}
                         </td>
                         <td className="px-4 py-2 text-right text-gray-600 dark:text-gray-400">
                           {formatNumber(row.totalTokens)}
