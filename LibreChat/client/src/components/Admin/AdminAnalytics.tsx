@@ -83,6 +83,22 @@ export default function AdminAnalytics() {
   const [costsData, setCostsData] = useState<CostsData | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  // Modal для просмотра полного диалога
+  interface PreviewMessage {
+    role: string;
+    text: string;
+    createdAt: string;
+  }
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [modalMessages, setModalMessages] = useState<PreviewMessage[]>([]);
+  const [modalLoading, setModalLoading] = useState(false);
+
+  // Modal для ответа администратора
+  const [replyModalOpen, setReplyModalOpen] = useState(false);
+  const [replyConversationId, setReplyConversationId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [replySending, setReplySending] = useState(false);
 
   // Копирование conversationId в буфер обмена
   const copyToClipboard = useCallback((text: string) => {
@@ -92,6 +108,79 @@ export default function AdminAnalytics() {
     });
   }, []);
 
+  // Открытие modal с просмотром полного диалога
+  const openConversationModal = useCallback(
+    async (conversationId: string) => {
+      setSelectedConversationId(conversationId);
+      setModalOpen(true);
+
+      setModalLoading(true);
+
+      try {
+        const res = await fetch(`/api/admin/analytics/conversation-preview/${conversationId}`, {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        });
+
+        if (!res.ok) {
+          throw new Error(`Ошибка: ${res.status}`);
+        }
+
+        const result = await res.json();
+        setModalMessages(result.data || []);
+      } catch (err) {
+        logger.error('[conversation-modal]', err);
+        setModalMessages([]);
+      } finally {
+        setModalLoading(false);
+      }
+    },
+    [token]
+  );
+
+  // Отправка ответа администратора
+  const sendAdminReply = useCallback(async () => {
+    if (!replyConversationId || !replyText.trim()) {
+      return;
+    }
+
+    setReplySending(true);
+
+    try {
+      const res = await fetch('/api/admin/analytics/conversation-reply', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          conversationId: replyConversationId,
+          message: replyText,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Ошибка: ${res.status}`);
+      }
+
+      // Успешно отправлено
+      setReplyText('');
+      setReplyModalOpen(false);
+      // Обновляем modal с новым сообщением
+      if (replyConversationId) {
+        openConversationModal(replyConversationId);
+      }
+    } catch (err) {
+      logger.error('[conversation-reply]', err);
+      alert('Ошибка при отправке ответа');
+    } finally {
+      setReplySending(false);
+    }
+  }, [replyConversationId, replyText, token, openConversationModal]);
 
   const fetchAnalytics = useCallback(async (analyticsTab: AnalyticsTab) => {
     setLoading(true);
@@ -420,6 +509,25 @@ export default function AdminAnalytics() {
                         >
                           {copiedId === String(row.conversationId ?? '') ? '✓' : '📋'}
                         </button>
+                        <button
+                          onClick={() =>
+                            openConversationModal(String(row.conversationId ?? ''))
+                          }
+                          className="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                          title="Просмотреть диалог"
+                        >
+                          👁
+                        </button>
+                        <button
+                          onClick={() => {
+                            setReplyConversationId(String(row.conversationId ?? ''));
+                            setReplyModalOpen(true);
+                          }}
+                          className="text-gray-400 hover:text-green-600 dark:hover:text-green-400"
+                          title="Ответить пользователю"
+                        >
+                          💬
+                        </button>
                       </div>
                     </td>
                     <td className="px-4 py-2 text-gray-900 dark:text-white">{String(row.user ?? 'N/A')}</td>
@@ -544,6 +652,132 @@ export default function AdminAnalytics() {
         </div>
       )}
 
+      {/* MODAL для просмотра полного диалога */}
+      {modalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-2xl max-h-96 flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Диалог: {selectedConversationId?.substring(0, 8)}…
+              </h2>
+              <button
+                onClick={() => {
+                  setModalOpen(false);
+                  setSelectedConversationId(null);
+                  setModalMessages([]);
+                }}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body - Сообщения */}
+            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+              {modalLoading ? (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  Загрузка сообщений...
+                </div>
+              ) : modalMessages.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  Нет сообщений в этом диалоге
+                </div>
+              ) : (
+                modalMessages.map((msg, idx) => (
+                  <div key={idx} className="py-2">
+                    <div className="font-semibold text-sm text-gray-700 dark:text-gray-300">
+                      {msg.role === 'assistant' ? '🤖 Assistant' : '👤 User'}
+                    </div>
+                    <div className="mt-1 text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-900 p-3 rounded border border-gray-200 dark:border-gray-700 whitespace-pre-wrap break-words">
+                      {msg.text}
+                    </div>
+                    <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      {new Date(msg.createdAt).toLocaleString('ru-RU')}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-end">
+              <button
+                onClick={() => {
+                  setModalOpen(false);
+                  setSelectedConversationId(null);
+                  setModalMessages([]);
+                }}
+                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+              >
+                Закрыть
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL для ответа администратора */}
+      {replyModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-2xl flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Ответ пользователю
+              </h2>
+              <button
+                onClick={() => {
+                  setReplyModalOpen(false);
+                  setReplyConversationId(null);
+                  setReplyText('');
+                }}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="px-6 py-4 flex flex-col gap-4">
+              <div>
+                <Label htmlFor="reply-textarea" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Сообщение
+                </Label>
+                <textarea
+                  id="reply-textarea"
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  placeholder="Введите ответ для пользователя..."
+                  className="mt-2 w-full h-32 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setReplyModalOpen(false);
+                  setReplyConversationId(null);
+                  setReplyText('');
+                }}
+                disabled={replySending}
+                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition disabled:opacity-50"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={sendAdminReply}
+                disabled={replySending || !replyText.trim()}
+                className="px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600 transition disabled:opacity-50"
+              >
+                {replySending ? 'Отправка...' : 'Отправить'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
