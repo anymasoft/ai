@@ -155,10 +155,8 @@ router.get('/costs', requireJwtAuth, requireAdminRole, async (req, res) => {
 /**
  * GET /api/admin/conversation-preview/:conversationId
  * Получить последние 20 сообщений диалога для modal preview
- * Используется для modal preview в таблице Conversations
- * Ответ: [ { role, text, createdAt }, ... ]
- * ВАЖНО: поддерживает оба формата: text и content
- * ⚠️ КРИТИЧНО: conversationId может быть string или ObjectId в MongoDB
+ * ⚠️ КРИТИЧНО: сообщения в LibreChat могут быть в поле conversation или conversationId
+ * ⚠️ КРИТИЧНО: ID может быть string или ObjectId
  */
 router.get('/conversation-preview/:conversationId', requireJwtAuth, requireAdminRole, async (req, res) => {
   try {
@@ -166,15 +164,24 @@ router.get('/conversation-preview/:conversationId', requireJwtAuth, requireAdmin
 
     logger.debug('[analytics/conversation-preview] Request from admin:', req.user?.email, 'conversationId:', conversationId);
 
-    // ✅ SAFE: Конвертируем string ID в ObjectId для корректного поиска в MongoDB
-    let query;
+    // ✅ SAFE: Конвертируем в ObjectId если возможно, иначе используем string
+    let objectId;
     try {
-      // Пытаемся конвертировать в ObjectId
-      query = { conversationId: new ObjectId(conversationId) };
+      objectId = new ObjectId(conversationId);
     } catch (e) {
-      // Если не валидный ObjectId, ищем по string
-      query = { conversationId };
+      objectId = conversationId;
     }
+
+    // ✅ SAFE: Ищем по ОБОИМ полям (conversation и conversationId)
+    // LibreChat может хранить в любом из них
+    const query = {
+      $or: [
+        { conversationId: objectId },
+        { conversation: objectId },
+        { conversationId: conversationId },
+        { conversation: conversationId },
+      ],
+    };
 
     // ✅ SAFE: Берём последние 20 сообщений для preview (не все)
     const messages = await Message.find(query)

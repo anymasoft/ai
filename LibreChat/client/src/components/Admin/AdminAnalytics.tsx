@@ -509,10 +509,10 @@ export default function AdminAnalytics() {
                 conversationsData.map((row, idx) => (
                   <tr
                     key={idx}
-                    className="border-b border-gray-100 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+                    className="group border-b border-gray-100 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
                   >
                     <td className="px-4 py-2 font-mono text-xs text-gray-600 dark:text-gray-400 relative">
-                      <div className="flex items-center gap-1 group">
+                      <div className="flex items-center gap-1">
                         {/* Сокращённый ID с tooltip полного ID */}
                         <span
                           title={String(row.conversationId ?? '')}
