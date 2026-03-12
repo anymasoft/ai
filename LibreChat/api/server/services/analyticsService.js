@@ -10,6 +10,14 @@ const { User, Message, Transaction, Conversation } = require('~/db/models');
 const LAST_30_DAYS = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
 /**
+ * Исключённые из аналитики пользователи (тестовые аккаунты)
+ * Можно задать через env: ANALYTICS_EXCLUDED_USERS=user1@example.com,user2@example.com
+ */
+const EXCLUDED_USERS = process.env.ANALYTICS_EXCLUDED_USERS
+  ? process.env.ANALYTICS_EXCLUDED_USERS.split(',').map(e => e.trim())
+  : [];
+
+/**
  * GET /api/admin/analytics/overview
  * Возвращает общую статистику: пользователи, сообщения, токены, беседы
  */
@@ -100,12 +108,43 @@ async function getModelUsage() {
     logger.debug('[analytics] Fetching model usage');
 
     // ✅ SAFE: $match createdAt в начале
-    const stats = await Transaction.aggregate([
+    const pipeline = [
       {
         $match: {
           createdAt: { $gte: LAST_30_DAYS },
         },
       },
+      // Конвертируем user ID в ObjectId для корректного lookup
+      {
+        $addFields: {
+          userObjectId: {
+            $cond: [
+              { $eq: [{ $type: '$user' }, 'string'] },
+              { $toObjectId: '$user' },
+              '$user',
+            ],
+          },
+        },
+      },
+      // Lookup пользователей для проверки email
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'userObjectId',
+          foreignField: '_id',
+          as: 'userInfo',
+        },
+      },
+      // Исключаем тестовых пользователей
+      ...(EXCLUDED_USERS.length > 0
+        ? [
+            {
+              $match: {
+                'userInfo.email': { $nin: EXCLUDED_USERS },
+              },
+            },
+          ]
+        : []),
       {
         $group: {
           _id: '$model',
@@ -131,8 +170,9 @@ async function getModelUsage() {
       {
         $limit: 100,
       },
-    ]);
+    ];
 
+    const stats = await Transaction.aggregate(pipeline);
     return stats;
   } catch (err) {
     logger.error('[analytics/models]', err);
@@ -149,15 +189,27 @@ async function getUserUsage() {
     logger.debug('[analytics] Fetching user usage');
 
     // ✅ SAFE: Используем Transaction (индексировано лучше чем Message)
-    const stats = await Transaction.aggregate([
+    const pipeline = [
       {
         $match: {
           createdAt: { $gte: LAST_30_DAYS },
         },
       },
+      // Конвертируем user ID в ObjectId для корректного lookup
+      {
+        $addFields: {
+          userObjectId: {
+            $cond: [
+              { $eq: [{ $type: '$user' }, 'string'] },
+              { $toObjectId: '$user' },
+              '$user',
+            ],
+          },
+        },
+      },
       {
         $group: {
-          _id: '$user',
+          _id: '$userObjectId',
           requests: { $sum: 1 },
           totalTokens: { $sum: '$tokenValue' },
           models: { $addToSet: '$model' },
@@ -178,6 +230,16 @@ async function getUserUsage() {
           preserveNullAndEmptyArrays: true,
         },
       },
+      // Исключаем тестовых пользователей
+      ...(EXCLUDED_USERS.length > 0
+        ? [
+            {
+              $match: {
+                'userData.email': { $nin: EXCLUDED_USERS },
+              },
+            },
+          ]
+        : []),
       {
         $lookup: {
           from: 'subscriptions',
@@ -210,8 +272,9 @@ async function getUserUsage() {
       {
         $limit: 100,
       },
-    ]);
+    ];
 
+    const stats = await Transaction.aggregate(pipeline);
     return stats;
   } catch (err) {
     logger.error('[analytics/users]', err);
@@ -228,10 +291,22 @@ async function getConversationStats() {
     logger.debug('[analytics] Fetching conversation stats');
 
     // ✅ SAFE: $match createdAt + $sort + $limit 100
-    const stats = await Transaction.aggregate([
+    const pipeline = [
       {
         $match: {
           createdAt: { $gte: LAST_30_DAYS },
+        },
+      },
+      // Конвертируем user ID в ObjectId для корректного lookup
+      {
+        $addFields: {
+          userObjectId: {
+            $cond: [
+              { $eq: [{ $type: '$user' }, 'string'] },
+              { $toObjectId: '$user' },
+              '$user',
+            ],
+          },
         },
       },
       {
@@ -240,7 +315,7 @@ async function getConversationStats() {
           totalTokens: { $sum: '$tokenValue' },
           messageCount: { $sum: 1 },
           models: { $addToSet: '$model' },
-          user: { $first: '$user' },
+          userObjectId: { $first: '$userObjectId' },
           lastActive: { $max: '$createdAt' },
         },
       },
@@ -250,18 +325,35 @@ async function getConversationStats() {
       {
         $limit: 100,
       },
+      // Lookup пользователей для получения email
       {
         $lookup: {
-          from: 'messages',
-          localField: '_id',
-          foreignField: 'conversationId',
-          as: 'conversationData',
+          from: 'users',
+          localField: 'userObjectId',
+          foreignField: '_id',
+          as: 'userData',
         },
       },
       {
+        $unwind: {
+          path: '$userData',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      // Исключаем тестовых пользователей
+      ...(EXCLUDED_USERS.length > 0
+        ? [
+            {
+              $match: {
+                'userData.email': { $nin: EXCLUDED_USERS },
+              },
+            },
+          ]
+        : []),
+      {
         $project: {
           conversationId: '$_id',
-          user: 1,
+          user: '$userData.email',
           messageCount: 1,
           totalTokens: 1,
           model: { $arrayElemAt: ['$models', 0] },
@@ -269,8 +361,9 @@ async function getConversationStats() {
           _id: 0,
         },
       },
-    ]);
+    ];
 
+    const stats = await Transaction.aggregate(pipeline);
     return stats;
   } catch (err) {
     logger.error('[analytics/conversations]', err);
@@ -299,6 +392,37 @@ async function getCostBreakdown() {
               },
             },
             {
+              $addFields: {
+                userObjectId: {
+                  $cond: [
+                    { $eq: [{ $type: '$user' }, 'string'] },
+                    { $toObjectId: '$user' },
+                    '$user',
+                  ],
+                },
+              },
+            },
+            {
+              $lookup: {
+                from: 'users',
+                localField: 'userObjectId',
+                foreignField: '_id',
+                as: 'userData',
+              },
+            },
+            ...(EXCLUDED_USERS.length > 0
+              ? [
+                  {
+                    $match: {
+                      $or: [
+                        { 'userData': { $size: 0 } },
+                        { 'userData.email': { $nin: EXCLUDED_USERS } },
+                      ],
+                    },
+                  },
+                ]
+              : []),
+            {
               $group: {
                 _id: null,
                 total: { $sum: '$tokenValue' },
@@ -314,6 +438,37 @@ async function getCostBreakdown() {
               },
             },
             {
+              $addFields: {
+                userObjectId: {
+                  $cond: [
+                    { $eq: [{ $type: '$user' }, 'string'] },
+                    { $toObjectId: '$user' },
+                    '$user',
+                  ],
+                },
+              },
+            },
+            {
+              $lookup: {
+                from: 'users',
+                localField: 'userObjectId',
+                foreignField: '_id',
+                as: 'userData',
+              },
+            },
+            ...(EXCLUDED_USERS.length > 0
+              ? [
+                  {
+                    $match: {
+                      $or: [
+                        { 'userData': { $size: 0 } },
+                        { 'userData.email': { $nin: EXCLUDED_USERS } },
+                      ],
+                    },
+                  },
+                ]
+              : []),
+            {
               $group: {
                 _id: null,
                 total: { $sum: '$tokenValue' },
@@ -327,6 +482,37 @@ async function getCostBreakdown() {
               },
             },
             {
+              $addFields: {
+                userObjectId: {
+                  $cond: [
+                    { $eq: [{ $type: '$user' }, 'string'] },
+                    { $toObjectId: '$user' },
+                    '$user',
+                  ],
+                },
+              },
+            },
+            {
+              $lookup: {
+                from: 'users',
+                localField: 'userObjectId',
+                foreignField: '_id',
+                as: 'userData',
+              },
+            },
+            ...(EXCLUDED_USERS.length > 0
+              ? [
+                  {
+                    $match: {
+                      $or: [
+                        { 'userData': { $size: 0 } },
+                        { 'userData.email': { $nin: EXCLUDED_USERS } },
+                      ],
+                    },
+                  },
+                ]
+              : []),
+            {
               $group: {
                 _id: null,
                 total: { $sum: '$tokenValue' },
@@ -339,6 +525,37 @@ async function getCostBreakdown() {
                 createdAt: { $gte: LAST_30_DAYS },
               },
             },
+            {
+              $addFields: {
+                userObjectId: {
+                  $cond: [
+                    { $eq: [{ $type: '$user' }, 'string'] },
+                    { $toObjectId: '$user' },
+                    '$user',
+                  ],
+                },
+              },
+            },
+            {
+              $lookup: {
+                from: 'users',
+                localField: 'userObjectId',
+                foreignField: '_id',
+                as: 'userData',
+              },
+            },
+            ...(EXCLUDED_USERS.length > 0
+              ? [
+                  {
+                    $match: {
+                      $or: [
+                        { 'userData': { $size: 0 } },
+                        { 'userData.email': { $nin: EXCLUDED_USERS } },
+                      ],
+                    },
+                  },
+                ]
+              : []),
             {
               $group: {
                 _id: '$model',
@@ -368,8 +585,42 @@ async function getCostBreakdown() {
               },
             },
             {
+              $addFields: {
+                userObjectId: {
+                  $cond: [
+                    { $eq: [{ $type: '$user' }, 'string'] },
+                    { $toObjectId: '$user' },
+                    '$user',
+                  ],
+                },
+              },
+            },
+            {
+              $lookup: {
+                from: 'users',
+                localField: 'userObjectId',
+                foreignField: '_id',
+                as: 'userData',
+              },
+            },
+            {
+              $unwind: {
+                path: '$userData',
+                preserveNullAndEmptyArrays: true,
+              },
+            },
+            ...(EXCLUDED_USERS.length > 0
+              ? [
+                  {
+                    $match: {
+                      'userData.email': { $nin: EXCLUDED_USERS },
+                    },
+                  },
+                ]
+              : []),
+            {
               $group: {
-                _id: '$user',
+                _id: '$userData.email',
                 totalTokens: { $sum: '$tokenValue' },
               },
             },
