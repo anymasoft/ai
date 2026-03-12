@@ -567,10 +567,9 @@ export default function AdminAnalytics() {
                   >
                     <td className="px-4 py-2 font-mono text-xs text-gray-600 dark:text-gray-400 relative">
                       <div className="flex items-center gap-1">
-                        {/* Сокращённый ID с tooltip полного ID */}
+                        {/* Сокращённый ID - полный ID показывается в preview */}
                         <span
-                          title={String(row.conversationId ?? '')}
-                          className="cursor-help"
+                          className="font-mono text-xs"
                           onMouseEnter={() => {
                             setHoverConversationId(String(row.conversationId ?? ''));
                             loadConversationPreview(String(row.conversationId ?? ''));
