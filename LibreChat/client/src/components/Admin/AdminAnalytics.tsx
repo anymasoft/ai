@@ -34,7 +34,7 @@ interface UserUsageRow {
 
 interface ConversationRow {
   conversationId: string;
-  user: string;
+  user: string; // now contains email, not userId
   messageCount: number;
   totalTokens: number;
   model: string;
@@ -46,7 +46,7 @@ interface CostsData {
   tokens7d: number;
   tokens30d: number;
   costPerModel: { model: string; totalTokens: number; requests: number }[];
-  costPerUser: { _id: string; totalTokens: number }[];
+  costPerUser: { _id: string; totalTokens: number }[]; // _id contains email now
 }
 
 interface ApiResponse<T> {
@@ -396,9 +396,9 @@ export default function AdminAnalytics() {
                     className="border-b border-gray-100 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
                   >
                     <td className="px-4 py-2 font-mono text-xs text-gray-600 dark:text-gray-400">
-                      {row.conversationId?.substring(0, 8)}...
+                      {String(row.conversationId ?? '').substring(0, 8)}...
                     </td>
-                    <td className="px-4 py-2 text-gray-900 dark:text-white">{row.user}</td>
+                    <td className="px-4 py-2 text-gray-900 dark:text-white">{String(row.user ?? 'N/A')}</td>
                     <td className="px-4 py-2 text-right text-gray-600 dark:text-gray-400">
                       {formatNumber(row.messageCount)}
                     </td>
@@ -481,13 +481,13 @@ export default function AdminAnalytics() {
 
           <div>
             <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
-              ТОП 50 пользователей по расходам
+              ТОП 50 пользователей по расходам (по email)
             </h3>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="border-b border-gray-200 dark:border-gray-700">
                   <tr className="text-left text-gray-700 dark:text-gray-300">
-                    <th className="px-4 py-2">ID пользователя</th>
+                    <th className="px-4 py-2">Email пользователя</th>
                     <th className="px-4 py-2 text-right">Токенов</th>
                   </tr>
                 </thead>
@@ -504,8 +504,8 @@ export default function AdminAnalytics() {
                         key={idx}
                         className="border-b border-gray-100 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
                       >
-                        <td className="px-4 py-2 font-mono text-xs text-gray-600 dark:text-gray-400">
-                          {row._id}
+                        <td className="px-4 py-2 text-gray-600 dark:text-gray-400">
+                          {String(row._id ?? 'N/A')}
                         </td>
                         <td className="px-4 py-2 text-right text-gray-600 dark:text-gray-400">
                           {formatNumber(row.totalTokens)}
