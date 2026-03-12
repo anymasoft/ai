@@ -83,6 +83,14 @@ export default function AdminAnalytics() {
   const [costsData, setCostsData] = useState<CostsData | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  // Sorting
+  const [sortField, setSortField] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  // Filtering
+  const [searchEmail, setSearchEmail] = useState('');
+  const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d' | 'all'>('30d');
+
   // Modal для просмотра полного диалога
   interface PreviewMessage {
     role: string;
@@ -107,6 +115,60 @@ export default function AdminAnalytics() {
       setTimeout(() => setCopiedId(null), 2000); // Убрать галочку через 2 сек
     });
   }, []);
+
+  // Сортировка данных
+  const sortData = useCallback((data: any[]) => {
+    if (!sortField) return data;
+    return [...data].sort((a, b) => {
+      const aVal = a[sortField];
+      const bVal = b[sortField];
+      if (typeof aVal === 'number' && typeof bVal === 'number') {
+        return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+      }
+      return sortDirection === 'asc'
+        ? String(aVal || '').localeCompare(String(bVal || ''))
+        : String(bVal || '').localeCompare(String(aVal || ''));
+    });
+  }, [sortField, sortDirection]);
+
+  // Обработчик клика по заголовку колонки
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // UI индикатор сортировки
+  const getSortIcon = (field: string) => {
+    if (sortField !== field) return '';
+    return sortDirection === 'asc' ? ' ▲' : ' ▼';
+  };
+
+  // Фильтр по времени
+  const filterByTime = useCallback((data: any[]) => {
+    if (timeRange === 'all') return data;
+    const now = Date.now();
+    const rangeMs: Record<string, number> = {
+      '24h': 86400000,
+      '7d': 604800000,
+      '30d': 2592000000,
+    };
+    return data.filter((item) => {
+      const timestamp = new Date(item.lastActive || item.createdAt).getTime();
+      return timestamp > now - rangeMs[timeRange];
+    });
+  }, [timeRange]);
+
+  // Фильтр по email
+  const filterByEmail = useCallback((data: any[]) => {
+    if (!searchEmail) return data;
+    return data.filter((item) =>
+      String(item.email || '').toLowerCase().includes(searchEmail.toLowerCase())
+    );
+  }, [searchEmail]);
 
   // Открытие modal с просмотром полного диалога
   const openConversationModal = useCallback(
@@ -348,24 +410,44 @@ export default function AdminAnalytics() {
       {tab === 'models' && (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-b border-gray-200 dark:border-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
               <tr className="text-left text-gray-700 dark:text-gray-300">
-                <th className="px-4 py-2">Модель</th>
-                <th className="px-4 py-2 text-right">Запросов</th>
-                <th className="px-4 py-2 text-right">Уникальных пользователей</th>
-                <th className="px-4 py-2 text-right">Токенов</th>
+                <th
+                  onClick={() => handleSort('model')}
+                  className="px-4 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  Модель{getSortIcon('model')}
+                </th>
+                <th
+                  onClick={() => handleSort('requests')}
+                  className="px-4 py-2 text-right cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  Запросов{getSortIcon('requests')}
+                </th>
+                <th
+                  onClick={() => handleSort('uniqueUsers')}
+                  className="px-4 py-2 text-right cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  Пользователей{getSortIcon('uniqueUsers')}
+                </th>
+                <th
+                  onClick={() => handleSort('totalTokens')}
+                  className="px-4 py-2 text-right cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  Токенов{getSortIcon('totalTokens')}
+                </th>
                 <th className="px-4 py-2">Endpoint</th>
               </tr>
             </thead>
             <tbody>
-              {modelsData.length === 0 ? (
+              {sortData(modelsData).length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-4 text-center text-gray-500">
                     Нет данных
                   </td>
                 </tr>
               ) : (
-                modelsData.map((row, idx) => (
+                sortData(modelsData).map((row, idx) => (
                   <tr
                     key={idx}
                     className="border-b border-gray-100 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
@@ -393,31 +475,93 @@ export default function AdminAnalytics() {
       {tab === 'users' && (
         <div>
           <div className="mb-6">
-            <Label className="mb-2 block text-sm">Поиск по email</Label>
-            <Input
-              type="text"
-              placeholder="Введите email для фильтрации"
-              value={usersSearchEmail}
-              onChange={(e) => setUsersSearchEmail(e.target.value)}
-            />
+            <Label className="mb-2 block text-sm">Фильтры</Label>
+            <div className="flex gap-4 flex-wrap">
+              <Input
+                type="text"
+                placeholder="Поиск по email..."
+                value={searchEmail}
+                onChange={(e) => setSearchEmail(e.target.value)}
+                className="flex-1 min-w-48"
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setTimeRange('24h')}
+                  className={`px-3 py-1 rounded text-sm font-medium transition ${
+                    timeRange === '24h'
+                      ? 'bg-blue-600 text-white dark:bg-blue-700'
+                      : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  24h
+                </button>
+                <button
+                  onClick={() => setTimeRange('7d')}
+                  className={`px-3 py-1 rounded text-sm font-medium transition ${
+                    timeRange === '7d'
+                      ? 'bg-blue-600 text-white dark:bg-blue-700'
+                      : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  7d
+                </button>
+                <button
+                  onClick={() => setTimeRange('30d')}
+                  className={`px-3 py-1 rounded text-sm font-medium transition ${
+                    timeRange === '30d'
+                      ? 'bg-blue-600 text-white dark:bg-blue-700'
+                      : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  30d
+                </button>
+                <button
+                  onClick={() => setTimeRange('all')}
+                  className={`px-3 py-1 rounded text-sm font-medium transition ${
+                    timeRange === 'all'
+                      ? 'bg-blue-600 text-white dark:bg-blue-700'
+                      : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  All
+                </button>
+              </div>
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="border-b border-gray-200 dark:border-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                 <tr className="text-left text-gray-700 dark:text-gray-300">
-                  <th className="px-4 py-2">Email</th>
+                  <th
+                    onClick={() => handleSort('email')}
+                    className="px-4 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    Email{getSortIcon('email')}
+                  </th>
                   <th className="px-4 py-2">Тариф</th>
-                  <th className="px-4 py-2 text-right">Запросов</th>
-                  <th className="px-4 py-2 text-right">Токенов</th>
-                  <th className="px-4 py-2">Последняя активность</th>
+                  <th
+                    onClick={() => handleSort('requests')}
+                    className="px-4 py-2 text-right cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    Запросов{getSortIcon('requests')}
+                  </th>
+                  <th
+                    onClick={() => handleSort('totalTokens')}
+                    className="px-4 py-2 text-right cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    Токенов{getSortIcon('totalTokens')}
+                  </th>
+                  <th
+                    onClick={() => handleSort('lastActive')}
+                    className="px-4 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    Последняя активность{getSortIcon('lastActive')}
+                  </th>
                   <th className="px-4 py-2">Любимая модель</th>
                 </tr>
               </thead>
               <tbody>
-                {usersData
-                  .filter((row) =>
-                    String(row.email ?? '').toLowerCase().includes(String(usersSearchEmail ?? '').toLowerCase())
-                  )
+                {sortData(filterByTime(filterByEmail(usersData)))
                   .slice(0, 100)
                   .length === 0 ? (
                   <tr>
@@ -426,10 +570,7 @@ export default function AdminAnalytics() {
                     </td>
                   </tr>
                 ) : (
-                  usersData
-                    .filter((row) =>
-                      String(row.email ?? '').toLowerCase().includes(String(usersSearchEmail ?? '').toLowerCase())
-                    )
+                  sortData(filterByTime(filterByEmail(usersData)))
                     .slice(0, 100)
                     .map((row, idx) => (
                       <tr
@@ -475,27 +616,95 @@ export default function AdminAnalytics() {
 
       {/* CONVERSATIONS TAB */}
       {tab === 'conversations' && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b border-gray-200 dark:border-gray-700">
-              <tr className="text-left text-gray-700 dark:text-gray-300">
-                <th className="px-4 py-2">ID диалога</th>
-                <th className="px-4 py-2">Пользователь</th>
-                <th className="px-4 py-2 text-right">Сообщений</th>
-                <th className="px-4 py-2 text-right">Токенов</th>
-                <th className="px-4 py-2">Модель</th>
-                <th className="px-4 py-2">Последняя активность</th>
-              </tr>
-            </thead>
-            <tbody>
-              {conversationsData.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-4 text-center text-gray-500">
-                    Нет данных
-                  </td>
+        <div>
+          <div className="mb-6 flex gap-2">
+            <button
+              onClick={() => setTimeRange('24h')}
+              className={`px-3 py-1 rounded text-sm font-medium transition ${
+                timeRange === '24h'
+                  ? 'bg-blue-600 text-white dark:bg-blue-700'
+                  : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+              }`}
+            >
+              24h
+            </button>
+            <button
+              onClick={() => setTimeRange('7d')}
+              className={`px-3 py-1 rounded text-sm font-medium transition ${
+                timeRange === '7d'
+                  ? 'bg-blue-600 text-white dark:bg-blue-700'
+                  : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+              }`}
+            >
+              7d
+            </button>
+            <button
+              onClick={() => setTimeRange('30d')}
+              className={`px-3 py-1 rounded text-sm font-medium transition ${
+                timeRange === '30d'
+                  ? 'bg-blue-600 text-white dark:bg-blue-700'
+                  : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+              }`}
+            >
+              30d
+            </button>
+            <button
+              onClick={() => setTimeRange('all')}
+              className={`px-3 py-1 rounded text-sm font-medium transition ${
+                timeRange === 'all'
+                  ? 'bg-blue-600 text-white dark:bg-blue-700'
+                  : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+              }`}
+            >
+              All
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                <tr className="text-left text-gray-700 dark:text-gray-300">
+                  <th className="px-4 py-2">ID диалога</th>
+                  <th
+                    onClick={() => handleSort('user')}
+                    className="px-4 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    Пользователь{getSortIcon('user')}
+                  </th>
+                  <th
+                    onClick={() => handleSort('messageCount')}
+                    className="px-4 py-2 text-right cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    Сообщений{getSortIcon('messageCount')}
+                  </th>
+                  <th
+                    onClick={() => handleSort('totalTokens')}
+                    className="px-4 py-2 text-right cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    Токенов{getSortIcon('totalTokens')}
+                  </th>
+                  <th
+                    onClick={() => handleSort('model')}
+                    className="px-4 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    Модель{getSortIcon('model')}
+                  </th>
+                  <th
+                    onClick={() => handleSort('lastActive')}
+                    className="px-4 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    Последняя активность{getSortIcon('lastActive')}
+                  </th>
                 </tr>
-              ) : (
-                conversationsData.map((row, idx) => (
+              </thead>
+              <tbody>
+                {sortData(filterByTime(conversationsData)).length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-4 text-center text-gray-500">
+                      Нет данных
+                    </td>
+                  </tr>
+                ) : (
+                  sortData(filterByTime(conversationsData)).map((row, idx) => (
                   <tr
                     key={idx}
                     className="group border-b border-gray-100 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
@@ -547,6 +756,7 @@ export default function AdminAnalytics() {
             </tbody>
           </table>
         </div>
+        </div>
       )}
 
       {/* COSTS TAB */}
@@ -574,22 +784,37 @@ export default function AdminAnalytics() {
             </h3>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="border-b border-gray-200 dark:border-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                   <tr className="text-left text-gray-700 dark:text-gray-300">
-                    <th className="px-4 py-2">Модель</th>
-                    <th className="px-4 py-2 text-right">Токенов</th>
-                    <th className="px-4 py-2 text-right">Запросов</th>
+                    <th
+                      onClick={() => handleSort('model')}
+                      className="px-4 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      Модель{getSortIcon('model')}
+                    </th>
+                    <th
+                      onClick={() => handleSort('totalTokens')}
+                      className="px-4 py-2 text-right cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      Токенов{getSortIcon('totalTokens')}
+                    </th>
+                    <th
+                      onClick={() => handleSort('requests')}
+                      className="px-4 py-2 text-right cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      Запросов{getSortIcon('requests')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {costsData.costPerModel.length === 0 ? (
+                  {sortData(costsData.costPerModel).length === 0 ? (
                     <tr>
                       <td colSpan={3} className="px-4 py-4 text-center text-gray-500">
                         Нет данных
                       </td>
                     </tr>
                   ) : (
-                    costsData.costPerModel.map((row, idx) => (
+                    sortData(costsData.costPerModel).map((row, idx) => (
                       <tr
                         key={idx}
                         className="border-b border-gray-100 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
@@ -617,21 +842,31 @@ export default function AdminAnalytics() {
             </h3>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="border-b border-gray-200 dark:border-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                   <tr className="text-left text-gray-700 dark:text-gray-300">
-                    <th className="px-4 py-2">Email пользователя</th>
-                    <th className="px-4 py-2 text-right">Токенов</th>
+                    <th
+                      onClick={() => handleSort('_id')}
+                      className="px-4 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      Email пользователя{getSortIcon('_id')}
+                    </th>
+                    <th
+                      onClick={() => handleSort('totalTokens')}
+                      className="px-4 py-2 text-right cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      Токенов{getSortIcon('totalTokens')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {costsData.costPerUser.length === 0 ? (
+                  {sortData(costsData.costPerUser).length === 0 ? (
                     <tr>
                       <td colSpan={2} className="px-4 py-4 text-center text-gray-500">
                         Нет данных
                       </td>
                     </tr>
                   ) : (
-                    costsData.costPerUser.map((row, idx) => (
+                    sortData(costsData.costPerUser).map((row, idx) => (
                       <tr
                         key={idx}
                         className="border-b border-gray-100 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
