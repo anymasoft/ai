@@ -83,17 +83,12 @@ export default function AdminAnalytics() {
   const [costsData, setCostsData] = useState<CostsData | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // Preview диалогов при hover
+  // Modal для просмотра полного диалога
   interface PreviewMessage {
     role: string;
     text: string;
     createdAt: string;
   }
-  const [previewCache, setPreviewCache] = useState<Record<string, PreviewMessage[]>>({});
-  const [previewLoading, setPreviewLoading] = useState<Record<string, boolean>>({});
-  const [hoverConversationId, setHoverConversationId] = useState<string | null>(null);
-
-  // Modal для просмотра полного диалога
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [modalMessages, setModalMessages] = useState<PreviewMessage[]>([]);
@@ -113,17 +108,11 @@ export default function AdminAnalytics() {
     });
   }, []);
 
-  // Открытие modal с preview диалога
+  // Открытие modal с просмотром полного диалога
   const openConversationModal = useCallback(
     async (conversationId: string) => {
       setSelectedConversationId(conversationId);
       setModalOpen(true);
-
-      // Если уже загружено из cache, используем это
-      if (previewCache[conversationId]) {
-        setModalMessages(previewCache[conversationId]);
-        return;
-      }
 
       setModalLoading(true);
 
@@ -142,11 +131,6 @@ export default function AdminAnalytics() {
 
         const result = await res.json();
         setModalMessages(result.data || []);
-        // Кэшируем результат
-        setPreviewCache((prev) => ({
-          ...prev,
-          [conversationId]: result.data || [],
-        }));
       } catch (err) {
         logger.error('[conversation-modal]', err);
         setModalMessages([]);
@@ -154,7 +138,7 @@ export default function AdminAnalytics() {
         setModalLoading(false);
       }
     },
-    [previewCache, token]
+    [token]
   );
 
   // Отправка ответа администратора
@@ -188,7 +172,6 @@ export default function AdminAnalytics() {
       setReplyModalOpen(false);
       // Обновляем modal с новым сообщением
       if (replyConversationId) {
-        setPreviewCache((prev) => ({ ...prev, [replyConversationId]: [] }));
         openConversationModal(replyConversationId);
       }
     } catch (err) {
@@ -198,54 +181,6 @@ export default function AdminAnalytics() {
       setReplySending(false);
     }
   }, [replyConversationId, replyText, token, openConversationModal]);
-
-  // Загрузка preview диалога при hover (lazy load)
-  const loadConversationPreview = useCallback(
-    async (conversationId: string) => {
-      // Если уже загружен или загружается, пропускаем
-      if (previewCache[conversationId] || previewLoading[conversationId]) {
-        return;
-      }
-
-      setPreviewLoading((prev) => ({ ...prev, [conversationId]: true }));
-
-      try {
-        const res = await fetch(`/api/admin/analytics/conversation-preview/${conversationId}`, {
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-        });
-
-        if (!res.ok) {
-          throw new Error(`Ошибка: ${res.status}`);
-        }
-
-        const result = await res.json();
-        setPreviewCache((prev) => ({
-          ...prev,
-          [conversationId]: result.data || [],
-        }));
-      } catch (err) {
-        logger.error('[conversation-preview]', err);
-        // Кэшируем ошибку как пустой массив
-        setPreviewCache((prev) => ({
-          ...prev,
-          [conversationId]: [],
-        }));
-      } finally {
-        setPreviewLoading((prev) => ({ ...prev, [conversationId]: false }));
-      }
-    },
-    [previewCache, previewLoading, token]
-  );
-
-  // Форматирование preview текста (обрезаем длинные сообщения)
-  const formatPreviewText = (text: string, maxLength = 100): string => {
-    if (!text) return '(пусто)';
-    return text.length > maxLength ? `${text.substring(0, maxLength)}…` : text;
-  };
 
   const fetchAnalytics = useCallback(async (analyticsTab: AnalyticsTab) => {
     setLoading(true);
@@ -565,81 +500,34 @@ export default function AdminAnalytics() {
                     key={idx}
                     className="group border-b border-gray-100 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
                   >
-                    <td className="px-4 py-2 font-mono text-xs text-gray-600 dark:text-gray-400 relative">
-                      <div className="flex items-center gap-1">
-                        {/* Сокращённый ID - полный ID показывается в preview */}
-                        <span
-                          className="font-mono text-xs"
-                          onMouseEnter={() => {
-                            setHoverConversationId(String(row.conversationId ?? ''));
-                            loadConversationPreview(String(row.conversationId ?? ''));
-                          }}
-                          onMouseLeave={() => setHoverConversationId(null)}
-                        >
-                          {String(row.conversationId ?? '').substring(0, 8)}…
-                        </span>
-
-                        {/* Кнопка копирования ID */}
+                    <td className="px-4 py-2 font-mono text-xs text-gray-600 dark:text-gray-400">
+                      <div className="flex items-center gap-2">
+                        <span>{String(row.conversationId ?? '')}</span>
                         <button
                           onClick={() => copyToClipboard(String(row.conversationId ?? ''))}
-                          className="inline-flex items-center justify-center w-4 h-4 rounded text-gray-500 hover:text-blue-500 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
-                          title="Копировать ID"
+                          className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
                         >
-                          {copiedId === String(row.conversationId ?? '') ? (
-                            <span className="text-green-500 text-xs">✓</span>
-                          ) : (
-                            <span className="text-xs">📋</span>
-                          )}
+                          {copiedId === String(row.conversationId ?? '') ? '✓' : '📋'}
                         </button>
-
-                        {/* Кнопка открытия modal с preview диалога */}
                         <button
                           onClick={() =>
                             openConversationModal(String(row.conversationId ?? ''))
                           }
-                          className="inline-flex items-center justify-center w-4 h-4 rounded text-gray-500 hover:text-blue-600 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                          className="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
                           title="Просмотреть диалог"
                         >
                           👁
                         </button>
-
-                        {/* Кнопка ответа администратора */}
                         <button
                           onClick={() => {
                             setReplyConversationId(String(row.conversationId ?? ''));
                             setReplyModalOpen(true);
                           }}
-                          className="inline-flex items-center justify-center w-4 h-4 rounded text-gray-500 hover:text-green-600 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                          className="text-gray-400 hover:text-green-600 dark:hover:text-green-400"
                           title="Ответить пользователю"
                         >
                           💬
                         </button>
-
-                        {/* Hover Preview последних сообщений */}
-                        {hoverConversationId === String(row.conversationId ?? '') &&
-                          previewCache[String(row.conversationId ?? '')] &&
-                          previewCache[String(row.conversationId ?? '')].length > 0 && (
-                            <div className="absolute bottom-full left-0 mb-2 block bg-gray-900 dark:bg-gray-800 text-white dark:text-gray-100 p-3 rounded shadow-lg whitespace-normal w-80 text-xs z-50">
-                              <div className="space-y-2">
-                                {previewCache[String(row.conversationId ?? '')].map((msg, i) => (
-                                  <div key={i} className="border-b border-gray-700 pb-2 last:border-b-0">
-                                    <div className="font-semibold text-gray-300">
-                                      {msg.role === 'assistant' ? '🤖 Assistant' : '👤 User'}
-                                    </div>
-                                    <div className="text-gray-100">
-                                      {formatPreviewText(msg.text, 90)}
-                                    </div>
-                                    <div className="text-gray-500 text-xs mt-1">
-                                      {new Date(msg.createdAt).toLocaleTimeString('ru-RU', {
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                      })}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
                       </div>
                     </td>
                     <td className="px-4 py-2 text-gray-900 dark:text-white">{String(row.user ?? 'N/A')}</td>
