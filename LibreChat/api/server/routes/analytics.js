@@ -3,6 +3,7 @@
 const express = require('express');
 const { logger } = require('@librechat/data-schemas');
 const { requireJwtAuth } = require('../middleware/');
+const { Message } = require('~/db/models');
 const {
   getOverviewStats,
   getModelUsage,
@@ -146,6 +147,46 @@ router.get('/costs', requireJwtAuth, requireAdminRole, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Ошибка при получении статистики расходов',
+    });
+  }
+});
+
+/**
+ * GET /api/admin/conversation-preview/:conversationId
+ * Получить последние 3 сообщения диалога для preview
+ * Используется для hover preview в таблице Conversations
+ * Ответ: [ { role, text, createdAt }, ... ]
+ */
+router.get('/conversation-preview/:conversationId', requireJwtAuth, requireAdminRole, async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+
+    logger.debug('[analytics/conversation-preview] Request from admin:', req.user?.email, 'conversationId:', conversationId);
+
+    // ✅ SAFE: Берём последние 3 сообщения для preview (не все)
+    const messages = await Message.find({ conversationId })
+      .sort({ createdAt: -1 })
+      .limit(3)
+      .select('role text createdAt -_id')
+      .lean();
+
+    // Разворачиваем в обратном порядке чтобы показывать от старого к новому
+    const preview = messages.reverse().map((msg) => ({
+      role: msg.role || 'user',
+      text: msg.text || '(пусто)',
+      createdAt: msg.createdAt,
+    }));
+
+    res.json({
+      success: true,
+      data: preview,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    logger.error('[analytics/conversation-preview] Error:', err.message);
+    res.status(500).json({
+      success: false,
+      error: 'Ошибка при получении preview диалога',
     });
   }
 });
