@@ -4,7 +4,7 @@ const express = require('express');
 const { ObjectId } = require('mongodb');
 const { logger } = require('@librechat/data-schemas');
 const { requireJwtAuth } = require('../middleware/');
-const { Message } = require('~/db/models');
+const { Message, Conversation } = require('~/db/models');
 const {
   getOverviewStats,
   getModelUsage,
@@ -155,8 +155,8 @@ router.get('/costs', requireJwtAuth, requireAdminRole, async (req, res) => {
 /**
  * GET /api/admin/conversation-preview/:conversationId
  * Получить последние 20 сообщений диалога для modal preview
- * ⚠️ КРИТИЧНО: сообщения в LibreChat могут быть в поле conversation или conversationId
- * ⚠️ КРИТИЧНО: ID может быть string или ObjectId
+ * ⚠️ ВАЖНО: В LibreChat сообщения хранятся ВНУТРИ документа Conversation
+ * поле: conversation.messages[]
  */
 router.get('/conversation-preview/:conversationId', requireJwtAuth, requireAdminRole, async (req, res) => {
   try {
@@ -164,39 +164,28 @@ router.get('/conversation-preview/:conversationId', requireJwtAuth, requireAdmin
 
     logger.debug('[analytics/conversation-preview] Request from admin:', req.user?.email, 'conversationId:', conversationId);
 
-    // ✅ SAFE: Конвертируем в ObjectId если возможно, иначе используем string
-    let objectId;
-    try {
-      objectId = new ObjectId(conversationId);
-    } catch (e) {
-      objectId = conversationId;
-    }
-
-    // ✅ SAFE: Ищем по ОБОИМ полям (conversation и conversationId)
-    // LibreChat может хранить в любом из них
-    const query = {
-      $or: [
-        { conversationId: objectId },
-        { conversation: objectId },
-        { conversationId: conversationId },
-        { conversation: conversationId },
-      ],
-    };
-
-    // ✅ SAFE: Берём последние 20 сообщений для preview (не все)
-    const messages = await Message.find(query)
-      .sort({ createdAt: 1 })
-      .limit(20)
-      .select('role text content createdAt -_id')
+    // ✅ SAFE: Ищем документ Conversation и берём сообщения из поля messages
+    const conversation = await Conversation.findById(conversationId)
+      .select('messages')
       .lean();
 
-    // Преобразуем в нужный формат
-    const preview = messages.map((msg) => ({
-      role: msg.role || 'user',
-      // Поддерживаем оба формата: text и content
-      text: (msg.text || msg.content || '').trim() || '(пусто)',
-      createdAt: msg.createdAt,
-    }));
+    // Если диалога не найдено или нет сообщений
+    if (!conversation || !conversation.messages || conversation.messages.length === 0) {
+      return res.json({
+        success: true,
+        data: [],
+      });
+    }
+
+    // Берём последние 20 сообщений
+    const preview = conversation.messages
+      .slice(-20)
+      .map((msg) => ({
+        role: msg.role || 'user',
+        // Поддерживаем оба формата: text и content
+        text: (msg.text || msg.content || '').trim() || '(пусто)',
+        createdAt: msg.createdAt,
+      }));
 
     res.json({
       success: true,
@@ -208,6 +197,60 @@ router.get('/conversation-preview/:conversationId', requireJwtAuth, requireAdmin
     res.status(500).json({
       success: false,
       error: 'Ошибка при получении preview диалога',
+    });
+  }
+});
+
+/**
+ * POST /api/admin/conversation-reply
+ * Отправить ответ от администратора в диалог пользователя
+ * ⚠️ КРИТИЧНО: Защищено requireJwtAuth + requireAdminRole
+ */
+router.post('/conversation-reply', requireJwtAuth, requireAdminRole, async (req, res) => {
+  try {
+    const { conversationId, message } = req.body;
+
+    if (!conversationId || !message || typeof message !== 'string' || message.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'conversationId и message обязательны',
+      });
+    }
+
+    logger.debug('[analytics/conversation-reply] Admin reply from:', req.user?.email, 'conversationId:', conversationId);
+
+    // ✅ SAFE: Добавляем сообщение администратора в диалог
+    const result = await Conversation.updateOne(
+      { _id: new ObjectId(conversationId) },
+      {
+        $push: {
+          messages: {
+            role: 'assistant',
+            content: message.trim(),
+            createdAt: new Date(),
+          },
+        },
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Диалог не найден',
+      });
+    }
+
+    logger.info('[analytics/conversation-reply] Message added by admin:', req.user?.email, 'to conversation:', conversationId);
+
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    logger.error('[analytics/conversation-reply] Error:', err.message);
+    res.status(500).json({
+      success: false,
+      error: 'Ошибка при отправке ответа',
     });
   }
 });
