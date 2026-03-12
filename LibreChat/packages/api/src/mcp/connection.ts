@@ -378,12 +378,27 @@ export class MCPConnection extends EventEmitter {
         }
       }
 
+      const finalHeaders = {
+        ...initHeaders,
+        ...requestHeaders,
+      };
+
+      // ⭐ DEBUG: Log the final request being sent (especially for SSE)
+      const urlString = typeof input === 'string' ? input : input.toString();
+      if (urlString.includes('firecrawl') || initHeaders['accept']?.includes('event-stream')) {
+        logger.debug('[customFetch] MCP SSE request:', {
+          url: urlString,
+          method: init?.method || 'GET',
+          initHeaders,
+          requestHeaders,
+          finalHeaders,
+          dispatcher: isGet ? 'getAgent' : 'postAgent',
+        });
+      }
+
       return undiciFetch(input, {
         ...init,
-        headers: {
-          ...initHeaders,
-          ...requestHeaders,
-        },
+        headers: finalHeaders,
         dispatcher,
       });
     };
@@ -522,6 +537,18 @@ export class MCPConnection extends EventEmitter {
           if (this.oauthTokens?.access_token) {
             headers['Authorization'] = `Bearer ${this.oauthTokens.access_token}`;
           }
+
+          // ⭐ DEBUG: Log all headers being sent with streamable-http request
+          logger.debug(
+            `${this.getLogPrefix()} Streamable-HTTP headers:`,
+            {
+              configHeaders: options.headers,
+              finalHeaders: headers,
+              hasOAuth: !!this.oauthTokens?.access_token,
+              sseReadTimeout: this.sseReadTimeout || DEFAULT_SSE_READ_TIMEOUT,
+              timeout: this.timeout,
+            }
+          );
 
           const transport = new StreamableHTTPClientTransport(url, {
             requestInit: {
@@ -895,6 +922,20 @@ export class MCPConnection extends EventEmitter {
         isProxyHint,
         isTransient,
       } = extractSSEErrorMessage(error);
+
+      // ⭐ DEBUG: Log 400 Bad Request errors in detail
+      if (errorCode === 400) {
+        logger.error(
+          `${this.getLogPrefix()} Got 400 Bad Request on SSE stream. Likely causes:`,
+          {
+            code: errorCode,
+            message: errorMessage,
+            url: this.url,
+            rawError: String(error),
+            hint: 'Check: (1) Authorization header, (2) Accept header, (3) URL correctness, (4) API Key validity',
+          }
+        );
+      }
 
       if (errorCode === 404) {
         const hasSession =
