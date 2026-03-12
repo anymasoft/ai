@@ -165,9 +165,12 @@ export default function AdminAnalytics() {
   // Фильтр по email
   const filterByEmail = useCallback((data: any[]) => {
     if (!searchEmail) return data;
-    return data.filter((item) =>
-      String(item.email || '').toLowerCase().includes(searchEmail.toLowerCase())
-    );
+    const search = searchEmail.toLowerCase();
+    return data.filter((item) => {
+      // Check multiple possible email field names
+      const email = item.email || item.userEmail || item.user || item._id || '';
+      return String(email).toLowerCase().includes(search);
+    });
   }, [searchEmail]);
 
   // Открытие modal с просмотром полного диалога
@@ -362,8 +365,18 @@ export default function AdminAnalytics() {
         </button>
       </div>
 
-      {/* Refresh Button */}
-      <div className="mb-6 flex justify-end">
+      {/* Toolbar: Search & Refresh */}
+      <div className="mb-6 flex gap-4 items-end flex-wrap">
+        <div className="flex-1 min-w-48">
+          <Label className="mb-2 block text-sm">Фильтр по email</Label>
+          <Input
+            type="text"
+            placeholder="Поиск по email..."
+            value={searchEmail}
+            onChange={(e) => setSearchEmail(e.target.value)}
+            className="w-full"
+          />
+        </div>
         <Button onClick={handleRefresh} disabled={loading}>
           {loading ? 'Загрузка...' : 'Обновить'}
         </Button>
@@ -697,14 +710,14 @@ export default function AdminAnalytics() {
                 </tr>
               </thead>
               <tbody>
-                {sortData(filterByTime(conversationsData)).length === 0 ? (
+                {sortData(filterByEmail(filterByTime(conversationsData))).length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-4 text-center text-gray-500">
                       Нет данных
                     </td>
                   </tr>
                 ) : (
-                  sortData(filterByTime(conversationsData)).map((row, idx) => (
+                  sortData(filterByEmail(filterByTime(conversationsData))).map((row, idx) => (
                   <tr
                     key={idx}
                     className="group border-b border-gray-100 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
@@ -859,14 +872,14 @@ export default function AdminAnalytics() {
                   </tr>
                 </thead>
                 <tbody>
-                  {sortData(costsData.costPerUser).length === 0 ? (
+                  {sortData(filterByEmail(costsData.costPerUser)).length === 0 ? (
                     <tr>
                       <td colSpan={2} className="px-4 py-4 text-center text-gray-500">
                         Нет данных
                       </td>
                     </tr>
                   ) : (
-                    sortData(costsData.costPerUser).map((row, idx) => (
+                    sortData(filterByEmail(costsData.costPerUser)).map((row, idx) => (
                       <tr
                         key={idx}
                         className="border-b border-gray-100 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
