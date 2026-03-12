@@ -1,6 +1,7 @@
 'use strict';
 
 const express = require('express');
+const { ObjectId } = require('mongodb');
 const { logger } = require('@librechat/data-schemas');
 const { requireJwtAuth } = require('../middleware/');
 const { Message } = require('~/db/models');
@@ -153,10 +154,11 @@ router.get('/costs', requireJwtAuth, requireAdminRole, async (req, res) => {
 
 /**
  * GET /api/admin/conversation-preview/:conversationId
- * Получить последние 10 сообщений диалога для modal preview
+ * Получить последние 20 сообщений диалога для modal preview
  * Используется для modal preview в таблице Conversations
  * Ответ: [ { role, text, createdAt }, ... ]
  * ВАЖНО: поддерживает оба формата: text и content
+ * ⚠️ КРИТИЧНО: conversationId может быть string или ObjectId в MongoDB
  */
 router.get('/conversation-preview/:conversationId', requireJwtAuth, requireAdminRole, async (req, res) => {
   try {
@@ -164,15 +166,25 @@ router.get('/conversation-preview/:conversationId', requireJwtAuth, requireAdmin
 
     logger.debug('[analytics/conversation-preview] Request from admin:', req.user?.email, 'conversationId:', conversationId);
 
-    // ✅ SAFE: Берём последние 10 сообщений для preview (не все)
-    const messages = await Message.find({ conversationId })
-      .sort({ createdAt: -1 })
-      .limit(10)
+    // ✅ SAFE: Конвертируем string ID в ObjectId для корректного поиска в MongoDB
+    let query;
+    try {
+      // Пытаемся конвертировать в ObjectId
+      query = { conversationId: new ObjectId(conversationId) };
+    } catch (e) {
+      // Если не валидный ObjectId, ищем по string
+      query = { conversationId };
+    }
+
+    // ✅ SAFE: Берём последние 20 сообщений для preview (не все)
+    const messages = await Message.find(query)
+      .sort({ createdAt: 1 })
+      .limit(20)
       .select('role text content createdAt -_id')
       .lean();
 
-    // Разворачиваем в обратном порядке чтобы показывать от старого к новому
-    const preview = messages.reverse().map((msg) => ({
+    // Преобразуем в нужный формат
+    const preview = messages.map((msg) => ({
       role: msg.role || 'user',
       // Поддерживаем оба формата: text и content
       text: (msg.text || msg.content || '').trim() || '(пусто)',
