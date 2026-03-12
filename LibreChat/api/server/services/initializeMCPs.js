@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const { logger } = require('@librechat/data-schemas');
 const { mergeAppTools, getAppConfig } = require('./Config');
-const { createMCPServersRegistry, createMCPManager } = require('~/config');
+const { createMCPServersRegistry, createMCPManager, getAdminId } = require('~/config');
 
 /**
  * Initialize MCP servers
@@ -18,7 +18,8 @@ async function initializeMCPs() {
   }
 
   try {
-    const mcpManager = await createMCPManager(mcpServers || {});
+    const adminId = getAdminId();
+    const mcpManager = await createMCPManager(mcpServers || {}, adminId);
 
     if (mcpServers && Object.keys(mcpServers).length > 0) {
       const mcpTools = (await mcpManager.getAppToolFunctions()) || {};

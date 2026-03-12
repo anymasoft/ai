@@ -16,6 +16,31 @@ const {
 const router = express.Router();
 
 /**
+ * ⚠️ CRITICAL MIDDLEWARE: Skip SSE/EventStream requests
+ * MCP connections configured under /api/admin/* paths need to pass through without interference
+ * SSE streaming requires raw HTTP connection - any JSON parsing or other middleware breaks it
+ *
+ * This middleware returns early if the request looks like an SSE/streaming request,
+ * allowing it to pass to the next route handler or ultimately 404 (which is correct behavior)
+ * for requests that don't match any analytics endpoint.
+ */
+router.use((req, res, next) => {
+  const accept = req.headers.accept || '';
+  const isEventStream = accept.toLowerCase().includes('text/event-stream');
+
+  if (isEventStream) {
+    logger.debug(
+      '[analytics] Skipping analytics middleware for SSE request:',
+      { method: req.method, path: req.path, accept }
+    );
+    // Skip analytics - let Express continue to next route or 404
+    return next('route');
+  }
+
+  next();
+});
+
+/**
  * Проверяет что пользователь ADMIN
  * (используется после requireJwtAuth)
  */
