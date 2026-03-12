@@ -4,10 +4,11 @@ import { SystemRoles } from 'librechat-data-provider';
 import { useAuthContext } from '~/hooks';
 import type { ContextType } from '~/common';
 import OpenSidebar from '~/components/Chat/Menus/OpenSidebar';
+import AdminAnalytics from '~/components/Admin/AdminAnalytics';
 import store from '~/store';
 import { Switch, Button, Input, Label } from '@librechat/client';
 
-type Tab = 'users' | 'payments' | 'settings';
+type Tab = 'users' | 'payments' | 'settings' | 'analytics';
 
 interface PaymentRow {
   _id: string;
@@ -460,6 +461,16 @@ export default function AdminPanel() {
             }`}
           >
             Настройки
+          </button>
+          <button
+            onClick={() => setTab('analytics')}
+            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              tab === 'analytics'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+            }`}
+          >
+            Аналитика
           </button>
         </div>
 
@@ -961,6 +972,11 @@ export default function AdminPanel() {
               </>
             )}
           </>
+        )}
+
+        {/* ── ANALYTICS TAB ─────────────────────────────────────── */}
+        {tab === 'analytics' && (
+          <AdminAnalytics />
         )}
       </div>
     </div>
