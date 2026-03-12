@@ -4,6 +4,7 @@ const categories = require('./categories');
 const admin = require('./admin');
 const adminMvp = require('./admin/mvp');
 const adminAuth = require('./admin/auth');
+const analytics = require('./analytics');
 const endpoints = require('./endpoints');
 const staticRoute = require('./static');
 const messages = require('./messages');
@@ -38,6 +39,7 @@ module.exports = {
   admin,
   adminMvp,
   adminAuth,
+  analytics,
   keys,
   apiKeys,
   user,

@@ -209,6 +209,8 @@ const startServer = async () => {
   app.use('/api/admin/auth', routes.adminAuth);
   logger.debug('[app.use] Mounting /api/admin/mvp', typeof routes.adminMvp);
   app.use('/api/admin/mvp', routes.adminMvp);
+  logger.debug('[app.use] Mounting /api/admin/analytics', typeof routes.analytics);
+  app.use('/api/admin/analytics', routes.analytics);
   logger.debug('[app.use] Mounting /api/actions', typeof routes.actions);
   app.use('/api/actions', routes.actions);
   logger.debug('[app.use] Mounting /api/keys', typeof routes.keys);
