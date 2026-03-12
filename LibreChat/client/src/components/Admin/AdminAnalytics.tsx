@@ -76,6 +76,15 @@ export default function AdminAnalytics() {
 
   // Costs
   const [costsData, setCostsData] = useState<CostsData | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Копирование conversationId в буфер обмена
+  const copyToClipboard = useCallback((text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedId(text);
+      setTimeout(() => setCopiedId(null), 2000); // Убрать галочку через 2 сек
+    });
+  }, []);
 
   const fetchAnalytics = useCallback(async (analyticsTab: AnalyticsTab) => {
     setLoading(true);
@@ -396,7 +405,25 @@ export default function AdminAnalytics() {
                     className="border-b border-gray-100 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
                   >
                     <td className="px-4 py-2 font-mono text-xs text-gray-600 dark:text-gray-400">
-                      {String(row.conversationId ?? '').substring(0, 8)}...
+                      <div className="flex items-center gap-2">
+                        <span
+                          title={String(row.conversationId ?? '')}
+                          className="cursor-help"
+                        >
+                          {String(row.conversationId ?? '').substring(0, 8)}…
+                        </span>
+                        <button
+                          onClick={() => copyToClipboard(String(row.conversationId ?? ''))}
+                          className="inline-flex items-center justify-center w-5 h-5 rounded text-gray-500 hover:text-blue-500 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                          title="Копировать ID"
+                        >
+                          {copiedId === String(row.conversationId ?? '') ? (
+                            <span className="text-green-500">✓</span>
+                          ) : (
+                            <span className="text-sm">📋</span>
+                          )}
+                        </button>
+                      </div>
                     </td>
                     <td className="px-4 py-2 text-gray-900 dark:text-white">{String(row.user ?? 'N/A')}</td>
                     <td className="px-4 py-2 text-right text-gray-600 dark:text-gray-400">
