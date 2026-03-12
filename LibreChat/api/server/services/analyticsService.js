@@ -20,33 +20,130 @@ const EXCLUDED_USERS = process.env.ANALYTICS_EXCLUDED_USERS
 /**
  * GET /api/admin/analytics/overview
  * Возвращает общую статистику: пользователи, сообщения, токены, беседы
+ * КРИТИЧНО: исключённые пользователи должны быть исключены из расчётов
  */
 async function getOverviewStats() {
   try {
     logger.debug('[analytics] Fetching overview stats');
 
     const [usersStats, activeUsers24h, messages24h, messagesTotal, tokensData, conversationsTotal] = await Promise.all([
-      // Total Users
-      User.countDocuments({}),
+      // Total Users (только активные, не исключённые)
+      EXCLUDED_USERS.length > 0
+        ? User.aggregate([
+            {
+              $match: {
+                email: { $nin: EXCLUDED_USERS },
+              },
+            },
+            {
+              $count: 'total',
+            },
+          ]).then((res) => res[0]?.total || 0)
+        : User.countDocuments({}),
 
-      // Active Users last 24h
-      Message.distinct('user', {
-        createdAt: {
-          $gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
-        },
-      }).then((users) => users.length),
+      // Active Users last 24h (исключённые не считаются)
+      EXCLUDED_USERS.length > 0
+        ? Message.aggregate([
+            {
+              $match: {
+                createdAt: {
+                  $gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
+                },
+              },
+            },
+            {
+              $lookup: {
+                from: 'users',
+                localField: 'user',
+                foreignField: '_id',
+                as: 'userData',
+              },
+            },
+            {
+              $unwind: '$userData',
+            },
+            {
+              $match: {
+                'userData.email': { $nin: EXCLUDED_USERS },
+              },
+            },
+            {
+              $group: {
+                _id: '$user',
+              },
+            },
+            {
+              $count: 'total',
+            },
+          ]).then((res) => res[0]?.total || 0)
+        : Message.distinct('user', {
+            createdAt: {
+              $gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
+            },
+          }).then((users) => users.length),
 
-      // Messages last 24h
-      Message.countDocuments({
-        createdAt: {
-          $gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
-        },
-      }),
+      // Messages last 24h (исключённые не считаются)
+      EXCLUDED_USERS.length > 0
+        ? Message.aggregate([
+            {
+              $match: {
+                createdAt: {
+                  $gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
+                },
+              },
+            },
+            {
+              $lookup: {
+                from: 'users',
+                localField: 'user',
+                foreignField: '_id',
+                as: 'userData',
+              },
+            },
+            {
+              $unwind: '$userData',
+            },
+            {
+              $match: {
+                'userData.email': { $nin: EXCLUDED_USERS },
+              },
+            },
+            {
+              $count: 'total',
+            },
+          ]).then((res) => res[0]?.total || 0)
+        : Message.countDocuments({
+            createdAt: {
+              $gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
+            },
+          }),
 
-      // Messages total
-      Message.countDocuments({}),
+      // Messages total (исключённые не считаются)
+      EXCLUDED_USERS.length > 0
+        ? Message.aggregate([
+            {
+              $lookup: {
+                from: 'users',
+                localField: 'user',
+                foreignField: '_id',
+                as: 'userData',
+              },
+            },
+            {
+              $unwind: '$userData',
+            },
+            {
+              $match: {
+                'userData.email': { $nin: EXCLUDED_USERS },
+              },
+            },
+            {
+              $count: 'total',
+            },
+          ]).then((res) => res[0]?.total || 0)
+        : Message.countDocuments({}),
 
-      // Tokens last 24h и total
+      // Tokens last 24h и total (исключённые не считаются)
       Transaction.aggregate([
         {
           $facet: {
@@ -59,6 +156,26 @@ async function getOverviewStats() {
                 },
               },
               {
+                $lookup: {
+                  from: 'users',
+                  localField: 'user',
+                  foreignField: '_id',
+                  as: 'userData',
+                },
+              },
+              {
+                $unwind: '$userData',
+              },
+              ...(EXCLUDED_USERS.length > 0
+                ? [
+                    {
+                      $match: {
+                        'userData.email': { $nin: EXCLUDED_USERS },
+                      },
+                    },
+                  ]
+                : []),
+              {
                 $group: {
                   _id: null,
                   total: { $sum: '$tokenValue' },
@@ -66,6 +183,26 @@ async function getOverviewStats() {
               },
             ],
             total: [
+              {
+                $lookup: {
+                  from: 'users',
+                  localField: 'user',
+                  foreignField: '_id',
+                  as: 'userData',
+                },
+              },
+              {
+                $unwind: '$userData',
+              },
+              ...(EXCLUDED_USERS.length > 0
+                ? [
+                    {
+                      $match: {
+                        'userData.email': { $nin: EXCLUDED_USERS },
+                      },
+                    },
+                  ]
+                : []),
               {
                 $group: {
                   _id: null,
@@ -77,8 +214,46 @@ async function getOverviewStats() {
         },
       ]),
 
-      // Total Conversations
-      Conversation.countDocuments({}),
+      // Total Conversations (исключённые не считаются)
+      EXCLUDED_USERS.length > 0
+        ? Conversation.aggregate([
+            {
+              $lookup: {
+                from: 'transactions',
+                localField: '_id',
+                foreignField: 'conversationId',
+                as: 'transactions',
+              },
+            },
+            {
+              $unwind: '$transactions',
+            },
+            {
+              $lookup: {
+                from: 'users',
+                localField: 'transactions.user',
+                foreignField: '_id',
+                as: 'userData',
+              },
+            },
+            {
+              $unwind: '$userData',
+            },
+            {
+              $match: {
+                'userData.email': { $nin: EXCLUDED_USERS },
+              },
+            },
+            {
+              $group: {
+                _id: '$_id',
+              },
+            },
+            {
+              $count: 'total',
+            },
+          ]).then((res) => res[0]?.total || 0)
+        : Conversation.countDocuments({}),
     ]);
 
     const tokens24h = tokensData[0].last24h[0]?.total || 0;
@@ -102,40 +277,33 @@ async function getOverviewStats() {
 /**
  * GET /api/admin/analytics/models
  * Статистика по моделям: какие модели используют пользователи
+ * ⚠️ ПРАВИЛЬНЫЙ ПОРЯДОК: $match → $lookup → $unwind → $match excluded → $group
  */
 async function getModelUsage() {
   try {
     logger.debug('[analytics] Fetching model usage');
 
-    // ✅ SAFE: $match createdAt в начале
+    // ✅ SAFE: $match createdAt в начале, исключение ДО $group
     const pipeline = [
       {
         $match: {
           createdAt: { $gte: LAST_30_DAYS },
         },
       },
-      // Конвертируем user ID в ObjectId для корректного lookup
-      {
-        $addFields: {
-          userObjectId: {
-            $cond: [
-              { $eq: [{ $type: '$user' }, 'string'] },
-              { $toObjectId: '$user' },
-              '$user',
-            ],
-          },
-        },
-      },
-      // Lookup пользователей для проверки email
+      // Lookup пользователей
       {
         $lookup: {
           from: 'users',
-          localField: 'userObjectId',
+          localField: 'user',
           foreignField: '_id',
           as: 'userInfo',
         },
       },
-      // Исключаем тестовых пользователей
+      // Unwind - удалит документы без пользователя (INNER JOIN)
+      {
+        $unwind: '$userInfo',
+      },
+      // Исключаем тестовых пользователей ДО группировки
       ...(EXCLUDED_USERS.length > 0
         ? [
             {
@@ -145,6 +313,7 @@ async function getModelUsage() {
             },
           ]
         : []),
+      // Только ПОСЛЕ фильтрации делаем группировку
       {
         $group: {
           _id: '$model',
@@ -183,54 +352,33 @@ async function getModelUsage() {
 /**
  * GET /api/admin/analytics/users
  * Статистика по пользователям: запросы, токены, последняя активность
+ * ⚠️ КРИТИЧНО: исключение ДОЛЖНО быть ДО $group, не после!
  */
 async function getUserUsage() {
   try {
     logger.debug('[analytics] Fetching user usage');
 
-    // ✅ SAFE: Используем Transaction (индексировано лучше чем Message)
+    // ✅ ПРАВИЛЬНЫЙ ПОРЯДОК: $match → $lookup → $unwind → $match excluded → $group
     const pipeline = [
       {
         $match: {
           createdAt: { $gte: LAST_30_DAYS },
         },
       },
-      // Конвертируем user ID в ObjectId для корректного lookup
-      {
-        $addFields: {
-          userObjectId: {
-            $cond: [
-              { $eq: [{ $type: '$user' }, 'string'] },
-              { $toObjectId: '$user' },
-              '$user',
-            ],
-          },
-        },
-      },
-      {
-        $group: {
-          _id: '$userObjectId',
-          requests: { $sum: 1 },
-          totalTokens: { $sum: '$tokenValue' },
-          models: { $addToSet: '$model' },
-          lastActive: { $max: '$createdAt' },
-        },
-      },
+      // Lookup пользователей
       {
         $lookup: {
           from: 'users',
-          localField: '_id',
+          localField: 'user',
           foreignField: '_id',
           as: 'userData',
         },
       },
+      // Unwind - удалит документы без пользователя (INNER JOIN)
       {
-        $unwind: {
-          path: '$userData',
-          preserveNullAndEmptyArrays: true,
-        },
+        $unwind: '$userData',
       },
-      // Исключаем тестовых пользователей
+      // Исключаем тестовых пользователей ДО группировки
       ...(EXCLUDED_USERS.length > 0
         ? [
             {
@@ -240,6 +388,19 @@ async function getUserUsage() {
             },
           ]
         : []),
+      // Только ПОСЛЕ фильтрации делаем группировку по пользователю
+      {
+        $group: {
+          _id: '$user',
+          userId: { $first: '$user' },
+          email: { $first: '$userData.email' },
+          requests: { $sum: 1 },
+          totalTokens: { $sum: '$tokenValue' },
+          models: { $addToSet: '$model' },
+          lastActive: { $max: '$createdAt' },
+        },
+      },
+      // Lookup подписки
       {
         $lookup: {
           from: 'subscriptions',
@@ -256,8 +417,8 @@ async function getUserUsage() {
       },
       {
         $project: {
-          userId: '$_id',
-          email: '$userData.email',
+          userId: 1,
+          email: 1,
           plan: { $ifNull: ['$subscriptionData.plan', 'free'] },
           requests: 1,
           totalTokens: 1,
@@ -285,62 +446,33 @@ async function getUserUsage() {
 /**
  * GET /api/admin/analytics/conversations
  * Статистика по диалогам: сообщения, токены, модели
+ * ⚠️ ОСОБЕННОСТЬ: группируем по conversationId, но фильтруем по пользователю ПЕРЕД группировкой
  */
 async function getConversationStats() {
   try {
     logger.debug('[analytics] Fetching conversation stats');
 
-    // ✅ SAFE: $match createdAt + $sort + $limit 100
+    // ✅ ПРАВИЛЬНЫЙ ПОРЯДОК: $match → $lookup → $unwind → $match excluded → $group
     const pipeline = [
       {
         $match: {
           createdAt: { $gte: LAST_30_DAYS },
         },
       },
-      // Конвертируем user ID в ObjectId для корректного lookup
-      {
-        $addFields: {
-          userObjectId: {
-            $cond: [
-              { $eq: [{ $type: '$user' }, 'string'] },
-              { $toObjectId: '$user' },
-              '$user',
-            ],
-          },
-        },
-      },
-      {
-        $group: {
-          _id: '$conversationId',
-          totalTokens: { $sum: '$tokenValue' },
-          messageCount: { $sum: 1 },
-          models: { $addToSet: '$model' },
-          userObjectId: { $first: '$userObjectId' },
-          lastActive: { $max: '$createdAt' },
-        },
-      },
-      {
-        $sort: { lastActive: -1 },
-      },
-      {
-        $limit: 100,
-      },
-      // Lookup пользователей для получения email
+      // Lookup пользователей
       {
         $lookup: {
           from: 'users',
-          localField: 'userObjectId',
+          localField: 'user',
           foreignField: '_id',
           as: 'userData',
         },
       },
+      // Unwind - удалит документы без пользователя (INNER JOIN)
       {
-        $unwind: {
-          path: '$userData',
-          preserveNullAndEmptyArrays: true,
-        },
+        $unwind: '$userData',
       },
-      // Исключаем тестовых пользователей
+      // Исключаем тестовых пользователей ДО группировки
       ...(EXCLUDED_USERS.length > 0
         ? [
             {
@@ -350,10 +482,27 @@ async function getConversationStats() {
             },
           ]
         : []),
+      // Теперь группируем только по допустимым пользователям
+      {
+        $group: {
+          _id: '$conversationId',
+          totalTokens: { $sum: '$tokenValue' },
+          messageCount: { $sum: 1 },
+          models: { $addToSet: '$model' },
+          userEmail: { $first: '$userData.email' },
+          lastActive: { $max: '$createdAt' },
+        },
+      },
+      {
+        $sort: { lastActive: -1 },
+      },
+      {
+        $limit: 100,
+      },
       {
         $project: {
           conversationId: '$_id',
-          user: '$userData.email',
+          user: '$userEmail',
           messageCount: 1,
           totalTokens: 1,
           model: { $arrayElemAt: ['$models', 0] },
@@ -374,12 +523,13 @@ async function getConversationStats() {
 /**
  * GET /api/admin/analytics/costs
  * Статистика стоимости: токены по дням и моделям
+ * ⚠️ КРИТИЧНО: исключённые пользователи исключаются ДО группировки, не после
  */
 async function getCostBreakdown() {
   try {
     logger.debug('[analytics] Fetching cost breakdown');
 
-    // ✅ SAFE: $match createdAt в начале
+    // ✅ ПРАВИЛЬНЫЙ ПОРЯДОК: $match → $lookup → $unwind → $match excluded → $group
     const stats = await Transaction.aggregate([
       {
         $facet: {
@@ -392,32 +542,21 @@ async function getCostBreakdown() {
               },
             },
             {
-              $addFields: {
-                userObjectId: {
-                  $cond: [
-                    { $eq: [{ $type: '$user' }, 'string'] },
-                    { $toObjectId: '$user' },
-                    '$user',
-                  ],
-                },
-              },
-            },
-            {
               $lookup: {
                 from: 'users',
-                localField: 'userObjectId',
+                localField: 'user',
                 foreignField: '_id',
                 as: 'userData',
               },
+            },
+            {
+              $unwind: '$userData',
             },
             ...(EXCLUDED_USERS.length > 0
               ? [
                   {
                     $match: {
-                      $or: [
-                        { 'userData': { $size: 0 } },
-                        { 'userData.email': { $nin: EXCLUDED_USERS } },
-                      ],
+                      'userData.email': { $nin: EXCLUDED_USERS },
                     },
                   },
                 ]
@@ -438,32 +577,21 @@ async function getCostBreakdown() {
               },
             },
             {
-              $addFields: {
-                userObjectId: {
-                  $cond: [
-                    { $eq: [{ $type: '$user' }, 'string'] },
-                    { $toObjectId: '$user' },
-                    '$user',
-                  ],
-                },
-              },
-            },
-            {
               $lookup: {
                 from: 'users',
-                localField: 'userObjectId',
+                localField: 'user',
                 foreignField: '_id',
                 as: 'userData',
               },
+            },
+            {
+              $unwind: '$userData',
             },
             ...(EXCLUDED_USERS.length > 0
               ? [
                   {
                     $match: {
-                      $or: [
-                        { 'userData': { $size: 0 } },
-                        { 'userData.email': { $nin: EXCLUDED_USERS } },
-                      ],
+                      'userData.email': { $nin: EXCLUDED_USERS },
                     },
                   },
                 ]
@@ -482,32 +610,21 @@ async function getCostBreakdown() {
               },
             },
             {
-              $addFields: {
-                userObjectId: {
-                  $cond: [
-                    { $eq: [{ $type: '$user' }, 'string'] },
-                    { $toObjectId: '$user' },
-                    '$user',
-                  ],
-                },
-              },
-            },
-            {
               $lookup: {
                 from: 'users',
-                localField: 'userObjectId',
+                localField: 'user',
                 foreignField: '_id',
                 as: 'userData',
               },
+            },
+            {
+              $unwind: '$userData',
             },
             ...(EXCLUDED_USERS.length > 0
               ? [
                   {
                     $match: {
-                      $or: [
-                        { 'userData': { $size: 0 } },
-                        { 'userData.email': { $nin: EXCLUDED_USERS } },
-                      ],
+                      'userData.email': { $nin: EXCLUDED_USERS },
                     },
                   },
                 ]
@@ -526,32 +643,21 @@ async function getCostBreakdown() {
               },
             },
             {
-              $addFields: {
-                userObjectId: {
-                  $cond: [
-                    { $eq: [{ $type: '$user' }, 'string'] },
-                    { $toObjectId: '$user' },
-                    '$user',
-                  ],
-                },
-              },
-            },
-            {
               $lookup: {
                 from: 'users',
-                localField: 'userObjectId',
+                localField: 'user',
                 foreignField: '_id',
                 as: 'userData',
               },
+            },
+            {
+              $unwind: '$userData',
             },
             ...(EXCLUDED_USERS.length > 0
               ? [
                   {
                     $match: {
-                      $or: [
-                        { 'userData': { $size: 0 } },
-                        { 'userData.email': { $nin: EXCLUDED_USERS } },
-                      ],
+                      'userData.email': { $nin: EXCLUDED_USERS },
                     },
                   },
                 ]
@@ -585,29 +691,15 @@ async function getCostBreakdown() {
               },
             },
             {
-              $addFields: {
-                userObjectId: {
-                  $cond: [
-                    { $eq: [{ $type: '$user' }, 'string'] },
-                    { $toObjectId: '$user' },
-                    '$user',
-                  ],
-                },
-              },
-            },
-            {
               $lookup: {
                 from: 'users',
-                localField: 'userObjectId',
+                localField: 'user',
                 foreignField: '_id',
                 as: 'userData',
               },
             },
             {
-              $unwind: {
-                path: '$userData',
-                preserveNullAndEmptyArrays: true,
-              },
+              $unwind: '$userData',
             },
             ...(EXCLUDED_USERS.length > 0
               ? [
