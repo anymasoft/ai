@@ -2,6 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuthContext } from '~/hooks';
 import { Button, Input, Label } from '@librechat/client';
 
+const logger = {
+  error: (msg: string, err?: unknown) => console.error(msg, err),
+  debug: (msg: string, ...args: unknown[]) => console.debug(msg, ...args),
+};
+
 type AnalyticsTab = 'overview' | 'models' | 'users' | 'conversations' | 'costs';
 
 interface OverviewData {
@@ -93,6 +98,12 @@ export default function AdminAnalytics() {
   const [modalMessages, setModalMessages] = useState<PreviewMessage[]>([]);
   const [modalLoading, setModalLoading] = useState(false);
 
+  // Modal для ответа администратора
+  const [replyModalOpen, setReplyModalOpen] = useState(false);
+  const [replyConversationId, setReplyConversationId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [replySending, setReplySending] = useState(false);
+
   // Копирование conversationId в буфер обмена
   const copyToClipboard = useCallback((text: string) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -144,6 +155,48 @@ export default function AdminAnalytics() {
     },
     [previewCache, token]
   );
+
+  // Отправка ответа администратора
+  const sendAdminReply = useCallback(async () => {
+    if (!replyConversationId || !replyText.trim()) {
+      return;
+    }
+
+    setReplySending(true);
+
+    try {
+      const res = await fetch('/api/admin/analytics/conversation-reply', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          conversationId: replyConversationId,
+          message: replyText,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Ошибка: ${res.status}`);
+      }
+
+      // Успешно отправлено
+      setReplyText('');
+      setReplyModalOpen(false);
+      // Обновляем modal с новым сообщением
+      if (replyConversationId) {
+        setPreviewCache((prev) => ({ ...prev, [replyConversationId]: [] }));
+        openConversationModal(replyConversationId);
+      }
+    } catch (err) {
+      logger.error('[conversation-reply]', err);
+      alert('Ошибка при отправке ответа');
+    } finally {
+      setReplySending(false);
+    }
+  }, [replyConversationId, replyText, token, openConversationModal]);
 
   // Загрузка preview диалога при hover (lazy load)
   const loadConversationPreview = useCallback(
@@ -548,6 +601,18 @@ export default function AdminAnalytics() {
                           👁
                         </button>
 
+                        {/* Кнопка ответа администратора */}
+                        <button
+                          onClick={() => {
+                            setReplyConversationId(String(row.conversationId ?? ''));
+                            setReplyModalOpen(true);
+                          }}
+                          className="inline-flex items-center justify-center w-4 h-4 rounded text-gray-500 hover:text-green-600 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                          title="Ответить пользователю"
+                        >
+                          💬
+                        </button>
+
                         {/* Hover Preview последних сообщений */}
                         {previewCache[String(row.conversationId ?? '')] &&
                           previewCache[String(row.conversationId ?? '')].length > 0 && (
@@ -755,6 +820,68 @@ export default function AdminAnalytics() {
                 className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition"
               >
                 Закрыть
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL для ответа администратора */}
+      {replyModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-2xl flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Ответ пользователю
+              </h2>
+              <button
+                onClick={() => {
+                  setReplyModalOpen(false);
+                  setReplyConversationId(null);
+                  setReplyText('');
+                }}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="px-6 py-4 flex flex-col gap-4">
+              <div>
+                <Label htmlFor="reply-textarea" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Сообщение
+                </Label>
+                <textarea
+                  id="reply-textarea"
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  placeholder="Введите ответ для пользователя..."
+                  className="mt-2 w-full h-32 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setReplyModalOpen(false);
+                  setReplyConversationId(null);
+                  setReplyText('');
+                }}
+                disabled={replySending}
+                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition disabled:opacity-50"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={sendAdminReply}
+                disabled={replySending || !replyText.trim()}
+                className="px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600 transition disabled:opacity-50"
+              >
+                {replySending ? 'Отправка...' : 'Отправить'}
               </button>
             </div>
           </div>
