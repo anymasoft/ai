@@ -87,6 +87,12 @@ export default function AdminAnalytics() {
   const [previewCache, setPreviewCache] = useState<Record<string, PreviewMessage[]>>({});
   const [previewLoading, setPreviewLoading] = useState<Record<string, boolean>>({});
 
+  // Modal для просмотра полного диалога
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [modalMessages, setModalMessages] = useState<PreviewMessage[]>([]);
+  const [modalLoading, setModalLoading] = useState(false);
+
   // Копирование conversationId в буфер обмена
   const copyToClipboard = useCallback((text: string) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -94,6 +100,50 @@ export default function AdminAnalytics() {
       setTimeout(() => setCopiedId(null), 2000); // Убрать галочку через 2 сек
     });
   }, []);
+
+  // Открытие modal с preview диалога
+  const openConversationModal = useCallback(
+    async (conversationId: string) => {
+      setSelectedConversationId(conversationId);
+      setModalOpen(true);
+
+      // Если уже загружено из cache, используем это
+      if (previewCache[conversationId]) {
+        setModalMessages(previewCache[conversationId]);
+        return;
+      }
+
+      setModalLoading(true);
+
+      try {
+        const res = await fetch(`/api/admin/analytics/conversation-preview/${conversationId}`, {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        });
+
+        if (!res.ok) {
+          throw new Error(`Ошибка: ${res.status}`);
+        }
+
+        const result = await res.json();
+        setModalMessages(result.data || []);
+        // Кэшируем результат
+        setPreviewCache((prev) => ({
+          ...prev,
+          [conversationId]: result.data || [],
+        }));
+      } catch (err) {
+        logger.error('[conversation-modal]', err);
+        setModalMessages([]);
+      } finally {
+        setModalLoading(false);
+      }
+    },
+    [previewCache, token]
+  );
 
   // Загрузка preview диалога при hover (lazy load)
   const loadConversationPreview = useCallback(
@@ -487,16 +537,16 @@ export default function AdminAnalytics() {
                           )}
                         </button>
 
-                        {/* Кнопка открытия диалога в новом табе */}
-                        <a
-                          href={`/c/${String(row.conversationId ?? '')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center justify-center w-4 h-4 rounded text-gray-500 hover:text-green-500 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
-                          title="Открыть диалог"
+                        {/* Кнопка открытия modal с preview диалога */}
+                        <button
+                          onClick={() =>
+                            openConversationModal(String(row.conversationId ?? ''))
+                          }
+                          className="inline-flex items-center justify-center w-4 h-4 rounded text-gray-500 hover:text-blue-600 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                          title="Просмотреть диалог"
                         >
-                          ↗
-                        </a>
+                          👁
+                        </button>
 
                         {/* Hover Preview последних сообщений */}
                         {previewCache[String(row.conversationId ?? '')] &&
@@ -641,6 +691,71 @@ export default function AdminAnalytics() {
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL для просмотра полного диалога */}
+      {modalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-2xl max-h-96 flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Диалог: {selectedConversationId?.substring(0, 8)}…
+              </h2>
+              <button
+                onClick={() => {
+                  setModalOpen(false);
+                  setSelectedConversationId(null);
+                  setModalMessages([]);
+                }}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body - Сообщения */}
+            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+              {modalLoading ? (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  Загрузка сообщений...
+                </div>
+              ) : modalMessages.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  Нет сообщений в этом диалоге
+                </div>
+              ) : (
+                modalMessages.map((msg, idx) => (
+                  <div key={idx} className="py-2">
+                    <div className="font-semibold text-sm text-gray-700 dark:text-gray-300">
+                      {msg.role === 'assistant' ? '🤖 Assistant' : '👤 User'}
+                    </div>
+                    <div className="mt-1 text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-900 p-3 rounded border border-gray-200 dark:border-gray-700 whitespace-pre-wrap break-words">
+                      {msg.text}
+                    </div>
+                    <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      {new Date(msg.createdAt).toLocaleString('ru-RU')}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-end">
+              <button
+                onClick={() => {
+                  setModalOpen(false);
+                  setSelectedConversationId(null);
+                  setModalMessages([]);
+                }}
+                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+              >
+                Закрыть
+              </button>
             </div>
           </div>
         </div>

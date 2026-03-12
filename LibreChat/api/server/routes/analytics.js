@@ -153,9 +153,10 @@ router.get('/costs', requireJwtAuth, requireAdminRole, async (req, res) => {
 
 /**
  * GET /api/admin/conversation-preview/:conversationId
- * Получить последние 3 сообщения диалога для preview
- * Используется для hover preview в таблице Conversations
+ * Получить последние 10 сообщений диалога для modal preview
+ * Используется для modal preview в таблице Conversations
  * Ответ: [ { role, text, createdAt }, ... ]
+ * ВАЖНО: поддерживает оба формата: text и content
  */
 router.get('/conversation-preview/:conversationId', requireJwtAuth, requireAdminRole, async (req, res) => {
   try {
@@ -163,17 +164,18 @@ router.get('/conversation-preview/:conversationId', requireJwtAuth, requireAdmin
 
     logger.debug('[analytics/conversation-preview] Request from admin:', req.user?.email, 'conversationId:', conversationId);
 
-    // ✅ SAFE: Берём последние 3 сообщения для preview (не все)
+    // ✅ SAFE: Берём последние 10 сообщений для preview (не все)
     const messages = await Message.find({ conversationId })
       .sort({ createdAt: -1 })
-      .limit(3)
-      .select('role text createdAt -_id')
+      .limit(10)
+      .select('role text content createdAt -_id')
       .lean();
 
     // Разворачиваем в обратном порядке чтобы показывать от старого к новому
     const preview = messages.reverse().map((msg) => ({
       role: msg.role || 'user',
-      text: msg.text || '(пусто)',
+      // Поддерживаем оба формата: text и content
+      text: (msg.text || msg.content || '').trim() || '(пусто)',
       createdAt: msg.createdAt,
     }));
 
