@@ -154,9 +154,9 @@ router.get('/costs', requireJwtAuth, requireAdminRole, async (req, res) => {
 
 /**
  * GET /api/admin/conversation-preview/:conversationId
- * Получить последние 20 сообщений диалога для modal preview
- * ⚠️ ВАЖНО: В LibreChat сообщения хранятся ВНУТРИ документа Conversation
- * поле: conversation.messages[]
+ * Получить последние 50 сообщений диалога для modal preview
+ * ⚠️ КРИТИЧНО: conversationId это STRING, а не ObjectId!
+ * Сообщения хранятся в коллекции Message с полем conversationId (string)
  */
 router.get('/conversation-preview/:conversationId', requireJwtAuth, requireAdminRole, async (req, res) => {
   try {
@@ -164,28 +164,19 @@ router.get('/conversation-preview/:conversationId', requireJwtAuth, requireAdmin
 
     logger.debug('[analytics/conversation-preview] Request from admin:', req.user?.email, 'conversationId:', conversationId);
 
-    // ✅ SAFE: Ищем документ Conversation и берём сообщения из поля messages
-    const conversation = await Conversation.findById(conversationId)
-      .select('messages')
+    // ✅ ПРАВИЛЬНО: Ищем сообщения напрямую в коллекции Message по conversationId (string)
+    const messages = await Message.find({ conversationId })
+      .sort({ createdAt: 1 })
+      .limit(50)
+      .select('sender text createdAt')
       .lean();
 
-    // Если диалога не найдено или нет сообщений
-    if (!conversation || !conversation.messages || conversation.messages.length === 0) {
-      return res.json({
-        success: true,
-        data: [],
-      });
-    }
-
-    // Берём последние 20 сообщений
-    const preview = conversation.messages
-      .slice(-20)
-      .map((msg) => ({
-        role: msg.role || 'user',
-        // Поддерживаем оба формата: text и content
-        text: (msg.text || msg.content || '').trim() || '(пусто)',
-        createdAt: msg.createdAt,
-      }));
+    // Преобразуем в нужный формат для фронтенда
+    const preview = messages.map((msg) => ({
+      role: msg.sender === 'assistant' ? 'assistant' : 'user',
+      text: msg.text || '',
+      createdAt: msg.createdAt,
+    }));
 
     res.json({
       success: true,
