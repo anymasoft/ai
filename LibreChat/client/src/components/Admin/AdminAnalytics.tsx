@@ -91,6 +91,7 @@ export default function AdminAnalytics() {
   }
   const [previewCache, setPreviewCache] = useState<Record<string, PreviewMessage[]>>({});
   const [previewLoading, setPreviewLoading] = useState<Record<string, boolean>>({});
+  const [hoverConversationId, setHoverConversationId] = useState<string | null>(null);
 
   // Modal для просмотра полного диалога
   const [modalOpen, setModalOpen] = useState(false);
@@ -570,9 +571,11 @@ export default function AdminAnalytics() {
                         <span
                           title={String(row.conversationId ?? '')}
                           className="cursor-help"
-                          onMouseEnter={() =>
-                            loadConversationPreview(String(row.conversationId ?? ''))
-                          }
+                          onMouseEnter={() => {
+                            setHoverConversationId(String(row.conversationId ?? ''));
+                            loadConversationPreview(String(row.conversationId ?? ''));
+                          }}
+                          onMouseLeave={() => setHoverConversationId(null)}
                         >
                           {String(row.conversationId ?? '').substring(0, 8)}…
                         </span>
@@ -614,9 +617,10 @@ export default function AdminAnalytics() {
                         </button>
 
                         {/* Hover Preview последних сообщений */}
-                        {previewCache[String(row.conversationId ?? '')] &&
+                        {hoverConversationId === String(row.conversationId ?? '') &&
+                          previewCache[String(row.conversationId ?? '')] &&
                           previewCache[String(row.conversationId ?? '')].length > 0 && (
-                            <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block bg-gray-900 dark:bg-gray-800 text-white dark:text-gray-100 p-3 rounded shadow-lg whitespace-normal w-80 text-xs z-50">
+                            <div className="absolute bottom-full left-0 mb-2 block bg-gray-900 dark:bg-gray-800 text-white dark:text-gray-100 p-3 rounded shadow-lg whitespace-normal w-80 text-xs z-50">
                               <div className="space-y-2">
                                 {previewCache[String(row.conversationId ?? '')].map((msg, i) => (
                                   <div key={i} className="border-b border-gray-700 pb-2 last:border-b-0">
