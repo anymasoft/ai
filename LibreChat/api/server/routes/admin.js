@@ -712,6 +712,12 @@ router.patch('/users/:userId/ban', requireJwtAuth, requireAdminRole, async (req,
     const { userId } = req.params;
     const { banReason = 'No reason provided' } = req.body;
 
+    // 🔒 ЧАСТЬ 5: Защита от self-ban - админ не может забанить сам себя
+    if (req.user._id.toString() === userId) {
+      logger.warn(`[admin/ban] Attempt to ban yourself by ${req.user.email}`);
+      return res.status(400).json({ error: 'You cannot ban yourself' });
+    }
+
     const user = await User.findByIdAndUpdate(
       userId,
       {

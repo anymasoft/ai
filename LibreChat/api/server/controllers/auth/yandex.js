@@ -205,6 +205,26 @@ const yandexOAuthCallback = async (req, res) => {
       );
     }
 
+    // 🔒 ЧАСТЬ 1: Проверка домена email (только Yandex!)
+    const validYandexDomains = /@(yandex\.ru|yandex\.com|ya\.ru|yandex\.by|yandex\.kz|yandex\.ua)$/i;
+    if (!validYandexDomains.test(userEmail)) {
+      console.error(`\n${'═'.repeat(60)}`);
+      console.error(`❌ YANDEX OAUTH ERROR: Invalid email domain`);
+      console.error(`${'═'.repeat(60)}`);
+      console.error(`Email: ${userEmail}`);
+      console.error(`Allowed domains: yandex.ru, yandex.com, ya.ru, yandex.by, yandex.kz, yandex.ua`);
+      console.error(`${'═'.repeat(60)}\n`);
+
+      logger.error('[Yandex OAuth] Invalid email domain - not a Yandex email', {
+        email: userEmail,
+        yandexId: yandexUser.id,
+      });
+
+      return res.redirect(
+        `${domains.client}/sign-in?error=invalid_email_domain&provider=yandex`,
+      );
+    }
+
     const userName = yandexUser.display_name || yandexUser.real_name || yandexUser.login || 'Yandex User';
 
     console.log(`📊 AUTH_CHECKPOINT: USER_CREATED`);
@@ -217,6 +237,25 @@ const yandexOAuthCallback = async (req, res) => {
     try {
       // Ищем пользователя по email (стандартный способ LibreChat)
       let user = await findUser({ email: userEmail });
+
+      // 🔒 ЧАСТЬ 2: Проверка что это не legacy .local аккаунт
+      if (user && user.email.endsWith('@librechat.local')) {
+        console.error(`\n${'═'.repeat(60)}`);
+        console.error(`❌ SECURITY: Attempt to login with legacy .local account`);
+        console.error(`${'═'.repeat(60)}`);
+        console.error(`Email: ${user.email}`);
+        console.error(`This account is no longer valid and must be migrated`);
+        console.error(`${'═'.repeat(60)}\n`);
+
+        logger.error('[Security] Attempt login with legacy .local account', {
+          email: user.email,
+          userId: user._id,
+        });
+
+        return res.redirect(
+          `${domains.client}/sign-in?error=invalid_account&provider=yandex`,
+        );
+      }
 
       if (!user) {
         // Проверяем разрешена ли социальная регистрация
