@@ -37,6 +37,9 @@ interface UserRow {
   emailVerified: boolean;
   plan: 'free' | 'pro' | 'business';
   planExpiresAt: string | null;
+  banned?: boolean;
+  bannedAt?: string;
+  banReason?: string;
 }
 
 const PLAN_DISPLAY: Record<string, { label: string; className: string }> = {
@@ -378,6 +381,62 @@ export default function AdminPanel() {
     }
   };
 
+  // 🔒 Функция забанить пользователя
+  const handleBan = async (userId: string) => {
+    const reason = prompt('Причина бана (необязательно):') || '';
+    try {
+      const res = await fetch(`/api/admin/mvp/users/${userId}/ban`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ banReason: reason }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+
+      // Обновляем таблицу локально
+      setData((prev) =>
+        prev && data ? {
+          ...prev,
+          users: prev.users.map((u) =>
+            u._id === userId ? { ...u, banned: true, banReason: reason } : u
+          ),
+        } : prev
+      );
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'Ошибка бана');
+    }
+  };
+
+  // 🔒 Функция разбанить пользователя
+  const handleUnban = async (userId: string) => {
+    try {
+      const res = await fetch(`/api/admin/mvp/users/${userId}/unban`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (!res.ok) throw new Error(await res.text());
+
+      // Обновляем таблицу локально
+      setData((prev) =>
+        prev && data ? {
+          ...prev,
+          users: prev.users.map((u) =>
+            u._id === userId ? { ...u, banned: false, banReason: '' } : u
+          ),
+        } : prev
+      );
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'Ошибка разбана');
+    }
+  };
+
   if (!user) return null;
 
   const formatCredits = (n: number) =>
@@ -529,8 +588,14 @@ export default function AdminPanel() {
                       <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                         Дата рег.
                       </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                        Статус
+                      </th>
                       <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                         Начислить
+                      </th>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                        Действия
                       </th>
                     </tr>
                   </thead>
@@ -590,6 +655,13 @@ export default function AdminPanel() {
                           {new Date(u.createdAt).toLocaleDateString('ru-RU')}
                         </td>
                         <td className="px-4 py-3">
+                          {u.banned ? (
+                            <span className="font-semibold text-red-500">🔴 Banned</span>
+                          ) : (
+                            <span className="text-green-500">🟢 Active</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
                           <div className="flex items-center gap-1.5">
                             <input
                               type="number"
@@ -607,6 +679,23 @@ export default function AdminPanel() {
                               + Начислить
                             </button>
                           </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          {u.banned ? (
+                            <button
+                              onClick={() => handleUnban(u._id)}
+                              className="text-green-600 hover:underline font-medium text-xs"
+                            >
+                              Unban
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleBan(u._id)}
+                              className="text-red-600 hover:underline font-medium text-xs"
+                            >
+                              Ban
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
