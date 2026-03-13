@@ -1,16 +1,16 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useRecoilState } from 'recoil';
-import { useNavigate } from 'react-router-dom';
 import store from '~/store';
 
 /**
  * Hook для проверки ban статуса пользователя
  *
  * Обрабатывает ошибки USER_BANNED от API
- * и показывает уведомление о блокировке аккаунта.
+ * и устанавливает isBanned state.
+ *
+ * Не делает redirect - это обрабатывается через компонент BannedUserNotification.
  */
 export const useBanCheck = () => {
-  const navigate = useNavigate();
   const [isBanned, setIsBanned] = useRecoilState(store.isBanned);
   const [isCheckingBan, setIsCheckingBan] = useState(false);
 
@@ -32,12 +32,10 @@ export const useBanCheck = () => {
       error.code === 'USER_BANNED'
     ) {
       setIsBanned(true);
-      // Перенаправить на страницу блокировки если нужно
-      navigate('/banned', { replace: true });
       return true;
     }
     return false;
-  }, [setIsBanned, navigate]);
+  }, [setIsBanned]);
 
   /**
    * Проверить ban статус у API
