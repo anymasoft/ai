@@ -43,6 +43,12 @@ export interface IUser extends Document {
   updatedAt?: Date;
   /** Field for external source identification (for consistency with TPrincipal schema) */
   idOnTheSource?: string;
+  /** User ban status */
+  banned?: boolean;
+  /** When user was banned */
+  bannedAt?: Date | null;
+  /** Reason for ban */
+  banReason?: string;
 }
 
 export interface BalanceConfig {
@@ -71,6 +77,8 @@ export interface UpdateUserRequest {
   personalization?: {
     memories?: boolean;
   };
+  banned?: boolean;
+  banReason?: string;
 }
 
 export interface UserDeleteResult {

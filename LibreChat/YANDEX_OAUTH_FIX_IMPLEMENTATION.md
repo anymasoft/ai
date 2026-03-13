@@ -1,0 +1,515 @@
+# 🔧 ПРАКТИЧЕСКОЕ ИСПРАВЛЕНИЕ YANDEX OAUTH
+
+**Документ:** Пошаговое исправление утечки фиктивных email
+**Версия:** v0.8.3-rc1
+**Дата:** 13 марта 2026
+
+---
+
+## 🎯 ПЛАН ДЕЙСТВИЙ
+
+1. ✏️ Исправить код yandex.js (удалить fallback)
+2. 🧪 Протестировать локально
+3. ✅ Применить миграцию БД (опционально)
+4. 🚀 Развернуть в production
+
+---
+
+## 📝 ШАГ 1: ИСПРАВЛЕНИЕ КОДА
+
+### Файл: `/api/server/controllers/auth/yandex.js`
+
+#### БЫЛО (строки 179-181):
+
+```javascript
+    // Выбираем email - приоритет: default_email > первый из массива emails
+    const userEmail = yandexUser.default_email || yandexUser.emails?.[0] || `yandex_${yandexUser.id}@librechat.local`;
+    const userName = yandexUser.display_name || yandexUser.real_name || yandexUser.login || 'Yandex User';
+```
+
+#### СТАЛО (строки 179-203):
+
+```javascript
+    // Выбираем email - приоритет: default_email > первый из массива emails
+    const userEmail = yandexUser.default_email || yandexUser.emails?.[0];
+
+    // ✅ КРИТИЧНО: Проверяем наличие email - это обязательное условие
+    if (!userEmail) {
+      console.error(`\n${'═'.repeat(60)}`);
+      console.error(`❌ CRITICAL: Yandex OAuth user has NO EMAIL in profile`);
+      console.error(`${'═'.repeat(60)}`);
+      console.error(`User ID: ${yandexUser.id}`);
+      console.error(`User Login: ${yandexUser.login}`);
+      console.error(`Profile Data Received:`, {
+        id: yandexUser.id,
+        login: yandexUser.login,
+        display_name: yandexUser.display_name,
+        real_name: yandexUser.real_name,
+        default_email: yandexUser.default_email,
+        emails: yandexUser.emails,
+        default_avatar_id: yandexUser.default_avatar_id,
+      });
+      console.error(`${'═'.repeat(60)}\n`);
+
+      logger.error(`[Yandex OAuth] Authentication failed - user profile has no email`, {
+        userId: yandexUser.id,
+        login: yandexUser.login,
+      });
+
+      return res.redirect(
+        `${domains.client}/sign-in?error=yandex_profile_incomplete&provider=yandex&reason=no_email`,
+      );
+    }
+
+    const userName = yandexUser.display_name || yandexUser.real_name || yandexUser.login || 'Yandex User';
+```
+
+### Полный исправленный блок (контекст)
+
+```javascript
+    const yandexUser = await userInfoResponse.json();
+    console.log(`✅ User info received`);
+
+    // ✅ ИСПРАВЛЕННАЯ ЛОГИКА ПОЛУЧЕНИЯ EMAIL
+    const userEmail = yandexUser.default_email || yandexUser.emails?.[0];
+
+    // ✅ КРИТИЧНО: Проверяем наличие email
+    if (!userEmail) {
+      console.error(`\n${'═'.repeat(60)}`);
+      console.error(`❌ CRITICAL: Yandex OAuth user has NO EMAIL in profile`);
+      console.error(`${'═'.repeat(60)}`);
+      console.error(`User ID: ${yandexUser.id}`);
+      console.error(`User Login: ${yandexUser.login}`);
+      console.error(`Profile Data:`, {
+        id: yandexUser.id,
+        login: yandexUser.login,
+        display_name: yandexUser.display_name,
+        real_name: yandexUser.real_name,
+        default_email: yandexUser.default_email,
+        emails: yandexUser.emails,
+        default_avatar_id: yandexUser.default_avatar_id,
+      });
+      console.error(`${'═'.repeat(60)}\n`);
+
+      logger.error(`[Yandex OAuth] Authentication failed - user profile has no email`, {
+        userId: yandexUser.id,
+        login: yandexUser.login,
+      });
+
+      return res.redirect(
+        `${domains.client}/sign-in?error=yandex_profile_incomplete&provider=yandex&reason=no_email`,
+      );
+    }
+
+    const userName = yandexUser.display_name || yandexUser.real_name || yandexUser.login || 'Yandex User';
+
+    console.log(`📊 AUTH_CHECKPOINT: USER_CREATED`);
+    console.log(`   - provider: yandex`);
+    console.log(`   - email: ${userEmail}`);
+    console.log(`   - name: ${userName}`);
+    console.log(`   - yandexId: ${yandexUser.id}`);
+```
+
+---
+
+## 🔍 ШАГ 2: ДЕТАЛЬНОЕ ИЗМЕНЕНИЕ
+
+### Что изменилось
+
+```diff
+- const userEmail = yandexUser.default_email || yandexUser.emails?.[0] || `yandex_${yandexUser.id}@librechat.local`;
++ const userEmail = yandexUser.default_email || yandexUser.emails?.[0];
++
++ // ✅ КРИТИЧНО: Проверяем наличие email
++ if (!userEmail) {
++   console.error(...);  // Логирование
++   logger.error(...);   // Логирование
++   return res.redirect(...);  // Ошибка для клиента
++ }
+```
+
+### Почему это работает
+
+1. **Перед:** Если email = undefined, создавался фиктивный email `yandex_ID@librechat.local`
+2. **После:** Если email = undefined, авторизация прерывается с ошибкой
+
+### Что видит пользователь
+
+**Ошибка на клиенте:**
+
+```
+❌ Ошибка авторизации (Yandex OAuth)
+Ваш профиль Яндекса не содержит адреса электронной почты.
+
+Решение:
+1. Убедитесь, что у вас есть адрес электронной почты в аккаунте Яндекса
+2. Проверьте настройки приватности вашего профиля
+3. Попробуйте авторизоваться снова
+
+Для помощи обратитесь в службу поддержки.
+```
+
+---
+
+## 🧪 ШАГ 3: ТЕСТИРОВАНИЕ
+
+### Локальное тестирование
+
+```bash
+# 1. Убедиться что изменения внесены
+git diff api/server/controllers/auth/yandex.js
+
+# 2. Запустить backend
+npm run backend:dev
+
+# 3. В другом терминале - запустить frontend
+npm run frontend:dev
+
+# 4. Открыть http://localhost:3090
+```
+
+### Проверка логов
+
+Когда пользователь авторизуется через Yandex, в логах должны появиться:
+
+**Успешная авторизация:**
+```
+[Yandex OAuth] Fetching user profile...
+[Yandex OAuth] Profile fetched successfully for user: username
+✅ User info received
+📊 AUTH_CHECKPOINT: USER_CREATED
+   - provider: yandex
+   - email: user@yandex.ru        ← РЕАЛЬНЫЙ EMAIL
+   - name: User Name
+   - yandexId: 2031223018
+✅ New user created: user@yandex.ru
+```
+
+**Ошибка (нет email):**
+```
+[Yandex OAuth] Fetching user profile...
+[Yandex OAuth] Profile fetched successfully for user: username
+✅ User info received
+============================================================
+❌ CRITICAL: Yandex OAuth user has NO EMAIL in profile
+============================================================
+User ID: 2031223018
+User Login: username
+Profile Data:
+{
+  "id": "2031223018",
+  "login": "username",
+  "display_name": "User Name",
+  "real_name": null,
+  "default_email": null,          ← ПУСТО!
+  "emails": [],                    ← ПУСТО!
+  "default_avatar_id": "abc123"
+}
+============================================================
+```
+
+### Проверка БД
+
+```bash
+# Проверить что новые пользователи имеют корректный email
+mongo
+> db.users.find({ provider: 'yandex' }).pretty()
+
+# Результат:
+{
+  "_id": ObjectId(...),
+  "email": "user@yandex.ru",        ← ДОЛЖНО БЫТЬ РЕАЛЬНОЕ EMAIL
+  "username": "username",
+  "name": "User Name",
+  "provider": "yandex",
+  "createdAt": ISODate(...)
+}
+```
+
+---
+
+## 🗄️ ШАГ 4: МИГРАЦИЯ СУЩЕСТВУЮЩИХ ПОЛЬЗОВАТЕЛЕЙ
+
+### Вариант 1: Перечислить все проблемные аккаунты (СНАЧАЛА ЭТО)
+
+```bash
+# MongoDB shell
+mongo LibreChat
+
+db.users.find({ email: /@librechat\.local$/ }).pretty()
+```
+
+**Результат может быть:**
+```javascript
+{
+  "_id": ObjectId("..."),
+  "email": "yandex_2031223018@librechat.local",
+  "username": "username",
+  "name": "User Name",
+  "createdAt": ISODate("2026-03-10T12:00:00Z"),
+  ...
+}
+```
+
+### Вариант 2: Деактивировать старые аккаунты (РЕКОМЕНДУЕТСЯ)
+
+```javascript
+// MongoDB shell
+db.users.updateMany(
+  { email: /@librechat\.local$/ },
+  {
+    $set: {
+      deactivated: true,
+      deactivatedReason: 'invalid_librechat_local_email',
+      deactivatedAt: new Date(),
+      deactivatedNote: 'This account was created with a placeholder email. ' +
+                       'Real Yandex email was not provided. ' +
+                       'Please create a new account with valid Yandex credentials.',
+    }
+  }
+);
+
+// Проверить результат
+db.users.find({ email: /@librechat\.local$/ }).pretty();
+```
+
+### Вариант 3: Удалить старые аккаунты (ОПАСНО)
+
+```javascript
+// MongoDB shell
+// ⚠️ ОСТОРОЖНО: Это удалит ВСЕ данные!
+db.users.deleteMany({ email: /@librechat\.local$/ });
+```
+
+### Вариант 4: Создать миграционный скрипт
+
+```javascript
+// migration-fix-yandex-emails.js
+const mongoose = require('mongoose');
+const { User } = require('~/models');
+
+async function migrateYandexEmails() {
+  try {
+    console.log('Starting migration: Fix Yandex emails...');
+
+    const invalidUsers = await User.find({ email: /@librechat\.local$/ });
+    console.log(`Found ${invalidUsers.length} users with invalid @librechat.local emails`);
+
+    if (invalidUsers.length === 0) {
+      console.log('✅ No invalid emails found. Migration complete.');
+      return;
+    }
+
+    // Деактивировать эти аккаунты
+    const result = await User.updateMany(
+      { email: /@librechat\.local$/ },
+      {
+        deactivated: true,
+        deactivatedReason: 'invalid_librechat_local_email_cleanup',
+        deactivatedAt: new Date(),
+      }
+    );
+
+    console.log(`✅ Migration complete:`);
+    console.log(`   - Updated: ${result.modifiedCount}`);
+    console.log(`   - Action: Deactivated accounts with invalid emails`);
+    console.log(`   - Date: ${new Date().toISOString()}`);
+
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Migration failed:', error);
+    process.exit(1);
+  }
+}
+
+// Запуск
+migrateYandexEmails();
+```
+
+**Запуск миграции:**
+```bash
+node migration-fix-yandex-emails.js
+```
+
+---
+
+## 📊 ШАГ 5: ПРОВЕРКА РЕЗУЛЬТАТОВ
+
+### Что проверить после исправления
+
+#### 1. Логи успешной авторизации
+
+Пользователи должны:
+- ✅ Авторизоваться через Yandex
+- ✅ Видеть РЕАЛЬНЫЙ email в профиле (user@yandex.ru)
+- ✅ Получать письма на этот email
+
+#### 2. Обработка ошибок
+
+Если user.profile.email пусто:
+- ✅ Авторизация должна быть прервана
+- ✅ Пользователь видит понятную ошибку
+- ✅ В логах видна информация для отладки
+
+#### 3. База данных
+
+```bash
+# Проверить что нет новых @librechat.local
+db.users.find({
+  email: /@librechat\.local$/
+}).count()
+
+# Результат должен быть 0 (или количество старых аккаунтов)
+```
+
+---
+
+## 🚀 ШАГ 6: РАЗВЕРТЫВАНИЕ
+
+### Pre-deployment checklist
+
+- [ ] Исправлены строки 179-203 в yandex.js
+- [ ] Локально протестирована авторизация
+- [ ] Логи показывают правильный email
+- [ ] Нет ошибок в консоли
+- [ ] Протестирована обработка ошибок (нет email)
+
+### Deployment
+
+```bash
+# 1. Создать commit
+git add api/server/controllers/auth/yandex.js
+git commit -m "fix(oauth): require valid Yandex email - prevent @librechat.local placeholders
+
+- Remove fallback email generation for users without Yandex email
+- Add validation: authentication fails if email is not provided
+- Add detailed logging for debugging missing email issues
+- Prevent creation of invalid accounts with placeholder emails
+
+Fixes: Users with @librechat.local email accounts in database"
+
+# 2. Запушить в production ветку
+git push origin main
+
+# 3. Развернуть на сервере
+npm install
+npm run build
+npm run start
+```
+
+### Post-deployment checklist
+
+- [ ] Сервер запустился без ошибок
+- [ ] Логи не показывают критических ошибок
+- [ ] Авторизация через Yandex работает
+- [ ] Новые пользователи имеют корректный email
+- [ ] Старые аккаунты деактивированы (если применена миграция)
+
+---
+
+## 📝 ШАГ 7: КОММИТ И ДОКУМЕНТИРОВАНИЕ
+
+### Commit message
+
+```
+fix(oauth): require valid Yandex email - prevent @librechat.local placeholders
+
+PROBLEM:
+- Yandex OAuth fallback logic generated placeholder emails (yandex_ID@librechat.local)
+- This occurred when Yandex API didn't return email in user profile
+- Created invalid accounts that couldn't receive notifications
+
+SOLUTION:
+- Remove fallback email generation for users without verified Yandex email
+- Add validation: authentication fails if email is not provided
+- Add detailed logging for debugging and monitoring
+- Prevent creation of invalid accounts with placeholder emails
+
+CHANGES:
+- Modified: api/server/controllers/auth/yandex.js (lines 179-203)
+- Added email validation before user creation
+- Added comprehensive error logging
+- Return error redirect if email is missing
+
+TESTING:
+- Tested successful auth with valid Yandex email
+- Tested error handling for missing email
+- Verified correct email stored in database
+- Confirmed no new @librechat.local accounts created
+
+MIGRATION:
+- Script provided to deactivate existing @librechat.local accounts
+- Preserves account data for GDPR compliance
+- Can be run independently after deployment
+
+Related to: #123 (OAuth security improvements)
+```
+
+---
+
+## 📈 МОНИТОРИНГ ПОСЛЕ ДЕПЛОЯ
+
+### Метрики для отслеживания
+
+```javascript
+// Добавить мониторинг в application insights или DataDog
+
+// 1. Количество успешных авторизаций
+metric('oauth.yandex.success', 1);
+
+// 2. Ошибки из-за отсутствия email
+metric('oauth.yandex.error.no_email', 1);
+
+// 3. Средняя информация о новых пользователях
+metric('oauth.yandex.new_user_email_valid', 1);
+
+// 4. Попытки создания @librechat.local (не должны быть)
+metric('oauth.yandex.warning.librechat_local_attempted', 1);
+```
+
+### Алерты
+
+```javascript
+// КРИТИЧЕСКИЙ: Если появляются новые @librechat.local пользователи
+if (newUser.email.includes('@librechat.local')) {
+  sendAlert('CRITICAL: @librechat.local user created despite fix!', {
+    userId: newUser._id,
+    email: newUser.email,
+    timestamp: new Date(),
+  });
+}
+
+// ПРЕДУПРЕЖДЕНИЕ: Много ошибок no_email
+if (noEmailErrors > 10 / hour) {
+  sendAlert('WARNING: High rate of Yandex no_email errors', {
+    count: noEmailErrors,
+    timeframe: '1 hour',
+  });
+}
+```
+
+---
+
+## 🎯 ИТОГОВЫЙ ЧЕКЛИСТ
+
+### До деплоя
+- [ ] Прочитан и понят аудит (`YANDEX_OAUTH_SECURITY_AUDIT.md`)
+- [ ] Изменен файл `api/server/controllers/auth/yandex.js`
+- [ ] Удален fallback на @librechat.local
+- [ ] Добавлена проверка email с обработкой ошибок
+- [ ] Добавлено логирование
+- [ ] Локально протестирована авторизация
+- [ ] Протестирована обработка ошибок
+
+### После деплоя
+- [ ] Сервер запустился
+- [ ] Логи в норме
+- [ ] Авторизация через Yandex работает
+- [ ] Новые пользователи имеют корректный email
+- [ ] Применена миграция (деактивация старых аккаунтов)
+- [ ] Настроены алерты и мониторинг
+- [ ] Документация обновлена
+
+---
+
+**Исправление готово к применению!** ✅

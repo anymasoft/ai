@@ -176,8 +176,35 @@ const yandexOAuthCallback = async (req, res) => {
     const yandexUser = await userInfoResponse.json();
     console.log(`✅ User info received`);
 
-    // Выбираем email - приоритет: default_email > первый из массива emails
-    const userEmail = yandexUser.default_email || yandexUser.emails?.[0] || `yandex_${yandexUser.id}@librechat.local`;
+    // ✅ Требуем реальный email - БЕЗ fallback на @librechat.local
+    const userEmail = yandexUser.default_email || yandexUser.emails?.[0];
+
+    // Проверяем что email существует
+    if (!userEmail) {
+      console.error(`\n${'═'.repeat(60)}`);
+      console.error(`❌ YANDEX OAUTH ERROR: User profile has NO email`);
+      console.error(`${'═'.repeat(60)}`);
+      console.error(`Yandex ID: ${yandexUser.id}`);
+      console.error(`Login: ${yandexUser.login}`);
+      console.error(`Profile:`, {
+        id: yandexUser.id,
+        login: yandexUser.login,
+        display_name: yandexUser.display_name,
+        default_email: yandexUser.default_email,
+        emails: yandexUser.emails,
+      });
+      console.error(`${'═'.repeat(60)}\n`);
+
+      logger.error('[Yandex OAuth] Authentication failed - user profile has no email', {
+        yandexId: yandexUser.id,
+        login: yandexUser.login,
+      });
+
+      return res.redirect(
+        `${domains.client}/sign-in?error=yandex_email_required&provider=yandex`,
+      );
+    }
+
     const userName = yandexUser.display_name || yandexUser.real_name || yandexUser.login || 'Yandex User';
 
     console.log(`📊 AUTH_CHECKPOINT: USER_CREATED`);
