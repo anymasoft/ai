@@ -1,6 +1,6 @@
 import * as Ariakit from '@ariakit/react';
 import { Check } from 'lucide-react';
-import { MCPIcon } from '@librechat/client';
+import { MCPIcon, TooltipAnchor } from '@librechat/client';
 import type { MCPServerDefinition } from '~/hooks/MCP/useMCPServerManager';
 import type { MCPServerStatusIconProps } from './MCPServerStatusIcon';
 import MCPServerStatusIcon from './MCPServerStatusIcon';
@@ -85,7 +85,15 @@ export default function MCPServerMenuItem({
           <span className="truncate text-sm font-medium text-text-primary">{displayName}</span>
         </div>
         {server.config?.description && (
-          <p className="truncate text-xs text-text-secondary">{server.config.description}</p>
+          <TooltipAnchor
+            description={server.config.description}
+            side="right"
+            className="block min-w-0 flex-1"
+          >
+            <p className="truncate text-xs text-text-secondary">
+              {server.config.description}
+            </p>
+          </TooltipAnchor>
         )}
       </div>
 
