@@ -18,13 +18,40 @@ const EXCLUDED_USERS = process.env.ANALYTICS_EXCLUDED_USERS
   : [];
 
 /**
+ * ✅ НОВАЯ ФУНКЦИЯ: Получить фильтр дата для aggregation pipeline
+ * Поддерживает динамическую фильтрацию временного диапазона
+ *
+ * @param {string} range - Временной диапазон: '24h', '7d', '30d', или 'all'
+ * @returns {Date|null} - Дата для $gte фильтра, или null для 'all'
+ */
+function getDateFilter(range = '30d') {
+  const now = Date.now();
+
+  switch (range) {
+    case '24h':
+      return new Date(now - 24 * 60 * 60 * 1000);
+    case '7d':
+      return new Date(now - 7 * 24 * 60 * 60 * 1000);
+    case '30d':
+      return new Date(now - 30 * 24 * 60 * 60 * 1000);
+    case 'all':
+      return null; // Без фильтра
+    default:
+      logger.warn(`[analytics] Unknown range: ${range}, using default 30d`);
+      return new Date(now - 30 * 24 * 60 * 60 * 1000);
+  }
+}
+
+/**
  * GET /api/admin/analytics/overview
  * Возвращает общую статистику: пользователи, сообщения, токены, беседы
  * КРИТИЧНО: исключённые пользователи должны быть исключены из расчётов
  */
-async function getOverviewStats() {
+async function getOverviewStats(range = '30d') {
   try {
-    logger.debug('[analytics] Fetching overview stats');
+    logger.debug('[analytics] Fetching overview stats', { range });
+    // ✅ ПРИМЕЧАНИЕ: overview ВСЕГДА возвращает activeUsers24h, totalUsers (независимо от range)
+    // range параметр добавлен для согласованности API, но влияет только на запросы которые его поддерживают
 
     const [usersStats, activeUsers24h, messages24h, messagesTotal, tokensData, conversationsTotal] = await Promise.all([
       // Total Users (только активные, не исключённые)
@@ -279,67 +306,76 @@ async function getOverviewStats() {
  * Статистика по моделям: какие модели используют пользователи
  * ⚠️ ПРАВИЛЬНЫЙ ПОРЯДОК: $match → $lookup → $unwind → $match excluded → $group
  */
-async function getModelUsage() {
+async function getModelUsage(range = '30d') {
   try {
-    logger.debug('[analytics] Fetching model usage');
+    logger.debug('[analytics] Fetching model usage', { range });
+
+    const filterDate = getDateFilter(range);
 
     // ✅ SAFE: $match createdAt в начале, исключение ДО $group
-    const pipeline = [
-      {
+    const pipeline = [];
+
+    if (filterDate) {
+      pipeline.push({
         $match: {
-          createdAt: { $gte: LAST_30_DAYS },
+          createdAt: { $gte: filterDate },
         },
+      });
+    }
+
+    // Lookup пользователей
+    pipeline.push({
+      $lookup: {
+        from: 'users',
+        localField: 'user',
+        foreignField: '_id',
+        as: 'userInfo',
       },
-      // Lookup пользователей
-      {
-        $lookup: {
-          from: 'users',
-          localField: 'user',
-          foreignField: '_id',
-          as: 'userInfo',
+    });
+
+    // Unwind - удалит документы без пользователя (INNER JOIN)
+    pipeline.push({
+      $unwind: '$userInfo',
+    });
+
+    // Исключаем тестовых пользователей ДО группировки
+    if (EXCLUDED_USERS.length > 0) {
+      pipeline.push({
+        $match: {
+          'userInfo.email': { $nin: EXCLUDED_USERS },
         },
+      });
+    }
+
+    // Только ПОСЛЕ фильтрации делаем группировку
+    pipeline.push({
+      $group: {
+        _id: '$model',
+        requests: { $sum: 1 },
+        uniqueUsers: { $addToSet: '$user' },
+        totalTokens: { $sum: '$tokenValue' },
+        endpoint: { $first: '$endpoint' },
       },
-      // Unwind - удалит документы без пользователя (INNER JOIN)
-      {
-        $unwind: '$userInfo',
+    });
+
+    pipeline.push({
+      $project: {
+        model: '$_id',
+        requests: 1,
+        uniqueUsers: { $size: '$uniqueUsers' },
+        totalTokens: 1,
+        endpoint: 1,
+        _id: 0,
       },
-      // Исключаем тестовых пользователей ДО группировки
-      ...(EXCLUDED_USERS.length > 0
-        ? [
-            {
-              $match: {
-                'userInfo.email': { $nin: EXCLUDED_USERS },
-              },
-            },
-          ]
-        : []),
-      // Только ПОСЛЕ фильтрации делаем группировку
-      {
-        $group: {
-          _id: '$model',
-          requests: { $sum: 1 },
-          uniqueUsers: { $addToSet: '$user' },
-          totalTokens: { $sum: '$tokenValue' },
-          endpoint: { $first: '$endpoint' },
-        },
-      },
-      {
-        $project: {
-          model: '$_id',
-          requests: 1,
-          uniqueUsers: { $size: '$uniqueUsers' },
-          totalTokens: 1,
-          endpoint: 1,
-          _id: 0,
-        },
-      },
-      {
-        $sort: { requests: -1 },
-      },
-      {
-        $limit: 100,
-      },
-    ];
+    });
+
+    pipeline.push({
+      $sort: { requests: -1 },
+    });
+
+    pipeline.push({
+      $limit: 100,
+    });
 
     const stats = await Transaction.aggregate(pipeline);
     return stats;
@@ -354,86 +390,97 @@ async function getModelUsage() {
  * Статистика по пользователям: запросы, токены, последняя активность
  * ⚠️ КРИТИЧНО: исключение ДОЛЖНО быть ДО $group, не после!
  */
-async function getUserUsage() {
+async function getUserUsage(range = '30d') {
   try {
-    logger.debug('[analytics] Fetching user usage');
+    logger.debug('[analytics] Fetching user usage', { range });
+
+    const filterDate = getDateFilter(range);
 
     // ✅ ПРАВИЛЬНЫЙ ПОРЯДОК: $match → $lookup → $unwind → $match excluded → $group
-    const pipeline = [
-      {
+    const pipeline = [];
+
+    if (filterDate) {
+      pipeline.push({
         $match: {
-          createdAt: { $gte: LAST_30_DAYS },
+          createdAt: { $gte: filterDate },
         },
+      });
+    }
+
+    // Lookup пользователей
+    pipeline.push({
+      $lookup: {
+        from: 'users',
+        localField: 'user',
+        foreignField: '_id',
+        as: 'userData',
       },
-      // Lookup пользователей
-      {
-        $lookup: {
-          from: 'users',
-          localField: 'user',
-          foreignField: '_id',
-          as: 'userData',
+    });
+
+    // Unwind - удалит документы без пользователя (INNER JOIN)
+    pipeline.push({
+      $unwind: '$userData',
+    });
+
+    // Исключаем тестовых пользователей ДО группировки
+    if (EXCLUDED_USERS.length > 0) {
+      pipeline.push({
+        $match: {
+          'userData.email': { $nin: EXCLUDED_USERS },
         },
+      });
+    }
+
+    // Только ПОСЛЕ фильтрации делаем группировку по пользователю
+    pipeline.push({
+      $group: {
+        _id: '$user',
+        userId: { $first: '$user' },
+        email: { $first: '$userData.email' },
+        requests: { $sum: 1 },
+        totalTokens: { $sum: '$tokenValue' },
+        models: { $addToSet: '$model' },
+        lastActive: { $max: '$createdAt' },
       },
-      // Unwind - удалит документы без пользователя (INNER JOIN)
-      {
-        $unwind: '$userData',
+    });
+
+    // Lookup подписки
+    pipeline.push({
+      $lookup: {
+        from: 'subscriptions',
+        localField: '_id',
+        foreignField: 'userId',
+        as: 'subscriptionData',
       },
-      // Исключаем тестовых пользователей ДО группировки
-      ...(EXCLUDED_USERS.length > 0
-        ? [
-            {
-              $match: {
-                'userData.email': { $nin: EXCLUDED_USERS },
-              },
-            },
-          ]
-        : []),
-      // Только ПОСЛЕ фильтрации делаем группировку по пользователю
-      {
-        $group: {
-          _id: '$user',
-          userId: { $first: '$user' },
-          email: { $first: '$userData.email' },
-          requests: { $sum: 1 },
-          totalTokens: { $sum: '$tokenValue' },
-          models: { $addToSet: '$model' },
-          lastActive: { $max: '$createdAt' },
-        },
+    });
+
+    pipeline.push({
+      $unwind: {
+        path: '$subscriptionData',
+        preserveNullAndEmptyArrays: true,
       },
-      // Lookup подписки
-      {
-        $lookup: {
-          from: 'subscriptions',
-          localField: '_id',
-          foreignField: 'userId',
-          as: 'subscriptionData',
-        },
+    });
+
+    pipeline.push({
+      $project: {
+        userId: 1,
+        email: 1,
+        plan: { $ifNull: ['$subscriptionData.plan', 'free'] },
+        requests: 1,
+        totalTokens: 1,
+        lastActive: 1,
+        favoriteModel: { $arrayElemAt: ['$models', 0] },
+        _id: 0,
       },
-      {
-        $unwind: {
-          path: '$subscriptionData',
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $project: {
-          userId: 1,
-          email: 1,
-          plan: { $ifNull: ['$subscriptionData.plan', 'free'] },
-          requests: 1,
-          totalTokens: 1,
-          lastActive: 1,
-          favoriteModel: { $arrayElemAt: ['$models', 0] },
-          _id: 0,
-        },
-      },
-      {
-        $sort: { requests: -1 },
-      },
-      {
-        $limit: 100,
-      },
-    ];
+    });
+
+    pipeline.push({
+      $sort: { requests: -1 },
+    });
+
+    pipeline.push({
+      $limit: 100,
+    });
 
     const stats = await Transaction.aggregate(pipeline);
     return stats;
@@ -448,69 +495,80 @@ async function getUserUsage() {
  * Статистика по диалогам: сообщения, токены, модели
  * ⚠️ ОСОБЕННОСТЬ: группируем по conversationId, но фильтруем по пользователю ПЕРЕД группировкой
  */
-async function getConversationStats() {
+async function getConversationStats(range = '30d') {
   try {
-    logger.debug('[analytics] Fetching conversation stats');
+    logger.debug('[analytics] Fetching conversation stats', { range });
+
+    // ✅ НОВОЕ: Получить фильтр дата в зависимости от range
+    const filterDate = getDateFilter(range);
 
     // ✅ ПРАВИЛЬНЫЙ ПОРЯДОК: $match → $lookup → $unwind → $match excluded → $group
-    const pipeline = [
-      {
+    // ✅ Первый $match применяется только если filterDate не null
+    const pipeline = [];
+
+    // STAGE 1: Условно применяем фильтр по дате
+    if (filterDate) {
+      pipeline.push({
         $match: {
-          createdAt: { $gte: LAST_30_DAYS },
+          createdAt: { $gte: filterDate },
         },
+      });
+    }
+
+    // STAGE 2-8: Остальной pipeline (как было)
+    pipeline.push({
+      $lookup: {
+        from: 'users',
+        localField: 'user',
+        foreignField: '_id',
+        as: 'userData',
       },
-      // Lookup пользователей
-      {
-        $lookup: {
-          from: 'users',
-          localField: 'user',
-          foreignField: '_id',
-          as: 'userData',
+    });
+
+    pipeline.push({
+      $unwind: '$userData',
+    });
+
+    // Исключаем тестовых пользователей ДО группировки
+    if (EXCLUDED_USERS.length > 0) {
+      pipeline.push({
+        $match: {
+          'userData.email': { $nin: EXCLUDED_USERS },
         },
+      });
+    }
+
+    // Группируем только по допустимым пользователям
+    pipeline.push({
+      $group: {
+        _id: '$conversationId',
+        totalTokens: { $sum: '$tokenValue' },
+        messageCount: { $sum: 1 },
+        models: { $addToSet: '$model' },
+        userEmail: { $first: '$userData.email' },
+        lastActive: { $max: '$createdAt' },
       },
-      // Unwind - удалит документы без пользователя (INNER JOIN)
-      {
-        $unwind: '$userData',
+    });
+
+    pipeline.push({
+      $sort: { lastActive: -1 },
+    });
+
+    pipeline.push({
+      $limit: 100,
+    });
+
+    pipeline.push({
+      $project: {
+        conversationId: '$_id',
+        user: '$userEmail',
+        messageCount: 1,
+        totalTokens: 1,
+        model: { $arrayElemAt: ['$models', 0] },
+        lastActive: 1,
+        _id: 0,
       },
-      // Исключаем тестовых пользователей ДО группировки
-      ...(EXCLUDED_USERS.length > 0
-        ? [
-            {
-              $match: {
-                'userData.email': { $nin: EXCLUDED_USERS },
-              },
-            },
-          ]
-        : []),
-      // Теперь группируем только по допустимым пользователям
-      {
-        $group: {
-          _id: '$conversationId',
-          totalTokens: { $sum: '$tokenValue' },
-          messageCount: { $sum: 1 },
-          models: { $addToSet: '$model' },
-          userEmail: { $first: '$userData.email' },
-          lastActive: { $max: '$createdAt' },
-        },
-      },
-      {
-        $sort: { lastActive: -1 },
-      },
-      {
-        $limit: 100,
-      },
-      {
-        $project: {
-          conversationId: '$_id',
-          user: '$userEmail',
-          messageCount: 1,
-          totalTokens: 1,
-          model: { $arrayElemAt: ['$models', 0] },
-          lastActive: 1,
-          _id: 0,
-        },
-      },
-    ];
+    });
 
     const stats = await Transaction.aggregate(pipeline);
     return stats;
