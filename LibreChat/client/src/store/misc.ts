@@ -64,6 +64,12 @@ const chatBadges = atomWithLocalStorage<Pick<BadgeItem, 'id'>[]>('chatBadges', [
   // { id: '2' },
 ]);
 
+/** ✅ User ban status - for displaying ban notification */
+const isBanned = atom<boolean>({
+  key: 'isBanned',
+  default: false,
+});
+
 export default {
   hideBannerHint,
   messageAttachmentsMap,
@@ -71,4 +77,5 @@ export default {
   queriesEnabled,
   isEditingBadges,
   chatBadges,
+  isBanned,
 };

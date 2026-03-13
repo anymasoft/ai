@@ -46,6 +46,24 @@ const banResponse = async (req, res) => {
  */
 const checkBan = async (req, res, next = () => {}) => {
   try {
+    // ✅ ПЕРВАЯ ПРОВЕРКА: Постоянный ban статус пользователя (из БД)
+    if (req.user) {
+      // Если user объект не имеет поля banned, нужно загрузить его
+      let user = req.user;
+      if (typeof req.user.banned === 'undefined') {
+        user = await findUser({ _id: req.user._id }, 'banned bannedAt');
+      }
+
+      if (user?.banned === true) {
+        logger.warn(`[Ban Check] Permanent ban detected for user: ${req.user.email}`);
+        req.banned = true;
+        return res.status(403).json({
+          message: 'Your account has been suspended.',
+          code: 'USER_BANNED',
+        });
+      }
+    }
+
     const { BAN_VIOLATIONS } = process.env ?? {};
 
     if (!isEnabled(BAN_VIOLATIONS)) {
