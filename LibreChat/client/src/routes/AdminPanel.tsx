@@ -5,7 +5,6 @@ import { useAuthContext } from '~/hooks';
 import type { ContextType } from '~/common';
 import OpenSidebar from '~/components/Chat/Menus/OpenSidebar';
 import AdminAnalytics from '~/components/Admin/AdminAnalytics';
-import UserManagement from '~/components/Admin/UserManagement';
 import store from '~/store';
 import { Switch, Button, Input, Label } from '@librechat/client';
 
@@ -477,14 +476,6 @@ export default function AdminPanel() {
 
         {/* ── USERS TAB ─────────────────────────────────────── */}
         {tab === 'users' && (
-          <>
-            {/* ✅ NEW: User Management with Ban/Unban functionality */}
-            <UserManagement />
-          </>
-        )}
-
-        {/* ── LEGACY USERS CONTENT (archived) ─────────────────────────────────────── */}
-        {false && tab === 'users' && (
           <>
         {/* Error */}
         {error && (

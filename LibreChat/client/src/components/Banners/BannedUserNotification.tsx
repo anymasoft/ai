@@ -1,7 +1,8 @@
-import { useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 import { LogOut } from 'lucide-react';
 import { Button, cn } from '@librechat/client';
 import { useAuthContext } from '~/hooks/AuthContext';
+import useLogout from '~/hooks/useLogout';
 
 interface BannedUserNotificationProps {
   isVisible: boolean;
@@ -15,16 +16,18 @@ interface BannedUserNotificationProps {
  * когда пользователь забанен администратором.
  *
  * Требует:
- * - useAuthContext для функции logout
+ * - Redux для хранения state
+ * - useLogout hook для выхода
  */
 export const BannedUserNotification = ({
   isVisible,
   onClose,
 }: BannedUserNotificationProps) => {
-  const { logout } = useAuthContext();
+  const logout = useLogout();
 
-  const handleLogout = useCallback(() => {
-    logout('/');
+  const handleLogout = useCallback(async () => {
+    await logout();
+    window.location.href = '/';
   }, [logout]);
 
   if (!isVisible) {
