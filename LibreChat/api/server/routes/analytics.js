@@ -55,13 +55,20 @@ function requireAdminRole(req, res, next) {
 /**
  * GET /api/admin/analytics/overview
  * Общая статистика: пользователи, сообщения, токены, беседы
+ * Query параметры:
+ *   - range: '24h'|'7d'|'30d'|'all' (default: '30d') [для согласованности API]
+ * ✅ ПРИМЕЧАНИЕ: overview ВСЕГДА возвращает activeUsers24h и totalUsers, независимо от range
  * Ответ: { totalUsers, activeUsers24h, messages24h, tokens24h, totalMessages, totalTokens, totalConversations }
  */
 router.get('/overview', requireJwtAuth, requireAdminRole, async (req, res) => {
   try {
-    logger.debug('[analytics/overview] Request from admin:', req.user?.email);
+    const range = req.query.range || '30d';
+    logger.debug('[analytics/overview] Request from admin:', {
+      email: req.user?.email,
+      range,
+    });
 
-    const stats = await getOverviewStats();
+    const stats = await getOverviewStats(range);
 
     res.json({
       success: true,
@@ -80,13 +87,19 @@ router.get('/overview', requireJwtAuth, requireAdminRole, async (req, res) => {
 /**
  * GET /api/admin/analytics/models
  * Статистика по моделям
+ * Query параметры:
+ *   - range: '24h'|'7d'|'30d'|'all' (default: '30d')
  * Ответ: [ { model, requests, uniqueUsers, totalTokens, endpoint }, ... ]
  */
 router.get('/models', requireJwtAuth, requireAdminRole, async (req, res) => {
   try {
-    logger.debug('[analytics/models] Request from admin:', req.user?.email);
+    const range = req.query.range || '30d';
+    logger.debug('[analytics/models] Request from admin:', {
+      email: req.user?.email,
+      range,
+    });
 
-    const stats = await getModelUsage();
+    const stats = await getModelUsage(range);
 
     res.json({
       success: true,
@@ -105,13 +118,19 @@ router.get('/models', requireJwtAuth, requireAdminRole, async (req, res) => {
 /**
  * GET /api/admin/analytics/users
  * Статистика по пользователям
+ * Query параметры:
+ *   - range: '24h'|'7d'|'30d'|'all' (default: '30d')
  * Ответ: [ { userId, email, plan, requests, totalTokens, lastActive, favoriteModel }, ... ]
  */
 router.get('/users', requireJwtAuth, requireAdminRole, async (req, res) => {
   try {
-    logger.debug('[analytics/users] Request from admin:', req.user?.email);
+    const range = req.query.range || '30d';
+    logger.debug('[analytics/users] Request from admin:', {
+      email: req.user?.email,
+      range,
+    });
 
-    const stats = await getUserUsage();
+    const stats = await getUserUsage(range);
 
     res.json({
       success: true,
@@ -130,13 +149,19 @@ router.get('/users', requireJwtAuth, requireAdminRole, async (req, res) => {
 /**
  * GET /api/admin/analytics/conversations
  * Статистика по диалогам (limit 100)
+ * Query параметры:
+ *   - range: '24h'|'7d'|'30d'|'all' (default: '30d')
  * Ответ: [ { conversationId, user, messageCount, totalTokens, model, lastActive }, ... ]
  */
 router.get('/conversations', requireJwtAuth, requireAdminRole, async (req, res) => {
   try {
-    logger.debug('[analytics/conversations] Request from admin:', req.user?.email);
+    const range = req.query.range || '30d';
+    logger.debug('[analytics/conversations] Request from admin:', {
+      email: req.user?.email,
+      range,
+    });
 
-    const stats = await getConversationStats();
+    const stats = await getConversationStats(range);
 
     res.json({
       success: true,

@@ -147,20 +147,9 @@ export default function AdminAnalytics() {
     return sortDirection === 'asc' ? ' ▲' : ' ▼';
   };
 
-  // Фильтр по времени
-  const filterByTime = useCallback((data: any[]) => {
-    if (timeRange === 'all') return data;
-    const now = Date.now();
-    const rangeMs: Record<string, number> = {
-      '24h': 86400000,
-      '7d': 604800000,
-      '30d': 2592000000,
-    };
-    return data.filter((item) => {
-      const timestamp = new Date(item.lastActive || item.createdAt).getTime();
-      return timestamp > now - rangeMs[timeRange];
-    });
-  }, [timeRange]);
+  // ✅ УДАЛЕНО: filterByTime() - теперь фильтрация происходит на backend
+  // При смене timeRange, useEffect вызывает fetchAnalytics(tab, timeRange)
+  // Backend возвращает уже отфильтрованные данные
 
   // Фильтр по email
   const filterByEmail = useCallback((data: any[]) => {
@@ -247,12 +236,13 @@ export default function AdminAnalytics() {
     }
   }, [replyConversationId, replyText, token, openConversationModal]);
 
-  const fetchAnalytics = useCallback(async (analyticsTab: AnalyticsTab) => {
+  const fetchAnalytics = useCallback(async (analyticsTab: AnalyticsTab, range: typeof timeRange = timeRange) => {
     setLoading(true);
     setError('');
 
     try {
-      const endpoint = `/api/admin/analytics/${analyticsTab}`;
+      // ✅ НОВОЕ: Добавить range параметр в endpoint
+      const endpoint = `/api/admin/analytics/${analyticsTab}?range=${range}`;
       const res = await fetch(endpoint, {
         credentials: 'include',
         headers: {
@@ -292,9 +282,10 @@ export default function AdminAnalytics() {
     }
   }, [token]);
 
+  // ✅ НОВОЕ: Fetch analytics при смене tab или timeRange
   useEffect(() => {
-    fetchAnalytics(tab);
-  }, [tab, fetchAnalytics]);
+    fetchAnalytics(tab, timeRange);
+  }, [tab, timeRange, fetchAnalytics]);
 
   const formatNumber = (n: number) => n.toLocaleString('ru-RU');
 
@@ -574,7 +565,8 @@ export default function AdminAnalytics() {
                 </tr>
               </thead>
               <tbody>
-                {sortData(filterByTime(filterByEmail(usersData)))
+                {/* ✅ ИЗМЕНЕНО: Удален filterByTime() - backend уже фильтрует по range */}
+                {sortData(filterByEmail(usersData))
                   .slice(0, 100)
                   .length === 0 ? (
                   <tr>
@@ -583,7 +575,7 @@ export default function AdminAnalytics() {
                     </td>
                   </tr>
                 ) : (
-                  sortData(filterByTime(filterByEmail(usersData)))
+                  sortData(filterByEmail(usersData))
                     .slice(0, 100)
                     .map((row, idx) => (
                       <tr
@@ -710,14 +702,15 @@ export default function AdminAnalytics() {
                 </tr>
               </thead>
               <tbody>
-                {sortData(filterByEmail(filterByTime(conversationsData))).length === 0 ? (
+                {/* ✅ ИЗМЕНЕНО: Удален filterByTime() - backend уже фильтрует по range */}
+                {sortData(filterByEmail(conversationsData)).length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-4 text-center text-gray-500">
                       Нет данных
                     </td>
                   </tr>
                 ) : (
-                  sortData(filterByEmail(filterByTime(conversationsData))).map((row, idx) => (
+                  sortData(filterByEmail(conversationsData)).map((row, idx) => (
                   <tr
                     key={idx}
                     className="group border-b border-gray-100 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
