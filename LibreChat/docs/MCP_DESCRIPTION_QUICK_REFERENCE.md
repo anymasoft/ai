@@ -34,8 +34,10 @@ LibreChat/
 │   │
 │   └── data-provider/           ← РЕАКТИВНЫЕ ЗАПРОСЫ
 │
-└── docs/
-    └── MCP_SERVER_DESCRIPTION_UI_AUDIT.md  ← ПОЛНЫЙ ОТЧЕТ
+└── Корень проекта
+    ├── MCP_SERVER_DESCRIPTION_UI_AUDIT.md
+    ├── MCP_SERVER_DESCRIPTION_TOOLTIP_PATCH.md
+    └── MCP_DESCRIPTION_QUICK_REFERENCE.md
 ```
 
 ---
@@ -191,9 +193,9 @@ npm run frontend:dev
 Аудит завершен. Все файлы готовы к просмотру:
 
 ```bash
-cat docs/MCP_SERVER_DESCRIPTION_UI_AUDIT.md          # Полный отчет
-cat docs/MCP_SERVER_DESCRIPTION_TOOLTIP_PATCH.md    # Готовый патч
-cat docs/MCP_DESCRIPTION_QUICK_REFERENCE.md         # Этот файл
+cat MCP_SERVER_DESCRIPTION_UI_AUDIT.md          # Полный отчет
+cat MCP_SERVER_DESCRIPTION_TOOLTIP_PATCH.md    # Готовый патч
+cat MCP_DESCRIPTION_QUICK_REFERENCE.md         # Этот файл
 ```
 
 ---
