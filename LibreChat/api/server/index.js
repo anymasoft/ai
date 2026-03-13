@@ -27,7 +27,7 @@ const initializeOAuthReconnectManager = require('./services/initializeOAuthRecon
 const createValidateImageRequest = require('./middleware/validateImageRequest');
 const { jwtLogin, ldapLogin, passportLogin } = require('~/strategies');
 const { createOAuthHandler } = require('~/server/controllers/auth/oauth');
-const { checkDomainAllowed } = require('~/server/middleware');
+const { checkDomainAllowed, checkBan } = require('~/server/middleware');
 const { createSetBalanceConfig } = require('@librechat/api');
 const { updateInterfacePermissions } = require('~/models/interface');
 const { checkMigrations } = require('./services/start/migration');
@@ -218,13 +218,13 @@ const startServer = async () => {
   logger.debug('[app.use] Mounting /api/api-keys', typeof routes.apiKeys);
   app.use('/api/api-keys', routes.apiKeys);
   logger.debug('[app.use] Mounting /api/user', typeof routes.user);
-  app.use('/api/user', routes.user);
+  app.use('/api/user', checkBan, routes.user);
   logger.debug('[app.use] Mounting /api/search', typeof routes.search);
   app.use('/api/search', routes.search);
   logger.debug('[app.use] Mounting /api/messages', typeof routes.messages);
-  app.use('/api/messages', routes.messages);
+  app.use('/api/messages', checkBan, routes.messages);
   logger.debug('[app.use] Mounting /api/convos', typeof routes.convos);
-  app.use('/api/convos', routes.convos);
+  app.use('/api/convos', checkBan, routes.convos);
   logger.debug('[app.use] Mounting /api/presets', typeof routes.presets);
   app.use('/api/presets', routes.presets);
   logger.debug('[app.use] Mounting /api/prompts', typeof routes.prompts);
@@ -244,9 +244,9 @@ const startServer = async () => {
   logger.debug('[app.use] Mounting /api/config', typeof routes.config);
   app.use('/api/config', routes.config);
   logger.debug('[app.use] Mounting /api/assistants', typeof routes.assistants);
-  app.use('/api/assistants', routes.assistants);
+  app.use('/api/assistants', checkBan, routes.assistants);
   logger.debug('[app.use] Mounting /api/files (after initialize)');
-  app.use('/api/files', await routes.files.initialize());
+  app.use('/api/files', checkBan, await routes.files.initialize());
   logger.debug('[app.use] Mounting /images/');
 
   // Check staticRoute before using
