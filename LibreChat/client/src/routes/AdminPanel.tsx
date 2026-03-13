@@ -120,6 +120,10 @@ export default function AdminPanel() {
   const [pkgSaveMsg, setPkgSaveMsg] = useState<Record<string, { ok: boolean; text: string }>>({});
   const [availableModels, setAvailableModels] = useState<string[]>([]);
 
+  // Ban modal state
+  const [banUserId, setBanUserId] = useState<string | null>(null);
+  const [banReason, setBanReason] = useState<string>('');
+
   const context = useOutletContext<ContextType>();
   const { navVisible, setNavVisible } = context || { navVisible: false, setNavVisible: () => {} };
   const isAdmin = user?.role === SystemRoles.ADMIN;
@@ -381,18 +385,24 @@ export default function AdminPanel() {
     }
   };
 
-  // 🔒 Функция забанить пользователя
-  const handleBan = async (userId: string) => {
-    const reason = prompt('Причина бана (необязательно):') || '';
+  // 🔒 Открыть модальное окно для забана пользователя
+  const handleBan = (userId: string) => {
+    setBanUserId(userId);
+    setBanReason('');
+  };
+
+  // 🔒 Подтвердить и отправить бан с причиной
+  const confirmBan = async () => {
+    if (!banUserId) return;
     try {
-      const res = await fetch(`/api/admin/mvp/users/${userId}/ban`, {
+      const res = await fetch(`/api/admin/mvp/users/${banUserId}/ban`, {
         method: 'PATCH',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ banReason: reason }),
+        body: JSON.stringify({ banReason }),
       });
       if (!res.ok) throw new Error(await res.text());
 
@@ -401,12 +411,17 @@ export default function AdminPanel() {
         prev && data ? {
           ...prev,
           users: prev.users.map((u) =>
-            u._id === userId ? { ...u, banned: true, banReason: reason } : u
+            u._id === banUserId ? { ...u, banned: true, banReason } : u
           ),
         } : prev
       );
+      // Закрываем модаль
+      setBanUserId(null);
+      setBanReason('');
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : 'Ошибка бана');
+      const errorMsg = e instanceof Error ? e.message : 'Ошибка бана';
+      setError(errorMsg);
+      // Не закрываем модаль при ошибке, чтобы пользователь мог исправить
     }
   };
 
@@ -1068,6 +1083,46 @@ export default function AdminPanel() {
           <AdminAnalytics />
         )}
       </div>
+
+      {/* ── BAN MODAL ─────────────────────────────────────── */}
+      {banUserId && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 w-96">
+            <h2 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">
+              Забанить пользователя
+            </h2>
+            <div className="mb-4">
+              <Label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                Причина бана (необязательно)
+              </Label>
+              <Input
+                type="text"
+                placeholder="Введите причину бана..."
+                value={banReason}
+                onChange={(e) => setBanReason(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button
+                onClick={() => {
+                  setBanUserId(null);
+                  setBanReason('');
+                }}
+                className="bg-gray-300 text-gray-800 hover:bg-gray-400 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500"
+              >
+                Отмена
+              </Button>
+              <Button
+                onClick={confirmBan}
+                className="bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600"
+              >
+                Забанить
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
