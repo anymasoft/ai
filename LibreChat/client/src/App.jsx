@@ -7,8 +7,9 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toast, ThemeProvider, ToastProvider } from '@librechat/client';
 import { QueryClient, QueryClientProvider, QueryCache } from '@tanstack/react-query';
-import { ScreenshotProvider, useApiErrorBoundary } from './hooks';
+import { ScreenshotProvider, useApiErrorBoundary, useBanCheck } from './hooks';
 import WakeLockManager from '~/components/System/WakeLockManager';
+import BannedUserNotification from '~/components/Banners/BannedUserNotification';
 import { getThemeFromEnv } from './utils/getThemeFromEnv';
 import { initializeFontSize } from '~/store/fontSize';
 import { LiveAnnouncer } from '~/a11y';
@@ -16,6 +17,7 @@ import { router } from './routes';
 
 const App = () => {
   const { setError } = useApiErrorBoundary();
+  const { isBanned } = useBanCheck();
 
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -48,6 +50,7 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <RecoilRoot>
         <LiveAnnouncer>
+          <BannedUserNotification isVisible={isBanned} />
           <ThemeProvider
             // Only pass initialTheme and themeRGB if environment theme exists
             // This allows localStorage values to persist when no env theme is set
