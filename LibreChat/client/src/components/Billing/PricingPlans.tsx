@@ -130,7 +130,7 @@ export default function PricingPlans({ mode = 'pricing', onPaymentStart }: Prici
       )}
 
       <div className={`grid gap-6 ${plans.length === 2 ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
-        {PLANS.map((plan) => (
+        {plans.map((plan) => (
           <div
             key={plan.id}
             className={`relative flex flex-col rounded-2xl p-6 ${
