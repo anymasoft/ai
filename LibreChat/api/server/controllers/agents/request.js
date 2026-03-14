@@ -79,6 +79,11 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
     const jobCreatedAt = job.createdAt; // Capture creation time to detect job replacement
     req._resumableStreamId = streamId;
 
+    // Send JSON response IMMEDIATELY so client can connect to SSE stream
+    // This MUST happen BEFORE initializeClient to ensure response is sent before any errors
+    // If errors occur during initialization, they will be sent via SSE through the stream
+    res.json({ streamId, conversationId, status: 'started' });
+
     // Track if partial response was already saved to avoid duplicates
     let partialResponseSaved = false;
 
@@ -164,12 +169,8 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
       GenerationJobManager.setContentParts(streamId, client.contentParts);
     }
 
-    // Send JSON response AFTER successful initialization so client can connect to SSE stream
-    // This is critical: tool loading (MCP OAuth) may emit events that the client needs to receive
-    // Must happen AFTER initializeClient succeeds to avoid double-response errors
-    res.json({ streamId, conversationId, status: 'started' });
-
-    // Note: The response closes normally after res.json(), which is not an abort condition.
+    // Note: Response was already sent immediately after job creation.
+    // The response closes normally, which is not an abort condition.
     // Abort handling is done through GenerationJobManager via the SSE stream connection.
 
     let userMessage;
@@ -400,12 +401,20 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
     });
   } catch (error) {
     logger.error('[ResumableAgentController] Initialization error:', error);
-    if (!res.headersSent) {
-      res.status(500).json({ error: error.message || 'Failed to start generation' });
-    } else {
-      // JSON already sent, emit error to stream so client can receive it
+
+    // ALWAYS send errors through SSE stream, never as HTTP response
+    // Headers should already be sent since we send response immediately after job creation
+    if (res.headersSent) {
+      // Response was sent, emit error to SSE stream
       await GenerationJobManager.emitError(streamId, error.message || 'Failed to start generation');
+    } else {
+      // Headers not sent (error occurred before job creation) - send response and then complete job
+      res.status(500).json({
+        error: error.message || 'Failed to start generation',
+        streamId: streamId || undefined,
+      });
     }
+
     GenerationJobManager.completeJob(streamId, error.message);
     await decrementPendingRequest(userId);
     if (client) {
