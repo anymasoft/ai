@@ -49,25 +49,24 @@ export default function Landing() {
         // ✅ ЗАМЕНА ДИНАМИЧЕСКИХ ТАРИФОВ
         // Ищем карточки тарифов по структуре HTML и заменяем значения
         if (packages.length > 0) {
+          // Заменяем ЦЕНЫ по порядку (простой и надёжный способ)
           const priceRegex = /(<span class="mr-2 text-5xl font-extrabold">)\$?[\d,]+(<\/span>)/g;
-          const prices = packages.map(p => `${p.priceRub}`);
-
-          modifiedHTML = modifiedHTML.replace(priceRegex, (match, before, after, offset) => {
-            const cardIndex = (modifiedHTML.substring(0, offset).match(/<span class="mr-2 text-5xl font-extrabold">/g) || []).length - 1;
-            if (cardIndex >= 0 && cardIndex < prices.length) {
-              return `${before}${prices[cardIndex]} ₽${after}`;
+          let priceIndex = 0;
+          modifiedHTML = modifiedHTML.replace(priceRegex, () => {
+            if (priceIndex < packages.length) {
+              return `<span class="mr-2 text-5xl font-extrabold">${packages[priceIndex++].priceRub} ₽</span>`;
             }
-            return match;
+            return arguments[0];
           });
 
           // Заменяем названия тарифов
           const nameRegex = /(<h3 class="mb-4 text-2xl font-semibold">)(Starter|Company|Enterprise)<\/h3>/g;
           let nameIndex = 0;
-          modifiedHTML = modifiedHTML.replace(nameRegex, (match) => {
+          modifiedHTML = modifiedHTML.replace(nameRegex, () => {
             if (nameIndex < packages.length) {
               return `<h3 class="mb-4 text-2xl font-semibold">${packages[nameIndex++].label}</h3>`;
             }
-            return match;
+            return arguments[0];
           });
         }
 
