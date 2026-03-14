@@ -46,6 +46,7 @@ const AuthContextProvider = ({
   const [token, setToken] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | undefined>(undefined);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isBanned, setIsBanned] = useState<boolean>(false);
   const logoutRedirectRef = useRef<string | undefined>(undefined);
 
   const { data: userRole = null } = useGetRole(SystemRoles.USER, {
@@ -191,7 +192,16 @@ const AuthContextProvider = ({
   useEffect(() => {
     if (userQuery.data) {
       setUser(userQuery.data);
+      setIsBanned(false);
     } else if (userQuery.isError) {
+      // 🔒 Проверяем если пользователь забанен (код USER_BANNED)
+      const error = userQuery.error as any;
+      if (error?.response?.data?.code === 'USER_BANNED') {
+        setIsBanned(true);
+        setError(undefined);
+        return;
+      }
+
       doSetError((userQuery.error as Error).message);
       // Не редиректим на /sign-in если пользователь на публичном маршруте
       const currentPath = window.location.pathname;
@@ -243,6 +253,7 @@ const AuthContextProvider = ({
       login,
       logout,
       setError,
+      isBanned,
       roles: {
         [SystemRoles.USER]: userRole,
         [SystemRoles.ADMIN]: adminRole,
@@ -250,7 +261,7 @@ const AuthContextProvider = ({
       isAuthenticated,
     }),
 
-    [user, error, isAuthenticated, token, userRole, adminRole],
+    [user, error, isAuthenticated, token, userRole, adminRole, isBanned],
   );
 
   return <AuthContext.Provider value={memoedValue}>{children}</AuthContext.Provider>;
