@@ -13,8 +13,9 @@ export default function Landing() {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const [packages, setPackages] = useState<TokenPackageDoc[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // ✅ Загружаем тарифы из API
+  // ✅ Загружаем тарифы из БД (админ их там сохранил)
   useEffect(() => {
     const fetchPlans = async () => {
       try {
@@ -25,19 +26,21 @@ export default function Landing() {
         }
       } catch (err) {
         console.error('Ошибка загрузки тарифов:', err);
+      } finally {
+        setLoading(false);
       }
     };
     fetchPlans();
   }, []);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || loading) return;
 
-    // Fetch and render the landing page HTML
+    // Загружаем и рендерим static HTML для остальной части лендинга
     fetch('/landwind/index.html')
       .then((res) => res.text())
       .then((html) => {
-        // Modify HTML to use public paths
+        // Заменяем пути на public
         let modifiedHTML = html
           .replace(/href="\.\/output\.css"/g, 'href="/landwind/output.css"')
           .replace(/src="\.\/images\//g, 'src="/landwind/images/')
@@ -45,31 +48,6 @@ export default function Landing() {
           .replace(/href="\.\/favicon-/g, 'href="/landwind/favicon-')
           .replace(/href="\.\/site\.webmanifest"/g, 'href="/landwind/site.webmanifest"')
           .replace(/src="\.\/([^/][^"]*\.png)"/g, 'src="/landwind/$1"');
-
-        // ✅ ЗАМЕНА ДИНАМИЧЕСКИХ ТАРИФОВ
-        // Ищем карточки тарифов по структуре HTML и заменяем значения
-        if (packages.length > 0) {
-          const priceRegex = /(<span class="mr-2 text-5xl font-extrabold">)\$?[\d,]+(<\/span>)/g;
-          const prices = packages.map(p => `${p.priceRub}`);
-
-          modifiedHTML = modifiedHTML.replace(priceRegex, (match, before, after, offset) => {
-            const cardIndex = (modifiedHTML.substring(0, offset).match(/<span class="mr-2 text-5xl font-extrabold">/g) || []).length - 1;
-            if (cardIndex >= 0 && cardIndex < prices.length) {
-              return `${before}${prices[cardIndex]} ₽${after}`;
-            }
-            return match;
-          });
-
-          // Заменяем названия тарифов
-          const nameRegex = /(<h3 class="mb-4 text-2xl font-semibold">)(Starter|Company|Enterprise)<\/h3>/g;
-          let nameIndex = 0;
-          modifiedHTML = modifiedHTML.replace(nameRegex, (match) => {
-            if (nameIndex < packages.length) {
-              return `<h3 class="mb-4 text-2xl font-semibold">${packages[nameIndex++].label}</h3>`;
-            }
-            return match;
-          });
-        }
 
         if (containerRef.current) {
           containerRef.current.innerHTML = modifiedHTML;
@@ -92,10 +70,35 @@ export default function Landing() {
               });
             }
           });
+
+          // ✅ ПРОСТО ЗАМЕНЯЕМ ТЕКСТ через DOM (без regex!)
+          // Находим все спаны с ценами и подставляем данные из БД
+          const priceSpans = containerRef.current.querySelectorAll('span.mr-2.text-5xl.font-extrabold');
+          priceSpans.forEach((span, index) => {
+            if (index < packages.length) {
+              span.textContent = `${packages[index].priceRub} ₽`;
+            }
+          });
+
+          // Находим все заголовки тарифов и подставляем данные из БД
+          const titleElements = containerRef.current.querySelectorAll('h3.mb-4.text-2xl.font-semibold');
+          titleElements.forEach((title, index) => {
+            if (index < packages.length) {
+              title.textContent = packages[index].label;
+            }
+          });
         }
       })
       .catch((err) => console.error('Failed to load landing page:', err));
-  }, [navigate, packages]);
+  }, [navigate, packages, loading]);
+
+  if (loading) {
+    return (
+      <div style={{ width: '100%', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div>Загрузка...</div>
+      </div>
+    );
+  }
 
   return <div ref={containerRef} style={{ width: '100%', minHeight: '100vh' }} />;
 }
