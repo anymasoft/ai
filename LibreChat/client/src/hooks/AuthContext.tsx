@@ -194,7 +194,7 @@ const AuthContextProvider = ({
       setUser(userQuery.data);
       setIsBanned(false);
     } else if (userQuery.isError) {
-      // 🔒 Проверяем: если ошибка USER_BANNED, показываем экран блокировки
+      // 🔒 Проверяем если пользователь забанен (код USER_BANNED)
       const error = userQuery.error as any;
       if (error?.response?.data?.code === 'USER_BANNED') {
         setIsBanned(true);

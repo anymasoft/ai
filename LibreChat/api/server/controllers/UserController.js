@@ -46,11 +46,11 @@ const { deleteUserAgents } = require('~/models/Agent');
 const { getLogStores } = require('~/cache');
 
 const getUserController = async (req, res) => {
-  // 🔒 Проверка: если пользователь забанен, запретить доступ
+  // 🔒 БЛОКИРОВКА: Если пользователь забанен, запретить доступ к профилю
   if (req.user?.banned === true) {
     return res.status(403).json({
       code: 'USER_BANNED',
-      message: 'Your account has been suspended.',
+      message: 'Account blocked',
     });
   }
 
