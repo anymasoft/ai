@@ -46,6 +46,14 @@ const { deleteUserAgents } = require('~/models/Agent');
 const { getLogStores } = require('~/cache');
 
 const getUserController = async (req, res) => {
+  // 🔒 Проверка: если пользователь забанен, запретить доступ
+  if (req.user?.banned === true) {
+    return res.status(403).json({
+      code: 'USER_BANNED',
+      message: 'Account blocked'
+    });
+  }
+
   const appConfig = await getAppConfig({ role: req.user?.role });
   /** @type {IUser} */
   const userData = req.user.toObject != null ? req.user.toObject() : { ...req.user };
