@@ -50,7 +50,7 @@ const getUserController = async (req, res) => {
   if (req.user?.banned === true) {
     return res.status(403).json({
       code: 'USER_BANNED',
-      message: 'Account blocked'
+      message: 'Your account has been suspended.',
     });
   }
 

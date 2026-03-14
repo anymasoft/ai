@@ -176,8 +176,55 @@ const yandexOAuthCallback = async (req, res) => {
     const yandexUser = await userInfoResponse.json();
     console.log(`✅ User info received`);
 
-    // Выбираем email - приоритет: default_email > первый из массива emails
-    const userEmail = yandexUser.default_email || yandexUser.emails?.[0] || `yandex_${yandexUser.id}@librechat.local`;
+    // ✅ Требуем реальный email - БЕЗ fallback на @librechat.local
+    const userEmail = yandexUser.default_email || yandexUser.emails?.[0];
+
+    // Проверяем что email существует
+    if (!userEmail) {
+      console.error(`\n${'═'.repeat(60)}`);
+      console.error(`❌ YANDEX OAUTH ERROR: User profile has NO email`);
+      console.error(`${'═'.repeat(60)}`);
+      console.error(`Yandex ID: ${yandexUser.id}`);
+      console.error(`Login: ${yandexUser.login}`);
+      console.error(`Profile:`, {
+        id: yandexUser.id,
+        login: yandexUser.login,
+        display_name: yandexUser.display_name,
+        default_email: yandexUser.default_email,
+        emails: yandexUser.emails,
+      });
+      console.error(`${'═'.repeat(60)}\n`);
+
+      logger.error('[Yandex OAuth] Authentication failed - user profile has no email', {
+        yandexId: yandexUser.id,
+        login: yandexUser.login,
+      });
+
+      return res.redirect(
+        `${domains.client}/sign-in?error=yandex_email_required&provider=yandex`,
+      );
+    }
+
+    // 🔒 ЧАСТЬ 1: Проверка домена email (только Yandex!)
+    const validYandexDomains = /@(yandex\.ru|yandex\.com|ya\.ru|yandex\.by|yandex\.kz|yandex\.ua)$/i;
+    if (!validYandexDomains.test(userEmail)) {
+      console.error(`\n${'═'.repeat(60)}`);
+      console.error(`❌ YANDEX OAUTH ERROR: Invalid email domain`);
+      console.error(`${'═'.repeat(60)}`);
+      console.error(`Email: ${userEmail}`);
+      console.error(`Allowed domains: yandex.ru, yandex.com, ya.ru, yandex.by, yandex.kz, yandex.ua`);
+      console.error(`${'═'.repeat(60)}\n`);
+
+      logger.error('[Yandex OAuth] Invalid email domain - not a Yandex email', {
+        email: userEmail,
+        yandexId: yandexUser.id,
+      });
+
+      return res.redirect(
+        `${domains.client}/sign-in?error=invalid_email_domain&provider=yandex`,
+      );
+    }
+
     const userName = yandexUser.display_name || yandexUser.real_name || yandexUser.login || 'Yandex User';
 
     console.log(`📊 AUTH_CHECKPOINT: USER_CREATED`);
@@ -190,6 +237,25 @@ const yandexOAuthCallback = async (req, res) => {
     try {
       // Ищем пользователя по email (стандартный способ LibreChat)
       let user = await findUser({ email: userEmail });
+
+      // 🔒 ЧАСТЬ 2: Проверка что это не legacy .local аккаунт
+      if (user && user.email.endsWith('@librechat.local')) {
+        console.error(`\n${'═'.repeat(60)}`);
+        console.error(`❌ SECURITY: Attempt to login with legacy .local account`);
+        console.error(`${'═'.repeat(60)}`);
+        console.error(`Email: ${user.email}`);
+        console.error(`This account is no longer valid and must be migrated`);
+        console.error(`${'═'.repeat(60)}\n`);
+
+        logger.error('[Security] Attempt login with legacy .local account', {
+          email: user.email,
+          userId: user._id,
+        });
+
+        return res.redirect(
+          `${domains.client}/sign-in?error=invalid_account&provider=yandex`,
+        );
+      }
 
       if (!user) {
         // Проверяем разрешена ли социальная регистрация

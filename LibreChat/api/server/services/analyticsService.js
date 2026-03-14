@@ -79,9 +79,20 @@ async function getOverviewStats(range = '30d') {
               },
             },
             {
+              $addFields: {
+                userObjectId: {
+                  $cond: {
+                    if: { $eq: [{ $type: '$user' }, 'string'] },
+                    then: { $toObjectId: '$user' },
+                    else: '$user',
+                  },
+                },
+              },
+            },
+            {
               $lookup: {
                 from: 'users',
-                localField: 'user',
+                localField: 'userObjectId',
                 foreignField: '_id',
                 as: 'userData',
               },
@@ -120,9 +131,20 @@ async function getOverviewStats(range = '30d') {
               },
             },
             {
+              $addFields: {
+                userObjectId: {
+                  $cond: {
+                    if: { $eq: [{ $type: '$user' }, 'string'] },
+                    then: { $toObjectId: '$user' },
+                    else: '$user',
+                  },
+                },
+              },
+            },
+            {
               $lookup: {
                 from: 'users',
-                localField: 'user',
+                localField: 'userObjectId',
                 foreignField: '_id',
                 as: 'userData',
               },
@@ -149,9 +171,20 @@ async function getOverviewStats(range = '30d') {
       EXCLUDED_USERS.length > 0
         ? Message.aggregate([
             {
+              $addFields: {
+                userObjectId: {
+                  $cond: {
+                    if: { $eq: [{ $type: '$user' }, 'string'] },
+                    then: { $toObjectId: '$user' },
+                    else: '$user',
+                  },
+                },
+              },
+            },
+            {
               $lookup: {
                 from: 'users',
-                localField: 'user',
+                localField: 'userObjectId',
                 foreignField: '_id',
                 as: 'userData',
               },
@@ -245,9 +278,20 @@ async function getOverviewStats(range = '30d') {
       EXCLUDED_USERS.length > 0
         ? Conversation.aggregate([
             {
+              $addFields: {
+                conversationIdString: {
+                  $cond: {
+                    if: { $eq: [{ $type: '$_id' }, 'objectId'] },
+                    then: { $toString: '$_id' },
+                    else: '$_id',
+                  },
+                },
+              },
+            },
+            {
               $lookup: {
                 from: 'transactions',
-                localField: '_id',
+                localField: 'conversationIdString',
                 foreignField: 'conversationId',
                 as: 'transactions',
               },

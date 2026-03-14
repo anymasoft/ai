@@ -45,7 +45,7 @@ router.get('/users', requireJwtAuth, requireAdminRole, async (req, res) => {
     const skip = (page - 1) * limit;
 
     const [users, total] = await Promise.all([
-      User.find({}, 'email name role createdAt emailVerified')
+      User.find({}, 'email name role createdAt emailVerified provider banned bannedAt banReason')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -698,6 +698,74 @@ router.patch('/settings/debug-mode', requireJwtAuth, requireAdminRole, async (re
     res.json({ ok: true, debugModelUsage });
   } catch (err) {
     logger.error('[admin/settings/debug-mode/set]', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+/**
+ * PATCH /api/admin/users/:userId/ban
+ * Забанить пользователя
+ * Body: { banReason?: string }
+ */
+router.patch('/users/:userId/ban', requireJwtAuth, requireAdminRole, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { banReason = 'No reason provided' } = req.body;
+
+    // 🔒 ЧАСТЬ 5: Защита от self-ban - админ не может забанить сам себя
+    if (req.user._id.toString() === userId) {
+      logger.warn(`[admin/ban] Attempt to ban yourself by ${req.user.email}`);
+      return res.status(400).json({ error: 'You cannot ban yourself' });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      {
+        banned: true,
+        bannedAt: new Date(),
+        banReason,
+      },
+      { new: true, select: 'email name banned bannedAt banReason' },
+    ).lean();
+
+    if (!user) {
+      return res.status(404).json({ error: 'Пользователь не найден' });
+    }
+
+    logger.info(`[admin/ban] ${req.user.email} забанил пользователя ${user.email}: ${banReason}`);
+    res.json({ ok: true, user });
+  } catch (err) {
+    logger.error('[admin/users/ban]', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+/**
+ * PATCH /api/admin/users/:userId/unban
+ * Разбанить пользователя
+ */
+router.patch('/users/:userId/unban', requireJwtAuth, requireAdminRole, async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      {
+        banned: false,
+        bannedAt: null,
+        banReason: '',
+      },
+      { new: true, select: 'email name banned bannedAt banReason' },
+    ).lean();
+
+    if (!user) {
+      return res.status(404).json({ error: 'Пользователь не найден' });
+    }
+
+    logger.info(`[admin/unban] ${req.user.email} разбанил пользователя ${user.email}`);
+    res.json({ ok: true, user });
+  } catch (err) {
+    logger.error('[admin/users/unban]', err);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });

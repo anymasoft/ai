@@ -157,6 +157,22 @@ const userSchema = new Schema<IUser>(
       type: String,
       sparse: true,
     },
+    /** User ban status */
+    banned: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    /** When user was banned */
+    bannedAt: {
+      type: Date,
+      default: null,
+    },
+    /** Reason for ban (optional) */
+    banReason: {
+      type: String,
+      default: '',
+    },
   },
   { timestamps: true },
 );

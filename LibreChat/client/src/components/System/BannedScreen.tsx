@@ -40,7 +40,7 @@ export default function BannedScreen() {
         </p>
 
         <p className="mb-8 text-sm text-gray-500 dark:text-gray-400">
-          Пожалуйста обратитесь в поддержку.
+          Если вы считаете это ошибкой, пожалуйста обратитесь в нашу службу поддержки.
         </p>
 
         {/* Кнопка выхода */}
@@ -50,6 +50,11 @@ export default function BannedScreen() {
         >
           Вернуться на вход
         </button>
+
+        {/* Email поддержки (если нужен) */}
+        <p className="mt-8 text-xs text-gray-400 dark:text-gray-500">
+          Вопросы? Свяжитесь с поддержкой
+        </p>
       </div>
     </div>
   );

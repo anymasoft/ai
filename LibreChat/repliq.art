@@ -1,0 +1,44 @@
+server {
+    server_name repliq.art www.repliq.art;
+
+    location / {
+        proxy_pass http://127.0.0.1:3080;
+
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    listen 443 ssl; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/repliq.art/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/repliq.art/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+
+
+}
+server {
+    if ($host = www.repliq.art) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+
+    if ($host = repliq.art) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+
+    listen 80;
+    server_name repliq.art www.repliq.art;
+    return 404; # managed by Certbot
+
+
+
+
+}
