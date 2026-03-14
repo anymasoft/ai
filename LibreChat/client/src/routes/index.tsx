@@ -11,8 +11,6 @@ import {
 import { MarketplaceProvider } from '~/components/Agents/MarketplaceContext';
 import AgentMarketplace from '~/components/Agents/Marketplace';
 import { OAuthSuccess, OAuthError } from '~/components/OAuth';
-import BannedScreen from '~/components/System/BannedScreen';
-import { useAuthContext } from '~/hooks';
 import RouteErrorBoundary from './RouteErrorBoundary';
 import RootLayout from './RootLayout';
 import StartupLayout from './Layouts/Startup';
@@ -26,21 +24,12 @@ import Root from './Root';
 import Pricing from './Pricing';
 import Landing from './Landing';
 
-const AuthLayout = () => {
-  const { isBanned } = useAuthContext();
-
-  // 🔒 Если пользователь забанен, показываем экран блокировки
-  if (isBanned) {
-    return <BannedScreen />;
-  }
-
-  return (
-    <>
-      <Outlet />
-      <ApiErrorWatcher />
-    </>
-  );
-};
+const AuthLayout = () => (
+  <>
+    <Outlet />
+    <ApiErrorWatcher />
+  </>
+);
 
 const baseEl = document.querySelector('base');
 const baseHref = baseEl?.getAttribute('href') || '/';
