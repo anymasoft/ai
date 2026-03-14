@@ -1,6 +1,7 @@
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
+require('module-alias')({ base: path.resolve(__dirname, '..') });
 const cluster = require('cluster');
 const Redis = require('ioredis');
 const cors = require('cors');
@@ -19,18 +20,18 @@ const {
   handleJsonParseError,
   initializeFileStorage,
 } = require('@librechat/api');
-const { connectDb, indexSync } = require('../db');
+const { connectDb, indexSync } = require('~/db');
 const initializeOAuthReconnectManager = require('./services/initializeOAuthReconnectManager');
 const createValidateImageRequest = require('./middleware/validateImageRequest');
-const { jwtLogin, ldapLogin, passportLogin } = require('../strategies');
-const { updateInterfacePermissions } = require('../models/interface');
+const { jwtLogin, ldapLogin, passportLogin } = require('~/strategies');
+const { updateInterfacePermissions } = require('~/models/interface');
 const { checkMigrations } = require('./services/start/migration');
 const initializeMCPs = require('./services/initializeMCPs');
 const configureSocialLogins = require('./socialLogins');
 const { getAppConfig } = require('./services/Config');
 const staticCache = require('./utils/staticCache');
 const noIndex = require('./middleware/noIndex');
-const { seedDatabase } = require('../models');
+const { seedDatabase } = require('~/models');
 const routes = require('./routes');
 
 const { PORT, HOST, ALLOW_SOCIAL_LOGIN, DISABLE_COMPRESSION, TRUST_PROXY } = process.env ?? {};
