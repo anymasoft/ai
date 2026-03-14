@@ -1,8 +1,51 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+
+interface Plan {
+  planId?: string;
+  packageId?: string;
+  label: string;
+  priceRub: number;
+  tokenCreditsOnPurchase?: number;
+  tokenCredits?: number;
+  allowedModels?: string[];
+  isActive: boolean;
+  durationDays?: number;
+}
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await fetch('/api/payment/plans');
+        if (!res.ok) throw new Error('Ошибка загрузки');
+        const data = await res.json();
+
+        // Объединяем планы и пакеты токенов, фильтруем активные, сортируем по цене
+        const allPlans = [
+          ...(data.plans || []).filter((p: Plan) => p.isActive),
+          ...(data.tokenPackages || []).filter((p: Plan) => p.isActive),
+        ].sort((a, b) => a.priceRub - b.priceRub);
+
+        setPlans(allPlans);
+      } catch (err) {
+        setError('Не удалось загрузить тарифы');
+        console.error('Ошибка загрузки тарифов:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPlans();
+  }, []);
 
   const handleOpenChat = () => {
     navigate('/c/new');
@@ -86,96 +129,67 @@ export default function LandingPage() {
       <section className="px-4 py-20 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
           <h2 className="text-center text-3xl font-bold text-white mb-16">Тарифы</h2>
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {/* Free Plan */}
-            <div className="rounded-lg border border-gray-700 bg-gray-800/50 p-8 backdrop-blur">
-              <h3 className="text-xl font-bold text-white mb-2">Free</h3>
-              <p className="text-gray-400 mb-6">0 ₽/мес</p>
-              <ul className="space-y-3 mb-8 text-gray-300">
-                <li className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-blue-500"></span>
-                  300 000 токенов
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-blue-500"></span>
-                  Доступ к популярным моделям
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-gray-500"></span>
-                  Web-поиск
-                </li>
-              </ul>
-              <button
-                onClick={handleOpenChat}
-                className="w-full rounded-lg border border-gray-600 px-4 py-2 font-medium text-white hover:bg-gray-700 transition-colors"
-              >
-                Начать
-              </button>
-            </div>
 
-            {/* Pro Plan */}
-            <div className="rounded-lg border-2 border-blue-500 bg-gray-800/50 p-8 backdrop-blur relative">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 px-3 py-1 rounded-full text-sm font-semibold text-white">
-                Рекомендуется
-              </div>
-              <h3 className="text-xl font-bold text-white mb-2">Pro</h3>
-              <p className="text-gray-400 mb-6">Гибкие платежи</p>
-              <ul className="space-y-3 mb-8 text-gray-300">
-                <li className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-blue-500"></span>
-                  Безлимитные токены
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-blue-500"></span>
-                  Все доступные модели
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-blue-500"></span>
-                  Web-поиск (Tavily)
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-blue-500"></span>
-                  Code Interpreter
-                </li>
-              </ul>
-              <button
-                onClick={handleOpenChat}
-                className="w-full rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 transition-colors"
-              >
-                Начать
-              </button>
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border border-blue-500 border-t-transparent"></div>
             </div>
+          ) : error ? (
+            <div className="rounded-lg border border-red-500 bg-red-500/10 p-4 text-center text-red-400">
+              {error}
+            </div>
+          ) : (
+            <div className={`grid gap-8 ${plans.length === 2 ? 'md:grid-cols-2' : 'md:grid-cols-2 lg:grid-cols-3'}`}>
+              {plans.map((plan) => {
+                const isPro = plan.label?.toLowerCase().includes('pro');
+                const tokens = plan.tokenCreditsOnPurchase || plan.tokenCredits || 0;
+                const tokenText = tokens > 0 ? `${tokens.toLocaleString('ru-RU')} токенов` : '';
 
-            {/* Business Plan */}
-            <div className="rounded-lg border border-gray-700 bg-gray-800/50 p-8 backdrop-blur">
-              <h3 className="text-xl font-bold text-white mb-2">Business</h3>
-              <p className="text-gray-400 mb-6">Пользовательское ценообразование</p>
-              <ul className="space-y-3 mb-8 text-gray-300">
-                <li className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-blue-500"></span>
-                  Безлимитные токены
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-blue-500"></span>
-                  Все доступные модели
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-blue-500"></span>
-                  Приоритетная поддержка
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-blue-500"></span>
-                  API доступ
-                </li>
-              </ul>
-              <button
-                onClick={handleOpenChat}
-                className="w-full rounded-lg border border-gray-600 px-4 py-2 font-medium text-white hover:bg-gray-700 transition-colors"
-              >
-                Начать
-              </button>
+                return (
+                  <div
+                    key={plan.planId || plan.packageId}
+                    className={`rounded-lg p-8 backdrop-blur relative ${
+                      isPro
+                        ? 'border-2 border-blue-500 bg-gray-800/50'
+                        : 'border border-gray-700 bg-gray-800/50'
+                    }`}
+                  >
+                    {isPro && (
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 px-3 py-1 rounded-full text-sm font-semibold text-white">
+                        Рекомендуется
+                      </div>
+                    )}
+                    <h3 className="text-xl font-bold text-white mb-2">{plan.label}</h3>
+                    <p className="text-gray-400 mb-6">{plan.priceRub.toLocaleString('ru-RU')} ₽</p>
+                    <ul className="space-y-3 mb-8 text-gray-300">
+                      {tokenText && (
+                        <li className="flex items-center gap-2">
+                          <span className="h-2 w-2 rounded-full bg-blue-500"></span>
+                          {tokenText}
+                        </li>
+                      )}
+                      {plan.allowedModels && plan.allowedModels.length > 0 && (
+                        <li className="flex items-center gap-2">
+                          <span className="h-2 w-2 rounded-full bg-blue-500"></span>
+                          {plan.allowedModels.length} доступных моделей
+                        </li>
+                      )}
+                    </ul>
+                    <button
+                      onClick={handleOpenChat}
+                      className={`w-full rounded-lg px-4 py-2 font-medium text-white transition-colors ${
+                        isPro
+                          ? 'bg-blue-600 hover:bg-blue-700'
+                          : 'border border-gray-600 hover:bg-gray-700'
+                      }`}
+                    >
+                      Начать
+                    </button>
+                  </div>
+                );
+              })}
             </div>
-          </div>
+          )}
         </div>
       </section>
 
