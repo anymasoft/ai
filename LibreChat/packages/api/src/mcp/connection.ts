@@ -263,6 +263,7 @@ export class MCPConnection extends EventEmitter {
   private requestHeaders?: Record<string, string> | null;
   private oauthRequired = false;
   private readonly useSSRFProtection: boolean;
+  private lastLoggedErrorCode: number | null = null;
   iconPath?: string;
   timeout?: number;
   sseReadTimeout?: number;
@@ -462,7 +463,7 @@ export class MCPConnection extends EventEmitter {
           }
           this.url = options.url;
           const url = new URL(options.url);
-          logger.info(
+          logger.debug(
             `${this.getLogPrefix()} Creating SSE transport: ${sanitizeUrlForLogging(url)}`,
           );
           const abortController = new AbortController();
@@ -513,7 +514,7 @@ export class MCPConnection extends EventEmitter {
           });
 
           transport.onclose = () => {
-            logger.info(`${this.getLogPrefix()} SSE transport closed`);
+            logger.debug(`${this.getLogPrefix()} SSE transport closed`);
             this.emit('connectionChange', 'disconnected');
           };
 
@@ -527,7 +528,7 @@ export class MCPConnection extends EventEmitter {
           }
           this.url = options.url;
           const url = new URL(options.url);
-          logger.info(
+          logger.debug(
             `${this.getLogPrefix()} Creating streamable-http transport: ${sanitizeUrlForLogging(url)}`,
           );
           const abortController = new AbortController();
@@ -563,7 +564,7 @@ export class MCPConnection extends EventEmitter {
           });
 
           transport.onclose = () => {
-            logger.info(`${this.getLogPrefix()} Streamable-http transport closed`);
+            logger.debug(`${this.getLogPrefix()} Streamable-http transport closed`);
             this.emit('connectionChange', 'disconnected');
           };
 
@@ -639,7 +640,7 @@ export class MCPConnection extends EventEmitter {
         this.reconnectAttempts++;
         const delay = backoffDelay(this.reconnectAttempts);
 
-        logger.info(
+        logger.debug(
           `${this.getLogPrefix()} Reconnecting ${this.reconnectAttempts}/${this.MAX_RECONNECT_ATTEMPTS} (delay: ${delay}ms)`,
         );
 
@@ -650,7 +651,7 @@ export class MCPConnection extends EventEmitter {
           this.reconnectAttempts = 0;
           return;
         } catch (error) {
-          logger.error(`${this.getLogPrefix()} Reconnection attempt failed:`, error);
+          logger.debug(`${this.getLogPrefix()} Reconnection attempt failed:`, error);
 
           // Stop immediately if rate limited - retrying will only make it worse
           if (this.isRateLimitError(error)) {
@@ -923,15 +924,23 @@ export class MCPConnection extends EventEmitter {
         isTransient,
       } = extractSSEErrorMessage(error);
 
-      // ⭐ DEBUG: Log 400 Bad Request errors in detail
+      // Suppress repeated errors of the same code from same server to reduce log spam
+      if (errorCode === this.lastLoggedErrorCode) {
+        // Same error code repeated - don't log again
+        this.emit('connectionChange', 'error');
+        return;
+      }
+      this.lastLoggedErrorCode = errorCode;
+
+      // Log 400 Bad Request errors at warn level (not error) to reduce noise
+      // 400 on SSE streams usually indicates config issue, not a critical failure
       if (errorCode === 400) {
-        logger.error(
-          `${this.getLogPrefix()} Got 400 Bad Request on SSE stream. Likely causes:`,
+        logger.warn(
+          `${this.getLogPrefix()} Got 400 Bad Request on SSE stream. Likely config issue:`,
           {
             code: errorCode,
             message: errorMessage,
             url: this.url,
-            rawError: String(error),
             hint: 'Check: (1) Authorization header, (2) Accept header, (3) URL correctness, (4) API Key validity',
           }
         );
@@ -1006,7 +1015,13 @@ export class MCPConnection extends EventEmitter {
         ? 'Transport error (transient, will reconnect)'
         : 'Transport error (may require manual intervention)';
 
-      logger.error(`${this.getLogPrefix()} ${errorLabel}: ${errorMessage}`, errorContext);
+      // Log transient errors (like SSE disconnects) at debug/warn level to reduce spam
+      // Only log as error if it's not transient and not a known recoverable error
+      if (isTransient || errorCode === 400) {
+        logger.warn(`${this.getLogPrefix()} ${errorLabel}: ${errorMessage}`, errorContext);
+      } else {
+        logger.error(`${this.getLogPrefix()} ${errorLabel}: ${errorMessage}`, errorContext);
+      }
 
       this.emit('connectionChange', 'error');
     };
