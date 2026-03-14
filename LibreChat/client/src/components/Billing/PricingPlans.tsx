@@ -4,8 +4,10 @@
  *
  * Режим 'pricing' — лендинг (кнопки триггерят оплату)
  * Режим 'billing' — страница биллинга (показывает текущий пакет)
+ *
+ * ✅ ДИНАМИЧЕСКИЕ ДАННЫЕ: Тарифы загружаются из /api/payment/plans
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '~/hooks';
 
@@ -21,72 +23,63 @@ export interface PricingPlan {
   badge?: string | null;
 }
 
+interface TokenPackageDoc {
+  packageId: string;
+  label: string;
+  priceRub: number;
+  tokenCredits: number;
+  isActive: boolean;
+}
+
 interface PricingPlansProps {
   mode?: 'pricing' | 'billing';
   currentBalance?: number; // tokenCredits пользователя
   onPaymentStart?: () => void;
 }
 
-const PLANS: PricingPlan[] = [
-  {
-    id: 'starter',
-    name: 'Starter',
-    description: 'Для знакомства с сервисом',
-    price: '990 ₽',
-    priceNote: 'разовый пакет',
-    tokenCredits: 400_000,
-    features: [
-      'GPT-4o Mini',
-      'Claude Sonnet',
-      'DeepSeek V3',
-      'Web-поиск (Tavily)',
-      '400 000 токен-кредитов',
-    ],
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    description: 'Для регулярной работы',
-    price: '1 990 ₽',
-    priceNote: 'разовый пакет',
-    tokenCredits: 900_000,
-    features: [
-      'GPT-4o Mini',
-      'Claude Sonnet',
-      'DeepSeek V3',
-      'Web-поиск (Tavily)',
-      // MVP: Code Interpreter hidden
-      // 'Code Interpreter',
-      '900 000 токен-кредитов',
-    ],
-    highlight: true,
-    badge: 'РЕКОМЕНДУЕМ',
-  },
-  {
-    id: 'max',
-    name: 'Max',
-    description: 'Максимальный объём',
-    price: '3 990 ₽',
-    priceNote: 'разовый пакет',
-    tokenCredits: 2_000_000,
-    features: [
-      'GPT-4o Mini',
-      'Claude Sonnet',
-      'DeepSeek V3',
-      'Web-поиск (Tavily)',
-      // MVP: Code Interpreter hidden
-      // 'Code Interpreter',
-      'Приоритетная поддержка (email)',
-      '2 000 000 токен-кредитов',
-    ],
-  },
-];
-
 export default function PricingPlans({ mode = 'pricing', onPaymentStart }: PricingPlansProps) {
   const navigate = useNavigate();
   const { token } = useAuthContext();
   const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [plans, setPlans] = useState<PricingPlan[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // ✅ Загружаем токен-пакеты из API (динамически)
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch('/api/payment/plans');
+        if (res.ok) {
+          const data = await res.json();
+          const packages: TokenPackageDoc[] = data.tokenPackages ?? [];
+
+          // Преобразуем TokenPackageDoc в PricingPlan для отображения
+          const displayPlans: PricingPlan[] = packages.map((pkg) => ({
+            id: pkg.packageId,
+            name: pkg.label,
+            description: `${pkg.tokenCredits.toLocaleString('ru-RU')} токен-кредитов`,
+            price: `${pkg.priceRub.toLocaleString('ru-RU')} ₽`,
+            priceNote: 'разовый пакет',
+            tokenCredits: pkg.tokenCredits,
+            features: [`${pkg.tokenCredits.toLocaleString('ru-RU')} токен-кредитов`],
+            highlight: pkg.label.toLowerCase().includes('pro'),
+            badge: pkg.label.toLowerCase().includes('pro') ? 'РЕКОМЕНДУЕМ' : null,
+          }));
+
+          setPlans(displayPlans);
+        }
+      } catch (err) {
+        console.error('Ошибка загрузки тарифов:', err);
+        setError('Не удалось загрузить тарифы');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPlans();
+  }, []);
 
   const handleBuy = async (packageId: string) => {
     if (mode === 'pricing') {
@@ -120,6 +113,14 @@ export default function PricingPlans({ mode = 'pricing', onPaymentStart }: Prici
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border border-blue-500 border-t-transparent"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {error && (
@@ -128,7 +129,7 @@ export default function PricingPlans({ mode = 'pricing', onPaymentStart }: Prici
         </div>
       )}
 
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className={`grid gap-6 ${plans.length === 2 ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
         {PLANS.map((plan) => (
           <div
             key={plan.id}
