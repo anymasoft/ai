@@ -263,7 +263,7 @@ export class MCPConnection extends EventEmitter {
   private requestHeaders?: Record<string, string> | null;
   private oauthRequired = false;
   private readonly useSSRFProtection: boolean;
-  private lastLoggedErrorCode: number | null = null;
+  private lastLoggedErrorCode: number | undefined;
   iconPath?: string;
   timeout?: number;
   sseReadTimeout?: number;
