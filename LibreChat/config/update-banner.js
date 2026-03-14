@@ -2,7 +2,6 @@ const path = require('path');
 const mongoose = require('mongoose');
 const { v5: uuidv5 } = require('uuid');
 const { Banner } = require('@librechat/data-schemas').createModels(mongoose);
-require('module-alias')({ base: path.resolve(__dirname, '..', 'api') });
 const { askQuestion, askMultiLineQuestion, silentExit } = require('./helpers');
 const connect = require('./connect');
 

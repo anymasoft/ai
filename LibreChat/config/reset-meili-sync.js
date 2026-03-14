@@ -1,6 +1,5 @@
 const path = require('path');
 const mongoose = require('mongoose');
-require('module-alias')({ base: path.resolve(__dirname, '..', 'api') });
 require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
 const { askQuestion, silentExit } = require('./helpers');
 const connect = require('./connect');
