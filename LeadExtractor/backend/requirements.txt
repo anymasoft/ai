@@ -3,4 +3,5 @@ uvicorn
 crawl4ai
 aiohttp
 phonenumbers
+beautifulsoup4
 python-multipart
