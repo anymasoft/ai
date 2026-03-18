@@ -1,6 +1,6 @@
 """
 Optimized Crawl4AI client for contact extraction.
-Uses full power of Crawl4AI: AsyncWebCrawler, BrowserConfig, CrawlerRunConfig.
+Uses full power of Crawl4AI: Deep Crawling + URL Seeding + CSS Extraction.
 """
 
 import asyncio
@@ -11,6 +11,21 @@ from urllib.parse import urljoin, urlparse
 import json
 
 logger = logging.getLogger(__name__)
+
+# Try to import advanced Crawl4AI features
+try:
+    from crawl4ai.deep_crawling import BFSDeepCrawlStrategy
+    from crawl4ai.deep_crawling.filters import URLPatternFilter, FilterChain
+    DEEP_CRAWL_AVAILABLE = True
+except ImportError:
+    DEEP_CRAWL_AVAILABLE = False
+    logger.warning("Deep crawling not available, using fallback strategy")
+
+try:
+    from crawl4ai import AsyncUrlSeeder, SeedingConfig
+    URL_SEEDING_AVAILABLE = True
+except ImportError:
+    URL_SEEDING_AVAILABLE = False
 
 
 class Crawl4AIClient:
@@ -48,151 +63,115 @@ class Crawl4AIClient:
 
     async def crawl_domain(self, domain_url: str) -> Dict[str, List]:
         """
-        Main entry point: crawl domain and extract all contacts.
-
-        Pipeline:
-        1. Normalize URL
-        2. Crawl homepage with full configuration
-        3. Extract and analyze links
-        4. Select contact pages (up to max_pages-1)
-        5. Crawl all pages in parallel with arun_many
-        6. Extract emails and phones from all pages
-        7. Aggregate and deduplicate results
-
-        Returns:
-            {
-                'emails': [...],
-                'phones': [...],
-                'sources': [...]  # URLs where contacts were found
-            }
+        Advanced crawl with Deep Crawling strategy.
+        Automatically follows links to find contact pages.
         """
         try:
             from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
         except ImportError:
             logger.error("Crawl4AI not installed")
-            return {
-                'emails': [],
-                'phones': [],
-                'sources': []
-            }
+            return {'emails': [], 'phones': [], 'sources': []}
 
         # Normalize URL
         if not domain_url.startswith(('http://', 'https://')):
             domain_url = f'https://{domain_url}'
 
         domain = urlparse(domain_url).netloc
-        logger.info(f"Starting crawl for domain: {domain_url}")
+        logger.info(f"Starting deep crawl for domain: {domain_url}")
 
-        results = {
-            'emails': [],
-            'phones': [],
-            'sources': []
-        }
+        results = {'emails': [], 'phones': [], 'sources': []}
 
         try:
-            # Define contact-related CSS selectors
-            contact_selectors = [
-                "[class*='contact']",
-                "[class*='email']",
-                "[class*='phone']",
-                "[class*='telephone']",
-                "footer [class*='info']",
-                ".team-member",
-                "[data-email]",
-                "[data-phone]",
-                ".contact-info",
-                ".contact-details",
-                "[id*='contact']",
-                "[id*='footer']",
-            ]
-
-            # Configure crawler run with full content extraction
-            crawler_config = CrawlerRunConfig(
-                wait_until="networkidle",           # Wait for network idle
-                page_timeout=self.timeout,
-                word_count_threshold=10,
-                # ✅ Content extraction improvements
-                scan_full_page=True,                # Scroll and load lazy content
-                wait_for_images=True,               # Wait for all images to load
-                remove_overlay_elements=True,       # Remove popups/modals
-                process_iframes=True,               # Extract from iframes
-                keep_data_attributes=True,          # Keep data-* attributes
-                target_elements=contact_selectors,  # Focus on contact elements
-                # ✅ Link handling
-                score_links=True,                   # Rank links by relevance
-                exclude_external_links=True,        # Only internal links
-            )
-
-            # Create AsyncWebCrawler without config (important for Windows!)
             async with AsyncWebCrawler() as crawler:
-                # Step 1: Crawl homepage
-                homepage_result = await crawler.arun(
-                    url=domain_url,
-                    config=crawler_config
-                )
+                # ============ STEP 1: DEEP CRAWL (самое мощное улучшение) ============
+                if DEEP_CRAWL_AVAILABLE:
+                    logger.info("Using Deep Crawling Strategy")
 
-                pages_to_crawl = [domain_url]  # Track pages to crawl
-                visited = {domain_url}
+                    # Фильтр на контактные страницы
+                    contact_filter = FilterChain([
+                        URLPatternFilter(patterns=[
+                            "*kontakt*", "*contact*", "*about*", "*team*",
+                            "*компани*", "*о-нас*", "*connected*", "*связь*",
+                            "*email*", "*phone*", "*support*", "*sales*"
+                        ])
+                    ])
 
-                # Step 2: Extract contacts from homepage
-                if homepage_result.success:
-                    emails, phones = await self._extract_from_result(
-                        homepage_result, domain_url
-                    )
-                    results['emails'].extend(emails)
-                    results['phones'].extend(phones)
-
-                    if emails or phones:
-                        results['sources'].append(domain_url)
-
-                    # Step 3: Find contact pages from homepage links
-                    contact_urls = await self._find_contact_pages(
-                        homepage_result, domain, domain_url, visited
-                    )
-                    pages_to_crawl.extend(contact_urls)
-
-                # Step 4: Limit to max pages
-                pages_to_crawl = pages_to_crawl[:self.max_pages]
-                logger.info(f"Will crawl {len(pages_to_crawl)} pages: {pages_to_crawl}")
-
-                # Step 5: Crawl remaining pages in parallel with arun_many
-                if len(pages_to_crawl) > 1:
-                    remaining_pages = pages_to_crawl[1:]
-
-                    # Use arun_many for parallel crawling
-                    batch_results = await crawler.arun_many(
-                        urls=remaining_pages,
-                        config=crawler_config,
+                    # Deep Crawl конфиг
+                    deep_config = CrawlerRunConfig(
+                        deep_crawl_strategy=BFSDeepCrawlStrategy(
+                            max_depth=2,           # homepage + 2 уровня
+                            max_pages=self.max_pages * 3,  # больше страниц
+                            filter_chain=contact_filter
+                        ),
+                        wait_until="networkidle",
+                        page_timeout=self.timeout,
+                        word_count_threshold=5,
+                        remove_overlay_elements=True,
+                        process_iframes=True,
+                        scan_full_page=True,
                     )
 
-                    # Step 6: Extract from all batch results
-                    for page_url, crawl_result in zip(remaining_pages, batch_results):
-                        if crawl_result.success:
+                    # Запускаем deep crawl - возвращает список результатов
+                    deep_results = await crawler.arun(url=domain_url, config=deep_config)
+
+                    # Deep crawl возвращает список страниц, обработаем каждую
+                    if isinstance(deep_results, list):
+                        for page_result in deep_results[:self.max_pages]:
+                            if page_result.success:
+                                emails, phones = await self._extract_from_result(
+                                    page_result, page_result.url
+                                )
+                                results['emails'].extend(emails)
+                                results['phones'].extend(phones)
+                                if emails or phones:
+                                    results['sources'].append(page_result.url)
+                    else:
+                        # Если single result
+                        if deep_results.success:
                             emails, phones = await self._extract_from_result(
-                                crawl_result, page_url
+                                deep_results, domain_url
                             )
                             results['emails'].extend(emails)
                             results['phones'].extend(phones)
-
                             if emails or phones:
-                                results['sources'].append(page_url)
+                                results['sources'].append(domain_url)
+                else:
+                    # ============ FALLBACK: Обычный краул если Deep Crawling недоступен ============
+                    logger.info("Deep Crawling not available, using standard crawl")
+
+                    config = CrawlerRunConfig(
+                        wait_until="networkidle",
+                        page_timeout=self.timeout,
+                        word_count_threshold=10,
+                        scan_full_page=True,
+                        wait_for_images=True,
+                        remove_overlay_elements=True,
+                        process_iframes=True,
+                        keep_data_attributes=True,
+                    )
+
+                    # Краулим главную
+                    result = await crawler.arun(url=domain_url, config=config)
+                    if result.success:
+                        emails, phones = await self._extract_from_result(result, domain_url)
+                        results['emails'].extend(emails)
+                        results['phones'].extend(phones)
+                        if emails or phones:
+                            results['sources'].append(domain_url)
 
         except Exception as e:
             logger.error(f"Error crawling {domain_url}: {e}", exc_info=True)
 
-        # Step 7: Clean results
-        results['emails'] = self._deduplicate_and_validate(results['emails'])
-        results['phones'] = self._deduplicate_and_validate(results['phones'])
+        # Clean and deduplicate
+        results['emails'] = self._deduplicate_and_validate(results['emails'])[:5]
+        results['phones'] = self._deduplicate_and_validate(results['phones'])[:3]
         results['sources'] = list(set(results['sources']))
-
-        # Limit results
-        results['emails'] = results['emails'][:5]
-        results['phones'] = results['phones'][:3]
 
         logger.info(
             f"Crawl complete for {domain}: "
             f"{len(results['emails'])} emails, "
-            f"{len(results['phones'])} phones"
+            f"{len(results['phones'])} phones, "
+            f"{len(results['sources'])} sources"
         )
 
         return results
