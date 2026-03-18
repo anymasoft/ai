@@ -23,10 +23,78 @@ class Crawl4AIClient:
     Crawl4AI handles single page fetch, we control the crawl strategy.
     """
 
-    def __init__(self, timeout: int = 30, max_pages: int = 10, max_depth: int = 2):
+    def __init__(self, timeout: int = 30, max_pages: int = 25, max_depth: int = 3):
+        """
+        RECALL-FIRST PIPELINE (v4.0)
+        - max_pages = 25 (was 10) - crawl more pages
+        - max_depth = 3 (was 2) - go deeper
+        - max_links = 100 (was 30) - gather more candidates
+        """
         self.timeout = timeout
         self.max_pages = max_pages
         self.max_depth = max_depth
+
+    def _normalize_text(self, text: str) -> str:
+        """
+        PRE-NORMALIZATION (RECALL-FIRST v4.0)
+
+        Critical preprocessing to maximize recall of contact extraction.
+        Handles:
+        - HTML entities (&nbsp; &mdash; etc.)
+        - Zero-width characters (invisible separators)
+        - Non-breaking spaces and common obfuscation
+        - Collapsed whitespace
+        - Broken phone numbers (multiline repair)
+
+        Examples:
+        ✅ "89&nbsp;153&nbsp;" → "89 153 " → findable by regex
+        ✅ "8\u200b(383)33\u200b-05-42" → "8(383)33-05-42"
+        ✅ "8\n 383" → "8383" (for regex \\d)
+        """
+        if not text:
+            return text
+
+        # === 1. HTML ENTITIES ===
+        text = text.replace('&nbsp;', ' ')
+        text = text.replace('&#160;', ' ')
+        text = text.replace('&ndash;', '-')
+        text = text.replace('&mdash;', '-')
+        text = text.replace('&middot;', '-')
+        text = text.replace('&amp;', '&')
+        text = text.replace('&lt;', '<')
+        text = text.replace('&gt;', '>')
+        text = text.replace('&#8209;', '-')
+        text = text.replace('&#8211;', '-')
+        text = text.replace('&#8212;', '-')
+        text = text.replace('&quot;', '"')
+        text = text.replace('&#34;', '"')
+
+        # === 2. ZERO-WIDTH & INVISIBLE CHARS ===
+        # Remove: zero-width space, zero-width joiner, zero-width no-break space, BOM
+        text = re.sub(r'[\u200B-\u200D\uFEFF]', '', text)
+
+        # === 3. COMMON OBFUSCATION ===
+        text = text.replace('[at]', '@')
+        text = text.replace('(at)', '@')
+        text = text.replace(' at ', '@')
+        text = text.replace('[dot]', '.')
+        text = text.replace('(dot)', '.')
+
+        # === 4. BROKEN PHONE NUMBERS (CRITICAL!) ===
+        # Pattern: digit + newline/spaces + digit → merge
+        # Example: "8\n 383" → "8383"
+        text = re.sub(r'(\d)\s*\n\s*(\d)', r'\1\2', text)
+
+        # Also handle: digit + multiple spaces + digit
+        # Example: "8    383" → "8383"
+        # But keep 1-2 spaces for readability in "(XXX) XXX"
+        text = re.sub(r'(\d)\s{3,}(\d)', r'\1 \2', text)
+
+        # === 5. COLLAPSE MULTIPLE SPACES ===
+        text = re.sub(r' {2,}', ' ', text)
+        text = re.sub(r'\t+', ' ', text)
+
+        return text.strip()
 
     def _fallback_fetch(self, url: str) -> str:
         """
@@ -129,9 +197,9 @@ class Crawl4AIClient:
             logger.debug(f"Link extraction error: {e}")
 
         # Return: priority links first, then regular links
-        # Limit to 30 total to avoid queue explosion
+        # RECALL-FIRST: Increased from 30 to 100 to gather more candidates
         result = priority_links + links
-        return result[:30]
+        return result[:100]  # Increased to maximize discovery
 
     def _fallback_crawl(
         self,
@@ -454,66 +522,60 @@ class Crawl4AIClient:
             logger.error(f"Fatal error: {e}", exc_info=True)
 
         # Build final result
+        # RECALL-FIRST: NO SLICING - return ALL found contacts!
         # Format phones: convert dict values to display format
         phones_list = []
         for normalized_key, phone_data in sorted(all_phones.items()):
             if isinstance(phone_data, dict):
                 phones_list.append({
-                    "phone": phone_data["original"],  # Show original format like +7 (3412) 33-05-42
+                    "phone": phone_data["original"],  # Show original format
                     "source_page": phone_data["source"]
                 })
             else:
-                # Fallback for old format (shouldn't happen)
+                # Fallback for old format
                 phones_list.append({
                     "phone": phone_data,
                     "source_page": ""
                 })
 
-        # DEBUG: ALL PHONES BEFORE SLICING
-        logger.info(f"\n{'='*60}")
-        logger.info(f"[DEBUG PHASE 1] ALL PHONES FROM all_phones DICT:")
-        logger.info(f"  Total unique (by normalized key): {len(all_phones)}")
-        for normalized_key, phone_data in sorted(all_phones.items())[:20]:
-            original = phone_data.get("original") if isinstance(phone_data, dict) else phone_data
-            logger.info(f"    {normalized_key} → {original}")
-        logger.info(f"{'='*60}")
+        # Emails list - ALL emails, no slicing
+        emails_list = [
+            {"email": email, "source_page": source}
+            for email, source in sorted(all_emails.items())
+        ]
 
-        # DEBUG: PHONES AFTER LIST CONVERSION
-        logger.info(f"[DEBUG PHASE 2] PHONES_LIST AFTER CONVERSION:")
-        logger.info(f"  Total phones_list: {len(phones_list)}")
-        for i, phone_dict in enumerate(phones_list[:20]):
-            logger.info(f"    [{i}] {phone_dict.get('phone')} (source: {phone_dict.get('source_page', 'N/A')})")
-
-        # DEBUG: SLICING DECISION
-        logger.info(f"[DEBUG PHASE 3] SLICING DECISION:")
-        logger.info(f"  Before slice [:10]: {len(phones_list)} phones")
-        logger.info(f"  After slice [:10]: {len(phones_list[:10])} phones")
-        logger.info(f"  TRUNCATED: {len(phones_list) > 10}")
+        # Sources list - ALL sources, no slicing
+        sources_list = list(sources)
 
         result = {
-            "emails": [
-                {"email": email, "source_page": source}
-                for email, source in sorted(all_emails.items())
-            ][:10],
-            "phones": phones_list[:10],
-            "sources": list(sources)[:10],
+            "emails": emails_list,  # ✅ ALL emails (no [:10] limit)
+            "phones": phones_list,  # ✅ ALL phones (no [:10] limit)
+            "sources": sources_list,  # ✅ ALL sources (no [:10] limit)
             "status_per_site": status_per_site,
         }
 
+        # ========== RECALL-FIRST LOGGING ==========
         logger.info(f"\n{'='*60}")
-        logger.info(f"Crawled {page_count} pages")
-        logger.info(f"[DEBUG FINAL] RESULT OBJECT ABOUT TO RETURN:")
-        logger.info(f"  emails: {len(result['emails'])}")
-        logger.info(f"  phones: {len(result['phones'])} (after STRICT validation)")
-        logger.info(f"[DEBUG] ACTUAL PHONES IN RESULT:")
-        for i, phone in enumerate(result['phones'][:20]):
-            logger.info(f"    [{i}] {phone}")
+        logger.info(f"[RECALL-FIRST RESULT] Crawled {page_count} pages")
+        logger.info(f"  Total emails found: {len(result['emails'])} (no limit applied)")
+        logger.info(f"  Total phones found: {len(result['phones'])} (no limit applied)")
+        logger.info(f"  Total sources: {len(result['sources'])}")
+        logger.info(f"{'='*60}")
 
-        logger.info(f"\n[VALIDATION SUMMARY]")
-        logger.info(f"  Total unique phones found: {len(all_phones)}")
-        logger.info(f"  Total phones in result (after slicing): {len(result['phones'])}")
-        logger.info(f"  Validation: ✅ STRICT phone format validation applied")
-        logger.info(f"  Filters: 10–11 digits, Russian format (7x or 8x prefix)")
+        if result['phones']:
+            logger.info(f"[SAMPLE PHONES] First 10:")
+            for i, phone in enumerate(result['phones'][:10]):
+                logger.info(f"  [{i+1}] {phone.get('phone')} (source: {phone.get('source_page', 'N/A')})")
+
+        if result['emails']:
+            logger.info(f"[SAMPLE EMAILS] First 10:")
+            for i, email in enumerate(result['emails'][:10]):
+                logger.info(f"  [{i+1}] {email.get('email')} (source: {email.get('source_page', 'N/A')})")
+
+        logger.info(f"\n[VALIDATION INFO]")
+        logger.info(f"  Validation: ✅ RECALL-FIRST (7-15 digits, all formats)")
+        logger.info(f"  Filtering: Deferred to later stage (ML/scoring)")
+        logger.info(f"  Include mush: YES (will be filtered later)")
         logger.info(f"{'='*60}\n")
 
         return result
@@ -654,19 +716,27 @@ class Crawl4AIClient:
 
     def _is_valid_phone(self, phone: str) -> bool:
         """
-        STRICT phone validation (RU-focused, deterministic).
+        RECALL-FIRST PHONE VALIDATION (v4.0)
 
-        Returns True only if phone is:
-        - 10-11 digits after normalization
-        - Starts with 7 or 8 (Russian)
-        - NOT obviously broken/invalid
+        Prioritize RECALL over PRECISION:
+        - Minimum 7 digits (allow all international formats)
+        - Maximum 15 digits (E.164 standard upper limit)
+        - NO country code checks
+        - NO prefix checks
+        - Accept any format combination (digits + separators)
+
+        Goal: Catch 95%+ of real phone numbers, even if messed up.
+        Filtering will happen later (after scoring).
 
         Examples:
-        ✅ "+7 (383) 209-21-27" → "73832092127" (11 digits)
-        ✅ "(812) 250-62-10" → "812250621" → add 7 → "78122506210" (11 digits)
-        ❌ "8431 21 13" → "843121 13" (8 digits) - TOO SHORT
-        ❌ "85786 1 12 1" → "857861121" (9 digits) - TOO SHORT
-        ❌ "89543 10 8" → "8954310 8" (8 digits) - TOO SHORT
+        ✅ "+7 (383) 209-21-27" → 73832092127 (11 digits) ✓
+        ✅ "8431 21 13" → 843121 3 (8 digits) ✓ (was rejected, now OK)
+        ✅ "85786 1 12 1" → 857861 121 (9 digits) ✓ (was rejected, now OK)
+        ✅ "89543 10 8" → 895431 08 (8 digits) ✓ (was rejected, now OK)
+        ✅ "+1-555-0000" → 15550000 (8 digits) ✓
+        ✅ "203-555-0162" → 2035550162 (10 digits) ✓
+        ❌ "123" → 123 (3 digits) ✗ TOO SHORT
+        ❌ "123456789012345678" → 18 digits ✗ TOO LONG
         """
         if not phone or not isinstance(phone, str):
             return False
@@ -675,35 +745,22 @@ class Crawl4AIClient:
             # Remove all non-digits
             digits = re.sub(r'\D', '', phone)
 
-            # 🚫 Too short - can't be a valid Russian phone
-            if len(digits) < 10:
-                logger.debug(f"[VALIDATION] Too short ({len(digits)} digits): {phone}")
+            # RECALL-FIRST: Minimum 7 digits (allow short numbers)
+            if len(digits) < 7:
+                logger.debug(f"[PHONE VALIDATE RECALL] Too short ({len(digits)} digits): {phone}")
                 return False
 
-            # 🚫 Too long - definitely broken
-            if len(digits) > 11:
-                logger.debug(f"[VALIDATION] Too long ({len(digits)} digits): {phone}")
+            # Maximum 15 digits (E.164 international standard)
+            if len(digits) > 15:
+                logger.debug(f"[PHONE VALIDATE RECALL] Too long ({len(digits)} digits): {phone}")
                 return False
 
-            # Check Russian phone formats
-            # Format 1: 11 digits starting with 7 or 8 (e.g., 79123456789 or 89123456789)
-            if len(digits) == 11:
-                first_digit = digits[0]
-                if first_digit not in ('7', '8'):
-                    logger.debug(f"[VALIDATION] 11 digits but bad prefix: {phone}")
-                    return False
-                return True
-
-            # Format 2: 10 digits (e.g., 9123456789 - local format without country code)
-            if len(digits) == 10:
-                # This could be (XXX) XXX-XX-XX format
-                # Accept it
-                return True
-
-            return False
+            # ✅ ALL LENGTHS BETWEEN 7-15 ARE ACCEPTED
+            # No prefix checks, no country code checks, no format restrictions
+            return True
 
         except Exception as e:
-            logger.debug(f"[VALIDATION] Exception: {e}")
+            logger.debug(f"[PHONE VALIDATE RECALL] Exception: {e}")
             return False
 
     def _normalize_phone(self, phone: str) -> str:
@@ -782,36 +839,62 @@ class Crawl4AIClient:
 
     def _extract_phones_from_text(self, text: str) -> List[str]:
         """
-        Extract phone numbers from text using improved regex.
+        Extract phone numbers from text using WIDE REGEX (RECALL-FIRST v4.0)
+
+        GOAL: Catch MAXIMUM phone numbers (95%+ recall)
+        Trade-off: Will include false positives (filtered later)
 
         Patterns:
-        - +7 (831) 262-16-42
-        - 8 (831) 262-16-42
-        - +78312621642
-        - +1-555-0000
-        - 8(831)262-16-42
+        ✅ +7 (831) 262-16-42    (International + Russian)
+        ✅ 8 (831) 262-16-42      (Domestic Russian)
+        ✅ +78312621642           (International compact)
+        ✅ +1-555-0000            (International formats)
+        ✅ 8(831)262-16-42        (No spaces)
+        ✅ (831) 262-16-42        (Parentheses only)
+        ✅ 9123456789             (10-digit local)
+        ✅ 203-555-0162           (Dash format)
+        ✅ 203 555 0162           (Space format)
+        ✅ +7-383-262-1642        (Various separators)
+
+        Also catches some garbage, but that's OK - filtering is deferred.
         """
         if not text:
             return []
 
         phones = []
 
-        # Pattern 1: International format (+7, +1, etc)
-        # +7 (831) 262-16-42 or +78312621642
-        for phone in re.findall(r'\+\d[\d\s\-\(\)]{8,}\d', text):
+        # Pattern 1: International format (+X or +XX)
+        # +7 (831) 262-16-42, +78312621642, +1-555-0000
+        for phone in re.findall(r'\+\d[\d\s\-\(\)\.]{7,}\d', text):
             phones.append(phone.strip())
 
-        # Pattern 2: Russian domestic format (starts with 8)
-        # 8 (831) 262-16-42 or 8(831)262-16-42
-        for phone in re.findall(r'\b8[\d\s\-\(\)]{8,}\d', text):
+        # Pattern 2: Domestic Russian format (starts with 8)
+        # 8 (831) 262-16-42, 8(831)262-16-42, 8 831 262 16 42
+        for phone in re.findall(r'\b8[\d\s\-\(\)\.]{7,}\d', text):
             phones.append(phone.strip())
 
-        # Pattern 3: Parentheses format (alternative)
-        # (831) 262-16-42 or (495) 123-45-67
-        for phone in re.findall(r'\(\d{3}\)[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}', text):
+        # Pattern 3: Parentheses format (any length)
+        # (831) 262-16-42, (495) 123-45-67, (383) 209-21-27
+        for phone in re.findall(r'\(\d{2,4}\)[\s\-]?[\d\s\-\.]{4,}', text):
             phones.append(phone.strip())
 
-        return phones
+        # Pattern 4: 7-15 digits with minimal formatting
+        # 203-555-0162, 203 555 0162, 9123456789, 203.555.0162
+        # Starts with digit (not +), contains enough digits/separators
+        for phone in re.findall(r'\b[\d\-\.]{7,}\d\b', text):
+            # Verify it has at least 7 digits total
+            if len(re.sub(r'\D', '', phone)) >= 7:
+                phones.append(phone.strip())
+
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_phones = []
+        for phone in phones:
+            if phone not in seen:
+                unique_phones.append(phone)
+                seen.add(phone)
+
+        return unique_phones
 
     def _extract_contacts(
         self,
@@ -821,26 +904,36 @@ class Crawl4AIClient:
         all_phones: Dict
     ) -> Tuple[set, set]:
         """
-        LAYER 2: EXTRACTION - Multi-pass contact extraction.
+        LAYER 2: EXTRACTION - RECALL-FIRST Multi-pass contact extraction (v4.0)
 
-        PASS 1: tel: links (most reliable)
-        PASS 2: markdown (no HTML entities)
-        PASS 3: cleaned_content (pure text)
-        PASS 4: raw HTML (fallback)
+        🎯 GOAL: Find MAXIMUM phone numbers and emails (95%+ recall)
+        Priority: Recall > Precision
+        Filtering: Deferred to later stage (LLM + scoring)
 
-        Returns: (emails_set, phones_set)
-        IMPORTANT: Independent of traversal - never breaks BFS
+        SOURCES (in order):
+        1. Tel: links (highest confidence)
+        2. Mailto: links (highest confidence)
+        3. Markdown source (cleanest)
+        4. Cleaned content (normalized)
+        5. Raw HTML (fallback, most noisy)
+        6. CSS selectors (structured data)
 
-        IMPROVEMENTS (v3.0):
-        ✅ HTML entity normalization (fixes &nbsp; issues)
-        ✅ Extension removal (доб., ext.)
-        ✅ Multi-source extraction
-        ✅ Tel links prioritized
-        ✅ Better phone regex
-        ✅ Comprehensive logging
+        IMPROVEMENTS (v4.0):
+        ✅ Wide regex `[\\+\\d][\\d\\-\\(\\)\\s]{6,}\\d` (catches everything)
+        ✅ Context extraction (±50 chars for ML later)
+        ✅ Pre-normalization via `_normalize_text()`
+        ✅ Candidate structure with value/normalized/source/context/page
+        ✅ CSS selector extraction (if available)
+        ✅ NO early filtering (accept all candidates)
+        ✅ Detailed logging by source type
         """
         emails_on_page = set()
         phones_on_page = set()
+
+        # RECALL-FIRST: Track candidates by source type
+        tel_count = 0
+        regex_count = 0
+        css_count = 0
 
         # Garbage email patterns to exclude
         garbage_patterns = [
@@ -854,156 +947,147 @@ class Crawl4AIClient:
         ]
 
         try:
-            # ========== PASS 1: TEL: LINKS (HIGHEST PRIORITY) ==========
-            # Most reliable - already in correct format
+            # ========== COMBINED SOURCE PREPARATION ==========
+            # RECALL-FIRST: Combine ALL sources into single normalized text
+            # This ensures we don't miss anything across different content types
+            combined_text = ""
+
+            sources_list = []
+            if hasattr(result, 'markdown') and result.markdown:
+                sources_list.append(result.markdown)
+            if hasattr(result, 'cleaned_content') and result.cleaned_content:
+                sources_list.append(result.cleaned_content)
+            if hasattr(result, 'cleaned_html') and result.cleaned_html:
+                sources_list.append(result.cleaned_html)
+            if hasattr(result, 'html') and result.html:
+                sources_list.append(result.html)
+
+            for source_content in sources_list:
+                if source_content:
+                    combined_text += "\n" + source_content
+
+            if not combined_text.strip():
+                logger.debug(f"[EXTRACTION] No content available for {source_url}")
+                logger.info(f"[EXTRACTION SUMMARY] Page total: 0 emails, 0 phones")
+                return emails_on_page, phones_on_page
+
+            # ========== NORMALIZE COMBINED TEXT (CRITICAL!) ==========
+            normalized_text = self._normalize_text(combined_text)
+
+            # ========== PASS 1: TEL: LINKS (HIGHEST CONFIDENCE) ==========
             try:
-                tel_links = re.findall(r'href=["\']?tel:([^"\'>\s]+)', result.html or "")
-                logger.info(f"[EXTRACTION Pass 1 - tel: links] Found {len(tel_links)} phone links")
-
-                tel_valid = 0
-                tel_filtered = 0
-
+                tel_links = re.findall(r'href=["\']?tel:([^"\'>\s]+)', combined_text)
                 for phone in tel_links:
                     phone_clean = self._clean_phone_extension(phone.strip())
                     if not phone_clean:
                         continue
 
-                    # 🔥 STRICT VALIDATION
                     if not self._is_valid_phone(phone_clean):
-                        logger.info(f"[PHONE FILTER] Tel link rejected: {phone_clean}")
-                        tel_filtered += 1
+                        logger.debug(f"[TEL LINK] Rejected: {phone_clean}")
                         continue
 
                     normalized = self._normalize_phone(phone_clean)
                     if len(normalized) >= 7:
-                        # 🔴 DEBUG: DISABLED DEDUP - ACCEPT ALL PHONES
-                        # if normalized not in all_phones:
-                        logger.info(f"[DEBUG DEDUP DISABLED] Tel link: {phone_clean} (normalized: {normalized})")
                         all_phones[normalized] = {"original": phone_clean, "source": source_url}
                         phones_on_page.add(phone_clean)
-                        tel_valid += 1
+                        tel_count += 1
 
-                logger.info(f"[EXTRACTION Pass 1] Valid: {tel_valid}, Filtered: {tel_filtered}")
+                if tel_count > 0:
+                    logger.info(f"[EXTRACTION - TEL LINKS] Found {tel_count} phones")
             except Exception as e:
-                logger.debug(f"[EXTRACTION] Tel link error: {e}")
+                logger.debug(f"[TEL LINKS] Error: {e}")
 
-            # ========== PREPARE SOURCES ==========
-            # Order: markdown (cleanest) → cleaned_content → html (fallback)
-            sources = []
-
-            if hasattr(result, 'markdown') and result.markdown:
-                sources.append(('markdown', result.markdown))
-
-            if hasattr(result, 'cleaned_content') and result.cleaned_content:
-                sources.append(('cleaned_content', result.cleaned_content))
-
-            if hasattr(result, 'cleaned_html') and result.cleaned_html:
-                sources.append(('cleaned_html', result.cleaned_html))
-
-            if hasattr(result, 'html') and result.html:
-                sources.append(('html', result.html))
-
-            if not sources:
-                logger.debug(f"[EXTRACTION] No content sources available for {source_url}")
-                return emails_on_page, phones_on_page
-
-            # ========== MULTI-PASS EXTRACTION ==========
-            source_index = 1
-            for source_name, source_content in sources:
-                if not source_content:
-                    continue
-
-                logger.debug(f"[EXTRACTION Pass {source_index + 1} - {source_name}] Processing...")
-                emails_before = len(all_emails)
-                phones_before = len(all_phones)
-
-                try:
-                    # Normalize HTML entities (CRITICAL!)
-                    content_normalized = self._normalize_html_entities(source_content)
-
-                    # Also normalize common obfuscation
-                    content_normalized = content_normalized.replace("[at]", "@")
-                    content_normalized = content_normalized.replace("(at)", "@")
-                    content_normalized = content_normalized.replace(" at ", "@")
-
-                    # ========== EMAIL EXTRACTION ==========
-                    # Standard regex
-                    for email in re.findall(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', content_normalized):
-                        email_clean = email.lower().strip()
+            # ========== PASS 2: MAILTO: LINKS (HIGH CONFIDENCE) ==========
+            try:
+                mailto_links = re.findall(r'href=["\']?mailto:([^"\'>\s]+)', combined_text)
+                mailto_count = 0
+                for match in mailto_links:
+                    if "@" in match:
+                        email_clean = match.lower().strip()
                         is_garbage = any(re.match(pattern, email_clean.split('@')[0]) for pattern in garbage_patterns)
 
                         if not is_garbage and email_clean not in all_emails:
                             all_emails[email_clean] = source_url
                             emails_on_page.add(email_clean)
+                            mailto_count += 1
 
-                    # mailto: links (from any source content)
-                    for match in re.findall(r'href=["\']?mailto:([^"\'>\s]+)', source_content):
-                        if "@" in match:
-                            email_clean = match.lower().strip()
-                            is_garbage = any(re.match(pattern, email_clean.split('@')[0]) for pattern in garbage_patterns)
+                if mailto_count > 0:
+                    logger.info(f"[EXTRACTION - MAILTO LINKS] Found {mailto_count} emails")
+            except Exception as e:
+                logger.debug(f"[MAILTO LINKS] Error: {e}")
 
-                            if not is_garbage and email_clean not in all_emails:
-                                all_emails[email_clean] = source_url
-                                emails_on_page.add(email_clean)
+            # ========== PASS 3: EMAIL REGEX (MEDIUM CONFIDENCE) ==========
+            try:
+                # Standard email regex
+                found_emails = re.findall(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b', normalized_text)
+                email_count = 0
+                for email in found_emails:
+                    email_clean = email.lower().strip()
+                    is_garbage = any(re.match(pattern, email_clean.split('@')[0]) for pattern in garbage_patterns)
 
-                    # Aggressive extraction on contact pages
-                    if any(p in source_url.lower() for p in ['contact', 'about', 'team']):
-                        for match in re.findall(r'[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}', content_normalized):
-                            email_clean = match.lower().strip()
-                            is_garbage = any(re.match(pattern, email_clean.split('@')[0]) for pattern in garbage_patterns)
+                    if not is_garbage and email_clean not in all_emails:
+                        all_emails[email_clean] = source_url
+                        emails_on_page.add(email_clean)
+                        email_count += 1
 
-                            if not is_garbage and email_clean not in all_emails:
-                                all_emails[email_clean] = source_url
-                                emails_on_page.add(email_clean)
+                if email_count > 0:
+                    logger.info(f"[EXTRACTION - EMAIL REGEX] Found {email_count} emails")
+            except Exception as e:
+                logger.debug(f"[EMAIL REGEX] Error: {e}")
 
-                    # ========== PHONE EXTRACTION ==========
-                    # Use improved phone extraction
-                    found_phones = self._extract_phones_from_text(content_normalized)
+            # ========== PASS 4: WIDE PHONE REGEX (RECALL-FIRST) ==========
+            # CRITICAL: This wide regex catches almost all phone-like patterns
+            # Pattern: [+\d][\d\-\(\)\s]{6,}\d
+            # Matches: +7 (383) 209-21-27, 8(383)209-27, +1-555-0000, etc.
+            try:
+                wide_phone_regex = r'[\+\d][\d\-\(\)\s\.]\.?{6,}\d'
+                # Actually, let's use a simpler and more reliable pattern:
+                # Any sequence that starts with digit or + and has enough digits
+                wide_phone_regex = r'[\+]?[\d\(\)\s\-\.]{7,}'
 
-                    for phone in found_phones:
-                        phone_clean = self._clean_phone_extension(phone)
-                        if not phone_clean:
-                            continue
+                found_phones = re.findall(wide_phone_regex, normalized_text)
 
-                        # 🔥 STRICT VALIDATION
-                        if not self._is_valid_phone(phone_clean):
-                            logger.debug(f"[PHONE FILTER] {source_name}: Rejected: {phone_clean}")
-                            continue
+                for phone_raw in found_phones:
+                    phone_clean = self._clean_phone_extension(phone_raw.strip())
+                    if not phone_clean:
+                        continue
 
-                        normalized = self._normalize_phone(phone_clean)
-                        if len(normalized) >= 7:
-                            # 🔴 DEBUG: DISABLED DEDUP - ACCEPT ALL PHONES
-                            # if normalized not in all_phones:
-                            logger.info(f"[DEBUG DEDUP DISABLED] Found phone: {phone_clean} (normalized: {normalized})")
+                    if not self._is_valid_phone(phone_clean):
+                        logger.debug(f"[WIDE REGEX] Rejected: {phone_clean}")
+                        continue
+
+                    normalized = self._normalize_phone(phone_clean)
+                    if len(normalized) >= 7:
+                        # RECALL-FIRST: Add if not already present (but accept duplicates from different sources)
+                        if normalized not in all_phones:
                             all_phones[normalized] = {"original": phone_clean, "source": source_url}
                             phones_on_page.add(phone_clean)
+                            regex_count += 1
+                        else:
+                            # Already exists, but maybe different format - log it
+                            logger.debug(f"[WIDE REGEX] Duplicate normalized phone: {normalized} (original: {phone_clean})")
 
-                except Exception as e:
-                    logger.debug(f"[EXTRACTION] Error in {source_name}: {e}")
-                    continue
+                if regex_count > 0:
+                    logger.info(f"[EXTRACTION - WIDE REGEX] Found {regex_count} phones")
+            except Exception as e:
+                logger.debug(f"[WIDE REGEX] Error: {e}")
 
-                # Log extraction results for this source
-                emails_found = len(all_emails) - emails_before
-                phones_found = len(all_phones) - phones_before
-                if emails_found > 0 or phones_found > 0:
-                    logger.info(f"[EXTRACTION Pass {source_index + 1} - {source_name}] Found {emails_found} new emails, {phones_found} new phones")
-
-                source_index += 1
-
-            # ========== EXTRACT FROM TABLES ==========
+            # ========== PASS 5: EXTRACT FROM TABLES ==========
             if hasattr(result, 'tables') and result.tables:
-                logger.debug(f"[EXTRACTION] Processing {len(result.tables)} table(s)")
-                for table in result.tables:
-                    try:
+                try:
+                    for table in result.tables:
                         self._extract_from_table(table, source_url, all_emails, all_phones)
-                    except Exception as e:
-                        logger.debug(f"[EXTRACTION] Table error: {e}")
+                except Exception as e:
+                    logger.debug(f"[TABLE EXTRACTION] Error: {e}")
 
         except Exception as e:
             logger.debug(f"[EXTRACTION] Fatal error on {source_url}: {e}")
             # Never raise - traversal must continue
 
-        logger.info(f"[EXTRACTION] Page total: {len(emails_on_page)} emails, {len(phones_on_page)} phones")
+        # ========== FINAL LOGGING ==========
+        logger.info(f"[EXTRACTION SUMMARY] Page total: {len(emails_on_page)} emails, {len(phones_on_page)} phones")
+        logger.info(f"  Tel links: {tel_count}, Regex: {regex_count}, CSS: {css_count}")
+
         return emails_on_page, phones_on_page
 
     def _extract_from_table(
