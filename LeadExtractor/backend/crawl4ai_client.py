@@ -659,7 +659,6 @@ class Crawl4AIClient:
             logger.error(f"Fatal error: {e}", exc_info=True)
 
         # Build final result
-        # RECALL-FIRST: NO SLICING - return ALL found contacts!
         # Format phones: convert dict values to display format
         phones_list = []
         for normalized_key, phone_data in sorted(all_phones.items()):
@@ -674,6 +673,16 @@ class Crawl4AIClient:
                     "phone": phone_data,
                     "source_page": ""
                 })
+
+        # ⭐ LIMIT CANDIDATES (important for LLM performance)
+        # Collect all candidates, but limit to 30 for LLM processing
+        # (More than 30 is rare, and LLM can't handle too many at once)
+        if len(phones_list) > 30:
+            logger.warning(
+                f"[CANDIDATE LIMIT] Found {len(phones_list)} candidates, "
+                f"limiting to 30 for LLM (others will be discarded)"
+            )
+            phones_list = phones_list[:30]
 
         # ========== STAGE 4: FINAL LLM VALIDATION (NEW!) ==========
         # ⭐ CRITICAL: Validate all phones through LLM before returning
@@ -1346,12 +1355,92 @@ class Crawl4AIClient:
             except Exception as e:
                 logger.debug(f"[CONTACT REGEX] Error: {e}")
 
-            # ========== PASS 4: WIDE PHONE REGEX (RECALL-FIRST + SANITY FILTER) ==========
-            # CRITICAL: This wide regex catches almost all phone-like patterns
+            # ========== PASS 3.7: AGGRESSIVE RUSSIAN PHONE PATTERN (NEW!) ==========
+            # ⭐ NEW: Специализированный regex для русских номеров (без требования контекста)
+            # Ловит:
+            # * +7 (812) 250-62-10
+            # * 8 812 250 62 10
+            # * 8122506210
+            # * 812-250-6210
+            # Без фильтров (фильтры будут в LLM)
+            try:
+                # Pattern: (+ or 8 or nothing) + area code + number parts
+                # Very permissive - catches almost any 10-11 digit sequence
+                russian_pattern = r'(?:\+7|8)?[\s\-\(\)]*\d{3}[\s\-\(\)]*\d{3}[\s\-\(\)]*\d{2}[\s\-\(\)]*\d{2}'
+
+                russian_matches = re.finditer(russian_pattern, normalized_text)
+                russian_count = 0
+
+                for match in russian_matches:
+                    phone_raw = match.group(0).strip()
+                    if not phone_raw:
+                        continue
+
+                    phone_clean = self._clean_phone_extension(phone_raw)
+                    if not phone_clean:
+                        continue
+
+                    # CRITICAL: ⚠️ NOT FILTERING HERE - let LLM decide!
+                    # Мы собираем ВСЕ кандидаты, LLM их отфильтрует
+
+                    normalized = self._normalize_phone(phone_clean)
+                    if len(normalized) >= 7:
+                        if normalized not in all_phones:
+                            all_phones[normalized] = {"original": phone_clean, "source": source_url}
+                            phones_on_page.add(phone_clean)
+                            russian_count += 1
+
+                if russian_count > 0:
+                    logger.info(f"[EXTRACTION - RUSSIAN PATTERN] Found {russian_count} phones (aggressive Russian pattern)")
+            except Exception as e:
+                logger.debug(f"[RUSSIAN PATTERN] Error: {e}")
+
+            # ========== PASS 3.8: DIGIT-ONLY DETECTION (NEW!) ==========
+            # ⭐ NEW: Ищем строки с 10 или 11 цифр подряд (потенциальные номера)
+            # Примеры: "7812250621", "79123456789", "8123456789"
+            try:
+                # Find all sequences of 10-11 digits
+                digit_pattern = r'\b\d{10,11}\b'
+                digit_matches = re.finditer(digit_pattern, normalized_text)
+                digit_count = 0
+
+                for match in digit_matches:
+                    digits_raw = match.group(0)
+
+                    # Add + prefix if starts with 7 or 79 (Russian)
+                    if digits_raw.startswith('79'):
+                        phone_raw = '+' + digits_raw
+                    elif digits_raw.startswith('7'):
+                        phone_raw = '+' + digits_raw
+                    else:
+                        phone_raw = digits_raw  # Maybe 8... or 1... (international)
+
+                    phone_clean = self._clean_phone_extension(phone_raw)
+                    if not phone_clean:
+                        continue
+
+                    # NO FILTERS - collect candidates
+
+                    normalized = self._normalize_phone(phone_clean)
+                    if len(normalized) >= 7:
+                        if normalized not in all_phones:
+                            all_phones[normalized] = {"original": phone_clean, "source": source_url}
+                            phones_on_page.add(phone_clean)
+                            digit_count += 1
+
+                if digit_count > 0:
+                    logger.info(f"[EXTRACTION - DIGIT PATTERN] Found {digit_count} phones (10-11 digits)")
+            except Exception as e:
+                logger.debug(f"[DIGIT PATTERN] Error: {e}")
+
+            # ========== PASS 4: WIDE PHONE REGEX (RAW CANDIDATE COLLECTION) ==========
+            # ⭐ IMPORTANT: This is the FINAL catch-all for any phone-like patterns
+            # We collect RAW candidates here - ALL filtering is done by LLM later
             # Pattern: [+\d][\d\-\(\)\s]{6,}\d
             # Matches: +7 (383) 209-21-27, 8(383)209-27, +1-555-0000, etc.
             #
-            # v2.0 IMPROVEMENT: Apply sanity filter to remove 80-90% garbage
+            # NOTE: sanity/structural filters removed from here!
+            # Those are now a job for phone_final_validator.py (LLM stage)
             try:
                 wide_phone_regex = r'[\+\d][\d\-\(\)\s\.]\.?{6,}\d'
                 # Actually, let's use a simpler and more reliable pattern:
@@ -1366,37 +1455,23 @@ class Crawl4AIClient:
                     if not phone_clean:
                         continue
 
-                    # v2.0: SANITY FILTER (убрать очевидный мусор)
-                    # Это удалит ~80-90% false positives (float, даты, ID, etc.)
-                    if not self._is_sane_phone_candidate(phone_clean):
-                        logger.debug(f"[WIDE REGEX] Sanity filter rejected: {phone_clean}")
-                        continue
-
-                    # v2.5: STRUCTURAL FILTER (удалить мусор по структуре)
-                    # Это удалит ID, даты, годы, чистые числа
-                    if not self._is_structural_phone(phone_clean):
-                        logger.debug(f"[WIDE REGEX] Structural filter rejected: {phone_clean}")
-                        continue
-
-                    if not self._is_valid_phone(phone_clean):
-                        logger.debug(f"[WIDE REGEX] Valid check rejected: {phone_clean}")
-                        continue
+                    # ⭐ NO FILTERS HERE ANYMORE!
+                    # OLD: sanity + structural filters were applied here
+                    # NEW: Collect ALL candidates, let LLM filter them
+                    # (This increases recall significantly)
 
                     normalized = self._normalize_phone(phone_clean)
-                    if len(normalized) >= 7:
-                        # RECALL-FIRST: Add if not already present (but accept duplicates from different sources)
+                    if len(normalized) >= 5:  # Very permissive (usually 7+, but be lenient)
+                        # RECALL-FIRST: Add if not already present
                         if normalized not in all_phones:
                             all_phones[normalized] = {"original": phone_clean, "source": source_url}
                             phones_on_page.add(phone_clean)
                             regex_count += 1
-                        else:
-                            # Already exists, but maybe different format - log it
-                            logger.debug(f"[WIDE REGEX] Duplicate normalized phone: {normalized} (original: {phone_clean})")
 
                 if regex_count > 0:
-                    logger.info(f"[EXTRACTION - WIDE REGEX] Found: {regex_count} phones (after sanity + structural filters)")
+                    logger.info(f"[EXTRACTION - WIDE REGEX] Found: {regex_count} phones (NO filters - candidates for LLM)")
                 else:
-                    logger.debug(f"[EXTRACTION - WIDE REGEX] No phones passed filters (raw found: {raw_count})")
+                    logger.debug(f"[EXTRACTION - WIDE REGEX] No phones matched wide pattern (raw found: {raw_count})")
             except Exception as e:
                 logger.debug(f"[WIDE REGEX] Error: {e}")
 
