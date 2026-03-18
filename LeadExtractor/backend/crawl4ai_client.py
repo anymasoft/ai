@@ -675,6 +675,39 @@ class Crawl4AIClient:
                     "source_page": ""
                 })
 
+        # ========== STAGE 4: FINAL LLM VALIDATION (NEW!) ==========
+        # ⭐ CRITICAL: Validate all phones through LLM before returning
+        logger.info(f"\n{'='*60}")
+        logger.info(f"[FINAL VALIDATION] Starting LLM validation...")
+        logger.info(f"  📊 Phones BEFORE LLM: {len(phones_list)}")
+
+        try:
+            from phone_final_validator import PhoneFinalValidator
+
+            validator = PhoneFinalValidator(use_llm=True)
+
+            # Validate all phones with domain context
+            validated_phones = validator.validate_phones(
+                phones_list,
+                page_url=domain_url,
+                page_text=""  # Context not needed for simple validation
+            )
+
+            logger.info(f"  ✅ Phones AFTER LLM: {len(validated_phones)}")
+            if len(validated_phones) < len(phones_list):
+                logger.info(f"  ✨ LLM removed {len(phones_list) - len(validated_phones)} false positives")
+
+            # Use validated result (with fallback)
+            phones_list = validated_phones if validated_phones else phones_list
+
+        except ImportError:
+            logger.warning(f"[LLM VALIDATION] phone_final_validator not available, using extraction results")
+        except Exception as e:
+            logger.warning(f"[LLM VALIDATION] LLM validation failed: {e}, using extraction results")
+
+        logger.info(f"[FINAL VALIDATION] Complete")
+        logger.info(f"{'='*60}\n")
+
         # Emails list - ALL emails, no slicing
         emails_list = [
             {"email": email, "source_page": source}
@@ -1044,11 +1077,16 @@ class Crawl4AIClient:
         - "+7 (831) 262-16-42, доб. 172" → "+7 (831) 262-16-42"
         - "+1-555-0000, ext. 123" → "+1-555-0000"
         - "8 (831) 262-16-42 ext 456" → "8 (831) 262-16-42"
+        - "tel:%2B7%20(831)..." → "+7 (831)..." (URL-decode)
 
         This solves 15-20% of incorrect phone numbers!
         """
         if not phone:
             return phone
+
+        # ⭐ CRITICAL FIX: URL-decode first (handles %2B, %20, etc.)
+        from urllib.parse import unquote
+        phone = unquote(phone)
 
         # Split by common extension markers
         # Match: comma/space + (доб|ext|extension|extension|add|addl)
