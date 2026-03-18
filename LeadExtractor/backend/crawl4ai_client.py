@@ -67,7 +67,7 @@ class Crawl4AIClient:
             }
         """
         try:
-            from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
+            from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
         except ImportError:
             logger.error("Crawl4AI not installed")
             return {
@@ -90,14 +90,6 @@ class Crawl4AIClient:
         }
 
         try:
-            # Configure browser: headless with JavaScript enabled
-            browser_config = BrowserConfig(
-                headless=True,
-                verbose=False,
-                java_script_enabled=True,
-                ignore_https_errors=True,
-            )
-
             # Configure crawler run: minimal safe config
             crawler_config = CrawlerRunConfig(
                 wait_until="networkidle",  # Wait for network idle
@@ -105,7 +97,8 @@ class Crawl4AIClient:
                 word_count_threshold=10,  # Low threshold
             )
 
-            async with AsyncWebCrawler(config=browser_config) as crawler:
+            # Create AsyncWebCrawler without config (important for Windows!)
+            async with AsyncWebCrawler() as crawler:
                 # Step 1: Crawl homepage
                 homepage_result = await crawler.arun(
                     url=domain_url,
@@ -144,7 +137,6 @@ class Crawl4AIClient:
                     batch_results = await crawler.arun_many(
                         urls=remaining_pages,
                         config=crawler_config,
-                        max_concurrent=3  # 3 concurrent crawls
                     )
 
                     # Step 6: Extract from all batch results
