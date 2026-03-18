@@ -1,4 +1,8 @@
+import { useState } from 'react'
+
 export default function ResultsTable({ results }) {
+  const [copiedSource, setCopiedSource] = useState(null)
+
   // Форматирование URL
   const formatUrl = (urlString) => {
     try {
@@ -13,56 +17,12 @@ export default function ResultsTable({ results }) {
     }
   }
 
-  // Вычисление Lead Score
-  const calculateScore = (result) => {
-    let score = 0
-
-    // +30 если есть email
-    if (result.emails && result.emails.length > 0) {
-      score += 30
-    }
-
-    // +20 если есть phone
-    if (result.phones && result.phones.length > 0) {
-      score += 20
-    }
-
-    // +20 если есть source содержащий "contact"
-    if (
-      result.sources &&
-      result.sources.some(s => s.toLowerCase().includes('contact'))
-    ) {
-      score += 20
-    }
-
-    // +10 если есть "about"
-    if (
-      result.sources &&
-      result.sources.some(s => s.toLowerCase().includes('about'))
-    ) {
-      score += 10
-    }
-
-    // +10 если pages > 2
-    if (result.sources && result.sources.length > 2) {
-      score += 10
-    }
-
-    return Math.min(score, 100) // Максимум 100
-  }
-
-  // Цвет для Score
-  const getScoreBadgeClass = (score) => {
-    if (score >= 80) return 'badge-green'
-    if (score >= 50) return 'badge-yellow'
-    return 'badge-gray'
-  }
-
-  // Текст статуса
-  const getStatus = (score) => {
-    if (score >= 80) return 'HOT'
-    if (score >= 50) return 'WARM'
-    return 'COLD'
+  // Копирование Source в буфер обмена при клике
+  const handleSourceClick = (source, idx) => {
+    navigator.clipboard.writeText(source).then(() => {
+      setCopiedSource(idx)
+      setTimeout(() => setCopiedSource(null), 2000)
+    })
   }
 
   // Фильтруем результаты: только с контактами
@@ -72,15 +32,13 @@ export default function ResultsTable({ results }) {
 
   return (
     <div className="results-container">
-      <table className="lead-table">
+      <table className="data-table">
         <thead>
           <tr>
-            <th>Company</th>
+            <th>Website</th>
             <th>Emails</th>
             <th>Phones</th>
             <th>Sources</th>
-            <th>Score</th>
-            <th>Status</th>
             <th>Action</th>
           </tr>
         </thead>
@@ -88,20 +46,18 @@ export default function ResultsTable({ results }) {
           {filteredResults.map((result, idx) => {
             const emails = result.emails || []
             const phones = result.phones || []
-            const sources = result.sources || []
-            const score = calculateScore(result)
-            const status = getStatus(score)
-            const badgeClass = getScoreBadgeClass(score)
+            // Убираем дубли Sources используя Set
+            const uniqueSources = [...new Set(result.sources || [])]
 
             return (
-              <tr key={idx} className="lead-row">
-                {/* Company Column */}
-                <td className="company-cell">
+              <tr key={idx} className="data-row">
+                {/* Website Column */}
+                <td className="website-cell">
                   <a
                     href={result.website}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="company-link"
+                    className="website-link"
                     title={result.website}
                   >
                     {result.website}
@@ -116,21 +72,16 @@ export default function ResultsTable({ results }) {
                         <div key={i} className="contact-item">
                           <a
                             href={`mailto:${email.email}`}
-                            className="contact-email"
+                            className="contact-link"
                             title={email.email}
                           >
                             {email.email}
                           </a>
-                          {email.source_page && (
-                            <div className="source-hint">
-                              {formatUrl(email.source_page)}
-                            </div>
-                          )}
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <span className="text-gray-400">-</span>
+                    <span className="empty-cell">-</span>
                   )}
                 </td>
 
@@ -142,62 +93,55 @@ export default function ResultsTable({ results }) {
                         <div key={i} className="contact-item">
                           <a
                             href={`tel:${phone.phone.replace(/\s/g, '')}`}
-                            className="contact-phone"
+                            className="contact-link"
                             title={phone.phone}
                           >
                             {phone.phone}
                           </a>
-                          {phone.source_page && (
-                            <div className="source-hint">
-                              {formatUrl(phone.source_page)}
-                            </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="empty-cell">-</span>
+                  )}
+                </td>
+
+                {/* Sources Column (Уникальные значения) */}
+                <td className="sources-cell">
+                  {uniqueSources.length > 0 ? (
+                    <div className="sources-list">
+                      {uniqueSources.map((source, i) => (
+                        <div
+                          key={i}
+                          className={`source-item ${copiedSource === `${idx}-${i}` ? 'copied' : ''}`}
+                          onClick={() => handleSourceClick(source, `${idx}-${i}`)}
+                          title={`Click to copy: ${source}`}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              handleSourceClick(source, `${idx}-${i}`)
+                            }
+                          }}
+                        >
+                          {formatUrl(source)}
+                          {copiedSource === `${idx}-${i}` && (
+                            <span className="copy-indicator">✓ Copied</span>
                           )}
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <span className="text-gray-400">-</span>
+                    <span className="empty-cell">-</span>
                   )}
-                </td>
-
-                {/* Sources Column */}
-                <td className="sources-cell">
-                  {sources.length > 0 ? (
-                    <div className="sources-list">
-                      {sources.slice(0, 3).map((source, i) => (
-                        <div key={i} className="source-tag">
-                          {formatUrl(source)}
-                        </div>
-                      ))}
-                      {sources.length > 3 && (
-                        <div className="source-tag more">
-                          +{sources.length - 3} more
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-gray-400">-</span>
-                  )}
-                </td>
-
-                {/* Score Column */}
-                <td className="score-cell">
-                  <div className={`score-badge ${badgeClass}`}>{score}</div>
-                </td>
-
-                {/* Status Column */}
-                <td className="status-cell">
-                  <span className={`status-tag status-${status.toLowerCase()}`}>
-                    {status}
-                  </span>
                 </td>
 
                 {/* Action Column */}
                 <td className="action-cell">
                   {emails.length > 0 && (
                     <a
-                      href={`mailto:${emails[0].email}?subject=Partnership%20Inquiry&body=Hi,%0A%0AI found your website and would like to discuss a potential partnership.%0A%0ABest regards`}
-                      className="btn-send-email"
+                      href={`mailto:${emails[0].email}?subject=Inquiry&body=Hello`}
+                      className="btn-email"
                       title={`Send email to ${emails[0].email}`}
                     >
                       ✉️ Email
@@ -211,8 +155,8 @@ export default function ResultsTable({ results }) {
           {/* Empty State */}
           {filteredResults.length === 0 && (
             <tr>
-              <td colSpan="7" className="empty-state">
-                No leads found. Extract contacts to get started.
+              <td colSpan="5" className="empty-state">
+                No contacts found
               </td>
             </tr>
           )}
