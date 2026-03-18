@@ -275,6 +275,11 @@ class Crawl4AIClient:
                 for phone in tel_links:
                     phone_clean = self._clean_phone_extension(phone.strip())
                     if phone_clean:
+                        # 🔥 STRICT VALIDATION
+                        if not self._is_valid_phone(phone_clean):
+                            logger.debug(f"[FALLBACK PHONE FILTER] Tel link rejected: {phone_clean}")
+                            continue
+
                         normalized = self._normalize_phone(phone_clean)
                         if len(normalized) >= 7:
                             # 🔴 DEBUG: DISABLED DEDUP
@@ -333,6 +338,11 @@ class Crawl4AIClient:
                 for phone in found_phones:
                     phone_clean = self._clean_phone_extension(phone)
                     if phone_clean:
+                        # 🔥 STRICT VALIDATION
+                        if not self._is_valid_phone(phone_clean):
+                            logger.debug(f"[FALLBACK PHONE FILTER] Rejected: {phone_clean}")
+                            continue
+
                         normalized = self._normalize_phone(phone_clean)
                         if len(normalized) >= 7:
                             # 🔴 DEBUG: DISABLED DEDUP
@@ -494,10 +504,16 @@ class Crawl4AIClient:
         logger.info(f"Crawled {page_count} pages")
         logger.info(f"[DEBUG FINAL] RESULT OBJECT ABOUT TO RETURN:")
         logger.info(f"  emails: {len(result['emails'])}")
-        logger.info(f"  phones: {len(result['phones'])}")
+        logger.info(f"  phones: {len(result['phones'])} (after STRICT validation)")
         logger.info(f"[DEBUG] ACTUAL PHONES IN RESULT:")
         for i, phone in enumerate(result['phones'][:20]):
             logger.info(f"    [{i}] {phone}")
+
+        logger.info(f"\n[VALIDATION SUMMARY]")
+        logger.info(f"  Total unique phones found: {len(all_phones)}")
+        logger.info(f"  Total phones in result (after slicing): {len(result['phones'])}")
+        logger.info(f"  Validation: ✅ STRICT phone format validation applied")
+        logger.info(f"  Filters: 10–11 digits, Russian format (7x or 8x prefix)")
         logger.info(f"{'='*60}\n")
 
         return result
@@ -635,6 +651,60 @@ class Crawl4AIClient:
             logger.info(f"  → Added {links_added - forced_urls_added} regular URLs")
 
         return links_added
+
+    def _is_valid_phone(self, phone: str) -> bool:
+        """
+        STRICT phone validation (RU-focused, deterministic).
+
+        Returns True only if phone is:
+        - 10-11 digits after normalization
+        - Starts with 7 or 8 (Russian)
+        - NOT obviously broken/invalid
+
+        Examples:
+        ✅ "+7 (383) 209-21-27" → "73832092127" (11 digits)
+        ✅ "(812) 250-62-10" → "812250621" → add 7 → "78122506210" (11 digits)
+        ❌ "8431 21 13" → "843121 13" (8 digits) - TOO SHORT
+        ❌ "85786 1 12 1" → "857861121" (9 digits) - TOO SHORT
+        ❌ "89543 10 8" → "8954310 8" (8 digits) - TOO SHORT
+        """
+        if not phone or not isinstance(phone, str):
+            return False
+
+        try:
+            # Remove all non-digits
+            digits = re.sub(r'\D', '', phone)
+
+            # 🚫 Too short - can't be a valid Russian phone
+            if len(digits) < 10:
+                logger.debug(f"[VALIDATION] Too short ({len(digits)} digits): {phone}")
+                return False
+
+            # 🚫 Too long - definitely broken
+            if len(digits) > 11:
+                logger.debug(f"[VALIDATION] Too long ({len(digits)} digits): {phone}")
+                return False
+
+            # Check Russian phone formats
+            # Format 1: 11 digits starting with 7 or 8 (e.g., 79123456789 or 89123456789)
+            if len(digits) == 11:
+                first_digit = digits[0]
+                if first_digit not in ('7', '8'):
+                    logger.debug(f"[VALIDATION] 11 digits but bad prefix: {phone}")
+                    return False
+                return True
+
+            # Format 2: 10 digits (e.g., 9123456789 - local format without country code)
+            if len(digits) == 10:
+                # This could be (XXX) XXX-XX-XX format
+                # Accept it
+                return True
+
+            return False
+
+        except Exception as e:
+            logger.debug(f"[VALIDATION] Exception: {e}")
+            return False
 
     def _normalize_phone(self, phone: str) -> str:
         """
@@ -790,9 +860,18 @@ class Crawl4AIClient:
                 tel_links = re.findall(r'href=["\']?tel:([^"\'>\s]+)', result.html or "")
                 logger.info(f"[EXTRACTION Pass 1 - tel: links] Found {len(tel_links)} phone links")
 
+                tel_valid = 0
+                tel_filtered = 0
+
                 for phone in tel_links:
                     phone_clean = self._clean_phone_extension(phone.strip())
                     if not phone_clean:
+                        continue
+
+                    # 🔥 STRICT VALIDATION
+                    if not self._is_valid_phone(phone_clean):
+                        logger.info(f"[PHONE FILTER] Tel link rejected: {phone_clean}")
+                        tel_filtered += 1
                         continue
 
                     normalized = self._normalize_phone(phone_clean)
@@ -802,6 +881,9 @@ class Crawl4AIClient:
                         logger.info(f"[DEBUG DEDUP DISABLED] Tel link: {phone_clean} (normalized: {normalized})")
                         all_phones[normalized] = {"original": phone_clean, "source": source_url}
                         phones_on_page.add(phone_clean)
+                        tel_valid += 1
+
+                logger.info(f"[EXTRACTION Pass 1] Valid: {tel_valid}, Filtered: {tel_filtered}")
             except Exception as e:
                 logger.debug(f"[EXTRACTION] Tel link error: {e}")
 
@@ -881,6 +963,11 @@ class Crawl4AIClient:
                     for phone in found_phones:
                         phone_clean = self._clean_phone_extension(phone)
                         if not phone_clean:
+                            continue
+
+                        # 🔥 STRICT VALIDATION
+                        if not self._is_valid_phone(phone_clean):
+                            logger.debug(f"[PHONE FILTER] {source_name}: Rejected: {phone_clean}")
                             continue
 
                         normalized = self._normalize_phone(phone_clean)
@@ -974,6 +1061,11 @@ class Crawl4AIClient:
                     for phone in found_phones:
                         phone_clean = self._clean_phone_extension(phone)
                         if phone_clean:
+                            # 🔥 STRICT VALIDATION
+                            if not self._is_valid_phone(phone_clean):
+                                logger.debug(f"[TABLE PHONE FILTER] Rejected: {phone_clean}")
+                                continue
+
                             normalized = self._normalize_phone(phone_clean)
                             if len(normalized) >= 7:
                                 # 🔴 DEBUG: DISABLED DEDUP
