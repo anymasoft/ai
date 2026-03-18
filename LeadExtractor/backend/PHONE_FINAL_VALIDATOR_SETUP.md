@@ -134,10 +134,18 @@ nano .env  # или vim, или код-редактор
 ```bash
 # .env (в корне LeadExtractor/)
 
-# ⭐ Обязательно!
+# ⭐ ОБЯЗАТЕЛЬНО: OpenAI API ключ
 OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
-# Опционально (по умолчанию true)
+# ⭐ ОБЯЗАТЕЛЬНО: Модель OpenAI
+# gpt-4o-mini (рекомендуется) — дешево и быстро
+# gpt-4o — мощнее, но дороже
+# gpt-3.5-turbo — старая модель
+OPENAI_MODEL=gpt-4o-mini
+
+# Опционально: включить/отключить LLM валидацию
+# true = использовать LLM для сомнительных номеров
+# false = только phonenumbers, без LLM
 USE_LLM_VALIDATION=true
 ```
 

@@ -36,10 +36,16 @@ try:
             "❌ OPENAI_API_KEY не найден в .env\n"
             "Добавьте в .env: OPENAI_API_KEY=sk-..."
         )
+
+    # Модель из .env (по умолчанию gpt-4o-mini)
+    model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
     client = OpenAI(api_key=api_key)
+    OPENAI_MODEL = model_name
 except Exception as e:
     logger.warning(f"[LLM] Инициализация OpenAI failed: {e}")
     client = None
+    OPENAI_MODEL = "gpt-4o-mini"  # Fallback
 
 
 class PhoneFinalValidator:
@@ -346,9 +352,9 @@ class PhoneFinalValidator:
 {{"phones": []}}
 """
 
-            # ====== Отправить запрос к GPT-4o-mini ======
+            # ====== Отправить запрос к OpenAI (модель из .env) ======
             response = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model=OPENAI_MODEL,
                 messages=[
                     {
                         "role": "system",

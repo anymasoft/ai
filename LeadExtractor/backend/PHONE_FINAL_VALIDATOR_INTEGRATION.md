@@ -15,8 +15,12 @@
 ```bash
 # .env (в корне LeadExtractor/)
 
-# OpenAI API для финальной LLM валидации
+# ⭐ ОБЯЗАТЕЛЬНО: OpenAI API ключ
 OPENAI_API_KEY=sk-proj-xxxxx...
+
+# ⭐ ОБЯЗАТЕЛЬНО: Модель OpenAI для LLM валидации
+# Рекомендуется: gpt-4o-mini (дешево и быстро)
+OPENAI_MODEL=gpt-4o-mini
 
 # Опционально: контролировать использование LLM
 USE_LLM_VALIDATION=true
