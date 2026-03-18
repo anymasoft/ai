@@ -276,7 +276,10 @@ class Crawl4AIClient:
                     phone_clean = self._clean_phone_extension(phone.strip())
                     if phone_clean:
                         normalized = self._normalize_phone(phone_clean)
-                        if len(normalized) >= 7 and normalized not in all_phones:
+                        if len(normalized) >= 7:
+                            # 🔴 DEBUG: DISABLED DEDUP
+                            # if len(normalized) >= 7 and normalized not in all_phones:
+                            logger.info(f"[FALLBACK DEBUG DEDUP DISABLED] Tel link: {phone_clean}")
                             all_phones[normalized] = {"original": phone_clean, "source": source_url}
                             phones_on_page.add(phone_clean)
             except Exception as e:
@@ -331,7 +334,10 @@ class Crawl4AIClient:
                     phone_clean = self._clean_phone_extension(phone)
                     if phone_clean:
                         normalized = self._normalize_phone(phone_clean)
-                        if len(normalized) >= 7 and normalized not in all_phones:
+                        if len(normalized) >= 7:
+                            # 🔴 DEBUG: DISABLED DEDUP
+                            # if len(normalized) >= 7 and normalized not in all_phones:
+                            logger.info(f"[FALLBACK DEBUG DEDUP DISABLED] Phone: {phone_clean}")
                             all_phones[normalized] = {"original": phone_clean, "source": source_url}
                             phones_on_page.add(phone_clean)
 
@@ -453,6 +459,27 @@ class Crawl4AIClient:
                     "source_page": ""
                 })
 
+        # DEBUG: ALL PHONES BEFORE SLICING
+        logger.info(f"\n{'='*60}")
+        logger.info(f"[DEBUG PHASE 1] ALL PHONES FROM all_phones DICT:")
+        logger.info(f"  Total unique (by normalized key): {len(all_phones)}")
+        for normalized_key, phone_data in sorted(all_phones.items())[:20]:
+            original = phone_data.get("original") if isinstance(phone_data, dict) else phone_data
+            logger.info(f"    {normalized_key} → {original}")
+        logger.info(f"{'='*60}")
+
+        # DEBUG: PHONES AFTER LIST CONVERSION
+        logger.info(f"[DEBUG PHASE 2] PHONES_LIST AFTER CONVERSION:")
+        logger.info(f"  Total phones_list: {len(phones_list)}")
+        for i, phone_dict in enumerate(phones_list[:20]):
+            logger.info(f"    [{i}] {phone_dict.get('phone')} (source: {phone_dict.get('source_page', 'N/A')})")
+
+        # DEBUG: SLICING DECISION
+        logger.info(f"[DEBUG PHASE 3] SLICING DECISION:")
+        logger.info(f"  Before slice [:10]: {len(phones_list)} phones")
+        logger.info(f"  After slice [:10]: {len(phones_list[:10])} phones")
+        logger.info(f"  TRUNCATED: {len(phones_list) > 10}")
+
         result = {
             "emails": [
                 {"email": email, "source_page": source}
@@ -465,7 +492,12 @@ class Crawl4AIClient:
 
         logger.info(f"\n{'='*60}")
         logger.info(f"Crawled {page_count} pages")
-        logger.info(f"Found {len(result['emails'])} emails, {len(result['phones'])} phones")
+        logger.info(f"[DEBUG FINAL] RESULT OBJECT ABOUT TO RETURN:")
+        logger.info(f"  emails: {len(result['emails'])}")
+        logger.info(f"  phones: {len(result['phones'])}")
+        logger.info(f"[DEBUG] ACTUAL PHONES IN RESULT:")
+        for i, phone in enumerate(result['phones'][:20]):
+            logger.info(f"    [{i}] {phone}")
         logger.info(f"{'='*60}\n")
 
         return result
@@ -765,9 +797,11 @@ class Crawl4AIClient:
 
                     normalized = self._normalize_phone(phone_clean)
                     if len(normalized) >= 7:
-                        if normalized not in all_phones:
-                            all_phones[normalized] = {"original": phone_clean, "source": source_url}
-                            phones_on_page.add(phone_clean)
+                        # 🔴 DEBUG: DISABLED DEDUP - ACCEPT ALL PHONES
+                        # if normalized not in all_phones:
+                        logger.info(f"[DEBUG DEDUP DISABLED] Tel link: {phone_clean} (normalized: {normalized})")
+                        all_phones[normalized] = {"original": phone_clean, "source": source_url}
+                        phones_on_page.add(phone_clean)
             except Exception as e:
                 logger.debug(f"[EXTRACTION] Tel link error: {e}")
 
@@ -851,9 +885,11 @@ class Crawl4AIClient:
 
                         normalized = self._normalize_phone(phone_clean)
                         if len(normalized) >= 7:
-                            if normalized not in all_phones:
-                                all_phones[normalized] = {"original": phone_clean, "source": source_url}
-                                phones_on_page.add(phone_clean)
+                            # 🔴 DEBUG: DISABLED DEDUP - ACCEPT ALL PHONES
+                            # if normalized not in all_phones:
+                            logger.info(f"[DEBUG DEDUP DISABLED] Found phone: {phone_clean} (normalized: {normalized})")
+                            all_phones[normalized] = {"original": phone_clean, "source": source_url}
+                            phones_on_page.add(phone_clean)
 
                 except Exception as e:
                     logger.debug(f"[EXTRACTION] Error in {source_name}: {e}")
@@ -940,9 +976,11 @@ class Crawl4AIClient:
                         if phone_clean:
                             normalized = self._normalize_phone(phone_clean)
                             if len(normalized) >= 7:
-                                if normalized not in all_phones:
-                                    all_phones[normalized] = {"original": phone_clean.strip(), "source": source_url}
-                                    table_phones += 1
+                                # 🔴 DEBUG: DISABLED DEDUP
+                                # if normalized not in all_phones:
+                                logger.info(f"[TABLE DEBUG DEDUP DISABLED] Phone: {phone_clean}")
+                                all_phones[normalized] = {"original": phone_clean.strip(), "source": source_url}
+                                table_phones += 1
 
             if table_emails > 0 or table_phones > 0:
                 logger.debug(f"[TABLE EXTRACTION] Found {table_emails} emails, {table_phones} phones")
