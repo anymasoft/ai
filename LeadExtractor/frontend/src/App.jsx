@@ -37,33 +37,47 @@ export default function App() {
     }
   }
 
+  const calculateScore = (result) => {
+    let score = 0
+    if (result.emails && result.emails.length > 0) score += 30
+    if (result.phones && result.phones.length > 0) score += 20
+    if (result.sources && result.sources.some(s => s.toLowerCase().includes('contact'))) score += 20
+    if (result.sources && result.sources.some(s => s.toLowerCase().includes('about'))) score += 10
+    if (result.sources && result.sources.length > 2) score += 10
+    return Math.min(score, 100)
+  }
+
+  const getStatus = (score) => {
+    if (score >= 80) return 'HOT'
+    if (score >= 50) return 'WARM'
+    return 'COLD'
+  }
+
   const handleExportCSV = () => {
-    const headers = ['Website', 'Email', 'Phone', 'Email Source', 'Phone Source']
+    const headers = ['Website', 'Emails (Count)', 'Phones (Count)', 'Sources (Count)', 'Lead Score', 'Status', 'All Sources']
     const rows = []
 
-    results.forEach(result => {
+    // Фильтруем результаты с контактами
+    const filteredResults = results.filter(
+      result => (result.emails?.length > 0) || (result.phones?.length > 0)
+    )
+
+    filteredResults.forEach(result => {
+      const score = calculateScore(result)
+      const status = getStatus(score)
       const emails = result.emails || []
       const phones = result.phones || []
       const sources = result.sources || []
 
-      const maxLen = Math.max(
-        emails.length || 1,
-        phones.length || 1,
-        sources.length || 1
-      )
-
-      for (let i = 0; i < maxLen; i++) {
-        const email = emails[i]
-        const phone = phones[i]
-
-        rows.push([
-          i === 0 ? result.website : '',
-          email?.email || '',
-          phone?.phone || '',
-          email?.source_page || '',
-          phone?.source_page || '',
-        ])
-      }
+      rows.push([
+        result.website,
+        emails.length,
+        phones.length,
+        sources.length,
+        score,
+        status,
+        sources.join('; '),
+      ])
     })
 
     const csv = [
@@ -71,11 +85,11 @@ export default function App() {
       ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
     ].join('\n')
 
-    const blob = new Blob([csv], { type: 'text/csv' })
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'contacts.csv'
+    a.download = `leads_export_${new Date().toISOString().slice(0, 10)}.csv`
     a.click()
     window.URL.revokeObjectURL(url)
   }
