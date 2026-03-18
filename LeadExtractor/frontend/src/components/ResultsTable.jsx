@@ -1,8 +1,6 @@
 import { useState } from 'react'
 
-export default function ResultsTable({ results }) {
-  const [copiedEmail, setCopiedEmail] = useState(null)
-
+export default function ResultsTable({ results, onEmailCopied }) {
   // Нормализовать данные: 1 email = 1 строка
   const normalizeData = () => {
     const normalized = []
@@ -21,7 +19,6 @@ export default function ResultsTable({ results }) {
             emailSource: email.source_page,
             phone: phones.length > emailIdx ? phones[emailIdx].phone : null,
             phoneSource: phones.length > emailIdx ? phones[emailIdx].source_page : null,
-            status: result.status_per_site?.[website],
           })
         })
       }
@@ -35,7 +32,6 @@ export default function ResultsTable({ results }) {
             emailSource: null,
             phone: phone.phone,
             phoneSource: phone.source_page,
-            status: result.status_per_site?.[website],
           })
         })
       }
@@ -45,14 +41,6 @@ export default function ResultsTable({ results }) {
   }
 
   const normalizedData = normalizeData()
-
-  // Копировать email в буфер обмена
-  const handleCopyEmail = (email) => {
-    navigator.clipboard.writeText(email).then(() => {
-      setCopiedEmail(email)
-      setTimeout(() => setCopiedEmail(null), 2000)
-    })
-  }
 
   // Форматирование URL
   const formatUrl = (urlString) => {
@@ -68,6 +56,13 @@ export default function ResultsTable({ results }) {
     }
   }
 
+  // Клик по email - копирует в буфер и показывает toast
+  const handleEmailClick = (email) => {
+    navigator.clipboard.writeText(email).then(() => {
+      onEmailCopied(email)
+    })
+  }
+
   return (
     <div className="results-container">
       <table className="data-table">
@@ -77,13 +72,12 @@ export default function ResultsTable({ results }) {
             <th>Email</th>
             <th>Phone</th>
             <th>Source</th>
-            <th>Action</th>
           </tr>
         </thead>
         <tbody>
           {normalizedData.length === 0 ? (
             <tr>
-              <td colSpan="5" className="empty-state">
+              <td colSpan="4" className="empty-state">
                 No contacts found
               </td>
             </tr>
@@ -101,32 +95,18 @@ export default function ResultsTable({ results }) {
                   >
                     {row.website}
                   </a>
-                  {row.status === 'fallback_success' && (
-                    <span className="status-badge fallback">fallback</span>
-                  )}
                 </td>
 
                 {/* Email Column */}
                 <td className="contact-cell">
                   {row.email ? (
-                    <div>
-                      <a
-                        href={`mailto:${row.email}`}
-                        className="contact-link"
-                        title={row.email}
-                      >
-                        {row.email}
-                      </a>
-                      <div className="copy-hint">
-                        <button
-                          className={`copy-button ${copiedEmail === row.email ? 'copied' : ''}`}
-                          onClick={() => handleCopyEmail(row.email)}
-                          title="Copy email"
-                        >
-                          {copiedEmail === row.email ? '✓ Copied' : 'Copy'}
-                        </button>
-                      </div>
-                    </div>
+                    <span
+                      className="email-text"
+                      onClick={() => handleEmailClick(row.email)}
+                      title={`Click to copy: ${row.email}`}
+                    >
+                      {row.email}
+                    </span>
                   ) : (
                     <span className="empty-cell">-</span>
                   )}
@@ -137,7 +117,7 @@ export default function ResultsTable({ results }) {
                   {row.phone ? (
                     <a
                       href={`tel:${row.phone.replace(/\s/g, '')}`}
-                      className="contact-link"
+                      className="phone-link"
                       title={row.phone}
                     >
                       {row.phone}
@@ -157,21 +137,6 @@ export default function ResultsTable({ results }) {
                     <div className="source-text" title={row.phoneSource}>
                       {formatUrl(row.phoneSource)}
                     </div>
-                  ) : (
-                    <span className="empty-cell">-</span>
-                  )}
-                </td>
-
-                {/* Action Column */}
-                <td className="action-cell">
-                  {row.email ? (
-                    <a
-                      href={`mailto:${row.email}?subject=Inquiry&body=Hello`}
-                      className="btn-email"
-                      title={`Send email to ${row.email}`}
-                    >
-                      ✉️ Email
-                    </a>
                   ) : (
                     <span className="empty-cell">-</span>
                   )}
