@@ -280,3 +280,68 @@ Max pages: 5, Max depth: 2
 - ✅ Защита от ошибок на каждом уровне
 - ✅ Стабильный BFS обход 5–10 страниц
 - 📊 Результат: 5–10 страниц, 5–20 контактов
+
+---
+
+## 🎨 Frontend (React) - Исправления
+
+### Проблема (v1.0)
+
+Backend теперь возвращает объекты с полями `email`/`phone` и `source_page`:
+```json
+{
+  "emails": [
+    { "email": "info@1cca.ru", "source_page": "https://1cca.ru" }
+  ],
+  "phones": [
+    { "phone": "+7 (495) 123-45-67", "source_page": "https://1cca.ru/contacts" }
+  ]
+}
+```
+
+React попытался рендерить эти объекты как строки:
+```jsx
+<td>{result.emails[i]}</td>
+// ❌ Objects are not valid as a React child (found: object with keys {email, source_page})
+```
+
+### Решение (v2.0)
+
+#### ResultsTable.jsx
+- ✅ Извлекаем `.email` и `.phone` из объектов
+- ✅ Добавляем `.source_page` под каждым контактом
+- ✅ Защита от `undefined` с оператором `?.`
+- ✅ Показываем pathname источника
+
+```jsx
+<td>
+  {email ? (
+    <>
+      {email.email}
+      {email.source_page && (
+        <div className="text-xs text-gray-500 mt-1">
+          {new URL(email.source_page).pathname}
+        </div>
+      )}
+    </>
+  ) : (
+    '-'
+  )}
+</td>
+```
+
+#### App.jsx (handleExportCSV)
+- ✅ Экспортируем `email.email` вместо `result.emails[i]`
+- ✅ Добавляем две новые колонки: "Email Source" и "Phone Source"
+- ✅ Используем optional chaining `?.email`
+
+### Файлы Изменены
+- `frontend/src/components/ResultsTable.jsx` - рендеринг контактов
+- `frontend/src/App.jsx` - экспорт в CSV
+
+### Результат
+✅ UI не падает
+✅ Emails отображаются с source_page
+✅ Phones отображаются с source_page
+✅ CSV экспорт включает источники контактов
+✅ Красивый вывод с pathnames источников
