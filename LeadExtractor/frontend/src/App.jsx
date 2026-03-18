@@ -38,22 +38,30 @@ export default function App() {
   }
 
   const handleExportCSV = () => {
-    const headers = ['Website', 'Email', 'Phone', 'Source']
+    const headers = ['Website', 'Email', 'Phone', 'Email Source', 'Phone Source']
     const rows = []
 
     results.forEach(result => {
+      const emails = result.emails || []
+      const phones = result.phones || []
+      const sources = result.sources || []
+
       const maxLen = Math.max(
-        result.emails.length || 1,
-        result.phones.length || 1,
-        result.sources.length || 1
+        emails.length || 1,
+        phones.length || 1,
+        sources.length || 1
       )
 
       for (let i = 0; i < maxLen; i++) {
+        const email = emails[i]
+        const phone = phones[i]
+
         rows.push([
           i === 0 ? result.website : '',
-          result.emails[i] || '',
-          result.phones[i] || '',
-          result.sources[i] || '',
+          email?.email || '',
+          phone?.phone || '',
+          email?.source_page || '',
+          phone?.source_page || '',
         ])
       }
     })
