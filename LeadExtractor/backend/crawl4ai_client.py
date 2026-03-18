@@ -30,7 +30,7 @@ class Crawl4AIClient:
 
     def _fallback_fetch(self, url: str) -> str:
         """
-        Fallback fetch using requests when Crawl4AI fails.
+        Simple fetch using requests.
         Returns HTML content or empty string on error.
         """
         try:
@@ -44,6 +44,220 @@ class Crawl4AIClient:
         except Exception as e:
             logger.debug(f"Fallback fetch failed for {url}: {e}")
             return ""
+
+    def _extract_links_from_html(self, html: str, current_url: str, domain: str) -> List[str]:
+        """
+        Extract internal links from HTML using regex.
+        Returns list of normalized URLs.
+        """
+        links = []
+        try:
+            # Extract all href values
+            for match in re.finditer(r'href=["\']([^"\']+)["\']', html):
+                href = match.group(1)
+                if not href or href.startswith(('javascript:', 'mailto:', 'tel:')):
+                    continue
+
+                # Normalize URL
+                try:
+                    normalized_url = urljoin(current_url, href)
+                    normalized_url = normalized_url.split('#')[0]  # Remove fragment
+                    normalized_url = normalized_url.split('?')[0]  # Remove query
+
+                    # Check if same domain
+                    link_domain = urlparse(normalized_url).netloc
+                    if link_domain != domain:
+                        continue
+
+                    if normalized_url not in links:
+                        links.append(normalized_url)
+                except Exception:
+                    continue
+
+        except Exception as e:
+            logger.debug(f"Link extraction error: {e}")
+
+        return links
+
+    def _fallback_crawl(
+        self,
+        domain_url: str,
+        domain: str,
+        all_emails: Dict,
+        all_phones: Dict,
+        sources: set,
+        status_per_site: Dict
+    ) -> int:
+        """
+        FALLBACK CRAWLER: Full BFS traversal using requests (when Crawl4AI blocked).
+        Independent from main crawler - uses same extraction logic.
+
+        Returns: number of pages crawled
+        """
+        logger.info(f"\n{'='*60}")
+        logger.info(f"⚠️  FALLBACK CRAWLER ACTIVATED (Crawl4AI blocked)")
+        logger.info(f"Domain: {domain}")
+        logger.info(f"Max pages: 5, Max depth: 2")
+        logger.info(f"{'='*60}")
+
+        page_count = 0
+        queue = deque([(domain_url, 0)])
+        visited = set()
+
+        # Forced URLs to always check
+        forced_urls = [
+            urljoin(domain_url, '/contact'),
+            urljoin(domain_url, '/contacts'),
+            urljoin(domain_url, '/about'),
+            urljoin(domain_url, '/team'),
+        ]
+
+        try:
+            while queue and page_count < 5:  # Fallback limit: 5 pages
+                current_url, depth = queue.popleft()
+
+                # Skip if visited or depth exceeded
+                if current_url in visited or depth > 2:
+                    continue
+
+                visited.add(current_url)
+
+                # FETCH
+                logger.info(f"\n[Fallback Page {page_count + 1}/5] Depth {depth} → {current_url.replace(f'https://{domain}', '')[:50]}")
+                html = self._fallback_fetch(current_url)
+
+                if not html:
+                    logger.debug(f"  ✗ Fetch failed")
+                    status_per_site[current_url] = "fallback_failed"
+                    continue
+
+                page_count += 1
+                sources.add(current_url)
+                status_per_site[current_url] = "fallback_success"
+
+                # EXTRACTION
+                emails_on_page, phones_on_page = self._extract_contacts_from_html(
+                    html, current_url, all_emails, all_phones
+                )
+
+                if emails_on_page or phones_on_page:
+                    logger.info(f"  ✓ Found {len(emails_on_page)} emails, {len(phones_on_page)} phones")
+
+                # TRAVERSAL
+                links = self._extract_links_from_html(html, current_url, domain)
+
+                # Add forced URLs if not yet visited
+                for forced_url in forced_urls:
+                    if forced_url not in visited and forced_url not in [u[0] for u in queue]:
+                        links.append(forced_url)
+
+                # Add links to queue
+                links_added = 0
+                for link in links:
+                    if link not in visited and link not in [u[0] for u in queue]:
+                        queue.append((link, depth + 1))
+                        links_added += 1
+
+                logger.info(f"  → Added {links_added} URLs to queue")
+
+            logger.info(f"\n{'='*60}")
+            logger.info(f"✓ Fallback crawl completed: {page_count} pages")
+            logger.info(f"{'='*60}\n")
+
+        except Exception as e:
+            logger.error(f"Fallback crawler error: {e}", exc_info=True)
+
+        return page_count
+
+    def _extract_contacts_from_html(
+        self,
+        html: str,
+        source_url: str,
+        all_emails: Dict,
+        all_phones: Dict
+    ) -> Tuple[set, set]:
+        """
+        Extract emails and phones from raw HTML (for fallback crawler).
+        Same extraction logic as main crawler but accepts html string directly.
+        """
+        emails_on_page = set()
+        phones_on_page = set()
+
+        garbage_patterns = [
+            r'^test[._-]?',
+            r'^example[._-]?',
+            r'^noreply',
+            r'^no-?reply',
+            r'^donotreply',
+            r'^invalid',
+            r'^placeholder',
+        ]
+
+        try:
+            if not html:
+                return emails_on_page, phones_on_page
+
+            # Normalize obfuscation
+            html_normalized = html.replace("[at]", "@").replace("(at)", "@").replace(" at ", "@")
+
+            # ========== EMAIL EXTRACTION ==========
+            try:
+                # Standard regex
+                for email in re.findall(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', html_normalized):
+                    email_clean = email.lower().strip()
+                    is_garbage = any(re.match(pattern, email_clean.split('@')[0]) for pattern in garbage_patterns)
+                    if not is_garbage and email_clean not in all_emails:
+                        all_emails[email_clean] = source_url
+                        emails_on_page.add(email_clean)
+
+                # mailto: links
+                for match in re.findall(r'href=["\']?mailto:([^"\'>\s]+)', html):
+                    if "@" in match:
+                        email_clean = match.lower().strip()
+                        is_garbage = any(re.match(pattern, email_clean.split('@')[0]) for pattern in garbage_patterns)
+                        if not is_garbage and email_clean not in all_emails:
+                            all_emails[email_clean] = source_url
+                            emails_on_page.add(email_clean)
+
+                # Aggressive on contact pages
+                if any(p in source_url.lower() for p in ['contact', 'about', 'team']):
+                    for match in re.findall(r'[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}', html_normalized):
+                        email_clean = match.lower().strip()
+                        is_garbage = any(re.match(pattern, email_clean.split('@')[0]) for pattern in garbage_patterns)
+                        if not is_garbage and email_clean not in all_emails:
+                            all_emails[email_clean] = source_url
+                            emails_on_page.add(email_clean)
+
+            except Exception as e:
+                logger.debug(f"Email extraction error: {e}")
+
+            # ========== PHONE EXTRACTION ==========
+            try:
+                # Phones with +
+                for phone in re.findall(r'\+[\d\s\-()]{10,}', html):
+                    phone_clean = phone.strip()
+                    if phone_clean:
+                        normalized = self._normalize_phone(phone_clean)
+                        if len(normalized) >= 7 and normalized not in all_phones:
+                            all_phones[normalized] = {"original": phone_clean, "source": source_url}
+                            phones_on_page.add(phone_clean)
+
+                # tel: links
+                for phone in re.findall(r'href=["\']?tel:([^"\'>\s]+)', html):
+                    phone_clean = phone.strip()
+                    if phone_clean:
+                        normalized = self._normalize_phone(phone_clean)
+                        if len(normalized) >= 7 and normalized not in all_phones:
+                            all_phones[normalized] = {"original": phone_clean, "source": source_url}
+                            phones_on_page.add(phone_clean)
+
+            except Exception as e:
+                logger.debug(f"Phone extraction error: {e}")
+
+        except Exception as e:
+            logger.debug(f"Extraction error on {source_url}: {e}")
+
+        return emails_on_page, phones_on_page
 
     async def extract(self, domain_url: str) -> Dict:
         """
@@ -74,6 +288,7 @@ class Crawl4AIClient:
         # Manual BFS traversal
         queue = deque([(domain_url, 0)])  # (url, depth)
         visited = set()
+        crawl4ai_failed = False  # Flag to activate fallback crawler
 
         try:
             async with AsyncWebCrawler() as crawler:
@@ -89,7 +304,10 @@ class Crawl4AIClient:
 
                     # LAYER 1: FETCH
                     result = await self._fetch_page(crawler, current_url)
+
                     if result is None:
+                        # Crawl4AI failed - signal fallback crawler
+                        crawl4ai_failed = True
                         status_per_site[current_url] = "fetch_failed"
                         continue
 
@@ -106,7 +324,7 @@ class Crawl4AIClient:
                         result, current_url, all_emails, all_phones
                     )
                     if emails_on_page or phones_on_page:
-                        logger.info(f"  Found {len(emails_on_page)} emails, {len(phones_on_page)} phones")
+                        logger.info(f"  ✓ Found {len(emails_on_page)} emails, {len(phones_on_page)} phones")
 
                     # Extract from tables if available
                     if result.tables:
@@ -118,7 +336,18 @@ class Crawl4AIClient:
                     links_added = self._traverse_links(
                         result, current_url, domain, depth, visited, queue
                     )
-                    logger.info(f"  Added {links_added} URLs to queue")
+                    logger.info(f"  → Added {links_added} URLs to queue")
+
+            # If Crawl4AI failed on first page, activate fallback crawler
+            if crawl4ai_failed and len(sources) == 0:
+                logger.info(f"\n{'='*60}")
+                logger.info(f"Crawl4AI blocked on first page, activating fallback crawler...")
+                logger.info(f"{'='*60}")
+
+                fallback_page_count = self._fallback_crawl(
+                    domain_url, domain, all_emails, all_phones, sources, status_per_site
+                )
+                page_count += fallback_page_count
 
         except Exception as e:
             logger.error(f"Fatal error: {e}", exc_info=True)
@@ -177,14 +406,10 @@ class Crawl4AIClient:
             if result.success:
                 return result
 
-            # Fallback to requests
-            fallback_html = self._fallback_fetch(url)
-            if fallback_html:
-                result.html = fallback_html
-                result.success = True
-                return result
-
+            # If Crawl4AI failed, signal that fallback crawler should be used
+            logger.debug(f"Crawl4AI failed for {url}, flagging for fallback crawler")
             return None
+
         except Exception as e:
             logger.debug(f"Fetch error for {url}: {e}")
             return None
