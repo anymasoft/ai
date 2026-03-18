@@ -591,10 +591,28 @@ class Crawl4AIClient:
         status_per_site = {}
         page_count = 0
 
-        # Manual BFS traversal
-        queue = deque([(domain_url, 0)])  # (url, depth)
+        # ⭐ MULTI-ENTRY STRATEGY (v4.0)
+        # Don't start only from homepage - add seed URLs that likely have contacts
+        # This gives us parallel paths to find contacts faster
+        seed_urls = [
+            domain_url,
+            urljoin(domain_url, '/contact'),
+            urljoin(domain_url, '/contacts'),
+            urljoin(domain_url, '/about'),
+        ]
+
+        queue = deque()
+        for seed_url in seed_urls:
+            # Normalize and deduplicate
+            normalized = seed_url.split('#')[0].split('?')[0]
+            queue.append((normalized, 0))
+
         visited = set()
         crawl4ai_failed = False  # Flag to activate fallback crawler
+
+        logger.info(f"[MULTI-ENTRY] Starting from {len(seed_urls)} entry points:")
+        for url in seed_urls:
+            logger.info(f"  → {url.replace(f'https://{domain}', '')}")
 
         try:
             async with AsyncWebCrawler() as crawler:
@@ -792,6 +810,102 @@ class Crawl4AIClient:
             logger.debug(f"Fetch error for {url}: {e}")
             return None
 
+    def _score_url_for_contacts(self, url: str, anchor_text: str = "") -> int:
+        """
+        ⭐ CONTACT DISCOVERY ENGINE (v4.0)
+        Оценить вероятность что URL содержит контакты.
+
+        Scoring система:
+        - High priority keywords (contact, contacts, контакты): +5
+        - Medium priority keywords (about, team, office, офис): +3
+        - Low priority keywords (help, support, feedback): +1
+        - Anchor text > URL (более надежный источник): +2 bonus
+        - Close to root (fewer slashes): +1
+
+        Результат: URL с высоким score обходятся ПЕРВЫМИ
+        """
+        url_lower = url.lower()
+        text_lower = (anchor_text or "").lower()
+
+        score = 0
+
+        # HIGH PRIORITY: контактные страницы
+        high_priority = [
+            "contact", "contacts",
+            "контакты", "контакт",
+            "свяжитесь", "связь"
+        ]
+        for kw in high_priority:
+            if kw in text_lower:
+                score += 7  # Текст ссылки важнее!
+            elif kw in url_lower:
+                score += 5
+
+        # MEDIUM PRIORITY: информационные страницы
+        medium_priority = [
+            "about", "company", "team", "office",
+            "о нас", "о компании", "команда", "офис",
+            "реквизиты", "адрес"
+        ]
+        for kw in medium_priority:
+            if kw in text_lower:
+                score += 4
+            elif kw in url_lower:
+                score += 2
+
+        # LOW PRIORITY: поддержка
+        low_priority = [
+            "support", "help", "feedback", "faq",
+            "поддержка", "помощь", "обратная связь"
+        ]
+        for kw in low_priority:
+            if kw in text_lower:
+                score += 2
+            elif kw in url_lower:
+                score += 1
+
+        # Бонус за глубину (ближе к корню — часто контакты)
+        if url_lower.count('/') <= 3:
+            score += 1
+
+        return score
+
+    def _extract_footer_links(self, html: str, domain: str) -> List[tuple]:
+        """
+        ⭐ FOOTER EXTRACTION (v4.0)
+        Найти и выделить ссылки из футера.
+        Давать им BOOST +3 к score.
+
+        90% контактов находится в футере!
+        """
+        footer_links = []
+
+        try:
+            from bs4 import BeautifulSoup
+
+            soup = BeautifulSoup(html, 'html.parser')
+            footer = soup.find("footer")
+
+            if footer:
+                for link in footer.find_all("a", href=True):
+                    href = link.get("href", "")
+                    text = link.get_text(strip=True)
+
+                    if href and text:
+                        # Normalize URL
+                        normalized_url = urljoin(f'https://{domain}/', href)
+                        normalized_url = normalized_url.split('#')[0].split('?')[0]
+
+                        # Footer boost: +3 к score
+                        footer_links.append((normalized_url, text, 3))  # (url, text, boost)
+
+                        logger.debug(f"[FOOTER] Found link: {text} → {normalized_url}")
+
+        except Exception as e:
+            logger.debug(f"[FOOTER EXTRACTION] Error: {e}")
+
+        return footer_links
+
     def _traverse_links(
         self,
         result,
@@ -831,15 +945,26 @@ class Crawl4AIClient:
                 links_added += 1
                 logger.debug(f"  → Added forced URL: {forced_url.replace(f'https://{domain}', '')}")
 
-        # === ADD EXTRACTED LINKS (Regular Priority) ===
+        # === ADD EXTRACTED LINKS WITH PRIORITY SCORING (v4.0) ===
+        scored_links = []
+
         try:
-            # Get internal links from Crawl4AI
+            # ⭐ STEP 1: Extract footer links (they have +3 boost)
+            footer_links = self._extract_footer_links(getattr(result, 'html', ''), domain)
+            if footer_links:
+                logger.info(f"  📍 Found {len(footer_links)} footer links")
+                for footer_url, footer_text, boost in footer_links:
+                    score = self._score_url_for_contacts(footer_url, footer_text) + boost
+                    scored_links.append((footer_url, score, "footer"))
+
+            # ⭐ STEP 2: Score extracted links from Crawl4AI
             internal_links = result.links.get("internal", [])
 
             for link in internal_links:
                 try:
                     # Get href from Dict
                     href = link.get("href") if isinstance(link, dict) else str(link)
+                    anchor_text = link.get("text", "") if isinstance(link, dict) else ""
                     if not href:
                         continue
 
@@ -849,7 +974,6 @@ class Crawl4AIClient:
                     normalized_url = normalized_url.split('?')[0]  # Remove query
 
                     # === FILTER 1: Skip query parameters ===
-                    # Don't add URLs with ? (they create duplicates)
                     if '?' in href:
                         continue
 
@@ -870,24 +994,38 @@ class Crawl4AIClient:
                     if current_depth + 1 > self.max_depth:
                         continue
 
-                    # Check if priority URL (should already be in queue, but check anyway)
+                    # ⭐ SCORE THE LINK
+                    score = self._score_url_for_contacts(normalized_url, anchor_text)
+
+                    # Skip if already in forced URLs
                     url_lower = normalized_url.lower()
-                    is_priority = any(kw in url_lower for kw in ['contact', 'contacts', 'about', 'team'])
+                    if any(kw in url_lower for kw in ['contact', 'contacts', 'about', 'team']):
+                        continue  # Already added as forced URL
 
-                    if is_priority:
-                        # Already added as forced URL above, skip
-                        continue
-
-                    # Add to BACK of queue (regular priority)
-                    queue.append((normalized_url, current_depth + 1))
-                    links_added += 1
+                    scored_links.append((normalized_url, score, "crawled"))
 
                 except Exception as e:
                     logger.debug(f"Link parsing error: {e}")
                     continue
 
+            # ⭐ STEP 3: Sort links by score (highest first)
+            scored_links.sort(key=lambda x: x[1], reverse=True)
+
+            # ⭐ STEP 4: Add scored links to queue
+            high_score_links = 0
+            for url, score, source in scored_links:
+                if score >= 2:  # Only add links with meaningful score
+                    queue.append((url, current_depth + 1))
+                    links_added += 1
+                    if score >= 5:
+                        high_score_links += 1
+                    logger.debug(f"  → [{source}] Added URL (score={score}): {url.replace(f'https://{domain}', '')}")
+
+            if high_score_links > 0:
+                logger.info(f"  ⭐ Added {high_score_links} high-score contact pages")
+
         except Exception as e:
-            logger.debug(f"Traversal error: {e}")
+            logger.debug(f"Traversal scoring error: {e}")
 
         # Log summary
         if forced_urls_added > 0:
