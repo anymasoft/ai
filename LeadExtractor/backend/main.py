@@ -73,6 +73,13 @@ async def extract_contacts(request: ExtractRequest):
 
             display_url = url if url.startswith(('http://', 'https://')) else f'https://{url}'
 
+            # DEBUG: Log raw crawl_result
+            logger.info(f"\n[API DEBUG] Processing URL: {display_url}")
+            logger.info(f"[API DEBUG] Raw crawl_result phones count: {len(crawl_result.get('phones', []))}")
+            logger.info(f"[API DEBUG] Raw crawl_result phones:")
+            for i, phone in enumerate(crawl_result.get('phones', [])[:20]):
+                logger.info(f"    [{i}] {phone}")
+
             # Собрать все source_page для отображения
             sources = set()
             for item in crawl_result.get("emails", []):
@@ -87,7 +94,21 @@ async def extract_contacts(request: ExtractRequest):
                 sources=list(s for s in sources if s),
                 status_per_site=crawl_result.get("status_per_site", {})
             )
+
+            # DEBUG: Log ContactResult
+            logger.info(f"[API DEBUG] ContactResult created:")
+            logger.info(f"    emails: {len(result.emails)}")
+            logger.info(f"    phones: {len(result.phones)}")
+            logger.info(f"[API DEBUG] ContactResult phones:")
+            for i, phone in enumerate(result.phones[:20]):
+                logger.info(f"    [{i}] {phone}")
+
             results.append(result)
+
+        logger.info(f"\n[API DEBUG] FINAL RESPONSE:")
+        logger.info(f"  Total results: {len(results)}")
+        for i, result in enumerate(results):
+            logger.info(f"  [{i}] {result.website}: {len(result.emails)} emails, {len(result.phones)} phones")
 
         return ExtractResponse(results=results, total=len(results))
 

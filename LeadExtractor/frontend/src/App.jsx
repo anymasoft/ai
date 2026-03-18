@@ -88,27 +88,55 @@ export default function App() {
       setResults(data.results)
       setProgress({ current: urlList.length, total: urlList.length })
 
-      // Подсчет уникальных контактов из сырых данных
+      // DEBUG: Log raw data from backend
+      console.log('[DEBUG] Raw API response:')
+      data.results.forEach((result, idx) => {
+        console.log(`  [${idx}] ${result.website}: ${result.emails.length} emails, ${result.phones.length} phones`)
+        console.log(`       Emails:`, result.emails)
+        console.log(`       Phones:`, result.phones)
+      })
+
+      // ❌ НЕПРАВИЛЬНАЯ ЛОГИКА (СТАРАЯ) - ПОТЕРЯНЫ ТЕЛЕФОНЫ!
+      // Причина: попытка связать emails и phones по индексу
+      // И: phones добавляются ТОЛЬКО если нет emails
+      // Результат: теряются 50% телефонов
+
+      // ✅ ПРАВИЛЬНАЯ ЛОГИКА - РАЗДЕЛЬНО ВСЕ КОНТАКТЫ
       const normalized = []
       data.results.forEach(result => {
         const emails = result.emails || []
         const phones = result.phones || []
-        if (emails.length > 0) {
-          emails.forEach((email, emailIdx) => {
-            normalized.push({ website: result.website, email: email.email, phone: phones.length > emailIdx ? phones[emailIdx].phone : null })
+
+        // PASS 1: Добавить ВСЕ emails
+        emails.forEach(email => {
+          normalized.push({
+            website: result.website,
+            email: email.email,
+            phone: null  // ❌ НЕ связываем с phones!
           })
-        }
-        if (phones.length > 0 && emails.length === 0) {
-          phones.forEach(phone => {
-            normalized.push({ website: result.website, email: null, phone: phone.phone })
+        })
+
+        // PASS 2: Добавить ВСЕ phones ОТДЕЛЬНО
+        phones.forEach(phone => {
+          normalized.push({
+            website: result.website,
+            email: null,  // ❌ НЕ связываем с emails!
+            phone: phone.phone
           })
-        }
+        })
+      })
+
+      console.log('[DEBUG] Normalized data:')
+      console.log(`  Total rows: ${normalized.length}`)
+      normalized.slice(0, 20).forEach((row, idx) => {
+        console.log(`  [${idx}] email: ${row.email}, phone: ${row.phone}`)
       })
 
       const uniqueEmails = new Set(normalized.filter(r => r.email).map(r => r.email)).size
       const uniquePhones = new Set(normalized.filter(r => r.phone).map(r => r.phone)).size
       const sitesWithContacts = new Set(normalized.map(r => r.website)).size
 
+      console.log(`[DEBUG] COUNTS: ${uniqueEmails} emails, ${uniquePhones} phones from ${sitesWithContacts} sites`)
       setSuccess(`Found ${uniqueEmails} emails and ${uniquePhones} phones from ${sitesWithContacts} sites`)
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to extract contacts')
