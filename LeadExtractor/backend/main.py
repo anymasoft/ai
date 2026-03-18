@@ -42,6 +42,7 @@ class ContactResult(BaseModel):
     emails: List[ContactEmail]
     phones: List[ContactPhone]
     sources: List[str]
+    status_per_site: dict = {}
 
 class ExtractResponse(BaseModel):
     results: List[ContactResult]
@@ -68,7 +69,7 @@ async def extract_contacts(request: ExtractRequest):
         for url, crawl_result in zip(urls, all_results):
             if isinstance(crawl_result, Exception):
                 logger.error(f"Error crawling {url}: {crawl_result}")
-                crawl_result = {"emails": [], "phones": []}
+                crawl_result = {"emails": [], "phones": [], "status_per_site": {}}
 
             display_url = url if url.startswith(('http://', 'https://')) else f'https://{url}'
 
@@ -83,7 +84,8 @@ async def extract_contacts(request: ExtractRequest):
                 website=display_url,
                 emails=[ContactEmail(**e) for e in crawl_result.get("emails", [])],
                 phones=[ContactPhone(**p) for p in crawl_result.get("phones", [])],
-                sources=list(s for s in sources if s)
+                sources=list(s for s in sources if s),
+                status_per_site=crawl_result.get("status_per_site", {})
             )
             results.append(result)
 
