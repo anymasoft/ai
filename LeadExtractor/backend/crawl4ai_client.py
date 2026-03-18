@@ -47,37 +47,91 @@ class Crawl4AIClient:
 
     def _extract_links_from_html(self, html: str, current_url: str, domain: str) -> List[str]:
         """
-        Extract internal links from HTML using regex.
-        Returns list of normalized URLs.
+        Extract ONLY relevant internal links from HTML using regex.
+        Filters out static files, assets, and garbage paths.
+        Returns list of normalized URLs (prioritized: contact > about > rest).
         """
         links = []
+        priority_links = []  # Для приоритизации
+
+        # Extensions to exclude (static files)
+        BAD_EXTENSIONS = {
+            '.css', '.js', '.png', '.jpg', '.jpeg', '.gif',
+            '.svg', '.ico', '.webp', '.woff', '.woff2', '.ttf',
+            '.eot', '.pdf', '.zip', '.exe', '.mp3', '.mp4',
+            '.avi', '.mov', '.wav', '.mov', '.xml', '.rss'
+        }
+
+        # Paths to exclude (asset directories)
+        BAD_PATHS = {
+            '/bitrix/', '/wp-content/', '/wp-includes/',
+            '/assets/', '/static/', '/dist/', '/build/',
+            '/node_modules/', '/vendor/', '/media/',
+            '/images/', '/css/', '/js/', '/fonts/',
+            '/download/', '/uploads/', '/.git/', '/admin/'
+        }
+
         try:
             # Extract all href values
             for match in re.finditer(r'href=["\']([^"\']+)["\']', html):
                 href = match.group(1)
-                if not href or href.startswith(('javascript:', 'mailto:', 'tel:')):
+                if not href or href.startswith(('javascript:', 'mailto:', 'tel:', 'ftp:', '#')):
                     continue
 
-                # Normalize URL
                 try:
+                    # Normalize URL
                     normalized_url = urljoin(current_url, href)
                     normalized_url = normalized_url.split('#')[0]  # Remove fragment
                     normalized_url = normalized_url.split('?')[0]  # Remove query
 
-                    # Check if same domain
+                    # === FILTER 1: Same domain ===
                     link_domain = urlparse(normalized_url).netloc
                     if link_domain != domain:
                         continue
 
-                    if normalized_url not in links:
+                    # === FILTER 2: No bad extensions ===
+                    url_lower = normalized_url.lower()
+                    if any(url_lower.endswith(ext) for ext in BAD_EXTENSIONS):
+                        continue
+
+                    # === FILTER 3: No bad paths ===
+                    if any(bad_path in url_lower for bad_path in BAD_PATHS):
+                        continue
+
+                    # === FILTER 4: Only HTML pages ===
+                    # Accept: /page, /page/, /page.html
+                    # Reject: /file.pdf, /style.css, etc
+                    path = urlparse(normalized_url).path.lower()
+                    if path and '.' in path:
+                        # Has extension - only accept .html
+                        if not path.endswith('.html'):
+                            continue
+
+                    # === DEDUP ===
+                    if normalized_url in links or normalized_url in priority_links:
+                        continue
+
+                    # === PRIORITIZE ===
+                    # Priority 1: contact pages
+                    priority_keywords = ['contact', 'contacts']
+                    if any(kw in url_lower for kw in priority_keywords):
+                        priority_links.append(normalized_url)
+                    # Priority 2: about/team pages
+                    elif any(kw in url_lower for kw in ['about', 'team']):
+                        priority_links.append(normalized_url)
+                    else:
                         links.append(normalized_url)
+
                 except Exception:
                     continue
 
         except Exception as e:
             logger.debug(f"Link extraction error: {e}")
 
-        return links
+        # Return: priority links first, then regular links
+        # Limit to 30 total to avoid queue explosion
+        result = priority_links + links
+        return result[:30]
 
     def _fallback_crawl(
         self,
@@ -143,22 +197,33 @@ class Crawl4AIClient:
                 if emails_on_page or phones_on_page:
                     logger.info(f"  ✓ Found {len(emails_on_page)} emails, {len(phones_on_page)} phones")
 
-                # TRAVERSAL
-                links = self._extract_links_from_html(html, current_url, domain)
+                # TRAVERSAL - Extract filtered links
+                extracted_links = self._extract_links_from_html(html, current_url, domain)
 
-                # Add forced URLs if not yet visited
+                # Add forced URLs first (highest priority)
+                priority_urls = []
                 for forced_url in forced_urls:
                     if forced_url not in visited and forced_url not in [u[0] for u in queue]:
-                        links.append(forced_url)
+                        priority_urls.append(forced_url)
 
-                # Add links to queue
+                # Add extracted links
+                all_links_to_add = priority_urls + extracted_links
+
+                # Add to queue with priority (prepend priority URLs)
                 links_added = 0
-                for link in links:
+                for i, link in enumerate(all_links_to_add):
                     if link not in visited and link not in [u[0] for u in queue]:
-                        queue.append((link, depth + 1))
+                        # Prepend priority URLs (forced), append others
+                        if i < len(priority_urls):
+                            queue.appendleft((link, depth + 1))  # Priority: add to front
+                        else:
+                            queue.append((link, depth + 1))  # Regular: add to back
                         links_added += 1
 
-                logger.info(f"  → Added {links_added} URLs to queue")
+                if links_added > 0:
+                    logger.info(f"  → Added {links_added} filtered URLs (extracted {len(extracted_links)} from {html[:100]}...)")
+                else:
+                    logger.info(f"  → No new URLs found (extracted {len(extracted_links)} but all visited)")
 
             logger.info(f"\n{'='*60}")
             logger.info(f"✓ Fallback crawl completed: {page_count} pages")
