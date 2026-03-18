@@ -90,11 +90,37 @@ class Crawl4AIClient:
         }
 
         try:
-            # Configure crawler run: minimal safe config
+            # Define contact-related CSS selectors
+            contact_selectors = [
+                "[class*='contact']",
+                "[class*='email']",
+                "[class*='phone']",
+                "[class*='telephone']",
+                "footer [class*='info']",
+                ".team-member",
+                "[data-email]",
+                "[data-phone]",
+                ".contact-info",
+                ".contact-details",
+                "[id*='contact']",
+                "[id*='footer']",
+            ]
+
+            # Configure crawler run with full content extraction
             crawler_config = CrawlerRunConfig(
-                wait_until="networkidle",  # Wait for network idle
+                wait_until="networkidle",           # Wait for network idle
                 page_timeout=self.timeout,
-                word_count_threshold=10,  # Low threshold
+                word_count_threshold=10,
+                # ✅ Content extraction improvements
+                scan_full_page=True,                # Scroll and load lazy content
+                wait_for_images=True,               # Wait for all images to load
+                remove_overlay_elements=True,       # Remove popups/modals
+                process_iframes=True,               # Extract from iframes
+                keep_data_attributes=True,          # Keep data-* attributes
+                target_elements=contact_selectors,  # Focus on contact elements
+                # ✅ Link handling
+                score_links=True,                   # Rank links by relevance
+                exclude_external_links=True,        # Only internal links
             )
 
             # Create AsyncWebCrawler without config (important for Windows!)
