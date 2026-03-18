@@ -29,10 +29,18 @@ app.add_middleware(
 class ExtractRequest(BaseModel):
     urls: List[str]
 
+class ContactEmail(BaseModel):
+    email: str
+    source_page: str
+
+class ContactPhone(BaseModel):
+    phone: str
+    source_page: str
+
 class ContactResult(BaseModel):
     website: str
-    emails: List[str]
-    phones: List[str]
+    emails: List[ContactEmail]
+    phones: List[ContactPhone]
     sources: List[str]
 
 class ExtractResponse(BaseModel):
@@ -41,51 +49,45 @@ class ExtractResponse(BaseModel):
 
 @app.post("/api/extract", response_model=ExtractResponse)
 async def extract_contacts(request: ExtractRequest):
-    """
-    Извлечь контакты из списка URL.
-    Использует оптимизированный Crawl4AI client.
-    """
+    """Извлечь контакты из списка URL."""
     if not request.urls:
         raise HTTPException(status_code=400, detail="URLs list cannot be empty")
 
-    # Очистить и валидировать URLs
     urls = [url.strip() for url in request.urls if url.strip()]
     if not urls:
         raise HTTPException(status_code=400, detail="No valid URLs provided")
 
-    client = Crawl4AIClient(timeout=30, max_pages=5)
+    client = Crawl4AIClient(timeout=30, max_pages=15)
     results = []
 
     try:
-        # Краулим все URL параллельно
-        tasks = [client.crawl_domain(url) for url in urls]
+        # Обработать все URL параллельно
+        tasks = [client.extract(url) for url in urls]
         all_results = await asyncio.gather(*tasks, return_exceptions=True)
 
         for url, crawl_result in zip(urls, all_results):
-            # Обработка исключений из gather
             if isinstance(crawl_result, Exception):
                 logger.error(f"Error crawling {url}: {crawl_result}")
-                crawl_result = {
-                    'emails': [],
-                    'phones': [],
-                    'sources': []
-                }
+                crawl_result = {"emails": [], "phones": []}
 
-            # Нормализуем URL для отображения
             display_url = url if url.startswith(('http://', 'https://')) else f'https://{url}'
+
+            # Собрать все source_page для отображения
+            sources = set()
+            for item in crawl_result.get("emails", []):
+                sources.add(item.get("source_page", ""))
+            for item in crawl_result.get("phones", []):
+                sources.add(item.get("source_page", ""))
 
             result = ContactResult(
                 website=display_url,
-                emails=crawl_result['emails'][:5],
-                phones=crawl_result['phones'][:3],
-                sources=crawl_result['sources']
+                emails=[ContactEmail(**e) for e in crawl_result.get("emails", [])],
+                phones=[ContactPhone(**p) for p in crawl_result.get("phones", [])],
+                sources=list(s for s in sources if s)
             )
             results.append(result)
 
-        return ExtractResponse(
-            results=results,
-            total=len(results)
-        )
+        return ExtractResponse(results=results, total=len(results))
 
     except Exception as e:
         logger.error(f"Error during extraction: {e}")
