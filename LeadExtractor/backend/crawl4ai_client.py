@@ -1,211 +1,167 @@
 """
-Crawl4AI 0.8.x optimized client for contact extraction.
-Uses: AsyncUrlSeeder + Deep Crawling + JsonCssExtraction + arun_many.
+Crawl4AI 0.8.x BFS traversal for contact extraction.
+Uses explicit multi-page BFS via result.links.
 """
 
 import asyncio
 import re
 import logging
-import json
-from typing import Dict, List, Tuple, Set, Optional
+from typing import Dict, List, Set, Optional
 from urllib.parse import urljoin, urlparse
+from collections import deque
 
 logger = logging.getLogger(__name__)
 
 
 class Crawl4AIClient:
-    """Advanced crawler using Crawl4AI 0.8.x features."""
+    """Multi-page BFS crawler using Crawl4AI result.links."""
 
-    CONTACT_SCHEMA = {
-        "name": "ContactInfo",
-        "baseSelector": "body",
-        "fields": [
-            {
-                "name": "emails",
-                "selector": "a[href^='mailto:'], .email, [data-email], [class*='email']",
-                "type": "attribute",
-                "attribute": "href"
-            },
-            {
-                "name": "phones",
-                "selector": "a[href^='tel:'], .phone, .tel, [data-phone], [class*='phone']",
-                "type": "text"
-            }
-        ]
-    }
-
-    def __init__(self, timeout: int = 30, max_pages: int = 15):
-        self.timeout = timeout * 1000
+    def __init__(self, timeout: int = 30, max_pages: int = 5, max_depth: int = 2):
+        self.timeout = timeout
         self.max_pages = max_pages
+        self.max_depth = max_depth
+        self.PRIORITY_PATTERNS = [
+            'contact', 'about', 'team', 'company', 'support',
+            'контакты', 'о-нас', 'команда', 'компани', 'служба'
+        ]
 
     async def extract(self, domain_url: str) -> Dict:
-        """Main method. Returns {emails: [...], phones: [...]} with source_page."""
+        """BFS traversal. Returns {emails: [...], phones: [...]} with source_page."""
 
         from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
-        from crawl4ai import AsyncUrlSeeder, SeedingConfig
-
-        try:
-            from crawl4ai.extraction_strategy import JsonCssExtractionStrategy
-            EXTRACTION_AVAILABLE = True
-        except ImportError:
-            EXTRACTION_AVAILABLE = False
 
         if not domain_url.startswith(('http://', 'https://')):
             domain_url = f'https://{domain_url}'
 
         domain = urlparse(domain_url).netloc
-        logger.info(f"Extracting contacts from: {domain_url}")
+        logger.info(f"\n{'='*60}")
+        logger.info(f"Starting BFS traversal: {domain_url}")
+        logger.info(f"{'='*60}")
 
-        all_emails = {}  # {email: source_page}
-        all_phones = {}  # {phone: source_page}
-        contact_urls = []
+        all_emails = {}
+        all_phones = {}
+        visited = set()
+
+        queue = deque([(domain_url, 0)])
 
         try:
             async with AsyncWebCrawler() as crawler:
 
-                # ===== STEP 1: URL SEEDING (быстрый поиск контактных ссылок) =====
-                logger.info("Step 1: URL Seeding")
-                seeder = AsyncUrlSeeder()
-                seed_config = SeedingConfig(
-                    source="sitemap+cc",
-                    pattern="*kontakt*|*contact*|*about*|*team*|*связь*|*контакты*|*email*|*phone*|*support*|*sales*",
-                    extract_head=True,
-                    max_urls=50
-                )
+                while queue and len(visited) < self.max_pages:
 
-                try:
-                    seed_urls = await seeder.urls(domain_url, seed_config)
-                    contact_urls = [u["url"] for u in seed_urls if u.get("url")]
-                    logger.info(f"Found {len(contact_urls)} contact URLs via seeding")
-                except Exception as e:
-                    logger.warning(f"URL Seeding failed: {e}")
-                    contact_urls = []
+                    current_url, depth = queue.popleft()
 
-                # ===== STEP 2: DEEP CRAWLING (если URL seeding нашел мало) =====
-                if len(contact_urls) < 5:
-                    logger.info("Step 2: Deep Crawling (fallback)")
+                    if current_url in visited:
+                        continue
+
+                    if depth > self.max_depth:
+                        continue
+
+                    visited.add(current_url)
+
+                    # Логирование
+                    short_url = current_url.replace(f'https://{domain}', '')[:50]
+                    logger.info(f"\n[Page {len(visited)}/{self.max_pages}] Depth {depth} → {short_url}")
+
                     try:
-                        from crawl4ai.deep_crawling import BFSDeepCrawlStrategy
-                        from crawl4ai.deep_crawling.filters import URLPatternFilter, FilterChain
-
-                        contact_filter = FilterChain([
-                            URLPatternFilter(patterns=[
-                                "*kontakt*", "*contact*", "*about*", "*team*",
-                                "*компани*", "*о-нас*", "*связь*", "*контакты*",
-                                "*email*", "*phone*", "*support*", "*sales*"
-                            ])
-                        ])
-
-                        deep_config = CrawlerRunConfig(
-                            deep_crawl_strategy=BFSDeepCrawlStrategy(
-                                max_depth=2,
-                                max_pages=self.max_pages,
-                                filter_chain=contact_filter
-                            ),
+                        # Fetch + render
+                        config = CrawlerRunConfig(
                             wait_until="networkidle",
-                            page_timeout=self.timeout,
+                            page_timeout=self.timeout * 1000,
                             word_count_threshold=5,
                             scan_full_page=True,
                             remove_overlay_elements=True,
                             process_iframes=True,
-                            keep_data_attributes=True,
-                            score_links=True,
                         )
 
-                        deep_results = await crawler.arun(url=domain_url, config=deep_config)
+                        result = await asyncio.wait_for(
+                            crawler.arun(url=current_url, config=config),
+                            timeout=self.timeout + 5
+                        )
 
-                        if isinstance(deep_results, list):
-                            contact_urls.extend([r.url for r in deep_results if hasattr(r, 'url')])
-                        else:
-                            if hasattr(deep_results, 'url'):
-                                contact_urls.append(deep_results.url)
+                        if not result.success:
+                            logger.warning(f"  ✗ Failed")
+                            continue
 
-                        logger.info(f"Deep crawling found {len(contact_urls)} URLs total")
+                        logger.info(f"  ✓ Success")
+
+                        # Extract contacts
+                        html = result.html or ""
+                        text = result.cleaned_text or ""
+                        content = f"{html} {text}"
+
+                        emails_on_page = set()
+                        for email in re.findall(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', content):
+                            all_emails[email] = current_url
+                            emails_on_page.add(email)
+
+                        for match in re.findall(r'href=["\']?mailto:([^"\'>\s]+)', content):
+                            if "@" in match:
+                                all_emails[match] = current_url
+                                emails_on_page.add(match)
+
+                        phones_on_page = set()
+                        for phone in re.findall(r'\+[\d\s\-()]{10,}', text):
+                            if len(re.sub(r'\D', '', phone)) >= 7:
+                                all_phones[phone] = current_url
+                                phones_on_page.add(phone)
+
+                        for phone in re.findall(r'href=["\']?tel:([^"\'>\s]+)', content):
+                            if len(re.sub(r'\D', '', phone)) >= 7:
+                                all_phones[phone] = current_url
+                                phones_on_page.add(phone)
+
+                        if emails_on_page or phones_on_page:
+                            logger.info(f"  📧 {len(emails_on_page)} emails, 📞 {len(phones_on_page)} phones")
+
+                        # Extract links
+                        links = result.links.get("internal", []) if result.links else []
+                        logger.info(f"  Found {len(links)} links")
+
+                        priority_links = []
+                        other_links = []
+
+                        for link in links:
+                            if not link:
+                                continue
+
+                            try:
+                                clean_link = link.split('#')[0].split('?')[0]
+                                full_url = urljoin(current_url, clean_link)
+                                link_domain = urlparse(full_url).netloc
+
+                                if link_domain != domain or full_url in visited:
+                                    continue
+
+                                link_lower = full_url.lower()
+                                if any(p in link_lower for p in self.PRIORITY_PATTERNS):
+                                    priority_links.append(full_url)
+                                else:
+                                    other_links.append(full_url)
+
+                            except Exception:
+                                continue
+
+                        urls_to_add = priority_links[:3]
+                        if len(urls_to_add) < 2:
+                            urls_to_add.extend(other_links[:3])
+
+                        added = 0
+                        for url in urls_to_add:
+                            if url not in visited and len(visited) < self.max_pages:
+                                queue.append((url, depth + 1))
+                                added += 1
+
+                        logger.info(f"  + Added {added} URLs to queue")
+
+                    except asyncio.TimeoutError:
+                        logger.warning(f"  ✗ Timeout")
                     except Exception as e:
-                        logger.warning(f"Deep crawling failed: {e}")
-                        contact_urls = [domain_url]
-
-                # ===== STEP 3: EXTRACT CONTACTS from all URLs =====
-                if not contact_urls:
-                    contact_urls = [domain_url]
-
-                contact_urls = contact_urls[:self.max_pages]
-                logger.info(f"Processing {len(contact_urls)} URLs")
-
-                # Конфиг для извлечения
-                extract_config = CrawlerRunConfig(
-                    wait_until="networkidle",
-                    page_timeout=self.timeout,
-                    word_count_threshold=5,
-                    scan_full_page=True,
-                    remove_overlay_elements=True,
-                    process_iframes=True,
-                    keep_data_attributes=True,
-                    c4a_script="""
-                    WAIT `#menu, .hamburger, [class*='nav']` 2
-                    IF (EXISTS `a:contains("Контакты")`) THEN CLICK `a:contains("Контакты")`
-                    IF (EXISTS `a:contains("Contact")`) THEN CLICK `a:contains("Contact")`
-                    WAIT `#contacts, .contact-block, [class*='contact']` 2
-                    """
-                )
-
-                # Добавляем стратегию извлечения если доступна
-                if EXTRACTION_AVAILABLE:
-                    extract_config.extraction_strategy = JsonCssExtractionStrategy(
-                        schema=self.CONTACT_SCHEMA
-                    )
-
-                # ===== STEP 4: arun_many + streaming обработка =====
-                results = await crawler.arun_many(contact_urls, config=extract_config)
-
-                for result in results:
-                    if not result.success:
-                        continue
-
-                    source_page = result.url
-
-                    # Способ 1: JsonCssExtraction если доступна
-                    if EXTRACTION_AVAILABLE and result.extracted_content:
-                        try:
-                            data = json.loads(result.extracted_content)
-
-                            for email in data.get("emails", []):
-                                clean_email = email.replace("mailto:", "").strip()
-                                if clean_email and "@" in clean_email:
-                                    all_emails[clean_email] = source_page
-
-                            for phone in data.get("phones", []):
-                                if phone and len(re.sub(r'\D', '', phone)) >= 7:
-                                    all_phones[phone] = source_page
-                        except (json.JSONDecodeError, TypeError):
-                            pass
-
-                    # Способ 2: Regex fallback (всегда используй параллельно)
-                    html = result.html or ""
-                    text = result.cleaned_text or ""
-                    content = f"{html} {text}"
-
-                    # Email extraction
-                    for email in re.findall(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', content):
-                        all_emails[email] = source_page
-
-                    for match in re.findall(r'href=["\']?mailto:([^"\'>\s]+)', content):
-                        if "@" in match:
-                            all_emails[match] = source_page
-
-                    # Phone extraction
-                    for phone in re.findall(r'\+[\d\s\-()]{10,}', text):
-                        if len(re.sub(r'\D', '', phone)) >= 7:
-                            all_phones[phone] = source_page
-
-                    for phone in re.findall(r'href=["\']?tel:([^"\'>\s]+)', content):
-                        if len(re.sub(r'\D', '', phone)) >= 7:
-                            all_phones[phone] = source_page
+                        logger.error(f"  ✗ Error: {e}")
 
         except Exception as e:
-            logger.error(f"Error: {e}", exc_info=True)
+            logger.error(f"Fatal: {e}", exc_info=True)
 
-        # Форматируем результат
         result = {
             "emails": [
                 {"email": email, "source_page": source}
@@ -217,5 +173,9 @@ class Crawl4AIClient:
             ][:10],
         }
 
-        logger.info(f"Extracted {len(result['emails'])} emails, {len(result['phones'])} phones")
+        logger.info(f"\n{'='*60}")
+        logger.info(f"✓ Crawled {len(visited)} pages")
+        logger.info(f"✓ Found {len(result['emails'])} emails, {len(result['phones'])} phones")
+        logger.info(f"{'='*60}\n")
+
         return result
