@@ -75,13 +75,12 @@ class Crawl4AIClient:
             async with AsyncWebCrawler() as crawler:
 
                 # Create filter chain to keep only internal links
-                filter_chain = FilterChain()
-                # Only allow links from the same domain
+                # CRITICAL: Pass filters at init time to avoid tuple.append() bug
                 domain_filter = URLPatternFilter(
                     patterns=[f"https?://{re.escape(domain)}.*"],
-                    mode="INCLUDE"
+                    reverse=False  # False = INCLUDE, True = EXCLUDE
                 )
-                filter_chain.add_filter(domain_filter)
+                filter_chain = FilterChain(filters=[domain_filter])
 
                 # Create BFSDeepCrawlStrategy with Crawl4AI's native implementation
                 deep_crawl_strategy = BFSDeepCrawlStrategy(
