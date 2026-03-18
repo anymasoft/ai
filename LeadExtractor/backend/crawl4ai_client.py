@@ -489,19 +489,43 @@ class Crawl4AIClient:
         queue: deque
     ) -> int:
         """
-        LAYER 3: TRAVERSAL - Extract and prioritize links
-        Returns number of links added to queue
+        LAYER 3: TRAVERSAL - Extract and prioritize links.
+        AGGRESSIVE strategy: Always check /contact, /contacts, /about, /team first.
+        Returns number of links added to queue.
         """
         links_added = 0
-        priority_keywords = {'contact', 'contacts', 'about', 'team'}
+        forced_urls_added = 0
 
+        # Forced URLs that MUST be checked (highest priority)
+        forced_contact_urls = [
+            urljoin(f'https://{domain}/', '/contact'),
+            urljoin(f'https://{domain}/', '/contacts'),
+            urljoin(f'https://{domain}/', '/about'),
+            urljoin(f'https://{domain}/', '/team'),
+        ]
+
+        # === ADD FORCED URLS FIRST (Highest Priority) ===
+        for forced_url in forced_contact_urls:
+            # Normalize
+            forced_url = forced_url.split('#')[0]  # Remove fragment
+            forced_url = forced_url.split('?')[0]  # Remove query
+
+            # Check: not visited, not in queue
+            if forced_url not in visited and forced_url not in [u[0] for u in queue]:
+                # Add to FRONT of queue (highest priority)
+                queue.appendleft((forced_url, current_depth + 1))
+                forced_urls_added += 1
+                links_added += 1
+                logger.debug(f"  → Added forced URL: {forced_url.replace(f'https://{domain}', '')}")
+
+        # === ADD EXTRACTED LINKS (Regular Priority) ===
         try:
             # Get internal links from Crawl4AI
             internal_links = result.links.get("internal", [])
 
             for link in internal_links:
                 try:
-                    # Правильный способ получить href из Dict
+                    # Get href from Dict
                     href = link.get("href") if isinstance(link, dict) else str(link)
                     if not href:
                         continue
@@ -509,28 +533,39 @@ class Crawl4AIClient:
                     # Normalize URL
                     normalized_url = urljoin(current_url, href)
                     normalized_url = normalized_url.split('#')[0]  # Remove fragment
+                    normalized_url = normalized_url.split('?')[0]  # Remove query
 
-                    # Check if same domain
+                    # === FILTER 1: Skip query parameters ===
+                    # Don't add URLs with ? (they create duplicates)
+                    if '?' in href:
+                        continue
+
+                    # === FILTER 2: Same domain ===
                     link_domain = urlparse(normalized_url).netloc
                     if link_domain != domain:
                         continue
 
-                    # Check if visited
+                    # === FILTER 3: Not visited ===
                     if normalized_url in visited:
                         continue
 
-                    # Check depth
+                    # === FILTER 4: Not already in queue ===
+                    if normalized_url in [u[0] for u in queue]:
+                        continue
+
+                    # === FILTER 5: Depth limit ===
                     if current_depth + 1 > self.max_depth:
                         continue
 
-                    # Prioritize contact pages
+                    # Check if priority URL (should already be in queue, but check anyway)
                     url_lower = normalized_url.lower()
-                    priority = 0
-                    for keyword in priority_keywords:
-                        if keyword in url_lower:
-                            priority = 1
-                            break
+                    is_priority = any(kw in url_lower for kw in ['contact', 'contacts', 'about', 'team'])
 
+                    if is_priority:
+                        # Already added as forced URL above, skip
+                        continue
+
+                    # Add to BACK of queue (regular priority)
                     queue.append((normalized_url, current_depth + 1))
                     links_added += 1
 
@@ -540,6 +575,12 @@ class Crawl4AIClient:
 
         except Exception as e:
             logger.debug(f"Traversal error: {e}")
+
+        # Log summary
+        if forced_urls_added > 0:
+            logger.info(f"  → Added {forced_urls_added} FORCED URLs (contact/about/team)")
+        if links_added > forced_urls_added:
+            logger.info(f"  → Added {links_added - forced_urls_added} regular URLs")
 
         return links_added
 
