@@ -1194,26 +1194,39 @@ class Crawl4AIClient:
             # ========== NORMALIZE COMBINED TEXT (CRITICAL!) ==========
             normalized_text = self._normalize_text(combined_text)
 
-            # ========== PASS 1: TEL: LINKS (HIGHEST CONFIDENCE) ==========
+            # ========== PASS 1: TEL: LINKS (HIGHEST CONFIDENCE - NO FILTERS!) ==========
+            # v2.6 FIX: Tel links are already in tel: protocol, NEVER filter them!
+            # They are the most reliable source and should ALWAYS be included.
             try:
                 tel_links = re.findall(r'href=["\']?tel:([^"\'>\s]+)', combined_text)
-                for phone in tel_links:
-                    phone_clean = self._clean_phone_extension(phone.strip())
+
+                for phone_raw in tel_links:
+                    # STEP 1: Clean extensions only (доб., ext., etc.)
+                    phone_clean = self._clean_phone_extension(phone_raw.strip())
                     if not phone_clean:
                         continue
 
-                    if not self._is_valid_phone(phone_clean):
-                        logger.debug(f"[TEL LINK] Rejected: {phone_clean}")
-                        continue
+                    # STEP 2: IMPORTANT! Do NOT filter tel: links!
+                    # NO _is_sane_phone_candidate()
+                    # NO _is_structural_phone()
+                    # NO strict validation
+                    # tel: links are HIGH confidence by definition
 
+                    # STEP 3: Normalize ONLY for deduplication key
                     normalized = self._normalize_phone(phone_clean)
-                    if len(normalized) >= 7:
-                        all_phones[normalized] = {"original": phone_clean, "source": source_url}
-                        phones_on_page.add(phone_clean)
-                        tel_count += 1
+
+                    # STEP 4: Add ALL tel: links (no length check, no validation)
+                    # Even if normalized seems "wrong", keep the original format
+                    all_phones[normalized] = {
+                        "original": phone_clean,
+                        "source": source_url,
+                        "confidence": "tel_link"  # Highest confidence marker
+                    }
+                    phones_on_page.add(phone_clean)
+                    tel_count += 1
 
                 if tel_count > 0:
-                    logger.info(f"[EXTRACTION - TEL LINKS] Found {tel_count} phones")
+                    logger.info(f"[EXTRACTION - TEL LINKS] Found & KEPT: {tel_count} phones (NO filters applied)")
             except Exception as e:
                 logger.debug(f"[TEL LINKS] Error: {e}")
 
@@ -1254,6 +1267,43 @@ class Crawl4AIClient:
                     logger.info(f"[EXTRACTION - EMAIL REGEX] Found {email_count} emails")
             except Exception as e:
                 logger.debug(f"[EMAIL REGEX] Error: {e}")
+
+            # ========== PASS 3.5: CONTACT REGEX (Context-based) ==========
+            # v2.6: Find phones near "тел.", "phone", "contact", "call" keywords
+            # Pattern: (keyword) + (up to 20 chars of noise) + (phone number)
+            try:
+                contact_pattern = r'(тел|phone|contact|call|звоните|телефон)[:\s\.,]*\s*([\+\d][\d\-\(\)\s]{6,}\d)'
+                contact_matches = re.finditer(contact_pattern, normalized_text, re.IGNORECASE)
+
+                contact_count = 0
+                for match in contact_matches:
+                    phone_raw = match.group(2)  # Extract the phone part
+                    phone_clean = self._clean_phone_extension(phone_raw.strip())
+                    if not phone_clean:
+                        continue
+
+                    # v2.0: SANITY FILTER for contact regex findings
+                    if not self._is_sane_phone_candidate(phone_clean):
+                        continue
+
+                    # v2.5: STRUCTURAL FILTER for contact regex findings
+                    if not self._is_structural_phone(phone_clean):
+                        continue
+
+                    if not self._is_valid_phone(phone_clean):
+                        continue
+
+                    normalized = self._normalize_phone(phone_clean)
+                    if len(normalized) >= 7:
+                        if normalized not in all_phones:
+                            all_phones[normalized] = {"original": phone_clean, "source": source_url}
+                            phones_on_page.add(phone_clean)
+                            contact_count += 1
+
+                if contact_count > 0:
+                    logger.info(f"[EXTRACTION - CONTACT REGEX] Found {contact_count} phones (тел./phone/contact keyword)")
+            except Exception as e:
+                logger.debug(f"[CONTACT REGEX] Error: {e}")
 
             # ========== PASS 4: WIDE PHONE REGEX (RECALL-FIRST + SANITY FILTER) ==========
             # CRITICAL: This wide regex catches almost all phone-like patterns
@@ -1302,9 +1352,10 @@ class Crawl4AIClient:
                             # Already exists, but maybe different format - log it
                             logger.debug(f"[WIDE REGEX] Duplicate normalized phone: {normalized} (original: {phone_clean})")
 
-                sanity_count = raw_count - len(found_phones)  # Track sanity filter loss
                 if regex_count > 0:
-                    logger.info(f"[EXTRACTION - WIDE REGEX] Raw: {raw_count} → Sanity: {raw_count - sanity_count} → Structural: {regex_count} ✅")
+                    logger.info(f"[EXTRACTION - WIDE REGEX] Found: {regex_count} phones (after sanity + structural filters)")
+                else:
+                    logger.debug(f"[EXTRACTION - WIDE REGEX] No phones passed filters (raw found: {raw_count})")
             except Exception as e:
                 logger.debug(f"[WIDE REGEX] Error: {e}")
 
@@ -1322,7 +1373,10 @@ class Crawl4AIClient:
 
         # ========== FINAL LOGGING ==========
         logger.info(f"[EXTRACTION SUMMARY] Page total: {len(emails_on_page)} emails, {len(phones_on_page)} phones")
-        logger.info(f"  Tel links: {tel_count}, Regex: {regex_count}, CSS: {css_count}")
+        logger.info(f"  Tel links: {tel_count} (NO FILTERS - always kept!) ✅")
+        logger.info(f"  Contact regex: (via keyword matching)")
+        logger.info(f"  Wide regex: {regex_count} (after sanity + structural)")
+        logger.info(f"  CSS: {css_count}")
 
         return emails_on_page, phones_on_page
 
