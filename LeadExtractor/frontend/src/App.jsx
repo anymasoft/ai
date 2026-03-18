@@ -231,6 +231,10 @@ export default function App() {
 
         {results.length > 0 && (
           <>
+            {console.log(`[DEBUG APP] About to render ResultsTable with results.length = ${results.length}`)}
+            {results.forEach((result, idx) => {
+              console.log(`  [${idx}] website: ${result.website}, emails: ${result.emails?.length || 0}, phones: ${result.phones?.length || 0}`)
+            })}
             <ResultsTable results={results} onEmailCopied={handleEmailCopied} />
             <button onClick={handleExportCSV} style={{ marginTop: '20px' }}>
               Export CSV

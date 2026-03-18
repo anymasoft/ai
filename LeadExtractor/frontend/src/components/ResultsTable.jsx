@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
 export default function ResultsTable({ results, onEmailCopied }) {
-  // Нормализовать данные: 1 email = 1 строка
+  // Нормализовать данные: 1 email = 1 строка, 1 phone = 1 строка (БЕЗ связывания)
   const normalizeData = () => {
     const normalized = []
 
@@ -10,37 +10,46 @@ export default function ResultsTable({ results, onEmailCopied }) {
       const emails = result.emails || []
       const phones = result.phones || []
 
-      // Если есть emails - создаём по строке на каждый email
-      if (emails.length > 0) {
-        emails.forEach((email, emailIdx) => {
-          normalized.push({
-            website,
-            email: email.email,
-            emailSource: email.source_page,
-            phone: phones.length > emailIdx ? phones[emailIdx].phone : null,
-            phoneSource: phones.length > emailIdx ? phones[emailIdx].source_page : null,
-          })
-        })
-      }
+      console.log(`[DEBUG] ResultsTable normalizing ${website}: ${emails.length} emails, ${phones.length} phones`)
 
-      // Если есть phones БЕЗ emails - добавляем их отдельными строками
-      if (phones.length > 0 && emails.length === 0) {
-        phones.forEach(phone => {
-          normalized.push({
-            website,
-            email: null,
-            emailSource: null,
-            phone: phone.phone,
-            phoneSource: phone.source_page,
-          })
+      // ✅ PASS 1: Добавить ВСЕ emails (каждый email = отдельная строка)
+      emails.forEach((email, emailIdx) => {
+        normalized.push({
+          website,
+          email: email.email,
+          emailSource: email.source_page,
+          phone: null,  // ✅ НЕ связываем с phones!
+          phoneSource: null,
         })
-      }
+        console.log(`[DEBUG] Added email row: ${email.email}`)
+      })
+
+      // ✅ PASS 2: Добавить ВСЕ phones (каждый phone = отдельная строка)
+      // ВСЕГДА добавляются, БЕЗ зависимости от emails!
+      phones.forEach((phone, phoneIdx) => {
+        normalized.push({
+          website,
+          email: null,  // ✅ НЕ связываем с emails!
+          emailSource: null,
+          phone: phone.phone,
+          phoneSource: phone.source_page,
+        })
+        console.log(`[DEBUG] Added phone row: ${phone.phone}`)
+      })
     })
 
+    console.log(`[DEBUG] Final normalized rows: ${normalized.length}`)
     return normalized
   }
 
   const normalizedData = normalizeData()
+
+  // DEBUG: Log before render
+  console.log(`[DEBUG RENDER] normalizedData.length = ${normalizedData.length}`)
+  console.log(`[DEBUG RENDER] First 20 rows:`)
+  normalizedData.slice(0, 20).forEach((row, idx) => {
+    console.log(`  [${idx}] website: ${row.website}, email: ${row.email}, phone: ${row.phone}`)
+  })
 
   // Форматирование URL
   const formatUrl = (urlString) => {
