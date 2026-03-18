@@ -98,15 +98,11 @@ class Crawl4AIClient:
                 ignore_https_errors=True,
             )
 
-            # Configure crawler run: aggressive content extraction
+            # Configure crawler run: minimal safe config
             crawler_config = CrawlerRunConfig(
                 wait_until="networkidle",  # Wait for network idle
                 page_timeout=self.timeout,
-                remove_overlay_elements=True,  # Remove popups/overlays
-                process_iframes=True,  # Process iframe content
-                scan_full_page=True,  # Scroll and load lazy content
                 word_count_threshold=10,  # Low threshold
-                keep_attrs=['href', 'mailto', 'tel'],  # Keep important attrs
             )
 
             async with AsyncWebCrawler(config=browser_config) as crawler:
