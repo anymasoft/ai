@@ -58,7 +58,7 @@ async def extract_contacts(request: ExtractRequest):
     if not urls:
         raise HTTPException(status_code=400, detail="No valid URLs provided")
 
-    client = Crawl4AIClient(timeout=30, max_pages=15)
+    client = Crawl4AIClient(timeout=30, max_pages=10, max_depth=2)
     results = []
 
     try:
