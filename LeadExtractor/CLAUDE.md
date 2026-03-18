@@ -462,3 +462,200 @@ company.io | contact@company.io | +1 (555) 000... | /
 3. **mailto: и tel: ссылки** - интерактивные контакты
 4. **Graceful fallback** - "-" если контактов нет
 5. **"No contacts found"** - сообщение когда пусто
+
+---
+
+## 📊 Lead Management UI (v3.0)
+
+### Трансформация: Table → Lead Management Interface
+
+**v2.2:** 1 сайт = много строк (каждая row = контакт)
+**v3.0:** 1 сайт = 1 строка (все контакты внутри)
+
+### Архитектура Lead Row
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Company      │ Emails      │ Phones      │ Sources  │ Score │ Status │
+├──────────────┼─────────────┼─────────────┼──────────┼───────┼────────┤
+│ 1cca.ru      │ • info@...  │ • +7 (495)  │ /        │  [82] │  HOT   │
+│ (link)       │   /about    │   /contact  │ /about   │       │ 🟢     │
+│              │             │             │ /team    │       │        │
+└──────────────┴─────────────┴─────────────┴──────────┴───────┴────────┘
+```
+
+### Компоненты
+
+#### 1. Company Column
+- Кликабельная ссылка на сайт
+- Открывает в новой вкладке
+
+#### 2. Emails List
+- Список всех найденных emails
+- Каждый кликабельный (mailto:)
+- Показывает source_page где найден
+
+#### 3. Phones List
+- Список всех найденных phones
+- Каждый кликабельный (tel:)
+- Показывает source_page где найден
+
+#### 4. Sources List
+- Все страницы где найдены контакты
+- Максимум 3 видно, остальное "+N more"
+- Форматированные URL
+
+#### 5. Lead Score
+- Круглый badge (50px)
+- Формула:
+  * +30 если есть email
+  * +20 если есть phone
+  * +20 если source содержит "contact"
+  * +10 если source содержит "about"
+  * +10 если pages > 2
+  * MAX: 100 баллов
+
+#### 6. Status
+- HOT (80+) - зеленый 🟢
+- WARM (50-79) - оранжевый 🟡
+- COLD (<50) - серый ⚪
+
+#### 7. Action Button
+- "✉️ Email" кнопка
+- Открывает письмо с предзаполненным текстом
+- Subject: "Partnership Inquiry"
+- Body: готовый текст обращения
+
+### CSS Стили
+
+```css
+.lead-table {
+  /* Таблица с тенью и скруглением */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+}
+
+.lead-row:hover {
+  /* Подсветка при наведении */
+  background: #f8fafc;
+}
+
+.score-badge {
+  /* Циркульный badge с градиентом */
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+}
+
+.badge-green { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+.badge-yellow { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+.badge-gray { background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); }
+
+.contact-list {
+  /* Список контактов с промежутком */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+```
+
+### CSV Export (Enhanced)
+
+**Столбцы:**
+- Website
+- Emails (Count)
+- Phones (Count)
+- Sources (Count)
+- Lead Score
+- Status
+- All Sources
+
+**Файл:** `leads_export_YYYY-MM-DD.csv`
+
+**Пример:**
+```
+Website,Emails (Count),Phones (Count),Sources (Count),Lead Score,Status,All Sources
+1cca.ru,2,1,4,82,HOT,/;/about;/contacts;/team
+company.io,1,1,3,70,WARM,/;/contact;/inquiry
+example.com,0,1,2,30,COLD,/;/contact
+```
+
+### Функции
+
+#### calculateScore(result)
+```javascript
+Вычисляет Lead Score по формуле
+Возвращает: 0-100
+```
+
+#### getStatus(score)
+```javascript
+Возвращает: 'HOT' | 'WARM' | 'COLD'
+80+ = HOT
+50-79 = WARM
+<50 = COLD
+```
+
+#### formatUrl(urlString)
+```javascript
+Обрезает URL до 35 символов
+Добавляет "..." если длиннее
+```
+
+#### getScoreBadgeClass(score)
+```javascript
+Возвращает CSS класс для badge:
+'badge-green' | 'badge-yellow' | 'badge-gray'
+```
+
+### User Experience
+
+✅ **Одна строка на компанию** - легко читать
+✅ **Все контакты видны** - список внутри ячейки
+✅ **Lead Score видно сразу** - цветной badge
+✅ **Кликабельные ссылки** - mailto, tel, website
+✅ **Готовое письмо** - "Email" кнопка с темой и текстом
+✅ **Источники** - где найдены контакты
+✅ **CSV Export** - для CRM / follow-up
+✅ **Красивый дизайн** - современный, professional
+
+### Колоны Таблицы
+
+| Колонка | Назначение | Интерактивность |
+|---------|-----------|-----------------|
+| Company | Название сайта | Ссылка на сайт |
+| Emails | Список email адресов | Mailto: ссылки |
+| Phones | Список номеров телефонов | Tel: ссылки |
+| Sources | Страницы с контактами | Read-only |
+| Score | Lead Score 0-100 | Визуал (badge) |
+| Status | HOT/WARM/COLD | Визуал (tag) |
+| Action | Отправить письмо | Send Email кнопка |
+
+### Фильтрация
+
+**Показываются только:**
+- Сайты с email ИЛИ phone
+- Пустые сайты не отображаются
+- Empty state: "No leads found..."
+
+### Mobile Responsiveness
+
+Таблица оптимизирована для:
+- Десктоп (1200px) - все видно
+- Планшет (768px) - горизонтальный скролл если нужен
+- Мобиль (320px) - могут быть узкие колонки, но все функционирует
+
+### История Версий
+
+**v2.2 (Table Layout)**
+- 1 строка = 1 контакт
+- Длинные URL
+- Простой дизайн
+
+**v3.0 (Lead Management)**
+- 1 строка = 1 сайт со всеми контактами
+- Lead Score с формулой
+- Status (HOT/WARM/COLD)
+- Красивый дизайн
+- CSV Export с Score
+- Интерактивные элементы
