@@ -15,7 +15,7 @@ from urllib.parse import urlparse, urljoin
 from collections import deque
 
 # ⭐ Новый модульный phone_extractor (v1.0)
-from backend.phone_extractor import extract_phones_from_crawl_result
+from phone_extractor import extract_phones_from_crawl_result
 
 logger = logging.getLogger(__name__)
 
