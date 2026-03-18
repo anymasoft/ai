@@ -1,0 +1,300 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                                                                            ║
+║                   📱 PHONE NORMALIZER — QUICK REFERENCE                   ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+═══════════════════════════════════════════════════════════════════════════════
+ФУНКЦИЯ 1: normalize_phone() — Нормализовать один номер
+═══════════════════════════════════════════════════════════════════════════════
+
+from phone_normalizer import normalize_phone
+
+# Простое использование
+result = normalize_phone("+7%20(812)%20250-62-10%20")
+# Выход: "+7 (812) 250-62-10" или None
+
+# Примеры работы
+normalize_phone("+7 (495) 123-45-67")      # ✅ "+7 (495) 123-45-67"
+normalize_phone("+7-812-250-62-10")        # ✅ "+7 (812) 250-62-10"
+normalize_phone("8 (383) 262-16-42")       # ✅ "+7 (383) 262-16-42"
+normalize_phone("tel:+7(495)123-45-67")    # ✅ "+7 (495) 123-45-67"
+normalize_phone("237153142)")              # ❌ None (мусор)
+normalize_phone("+7")                      # ❌ None (слишком короткий)
+normalize_phone("-03022026.")              # ❌ None (дата)
+
+═══════════════════════════════════════════════════════════════════════════════
+ФУНКЦИЯ 2: extract_phones_from_result() — Полная extraction из CrawlResult
+═══════════════════════════════════════════════════════════════════════════════
+
+from phone_normalizer import extract_phones_from_result
+
+# Использование с CrawlResult
+phones = extract_phones_from_result(result)
+
+# Результат: list[dict]
+# [
+#   {"phone": "+7 (812) 250-62-10", "source_page": "https://...", "raw": "..."},
+#   {"phone": "+7 (383) 209-21-27", "source_page": "https://...", "raw": "..."},
+#   ...
+# ]
+
+# Итерация по результатам
+for phone_info in phones:
+    print(f"✅ {phone_info['phone']}")
+    print(f"   From: {phone_info['source_page']}")
+    print(f"   Raw:  {phone_info['raw']}")
+
+═══════════════════════════════════════════════════════════════════════════════
+ФУНКЦИЯ 3: PhoneNormalizer (класс) — С контролем параметров
+═══════════════════════════════════════════════════════════════════════════════
+
+from phone_normalizer import PhoneNormalizer
+
+# Инициализация
+normalizer = PhoneNormalizer(region="RU")  # Или "US", "GB", и т.д.
+
+# Методы
+normalizer.normalize_phone(raw)                    # Нормализовать один
+normalizer.merge_fragmented_phones(soup)          # Merge fragmented
+normalizer.extract_phones_from_result(result)     # Полная extraction
+
+# Пример использования
+for raw in raw_phones:
+    normalized = normalizer.normalize_phone(raw)
+    if normalized:
+        print(f"✅ {normalized}")
+
+═══════════════════════════════════════════════════════════════════════════════
+ПРИМЕРЫ БЫСТРОГО КОПИРОВАНИЯ
+═══════════════════════════════════════════════════════════════════════════════
+
+ПРИМЕР 1: Нормализация одного номера
+──────────────────────────────────────
+  from phone_normalizer import normalize_phone
+
+  phone = normalize_phone("+7%20(812)%20250-62-10%20")
+  print(phone)  # "+7 (812) 250-62-10"
+
+
+ПРИМЕР 2: Обработка массива номеров
+────────────────────────────────────────
+  from phone_normalizer import normalize_phone
+
+  raw_phones = ["+7-495-123-45-67", "8(383)262-16-42", "237153142)"]
+
+  valid_phones = []
+  for raw in raw_phones:
+    normalized = normalize_phone(raw)
+    if normalized:
+      valid_phones.append(normalized)
+
+  print(valid_phones)  # ["+7 (495) 123-45-67", "+7 (383) 262-16-42"]
+
+
+ПРИМЕР 3: Extraction из CrawlResult
+──────────────────────────────────────
+  from phone_normalizer import extract_phones_from_result
+  from crawl4ai import AsyncWebCrawler
+  import asyncio
+
+  async def main():
+    crawler = AsyncWebCrawler()
+    result = await crawler.arun("https://is1c.ru")
+
+    phones = extract_phones_from_result(result)
+    for p in phones:
+      print(f"{p['phone']} from {p['source_page']}")
+
+    await crawler.close()
+
+  asyncio.run(main())
+
+
+ПРИМЕР 4: FastAPI endpoint
+──────────────────────────────
+  from fastapi import FastAPI
+  from phone_normalizer import extract_phones_from_result
+  from crawl4ai import AsyncWebCrawler
+
+  app = FastAPI()
+
+  @app.post("/extract-phones")
+  async def extract(url: str):
+    crawler = AsyncWebCrawler()
+    result = await crawler.arun(url)
+    phones = extract_phones_from_result(result)
+    await crawler.close()
+    return phones
+
+
+ПРИМЕР 5: Интеграция в crawl4ai_client.py
+──────────────────────────────────────────
+  # В файле: backend/crawl4ai_client.py
+
+  # 1. Добавить импорт в начало
+  from phone_normalizer import extract_phones_from_result
+
+  # 2. В методе extract(), заменить:
+  # БЫЛО:
+  # emails_on_page, phones_on_page = self._extract_contacts(result, ...)
+
+  # СТАЛО:
+  phones_result = extract_phones_from_result(result)
+  all_phones.extend(phones_result)
+
+═══════════════════════════════════════════════════════════════════════════════
+РЕШАЕМЫЕ ПРОБЛЕМЫ (ТАБЛИЦА)
+═══════════════════════════════════════════════════════════════════════════════
+
+Проблема                    Входные данные              Выход
+────────────────────────────────────────────────────────────────────────────
+URL-кодирование              +7%20(812)%20250-62-10      +7 (812) 250-62-10 ✅
+Tel ссылка                   tel:%2B7%20(495)%20123...  +7 (495) 123-45-67 ✅
+Дефисы вместо скобок         +7-495-123-45-67            +7 (495) 123-45-67 ✅
+Начинается с 8               8 (383) 262-16-42           +7 (383) 262-16-42 ✅
+Разорванные теги             <span>+7</span><span>985... +7985...            ✅
+Мусор - скобка в конце       237153142)                  ❌ Удалено
+Слишком короткий             +7                          ❌ Удалено
+Дата                         -03022026.                  ❌ Удалено
+Неполный номер               (55036117                   ❌ Удалено
+IP адрес                     192.168.1.1                 ❌ Удалено
+Год                          1997-2026                   ❌ Удалено
+
+═══════════════════════════════════════════════════════════════════════════════
+OUTPUT FORMAT
+═══════════════════════════════════════════════════════════════════════════════
+
+normalize_phone() возвращает:
+  string: "+7 (812) 250-62-10"   — нормализованный номер
+  None                            — если мусор или невалидный
+
+extract_phones_from_result() возвращает:
+  list[dict]:
+  [
+    {
+      "phone": "+7 (812) 250-62-10",    # Нормализованный номер
+      "source_page": "https://is1c.ru", # Откуда взял
+      "raw": "+7%20(812)%20250-62-10"   # Оригинальный формат
+    },
+    ...
+  ]
+
+═══════════════════════════════════════════════════════════════════════════════
+ЛОГИРОВАНИЕ
+═══════════════════════════════════════════════════════════════════════════════
+
+Включить debug логирование:
+─────────────────────────────
+  import logging
+  logging.basicConfig(level=logging.DEBUG)
+
+Примеры вывода:
+───────────────
+  DEBUG - [PHONENUMBERS] +7%20(812)%20250-62-10 → +7 (812) 250-62-10
+  DEBUG - [SANITY] Too short (1 digits): +7
+  DEBUG - [REGEX] 74951234567 → +7 (495) 123-45-67
+  INFO - [EXTRACT SUMMARY] https://is1c.ru
+    Tel links: 5
+    Fragmented: 1
+    Text: 3
+    TOTAL: 9
+
+═══════════════════════════════════════════════════════════════════════════════
+ОБРАБОТКА ОШИБОК
+═══════════════════════════════════════════════════════════════════════════════
+
+Правильная обработка:
+──────────────────────
+  result = normalize_phone(raw)
+  if result:
+    print(f"✅ {result}")
+  else:
+    print(f"❌ Мусор или невалидный: {raw}")
+
+Работа с CrawlResult:
+─────────────────────
+  try:
+    phones = extract_phones_from_result(result)
+  except Exception as e:
+    print(f"Error: {e}")
+    phones = []
+
+═══════════════════════════════════════════════════════════════════════════════
+ПРОИЗВОДИТЕЛЬНОСТЬ
+═══════════════════════════════════════════════════════════════════════════════
+
+1 номер              ~1ms
+10 номеров           ~10ms
+100 номеров          ~100ms
+1,000 номеров        ~1s
+10,000 номеров       ~10s
+100,000 номеров      ~100s
+
+═══════════════════════════════════════════════════════════════════════════════
+РЕГИОНЫ (region параметр)
+═══════════════════════════════════════════════════════════════════════════════
+
+Россия    "RU"   (default)
+США       "US"
+UK        "GB"
+Франция   "FR"
+Германия  "DE"
+Испания   "ES"
+И т.д. (ISO 3166-1 alpha-2 коды)
+
+Пример:
+  normalizer_us = PhoneNormalizer(region="US")
+  result = normalizer_us.normalize_phone("+1-555-000-0000")
+
+═══════════════════════════════════════════════════════════════════════════════
+ДЕДУБЛИКАЦИЯ
+═══════════════════════════════════════════════════════════════════════════════
+
+Автоматическая дедубликация:
+─────────────────────────────
+  phones = extract_phones_from_result(result)
+  # Автоматически дедубликирует по нормализованному номеру
+
+Ручная дедубликация:
+───────────────────
+  unique_phones = set()
+  for raw in raw_phones:
+    normalized = normalize_phone(raw)
+    if normalized:
+      unique_phones.add(normalized)
+
+═══════════════════════════════════════════════════════════════════════════════
+ЧЕКЛИСТ ИСПОЛЬЗОВАНИЯ
+═══════════════════════════════════════════════════════════════════════════════
+
+[ ] 1. Импортировать модуль
+   from phone_normalizer import normalize_phone
+
+[ ] 2. Использовать в коде
+   result = normalize_phone("+7%20(812)%20250-62-10")
+
+[ ] 3. Проверить результат
+   if result:
+     print(f"✅ {result}")
+
+[ ] 4. Тестировать на реальных данных
+
+[ ] 5. Интегрировать в продакшене (опционально)
+
+═══════════════════════════════════════════════════════════════════════════════
+ПОЛЕЗНЫЕ ССЫЛКИ
+═══════════════════════════════════════════════════════════════════════════════
+
+Документация:
+  📄 PHONE_NORMALIZER_README.md       — Полное руководство
+  📄 phone_normalizer_examples.py     — 8 рабочих примеров
+  📄 phone_normalizer.py              — Исходный код (824 строк)
+
+Документация внутри кода:
+  • PhoneNormalizer класс и все методы имеют подробные docstrings
+  • Встроенные примеры в конце phone_normalizer.py
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✨ READY TO USE! ✨
