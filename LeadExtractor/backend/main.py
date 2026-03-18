@@ -5,7 +5,7 @@ from typing import List
 import asyncio
 import logging
 
-from crawler import Crawler
+from crawl4ai_client import Crawl4AIClient
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -38,6 +38,7 @@ class ExtractResponse(BaseModel):
 async def extract_contacts(request: ExtractRequest):
     """
     Извлечь контакты из списка URL.
+    Использует оптимизированный Crawl4AI client.
     """
     if not request.urls:
         raise HTTPException(status_code=400, detail="URLs list cannot be empty")
@@ -47,15 +48,24 @@ async def extract_contacts(request: ExtractRequest):
     if not urls:
         raise HTTPException(status_code=400, detail="No valid URLs provided")
 
-    crawler = Crawler()
+    client = Crawl4AIClient(timeout=30, max_pages=5)
     results = []
 
     try:
         # Краулим все URL параллельно
-        tasks = [crawler.crawl(url) for url in urls]
-        all_results = await asyncio.gather(*tasks)
+        tasks = [client.crawl_domain(url) for url in urls]
+        all_results = await asyncio.gather(*tasks, return_exceptions=True)
 
         for url, crawl_result in zip(urls, all_results):
+            # Обработка исключений из gather
+            if isinstance(crawl_result, Exception):
+                logger.error(f"Error crawling {url}: {crawl_result}")
+                crawl_result = {
+                    'emails': [],
+                    'phones': [],
+                    'sources': []
+                }
+
             # Нормализуем URL для отображения
             display_url = url if url.startswith(('http://', 'https://')) else f'https://{url}'
 
