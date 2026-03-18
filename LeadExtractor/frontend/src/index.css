@@ -28,10 +28,11 @@ header {
 }
 
 .container {
-  max-width: 900px;
+  max-width: 1200px;
   margin: 80px auto;
   text-align: center;
   padding: 0 16px;
+  overflow-x: auto;
 }
 
 textarea {
@@ -72,8 +73,10 @@ button:disabled {
 
 table {
   width: 100%;
+  min-width: 100%;
   border-collapse: collapse;
   margin-top: 40px;
+  table-layout: auto;
 }
 
 th {
@@ -88,6 +91,19 @@ td {
   padding: 12px;
   border-bottom: 1px solid #f3f4f6;
   font-size: 14px;
+  max-width: 250px;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+}
+
+td:first-child {
+  max-width: 200px;
+  font-weight: 500;
+}
+
+td a {
+  word-break: break-all;
 }
 
 tr:hover {
