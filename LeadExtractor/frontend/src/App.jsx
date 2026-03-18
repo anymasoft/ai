@@ -37,24 +37,8 @@ export default function App() {
     }
   }
 
-  const calculateScore = (result) => {
-    let score = 0
-    if (result.emails && result.emails.length > 0) score += 30
-    if (result.phones && result.phones.length > 0) score += 20
-    if (result.sources && result.sources.some(s => s.toLowerCase().includes('contact'))) score += 20
-    if (result.sources && result.sources.some(s => s.toLowerCase().includes('about'))) score += 10
-    if (result.sources && result.sources.length > 2) score += 10
-    return Math.min(score, 100)
-  }
-
-  const getStatus = (score) => {
-    if (score >= 80) return 'HOT'
-    if (score >= 50) return 'WARM'
-    return 'COLD'
-  }
-
   const handleExportCSV = () => {
-    const headers = ['Website', 'Emails (Count)', 'Phones (Count)', 'Sources (Count)', 'Lead Score', 'Status', 'All Sources']
+    const headers = ['Website', 'Emails (Count)', 'Phones (Count)', 'Sources']
     const rows = []
 
     // Фильтруем результаты с контактами
@@ -63,20 +47,16 @@ export default function App() {
     )
 
     filteredResults.forEach(result => {
-      const score = calculateScore(result)
-      const status = getStatus(score)
       const emails = result.emails || []
       const phones = result.phones || []
-      const sources = result.sources || []
+      // Убираем дубли Sources
+      const uniqueSources = [...new Set(result.sources || [])]
 
       rows.push([
         result.website,
         emails.length,
         phones.length,
-        sources.length,
-        score,
-        status,
-        sources.join('; '),
+        uniqueSources.join('; '),
       ])
     })
 
@@ -89,7 +69,7 @@ export default function App() {
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `leads_export_${new Date().toISOString().slice(0, 10)}.csv`
+    a.download = `contacts_export_${new Date().toISOString().slice(0, 10)}.csv`
     a.click()
     window.URL.revokeObjectURL(url)
   }
