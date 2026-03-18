@@ -10,6 +10,48 @@ export default function App() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [progress, setProgress] = useState({ current: 0, total: 0 })
+  const [toastMessage, setToastMessage] = useState('')
+
+  // Показать toast
+  const showToast = (message) => {
+    setToastMessage(message)
+    setTimeout(() => setToastMessage(''), 1500)
+  }
+
+  // Когда email скопирован
+  const handleEmailCopied = (email) => {
+    showToast('Copied')
+  }
+
+  // Нормализовать данные для подсчета уникальных контактов
+  const getNormalizedData = () => {
+    const normalized = []
+    results.forEach(result => {
+      const emails = result.emails || []
+      const phones = result.phones || []
+
+      if (emails.length > 0) {
+        emails.forEach((email, emailIdx) => {
+          normalized.push({
+            website: result.website,
+            email: email.email,
+            phone: phones.length > emailIdx ? phones[emailIdx].phone : null,
+          })
+        })
+      }
+
+      if (phones.length > 0 && emails.length === 0) {
+        phones.forEach(phone => {
+          normalized.push({
+            website: result.website,
+            email: null,
+            phone: phone.phone,
+          })
+        })
+      }
+    })
+    return normalized
+  }
 
   const handleExtract = async () => {
     setError('')
@@ -46,13 +88,28 @@ export default function App() {
       setResults(data.results)
       setProgress({ current: urlList.length, total: urlList.length })
 
-      const contactCount = data.results.filter(r =>
-        (r.emails && r.emails.length > 0) || (r.phones && r.phones.length > 0)
-      ).length
-      const emailCount = data.results.reduce((sum, r) => sum + (r.emails?.length || 0), 0)
-      const phoneCount = data.results.reduce((sum, r) => sum + (r.phones?.length || 0), 0)
+      // Подсчет уникальных контактов из сырых данных
+      const normalized = []
+      data.results.forEach(result => {
+        const emails = result.emails || []
+        const phones = result.phones || []
+        if (emails.length > 0) {
+          emails.forEach((email, emailIdx) => {
+            normalized.push({ website: result.website, email: email.email, phone: phones.length > emailIdx ? phones[emailIdx].phone : null })
+          })
+        }
+        if (phones.length > 0 && emails.length === 0) {
+          phones.forEach(phone => {
+            normalized.push({ website: result.website, email: null, phone: phone.phone })
+          })
+        }
+      })
 
-      setSuccess(`Found ${emailCount} emails and ${phoneCount} phones from ${contactCount} sites`)
+      const uniqueEmails = new Set(normalized.filter(r => r.email).map(r => r.email)).size
+      const uniquePhones = new Set(normalized.filter(r => r.phone).map(r => r.phone)).size
+      const sitesWithContacts = new Set(normalized.map(r => r.website)).size
+
+      setSuccess(`Found ${uniqueEmails} emails and ${uniquePhones} phones from ${sitesWithContacts} sites`)
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to extract contacts')
       console.error('Error:', err)
@@ -146,11 +203,18 @@ export default function App() {
 
         {results.length > 0 && (
           <>
-            <ResultsTable results={results} />
+            <ResultsTable results={results} onEmailCopied={handleEmailCopied} />
             <button onClick={handleExportCSV} style={{ marginTop: '20px' }}>
               Export CSV
             </button>
           </>
+        )}
+
+        {/* Toast Notification */}
+        {toastMessage && (
+          <div className="toast-notification">
+            {toastMessage}
+          </div>
         )}
       </div>
     </>
