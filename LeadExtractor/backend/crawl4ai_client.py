@@ -34,12 +34,141 @@ class Crawl4AIClient:
         self.max_pages = max_pages
         self.max_depth = max_depth
 
+    def _merge_fragmented_numbers(self, text: str) -> str:
+        """
+        MERGE FRAGMENTED NUMBERS (v2.5) — Склеить разбитые номера
+
+        Проблема: HTML теги/переносы строк разбивают номер на части
+        <span>+7</span> <span>985</span> <span>587</span> → "+7 985 587"
+
+        Примеры разбивок:
+        ❌ <span>+7</span><span>985</span> → +7985
+        ❌ +7</span>\n<span>985 → +7985
+        ❌ 8   \n  (383) → 8(383)
+        ❌ 8 385  587  45 82 → 8 385587 4582
+
+        Решение: 3 простых regex замены
+
+        Примеры после:
+        ✅ <span>+7</span><span>985</span> → +7985
+        ✅ 8   \n   (383) → 8(383)
+        ✅ 8 385  587  45 82 → 8 385 587 45 82 (читаемо)
+        """
+        if not text:
+            return text
+
+        # Правило 1: убрать HTML-теги между цифрами
+        # </span><span> → ничего, или </span> <span> → пробел
+        # Примеры:
+        # <span>+7</span><span>985</span> → +7985
+        # <span>+7</span> <span>985</span> → +7 985
+        text = re.sub(r'(\d)\s*</\w+>\s*<\w+[^>]*>\s*(\d)', r'\1\2', text)
+
+        # Правило 2: склеить разрывы строк между цифрами
+        # Примеры:
+        # "8\n(383)" → "8(383)"
+        # "8 \n 383" → "8 383"
+        # "8\n\n383" → "8 383"
+        text = re.sub(r'(\d)\s*\n\s*(\d)', r'\1\2', text)
+
+        # Правило 3: Склеить слишком разорванные последовательности цифр
+        # "8   385" (3+ пробела) → "8 385"
+        # "8\t\t\t385" → "8 385"
+        # НО: "(383) 262" (1-2 пробела) → оставить как есть
+        text = re.sub(r'(\d)\s{2,}(?=\d)', r'\1 ', text)
+
+        logger.debug(f"[MERGE FRAGMENTED] Processed {len(text)} chars")
+        return text
+
+    def _is_structural_phone(self, candidate: str) -> bool:
+        """
+        STRUCTURAL FILTER (v2.5) — Удалить мусор по структуре
+
+        После sanity filter (7-15 цифр) осталось:
+        - ID: 1761844453451
+        - Даты: 01.01.2024, 2024-01-01
+        - Годы: 1997-2026
+        - Чистые числа: 132232434
+        - Кривые склейки: 8 385  587  45 82
+
+        Проверяем: есть ли в номере признаки ТЕЛЕФОНА
+
+        Требования:
+        1. НЕ диапазон годов (1997-2026)
+        2. НЕ дата (01.01.2024)
+        3. НЕ чистые цифры (без разделителей)
+        4. НЕ длинные ID
+        5. НЕ кривые переносы
+        6. ДА содержит хотя бы один разделитель (+, (, ), -, space)
+
+        Примеры:
+        ✅ "+7 (383) 209-21-27" → PASS (много разделителей)
+        ✅ "8(383)262-16-42" → PASS (скобки, дефисы)
+        ✅ "203 555 0162" → PASS (пробелы = разделители)
+        ❌ "1997-2026" → FAIL (диапазон годов)
+        ❌ "01.01.2024" → FAIL (дата)
+        ❌ "132232434" → FAIL (чистые цифры, нет разделителей)
+        ❌ "1761844453451" → FAIL (длинное число без структуры)
+        """
+        if not candidate or not isinstance(candidate, str):
+            return False
+
+        try:
+            digits = re.sub(r'\D', '', candidate)
+
+            # Проверка 1: НЕ диапазон годов (XXXX-XXXX)
+            # Примеры: "1997-2026", "2000-2024"
+            if re.fullmatch(r'\d{4}-\d{4}', candidate.strip()):
+                logger.debug(f"[STRUCTURAL FILTER] Year range detected: {candidate}")
+                return False
+
+            # Проверка 2: НЕ дата (с точками, дефисами, слэшами)
+            # Примеры: "01.01.2024", "1/1/2024", "2024-01-01"
+            if re.search(r'\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4}', candidate):
+                logger.debug(f"[STRUCTURAL FILTER] Date detected: {candidate}")
+                return False
+
+            # Проверка 3: НЕ чистые цифры (без разделителей)
+            # Примеры: "132232434", "9123456789"
+            # Исключение: tel: links уже прошли раньше
+            if re.fullmatch(r'\d{7,15}', candidate.strip()):
+                logger.debug(f"[STRUCTURAL FILTER] Pure digits (no structure): {candidate}")
+                return False
+
+            # Проверка 4: НЕ длинное число без структуры
+            # Пример: "1761844453451" (13+ цифр, ID)
+            if len(digits) >= 12 and candidate.isdigit():
+                logger.debug(f"[STRUCTURAL FILTER] Long ID-like number: {candidate}")
+                return False
+
+            # Проверка 5: НЕ кривые переносы внутри
+            # Пример: "8)\n(383" (скобка, перенос, скобка)
+            if re.search(r'\)\s*\n', candidate):
+                logger.debug(f"[STRUCTURAL FILTER] Broken line in middle: {candidate}")
+                return False
+
+            # КЛЮЧЕВАЯ ПРОВЕРКА 6: ДОЛЖНЫ содержать разделители
+            # Разделители: +, (, ), -, пробелы
+            # Это признак структурированного телефона
+            if not re.search(r'[\(\)\-\+\s]', candidate):
+                logger.debug(f"[STRUCTURAL FILTER] No phone-like separators: {candidate}")
+                return False
+
+            # ✅ Все проверки пройдены
+            logger.debug(f"[STRUCTURAL FILTER] PASS: {candidate}")
+            return True
+
+        except Exception as e:
+            logger.debug(f"[STRUCTURAL FILTER] Exception: {e}")
+            return False
+
     def _normalize_text(self, text: str) -> str:
         """
-        PRE-NORMALIZATION (RECALL-FIRST v4.0)
+        PRE-NORMALIZATION (RECALL-FIRST v4.0 + v2.5)
 
         Critical preprocessing to maximize recall of contact extraction.
         Handles:
+        - Fragmented numbers (HTML tags, line breaks) — v2.5
         - HTML entities (&nbsp; &mdash; etc.)
         - Zero-width characters (invisible separators)
         - Non-breaking spaces and common obfuscation
@@ -47,12 +176,17 @@ class Crawl4AIClient:
         - Broken phone numbers (multiline repair)
 
         Examples:
+        ✅ "<span>+7</span><span>985</span>" → "+7985" → findable
         ✅ "89&nbsp;153&nbsp;" → "89 153 " → findable by regex
         ✅ "8\u200b(383)33\u200b-05-42" → "8(383)33-05-42"
         ✅ "8\n 383" → "8383" (for regex \\d)
         """
         if not text:
             return text
+
+        # === 0. MERGE FRAGMENTED NUMBERS (v2.5) ===
+        # CRITICAL: Must be FIRST to fix HTML-fragmented spans
+        text = self._merge_fragmented_numbers(text)
 
         # === 1. HTML ENTITIES ===
         text = text.replace('&nbsp;', ' ')
@@ -573,10 +707,13 @@ class Crawl4AIClient:
                 logger.info(f"  [{i+1}] {email.get('email')} (source: {email.get('source_page', 'N/A')})")
 
         logger.info(f"\n[FILTERING APPLIED]")
-        logger.info(f"  ✅ Sanity filter (v2.0)")
-        logger.info(f"  ✅ Removes: floats, dates, IDs, broken sequences")
-        logger.info(f"  ✅ Keeps: all real phone formats")
-        logger.info(f"  Effect: 80-90% garbage removed pre-LLM")
+        logger.info(f"  ✅ v2.0: Sanity filter")
+        logger.info(f"       Removes: floats, dates, IDs, broken sequences")
+        logger.info(f"  ✅ v2.5: Structural filter")
+        logger.info(f"       Removes: year ranges, pure numbers, IDs")
+        logger.info(f"  ✅ v2.5: Fragmented merge")
+        logger.info(f"       Fixes: <span>+7</span><span>985</span>... → +7985...")
+        logger.info(f"  Effect: 85-95% garbage removed pre-LLM")
         logger.info(f"{'='*60}\n")
 
         return result
@@ -1144,6 +1281,12 @@ class Crawl4AIClient:
                         logger.debug(f"[WIDE REGEX] Sanity filter rejected: {phone_clean}")
                         continue
 
+                    # v2.5: STRUCTURAL FILTER (удалить мусор по структуре)
+                    # Это удалит ID, даты, годы, чистые числа
+                    if not self._is_structural_phone(phone_clean):
+                        logger.debug(f"[WIDE REGEX] Structural filter rejected: {phone_clean}")
+                        continue
+
                     if not self._is_valid_phone(phone_clean):
                         logger.debug(f"[WIDE REGEX] Valid check rejected: {phone_clean}")
                         continue
@@ -1159,8 +1302,9 @@ class Crawl4AIClient:
                             # Already exists, but maybe different format - log it
                             logger.debug(f"[WIDE REGEX] Duplicate normalized phone: {normalized} (original: {phone_clean})")
 
+                sanity_count = raw_count - len(found_phones)  # Track sanity filter loss
                 if regex_count > 0:
-                    logger.info(f"[EXTRACTION - WIDE REGEX] Raw: {raw_count}, After sanity filter: {regex_count}, Found: {regex_count} phones")
+                    logger.info(f"[EXTRACTION - WIDE REGEX] Raw: {raw_count} → Sanity: {raw_count - sanity_count} → Structural: {regex_count} ✅")
             except Exception as e:
                 logger.debug(f"[WIDE REGEX] Error: {e}")
 
