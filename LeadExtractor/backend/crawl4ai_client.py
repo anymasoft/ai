@@ -29,18 +29,22 @@ class Crawl4AIClient:
     Crawl4AI handles single page fetch, we control the crawl strategy.
     """
 
-    def __init__(self, timeout: int = 30, max_pages: int = 25, max_depth: int = 3):
+    def __init__(self, timeout: int = 30, max_pages: int = 25, max_depth: int = 3, use_llm: bool = True):
         """
-        RECALL-FIRST PIPELINE (v4.0)
-        - max_pages = 25 (was 10) - crawl more pages
-        - max_depth = 3 (was 2) - go deeper
-        - max_links = 100 (was 30) - gather more candidates
+        STAGE 1 SIMPLIFIED PIPELINE
+
+        Parameters:
+        - timeout: Timeout per page (default 30s)
+        - max_pages: Max pages to crawl (default 25)
+        - max_depth: Max depth (default 3)
+        - use_llm: Use LLM validation (default True, set False for Stage 1 testing)
 
         INTEGRATION: Contact Discovery Engine (v1.0)
         """
         self.timeout = timeout
         self.max_pages = max_pages
         self.max_depth = max_depth
+        self.use_llm = use_llm  # ← NEW: Stage 1 flag
 
         # ⭐ Initialize Contact Discovery Engine
         self.discovery_engine = ContactDiscoveryEngine()
@@ -721,8 +725,8 @@ class Crawl4AIClient:
         # ЗАДАЧА 4: Сортировка по score (highest first)
         phones_list_filtered.sort(key=lambda x: x["score"], reverse=True)
 
-        # ЗАДАЧА 4: LIMIT 15 (вместо 30, и ТОЛЬКО после фильтра+сортировки)
-        phones_list = phones_list_filtered[:15]
+        # ⚠️ STAGE 1: NO LIMIT - keep all candidates (we need to see what survives prefilter)
+        phones_list = phones_list_filtered
 
         # ЗАДАЧА 9: DEBUG ЛОГИ
         logger.info(f"[PRE-LLM] Raw candidates: {len(phones_list_with_score)}")
@@ -733,37 +737,45 @@ class Crawl4AIClient:
             for i, p in enumerate(phones_list[:5], 1):
                 logger.info(f"  [{i}] {p['phone']} | score={p['score']}")
 
-        # ========== STAGE 4: FINAL LLM VALIDATION (NEW!) ==========
-        # ⭐ CRITICAL: Validate all phones through LLM before returning
+        # ========== STAGE 4: FINAL LLM VALIDATION ==========
         logger.info(f"\n{'='*60}")
-        logger.info(f"[FINAL VALIDATION] Starting LLM validation...")
-        logger.info(f"  📊 Phones BEFORE LLM: {len(phones_list)}")
 
-        try:
-            from phone_final_validator import PhoneFinalValidator
+        if self.use_llm:
+            # ⭐ STAGE 2+: Use LLM validation
+            logger.info(f"[FINAL VALIDATION] Starting LLM validation...")
+            logger.info(f"  📊 Phones BEFORE LLM: {len(phones_list)}")
 
-            validator = PhoneFinalValidator(use_llm=True)
+            try:
+                from phone_final_validator import PhoneFinalValidator
 
-            # Validate all phones with domain context
-            validated_phones = validator.validate_phones(
-                phones_list,
-                page_url=domain_url,
-                page_text=""  # Context not needed for simple validation
-            )
+                validator = PhoneFinalValidator(use_llm=True)
 
-            logger.info(f"  ✅ Phones AFTER LLM: {len(validated_phones)}")
-            if len(validated_phones) < len(phones_list):
-                logger.info(f"  ✨ LLM removed {len(phones_list) - len(validated_phones)} false positives")
+                # Validate all phones with domain context
+                validated_phones = validator.validate_phones(
+                    phones_list,
+                    page_url=domain_url,
+                    page_text=""  # Context not needed for simple validation
+                )
 
-            # Use validated result (with fallback)
-            phones_list = validated_phones if validated_phones else phones_list
+                logger.info(f"  ✅ Phones AFTER LLM: {len(validated_phones)}")
+                if len(validated_phones) < len(phones_list):
+                    logger.info(f"  ✨ LLM removed {len(phones_list) - len(validated_phones)} false positives")
 
-        except ImportError:
-            logger.warning(f"[LLM VALIDATION] phone_final_validator not available, using extraction results")
-        except Exception as e:
-            logger.warning(f"[LLM VALIDATION] LLM validation failed: {e}, using extraction results")
+                # Use validated result (with fallback)
+                phones_list = validated_phones if validated_phones else phones_list
 
-        logger.info(f"[FINAL VALIDATION] Complete")
+            except ImportError:
+                logger.warning(f"[LLM VALIDATION] phone_final_validator not available, using extraction results")
+            except Exception as e:
+                logger.warning(f"[LLM VALIDATION] LLM validation failed: {e}, using extraction results")
+
+            logger.info(f"[FINAL VALIDATION] Complete")
+        else:
+            # ⭐ STAGE 1: Skip LLM, use extraction results directly
+            logger.info(f"[STAGE 1 - NO LLM] Skipping LLM validation")
+            logger.info(f"  Candidates BEFORE LLM: {len(phones_list)}")
+            logger.info(f"  Using extraction results directly (no filtering)")
+
         logger.info(f"{'='*60}\n")
 
         # Emails list - ALL emails, no slicing
@@ -1618,169 +1630,39 @@ class Crawl4AIClient:
             except Exception as e:
                 logger.debug(f"[CONTACT REGEX] Error: {e}")
 
-            # ========== PASS 3.7: AGGRESSIVE RUSSIAN PHONE PATTERN (NEW!) ==========
-            # ⭐ NEW: Специализированный regex для русских номеров (без требования контекста)
-            # Ловит:
-            # * +7 (812) 250-62-10
-            # * 8 812 250 62 10
-            # * 8122506210
-            # * 812-250-6210
-            # Без фильтров (фильтры будут в LLM)
-            try:
-                # Pattern: (+ or 8 or nothing) + area code + number parts
-                # Very permissive - catches almost any 10-11 digit sequence
-                russian_pattern = r'(?:\+7|8)?[\s\-\(\)]*\d{3}[\s\-\(\)]*\d{3}[\s\-\(\)]*\d{2}[\s\-\(\)]*\d{2}'
 
-                russian_matches = re.finditer(russian_pattern, normalized_text)
-                russian_count = 0
+            # ========== PASS 3.7: AGGRESSIVE RUSSIAN PHONE PATTERN (DISABLED - Stage 1) ==========
+            # ⚠️ DISABLED FOR STAGE 1 STABILIZATION
+            # This pass generates 90% garbage (dates, IP addresses, random numbers)
+            # Re-enable after Stage 1 validation
+            # try:
+            #     russian_pattern = r'(?:\+7|8)?[\s\-\(\)]*\d{3}[\s\-\(\)]*\d{3}[\s\-\(\)]*\d{2}[\s\-\(\)]*\d{2}'
+            #     russian_matches = re.finditer(russian_pattern, normalized_text)
+            #     russian_count = 0
+            #     for match in russian_matches:
+            #         ... (code disabled)
+            # except Exception as e:
+            #     logger.debug(f"[RUSSIAN PATTERN] Error: {e}")
 
-                for match in russian_matches:
-                    phone_raw = match.group(0).strip()
-                    if not phone_raw:
-                        continue
+            # ========== PASS 3.8: DIGIT-ONLY DETECTION (DISABLED - Stage 1) ==========
+            # ⚠️ DISABLED FOR STAGE 1 STABILIZATION
+            # This pass finds random sequences of 10-11 digits (dates, IDs, versions)
+            # Re-enable after Stage 1 validation
+            # try:
+            #     digit_pattern = r'\b\d{10,11}\b'
+            #     ... (code disabled)
+            # except Exception as e:
+            #     logger.debug(f"[DIGIT PATTERN] Error: {e}")
 
-                    phone_clean = self._clean_phone_extension(phone_raw)
-                    if not phone_clean:
-                        continue
-
-                    # ЗАДАЧА 7: ОГРАНИЧИТЬ RUSSIAN PATTERN
-                    digits = re.sub(r'\D', '', phone_clean)
-                    # Только 10-11 цифр (нет очень длинных кандидатов)
-                    if len(digits) < 10:
-                        continue
-                    # Убрать кандидаты с точками (скорее всего даты или версии)
-                    if "." in phone_clean:
-                        continue
-
-                    normalized = self._normalize_phone(phone_clean)
-                    if len(normalized) >= 7:
-                        if normalized not in all_phones:
-                            # ЗАДАЧА 2: SCORING для russian pattern
-                            score = 75  # Russian pattern = decent score
-                            if re.search(r'[\(\)\-]', phone_clean):
-                                score += 30  # Has structure
-                            all_phones[normalized] = {
-                                "original": phone_clean,
-                                "source": source_url,
-                                "score": score  # ← NEW
-                            }
-                            phones_on_page.add(phone_clean)
-                            russian_count += 1
-
-                if russian_count > 0:
-                    logger.info(f"[EXTRACTION - RUSSIAN PATTERN] Found {russian_count} phones (aggressive Russian pattern)")
-            except Exception as e:
-                logger.debug(f"[RUSSIAN PATTERN] Error: {e}")
-
-            # ========== PASS 3.8: DIGIT-ONLY DETECTION (NEW!) ==========
-            # ⭐ NEW: Ищем строки с 10 или 11 цифр подряд (потенциальные номера)
-            # Примеры: "7812250621", "79123456789", "8123456789"
-            try:
-                # Find all sequences of 10-11 digits
-                digit_pattern = r'\b\d{10,11}\b'
-                digit_matches = re.finditer(digit_pattern, normalized_text)
-                digit_count = 0
-
-                for match in digit_matches:
-                    digits_raw = match.group(0)
-
-                    # Add + prefix if starts with 7 or 79 (Russian)
-                    if digits_raw.startswith('79'):
-                        phone_raw = '+' + digits_raw
-                    elif digits_raw.startswith('7'):
-                        phone_raw = '+' + digits_raw
-                    else:
-                        phone_raw = digits_raw  # Maybe 8... or 1... (international)
-
-                    phone_clean = self._clean_phone_extension(phone_raw)
-                    if not phone_clean:
-                        continue
-
-                    # NO FILTERS - collect candidates
-
-                    normalized = self._normalize_phone(phone_clean)
-                    if len(normalized) >= 7:
-                        if normalized not in all_phones:
-                            # ЗАДАЧА 2: SCORING для digit-only
-                            score = 40  # Digit-only = lower score (no context)
-                            # Check if 10 or 11 digits
-                            digits = re.sub(r'\D', '', phone_clean)
-                            if len(digits) == 10 or len(digits) == 11:
-                                score += 40  # Correct length
-                            all_phones[normalized] = {
-                                "original": phone_clean,
-                                "source": source_url,
-                                "score": score  # ← NEW
-                            }
-                            phones_on_page.add(phone_clean)
-                            digit_count += 1
-
-                if digit_count > 0:
-                    logger.info(f"[EXTRACTION - DIGIT PATTERN] Found {digit_count} phones (10-11 digits)")
-            except Exception as e:
-                logger.debug(f"[DIGIT PATTERN] Error: {e}")
-
-            # ========== PASS 4: WIDE PHONE REGEX (RAW CANDIDATE COLLECTION) ==========
-            # ⭐ IMPORTANT: This is the FINAL catch-all for any phone-like patterns
-            # We collect RAW candidates here - ALL filtering is done by LLM later
-            # Pattern: [+\d][\d\-\(\)\s]{6,}\d
-            # Matches: +7 (383) 209-21-27, 8(383)209-27, +1-555-0000, etc.
-            #
-            # NOTE: sanity/structural filters removed from here!
-            # Those are now a job for phone_final_validator.py (LLM stage)
-            try:
-                wide_phone_regex = r'[\+\d][\d\-\(\)\s\.]\.?{6,}\d'
-                # Actually, let's use a simpler and more reliable pattern:
-                # Any sequence that starts with digit or + and has enough digits
-                wide_phone_regex = r'[\+]?[\d\(\)\s\-\.]{7,}'
-
-                found_phones = re.findall(wide_phone_regex, normalized_text)
-                raw_count = len(found_phones)  # Track before filtering
-
-                for phone_raw in found_phones:
-                    phone_clean = self._clean_phone_extension(phone_raw.strip())
-                    if not phone_clean:
-                        continue
-
-                    # ЗАДАЧА 8: ОГРАНИЧИТЬ WIDE REGEX
-                    digits = re.sub(r'\D', '', phone_clean)
-                    # Только 10-11 цифр
-                    if len(digits) < 10:
-                        continue
-                    # Требуем хотя бы один разделитель (не pure digits)
-                    if not re.search(r'[\(\)\-+]', phone_clean):
-                        continue
-
-                    normalized = self._normalize_phone(phone_clean)
-                    if len(normalized) >= 7:  # Standard 7+ digits
-                        # RECALL-FIRST: Add if not already present
-                        if normalized not in all_phones:
-                            # ЗАДАЧА 2: SCORING для wide regex
-                            score = 5  # Wide regex = lowest score (catch-all)
-                            # Boost if has +7
-                            if "+7" in phone_clean:
-                                score += 50
-                            # Boost if has structure
-                            if re.search(r'[\(\)\-]', phone_clean):
-                                score += 30
-                            # Check correct length
-                            digits = re.sub(r'\D', '', phone_clean)
-                            if len(digits) == 10 or len(digits) == 11:
-                                score += 40
-                            all_phones[normalized] = {
-                                "original": phone_clean,
-                                "source": source_url,
-                                "score": score  # ← NEW
-                            }
-                            phones_on_page.add(phone_clean)
-                            regex_count += 1
-
-                if regex_count > 0:
-                    logger.info(f"[EXTRACTION - WIDE REGEX] Found: {regex_count} phones (NO filters - candidates for LLM)")
-                else:
-                    logger.debug(f"[EXTRACTION - WIDE REGEX] No phones matched wide pattern (raw found: {raw_count})")
-            except Exception as e:
-                logger.debug(f"[WIDE REGEX] Error: {e}")
+            # ========== PASS 4: WIDE PHONE REGEX (DISABLED - Stage 1) ==========
+            # ⚠️ DISABLED FOR STAGE 1 STABILIZATION
+            # This pass catches everything (IP addresses, versions, dates, garbage)
+            # Re-enable after Stage 1 validation
+            # try:
+            #     wide_phone_regex = r'[\+]?[\d\(\)\s\-\.]{7,}'
+            #     ... (code disabled)
+            # except Exception as e:
+            #     logger.debug(f"[WIDE REGEX] Error: {e}")
 
             # ========== PASS 5: EXTRACT FROM TABLES ==========
             if hasattr(result, 'tables') and result.tables:
@@ -1795,11 +1677,15 @@ class Crawl4AIClient:
             # Never raise - traversal must continue
 
         # ========== FINAL LOGGING ==========
-        logger.info(f"[EXTRACTION SUMMARY] Page total: {len(emails_on_page)} emails, {len(phones_on_page)} phones")
-        logger.info(f"  Tel links: {tel_count} (NO FILTERS - always kept!) ✅")
-        logger.info(f"  Contact regex: (via keyword matching)")
-        logger.info(f"  Wide regex: {regex_count} (after sanity + structural)")
-        logger.info(f"  CSS: {css_count}")
+        logger.info(f"\n[EXTRACTION SUMMARY - STAGE 1]")
+        logger.info(f"  Page: {source_url.replace(f'https://', '')[:50]}")
+        logger.info(f"  Total: {len(emails_on_page)} emails, {len(phones_on_page)} phones")
+        logger.info(f"  Sources:")
+        logger.info(f"    ✅ PASS 1 (TEL LINKS): {tel_count} phones (active)")
+        logger.info(f"    ✅ PASS 3.5 (CONTACT REGEX): via keyword matching (active)")
+        logger.info(f"    ❌ PASS 3.7 (RUSSIAN PATTERN): DISABLED")
+        logger.info(f"    ❌ PASS 3.8 (DIGIT-ONLY): DISABLED")
+        logger.info(f"    ❌ PASS 4 (WIDE REGEX): DISABLED")
 
         return emails_on_page, phones_on_page
 
