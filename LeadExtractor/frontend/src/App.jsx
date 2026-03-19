@@ -165,19 +165,28 @@ export default function App() {
     setSavingHtml(true)
 
     try {
+      console.log(`[DEBUG] Saving HTML from ${urlList.length} URL(s):`, urlList)
       const data = await saveHtmlPages(urlList)
+      console.log('[DEBUG] Response from save-html:', data)
 
       if (data.results && data.results.length > 0) {
-        const firstResult = data.results[0]
-        const pagesCount = firstResult.saved_pages
-        const folder = firstResult.folder
-        setSaveHtmlMessage(`✓ Saved ${pagesCount} HTML pages to:\n${folder}`)
-        showToast(`Saved ${pagesCount} pages`)
+        const results = data.results
+        let message = `✓ Successfully saved HTML pages:\n`
+
+        results.forEach((result, idx) => {
+          const folderName = result.folder.split('/').pop()
+          message += `\n[${idx + 1}] ${result.domain}\n  Pages: ${result.saved_pages}\n  Folder: ${folderName}`
+        })
+
+        setSaveHtmlMessage(message)
+        const totalPages = results.reduce((sum, r) => sum + r.saved_pages, 0)
+        showToast(`Saved ${totalPages} HTML pages`)
       } else {
-        setSaveHtmlMessage('No pages were saved')
+        setSaveHtmlMessage('⚠️ No pages were saved. Check that URLs are accessible.')
       }
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to save HTML pages')
+      const errorDetail = err.response?.data?.detail || err.message || 'Unknown error'
+      setError(`Failed to save HTML pages: ${errorDetail}`)
       console.error('Error saving HTML:', err)
     } finally {
       setSavingHtml(false)
