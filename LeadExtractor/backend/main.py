@@ -133,9 +133,17 @@ async def save_html_debug(request: ExtractRequest):
         for url in urls:
             display_url = url if url.startswith(('http://', 'https://')) else f'https://{url}'
 
-            # Use new debug method to save HTML pages
-            save_result = await client.save_html_pages(display_url)
-            results.append(save_result)
+            try:
+                # Use new debug method to save HTML pages
+                save_result = await client.save_html_pages(display_url)
+                results.append(save_result)
+                logger.info(f"✓ Saved HTML for {display_url}: {save_result['saved_pages']} pages")
+            except Exception as url_error:
+                logger.error(f"Error saving HTML for {display_url}: {url_error}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to save HTML for {display_url}: {str(url_error)}"
+                )
 
         logger.info(f"\n[DEBUG SAVE] Total domains processed: {len(results)}")
         for i, result in enumerate(results):
@@ -147,9 +155,11 @@ async def save_html_debug(request: ExtractRequest):
             "total": len(results)
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error during HTML save: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error during HTML save: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to save HTML pages: {str(e)}")
 
 @app.get("/api/health")
 async def health_check():
