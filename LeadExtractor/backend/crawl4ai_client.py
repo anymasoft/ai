@@ -908,12 +908,20 @@ class Crawl4AIClient:
                             "url": current_url
                         }
 
+                        # Count internal links safely
+                        links_count = 0
+                        try:
+                            if result.links and isinstance(result.links, dict):
+                                links_count = len(result.links.get("internal", []))
+                        except (AttributeError, TypeError):
+                            links_count = 0
+
                         page_metadata.append({
                             "url": current_url,
                             "filename": filename,
                             "depth": depth,
                             "html_size": len(html_content),
-                            "links_found": len(result.links.get("internal", [])) if result.links else 0
+                            "links_found": links_count
                         })
                     except Exception as e:
                         logger.error(f"Error saving page {current_url}: {e}")
@@ -921,25 +929,33 @@ class Crawl4AIClient:
 
                     # Traverse links
                     try:
-                        if result.links:
+                        if result.links and isinstance(result.links, dict):
                             internal_links = result.links.get("internal", [])
-                            for link in internal_links:
-                                link_url = link.get("href")
-                                if not link_url:
-                                    continue
+                            if internal_links and isinstance(internal_links, list):
+                                for link in internal_links:
+                                    try:
+                                        if not isinstance(link, dict):
+                                            continue
 
-                                # Resolve relative URLs
-                                link_url = urljoin(current_url, link_url)
-                                link_url = link_url.split('#')[0]  # Remove fragments
+                                        link_url = link.get("href")
+                                        if not link_url:
+                                            continue
 
-                                # Check if same domain
-                                link_domain = urlparse(link_url).netloc
-                                if link_domain != domain:
-                                    continue
+                                        # Resolve relative URLs
+                                        link_url = urljoin(current_url, link_url)
+                                        link_url = link_url.split('#')[0]  # Remove fragments
 
-                                # Check if not visited
-                                if link_url not in visited and link_url not in [url for url, _ in queue]:
-                                    queue.append((link_url, depth + 1))
+                                        # Check if same domain
+                                        link_domain = urlparse(link_url).netloc
+                                        if link_domain != domain:
+                                            continue
+
+                                        # Check if not visited
+                                        if link_url not in visited and link_url not in [url for url, _ in queue]:
+                                            queue.append((link_url, depth + 1))
+                                    except Exception as link_error:
+                                        logger.debug(f"Error processing individual link: {link_error}")
+                                        continue
                     except Exception as e:
                         logger.warning(f"Error traversing links from {current_url}: {e}")
                         continue
