@@ -829,32 +829,33 @@ class Crawl4AIClient:
 
     async def save_html_pages(self, domain_url: str) -> Dict:
         """
-        PHASE 4: DEBUG HTML SAVING
+        PHASE 4: DEBUG HTML SAVING - FULL LOGGING VERSION
         Save crawled HTML pages locally for dataset creation.
-        BFS traversal similar to extract(), but saves HTML instead of extracting contacts.
         """
         from crawl4ai import AsyncWebCrawler
 
+        logger.info(f"\n[SAVE_HTML_START] Method called with domain_url={domain_url}")
+
         # Normalize URL
+        logger.info(f"[SAVE_HTML] Normalizing URL...")
         if not domain_url.startswith(('http://', 'https://')):
             domain_url = f'https://{domain_url}'
+        logger.info(f"[SAVE_HTML] Normalized URL: {domain_url}")
 
+        logger.info(f"[SAVE_HTML] Extracting domain from URL...")
         domain = urlparse(domain_url).netloc
+        logger.info(f"[SAVE_HTML] Extracted domain: {domain}")
 
-        # Create output directory: /debug_html/{domain}_{timestamp}/
+        # Create output directory
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_dir = f"/tmp/debug_html/{domain}_{timestamp}"
-
-        try:
-            os.makedirs(output_dir, exist_ok=True)
-        except Exception as e:
-            logger.error(f"Failed to create directory {output_dir}: {e}")
-            raise
+        logger.info(f"[SAVE_HTML] Creating output dir: {output_dir}")
+        os.makedirs(output_dir, exist_ok=True)
+        logger.info(f"[SAVE_HTML] ✓ Output directory created")
 
         logger.info(f"\n{'='*60}")
-        logger.info(f"Starting HTML save: {domain_url}")
-        logger.info(f"Output directory: {output_dir}")
-        logger.info(f"Max pages: {self.max_pages}, Max depth: {self.max_depth}")
+        logger.info(f"[SAVE_HTML] Starting BFS traversal")
+        logger.info(f"[SAVE_HTML] max_pages={self.max_pages}, max_depth={self.max_depth}, timeout={self.timeout}")
         logger.info(f"{'='*60}\n")
 
         # BFS traversal
@@ -863,133 +864,137 @@ class Crawl4AIClient:
         saved_pages = {}
         page_metadata = []
 
-        try:
-            async with AsyncWebCrawler(timeout=self.timeout) as crawler:
-                page_count = 0
-                while queue and len(visited) < self.max_pages:
-                    current_url, depth = queue.popleft()
+        logger.info(f"[SAVE_HTML] Creating AsyncWebCrawler...")
+        async with AsyncWebCrawler(timeout=self.timeout) as crawler:
+            logger.info(f"[SAVE_HTML] ✓ AsyncWebCrawler created")
+            iteration = 0
 
-                    # Skip if already visited or depth exceeded
-                    if current_url in visited or depth > self.max_depth:
-                        continue
+            while queue and len(visited) < self.max_pages:
+                iteration += 1
+                logger.info(f"\n[ITERATION_{iteration}] Queue size={len(queue)}, Visited={len(visited)}/{self.max_pages}")
 
-                    visited.add(current_url)
+                current_url, depth = queue.popleft()
+                logger.info(f"[ITERATION_{iteration}] Popped: {current_url} (depth={depth})")
 
-                    # Fetch page
-                    result = await self._fetch_page(crawler, current_url)
-                    if result is None:
-                        logger.warning(f"[Page {len(visited)}/{self.max_pages}] Depth {depth} → {current_url} (FAILED)")
-                        continue
+                # Skip if visited or max depth
+                if current_url in visited or depth > self.max_depth:
+                    logger.info(f"[ITERATION_{iteration}] SKIPPED (visited={current_url in visited}, depth_exceeded={depth > self.max_depth})")
+                    continue
 
-                    logger.info(f"[Page {len(visited)}/{self.max_pages}] Depth {depth} → {current_url}")
+                visited.add(current_url)
+                logger.info(f"[ITERATION_{iteration}] Added to visited set")
 
-                    try:
-                        # Generate filename from URL
-                        filename = self._url_to_filename(current_url, domain)
-                        filepath = os.path.join(output_dir, filename)
+                # Fetch page
+                logger.info(f"[ITERATION_{iteration}] Fetching page...")
+                result = await self._fetch_page(crawler, current_url)
+                
+                if result is None:
+                    logger.warning(f"[ITERATION_{iteration}] ✗ _fetch_page returned None, skipping")
+                    continue
 
-                        # Ensure directory exists for this file
-                        file_dir = os.path.dirname(filepath)
-                        if file_dir:
-                            os.makedirs(file_dir, exist_ok=True)
+                logger.info(f"[ITERATION_{iteration}] ✓ Page fetched")
+                logger.info(f"[ITERATION_{iteration}] [Page {len(visited)}/{self.max_pages}] {current_url}")
 
-                        # Save HTML
-                        html_content = result.html or result.cleaned_html or ""
-                        with open(filepath, 'w', encoding='utf-8') as f:
-                            f.write(html_content)
+                # Generate filename
+                logger.info(f"[ITERATION_{iteration}] Converting URL to filename...")
+                filename = self._url_to_filename(current_url, domain)
+                logger.info(f"[ITERATION_{iteration}] Filename: {filename}")
 
-                        logger.info(f"  ✓ Saved: {filename}")
+                filepath = os.path.join(output_dir, filename)
+                logger.info(f"[ITERATION_{iteration}] Filepath: {filepath}")
 
-                        # Store metadata
-                        saved_pages[current_url] = {
-                            "filename": filename,
-                            "depth": depth,
-                            "html_size": len(html_content),
-                            "url": current_url
-                        }
+                # Save HTML
+                logger.info(f"[ITERATION_{iteration}] Extracting HTML from result...")
+                html_content = result.html or result.cleaned_html or ""
+                logger.info(f"[ITERATION_{iteration}] HTML size: {len(html_content)} bytes")
 
-                        # Count internal links safely
-                        links_count = 0
-                        try:
-                            if result.links and isinstance(result.links, dict):
-                                links_count = len(result.links.get("internal", []))
-                        except (AttributeError, TypeError):
-                            links_count = 0
+                logger.info(f"[ITERATION_{iteration}] Writing to file...")
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    f.write(html_content)
+                logger.info(f"[ITERATION_{iteration}] ✓ File saved")
 
-                        page_metadata.append({
-                            "url": current_url,
-                            "filename": filename,
-                            "depth": depth,
-                            "html_size": len(html_content),
-                            "links_found": links_count
-                        })
-                    except Exception as e:
-                        logger.error(f"Error saving page {current_url}: {e}")
-                        continue
+                # Store metadata
+                saved_pages[current_url] = {
+                    "filename": filename,
+                    "depth": depth,
+                    "html_size": len(html_content),
+                    "url": current_url
+                }
 
-                    # Traverse links
-                    try:
-                        if result.links and isinstance(result.links, dict):
-                            internal_links = result.links.get("internal", [])
-                            if internal_links and isinstance(internal_links, list):
-                                for link in internal_links:
-                                    try:
-                                        if not isinstance(link, dict):
-                                            continue
+                # Count links
+                links_count = 0
+                if result.links and isinstance(result.links, dict):
+                    links_count = len(result.links.get("internal", []))
+                logger.info(f"[ITERATION_{iteration}] Found {links_count} internal links")
 
-                                        link_url = link.get("href")
-                                        if not link_url:
-                                            continue
+                page_metadata.append({
+                    "url": current_url,
+                    "filename": filename,
+                    "depth": depth,
+                    "html_size": len(html_content),
+                    "links_found": links_count
+                })
 
-                                        # Resolve relative URLs
-                                        link_url = urljoin(current_url, link_url)
-                                        link_url = link_url.split('#')[0]  # Remove fragments
+                # Traverse links
+                logger.info(f"[ITERATION_{iteration}] Processing links...")
+                if result.links and isinstance(result.links, dict):
+                    internal_links = result.links.get("internal", [])
+                    logger.info(f"[ITERATION_{iteration}] Internal links count: {len(internal_links) if isinstance(internal_links, list) else 'NOT_A_LIST'}")
 
-                                        # Check if same domain
-                                        link_domain = urlparse(link_url).netloc
-                                        if link_domain != domain:
-                                            continue
+                    if internal_links and isinstance(internal_links, list):
+                        links_added = 0
+                        for idx, link in enumerate(internal_links):
+                            if not isinstance(link, dict):
+                                logger.debug(f"[ITERATION_{iteration}] Link {idx}: not a dict, skipping")
+                                continue
 
-                                        # Check if not visited
-                                        if link_url not in visited and link_url not in [url for url, _ in queue]:
-                                            queue.append((link_url, depth + 1))
-                                    except Exception as link_error:
-                                        logger.debug(f"Error processing individual link: {link_error}")
-                                        continue
-                    except Exception as e:
-                        logger.warning(f"Error traversing links from {current_url}: {e}")
-                        continue
+                            link_url = link.get("href")
+                            if not link_url:
+                                logger.debug(f"[ITERATION_{iteration}] Link {idx}: no href, skipping")
+                                continue
 
-        except Exception as e:
-            logger.error(f"Error during HTML save for {domain_url}: {e}")
-            raise
+                            link_url = urljoin(current_url, link_url)
+                            link_url = link_url.split('#')[0]
 
-        # Save metadata.json
-        try:
-            metadata_file = os.path.join(output_dir, "metadata.json")
-            with open(metadata_file, 'w', encoding='utf-8') as f:
-                json.dump({
-                    "domain": domain,
-                    "crawl_time": timestamp,
-                    "max_pages": self.max_pages,
-                    "max_depth": self.max_depth,
-                    "pages_saved": len(saved_pages),
-                    "total_html_size": sum(p["html_size"] for p in saved_pages.values()),
-                    "pages": page_metadata
-                }, f, indent=2, ensure_ascii=False)
-        except Exception as e:
-            logger.error(f"Error saving metadata.json: {e}")
-            raise
+                            link_domain = urlparse(link_url).netloc
+                            if link_domain != domain:
+                                logger.debug(f"[ITERATION_{iteration}] Link {idx}: different domain, skipping")
+                                continue
+
+                            if link_url not in visited and link_url not in [u for u, _ in queue]:
+                                logger.debug(f"[ITERATION_{iteration}] Link {idx}: adding to queue")
+                                queue.append((link_url, depth + 1))
+                                links_added += 1
+
+                        logger.info(f"[ITERATION_{iteration}] ✓ Added {links_added} links to queue")
+                    else:
+                        logger.info(f"[ITERATION_{iteration}] No valid links to process")
+                else:
+                    logger.info(f"[ITERATION_{iteration}] No links dict")
+
+        # Save metadata
+        logger.info(f"\n[SAVE_HTML] Saving metadata.json...")
+        metadata_file = os.path.join(output_dir, "metadata.json")
+        with open(metadata_file, 'w', encoding='utf-8') as f:
+            json.dump({
+                "domain": domain,
+                "crawl_time": timestamp,
+                "max_pages": self.max_pages,
+                "max_depth": self.max_depth,
+                "pages_saved": len(saved_pages),
+                "total_html_size": sum(p["html_size"] for p in saved_pages.values()) if saved_pages else 0,
+                "pages": page_metadata
+            }, f, indent=2, ensure_ascii=False)
+        logger.info(f"[SAVE_HTML] ✓ Metadata saved")
 
         logger.info(f"\n{'='*60}")
-        logger.info(f"✓ Completed HTML save")
-        logger.info(f"  Visited {len(visited)} pages, saved {len(saved_pages)}")
-        logger.info(f"  Folder: {output_dir}")
-        logger.info(f"  Metadata: {metadata_file}")
+        logger.info(f"[SAVE_HTML] ✓ COMPLETE")
+        logger.info(f"[SAVE_HTML] Visited: {len(visited)} pages")
+        logger.info(f"[SAVE_HTML] Saved: {len(saved_pages)} pages")
+        logger.info(f"[SAVE_HTML] Folder: {output_dir}")
         logger.info(f"{'='*60}\n")
 
-        # Even if no pages were saved, still return success with metadata
-        return {
+        result_dict = {
             "url": domain_url,
             "domain": domain,
             "saved_pages": len(saved_pages),
@@ -998,6 +1003,8 @@ class Crawl4AIClient:
             "metadata_file": metadata_file,
             "total_html_size": sum(p["html_size"] for p in saved_pages.values()) if saved_pages else 0
         }
+        logger.info(f"[SAVE_HTML] Returning: {result_dict}")
+        return result_dict
 
     def _url_to_filename(self, url: str, domain: str) -> str:
         """
