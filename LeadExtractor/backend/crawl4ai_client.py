@@ -844,7 +844,12 @@ class Crawl4AIClient:
         # Create output directory: /debug_html/{domain}_{timestamp}/
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_dir = f"/tmp/debug_html/{domain}_{timestamp}"
-        os.makedirs(output_dir, exist_ok=True)
+
+        try:
+            os.makedirs(output_dir, exist_ok=True)
+        except Exception as e:
+            logger.error(f"Failed to create directory {output_dir}: {e}")
+            raise
 
         logger.info(f"\n{'='*60}")
         logger.info(f"Starting HTML save: {domain_url}")
@@ -858,87 +863,106 @@ class Crawl4AIClient:
         saved_pages = {}
         page_metadata = []
 
-        async with AsyncWebCrawler() as crawler:
-            while queue and len(visited) < self.max_pages:
-                current_url, depth = queue.popleft()
+        try:
+            async with AsyncWebCrawler() as crawler:
+                while queue and len(visited) < self.max_pages:
+                    current_url, depth = queue.popleft()
 
-                # Skip if already visited or depth exceeded
-                if current_url in visited or depth > self.max_depth:
-                    continue
+                    # Skip if already visited or depth exceeded
+                    if current_url in visited or depth > self.max_depth:
+                        continue
 
-                visited.add(current_url)
+                    visited.add(current_url)
 
-                # Fetch page
-                result = await self._fetch_page(crawler, current_url)
-                if result is None:
-                    logger.warning(f"[Page {len(visited)}/{self.max_pages}] Depth {depth} → {current_url} (FAILED)")
-                    continue
+                    # Fetch page
+                    result = await self._fetch_page(crawler, current_url)
+                    if result is None:
+                        logger.warning(f"[Page {len(visited)}/{self.max_pages}] Depth {depth} → {current_url} (FAILED)")
+                        continue
 
-                logger.info(f"[Page {len(visited)}/{self.max_pages}] Depth {depth} → {current_url}")
+                    logger.info(f"[Page {len(visited)}/{self.max_pages}] Depth {depth} → {current_url}")
 
-                # Generate filename from URL
-                filename = self._url_to_filename(current_url, domain)
-                filepath = os.path.join(output_dir, filename)
+                    try:
+                        # Generate filename from URL
+                        filename = self._url_to_filename(current_url, domain)
+                        filepath = os.path.join(output_dir, filename)
 
-                # Ensure directory exists for nested paths
-                os.makedirs(os.path.dirname(filepath), exist_ok=True)
+                        # Ensure directory exists for this file
+                        file_dir = os.path.dirname(filepath)
+                        if file_dir:
+                            os.makedirs(file_dir, exist_ok=True)
 
-                # Save HTML
-                html_content = result.html or result.cleaned_html or ""
-                with open(filepath, 'w', encoding='utf-8') as f:
-                    f.write(html_content)
+                        # Save HTML
+                        html_content = result.html or result.cleaned_html or ""
+                        with open(filepath, 'w', encoding='utf-8') as f:
+                            f.write(html_content)
 
-                logger.info(f"  ✓ Saved: {filename}")
+                        logger.info(f"  ✓ Saved: {filename}")
 
-                # Store metadata
-                saved_pages[current_url] = {
-                    "filename": filename,
-                    "depth": depth,
-                    "html_size": len(html_content),
-                    "url": current_url
-                }
+                        # Store metadata
+                        saved_pages[current_url] = {
+                            "filename": filename,
+                            "depth": depth,
+                            "html_size": len(html_content),
+                            "url": current_url
+                        }
 
-                page_metadata.append({
-                    "url": current_url,
-                    "filename": filename,
-                    "depth": depth,
-                    "html_size": len(html_content),
-                    "links_found": len(result.links.get("internal", [])) if result.links else 0
-                })
+                        page_metadata.append({
+                            "url": current_url,
+                            "filename": filename,
+                            "depth": depth,
+                            "html_size": len(html_content),
+                            "links_found": len(result.links.get("internal", [])) if result.links else 0
+                        })
+                    except Exception as e:
+                        logger.error(f"Error saving page {current_url}: {e}")
+                        continue
 
-                # Traverse links
-                if result.links:
-                    internal_links = result.links.get("internal", [])
-                    for link in internal_links:
-                        link_url = link.get("href")
-                        if not link_url:
-                            continue
+                    # Traverse links
+                    try:
+                        if result.links:
+                            internal_links = result.links.get("internal", [])
+                            for link in internal_links:
+                                link_url = link.get("href")
+                                if not link_url:
+                                    continue
 
-                        # Resolve relative URLs
-                        link_url = urljoin(current_url, link_url)
-                        link_url = link_url.split('#')[0]  # Remove fragments
+                                # Resolve relative URLs
+                                link_url = urljoin(current_url, link_url)
+                                link_url = link_url.split('#')[0]  # Remove fragments
 
-                        # Check if same domain
-                        link_domain = urlparse(link_url).netloc
-                        if link_domain != domain:
-                            continue
+                                # Check if same domain
+                                link_domain = urlparse(link_url).netloc
+                                if link_domain != domain:
+                                    continue
 
-                        # Check if not visited
-                        if link_url not in visited and link_url not in [url for url, _ in queue]:
-                            queue.append((link_url, depth + 1))
+                                # Check if not visited
+                                if link_url not in visited and link_url not in [url for url, _ in queue]:
+                                    queue.append((link_url, depth + 1))
+                    except Exception as e:
+                        logger.warning(f"Error traversing links from {current_url}: {e}")
+                        continue
+
+        except Exception as e:
+            logger.error(f"Error during HTML save for {domain_url}: {e}")
+            raise
 
         # Save metadata.json
-        metadata_file = os.path.join(output_dir, "metadata.json")
-        with open(metadata_file, 'w', encoding='utf-8') as f:
-            json.dump({
-                "domain": domain,
-                "crawl_time": timestamp,
-                "max_pages": self.max_pages,
-                "max_depth": self.max_depth,
-                "pages_saved": len(saved_pages),
-                "total_html_size": sum(p["html_size"] for p in saved_pages.values()),
-                "pages": page_metadata
-            }, f, indent=2, ensure_ascii=False)
+        try:
+            metadata_file = os.path.join(output_dir, "metadata.json")
+            with open(metadata_file, 'w', encoding='utf-8') as f:
+                json.dump({
+                    "domain": domain,
+                    "crawl_time": timestamp,
+                    "max_pages": self.max_pages,
+                    "max_depth": self.max_depth,
+                    "pages_saved": len(saved_pages),
+                    "total_html_size": sum(p["html_size"] for p in saved_pages.values()),
+                    "pages": page_metadata
+                }, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            logger.error(f"Error saving metadata.json: {e}")
+            raise
 
         logger.info(f"\n{'='*60}")
         logger.info(f"✓ Completed HTML save")
@@ -965,29 +989,41 @@ class Crawl4AIClient:
         - https://example.com/about/team → about_team.html
         - https://example.com/contact?id=1 → contact.html
         """
-        parsed = urlparse(url)
-        path = parsed.path.strip('/')
+        try:
+            parsed = urlparse(url)
+            path = parsed.path.strip('/')
 
-        # Remove query params and fragments
-        # (already done in BFS traversal, but be safe)
-        if '?' in path:
-            path = path.split('?')[0]
-        if '#' in path:
-            path = path.split('#')[0]
+            # Remove query params and fragments
+            # (already done in BFS traversal, but be safe)
+            if '?' in path:
+                path = path.split('?')[0]
+            if '#' in path:
+                path = path.split('#')[0]
 
-        # If root, use index.html
-        if not path:
+            # If root, use index.html
+            if not path:
+                logger.debug(f"URL {url} has no path, using index.html")
+                return "index.html"
+
+            # Replace slashes with underscores, remove special chars
+            # Keep only alphanumeric, hyphen, underscore
+            filename = re.sub(r'[^a-zA-Z0-9_/-]', '', path)
+            filename = filename.replace('/', '_').lower()
+
+            # Ensure filename is valid
+            if not filename or filename == '_':
+                logger.debug(f"URL {url} resulted in invalid filename, using index.html")
+                return "index.html"
+
+            # Final filename with extension
+            filename = f"{filename}.html"
+
+            logger.debug(f"URL {url} → {filename}")
+            return filename
+
+        except Exception as e:
+            logger.error(f"Error converting URL {url} to filename: {e}")
             return "index.html"
-
-        # Replace slashes with underscores, remove special chars
-        # Keep only alphanumeric, hyphen, underscore
-        filename = re.sub(r'[^a-zA-Z0-9_/-]', '', path)
-        filename = filename.replace('/', '_').lower()
-
-        # Handle duplicates (should not happen in BFS but be safe)
-        filename = f"{filename}.html"
-
-        return filename
 
     async def _fetch_page(self, crawler, url: str):
         """
