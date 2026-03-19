@@ -116,6 +116,41 @@ async def extract_contacts(request: ExtractRequest):
         logger.error(f"Error during extraction: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/debug/save-html")
+async def save_html_debug(request: ExtractRequest):
+    """Save crawled HTML pages locally for dataset creation."""
+    if not request.urls:
+        raise HTTPException(status_code=400, detail="URLs list cannot be empty")
+
+    urls = [url.strip() for url in request.urls if url.strip()]
+    if not urls:
+        raise HTTPException(status_code=400, detail="No valid URLs provided")
+
+    client = Crawl4AIClient(timeout=30, max_pages=50, max_depth=3, use_llm=False)
+    results = []
+
+    try:
+        for url in urls:
+            display_url = url if url.startswith(('http://', 'https://')) else f'https://{url}'
+
+            # Use new debug method to save HTML pages
+            save_result = await client.save_html_pages(display_url)
+            results.append(save_result)
+
+        logger.info(f"\n[DEBUG SAVE] Total domains processed: {len(results)}")
+        for i, result in enumerate(results):
+            logger.info(f"  [{i}] {result['url']}: {result['saved_pages']} pages saved to {result['folder']}")
+
+        return {
+            "status": "ok",
+            "results": results,
+            "total": len(results)
+        }
+
+    except Exception as e:
+        logger.error(f"Error during HTML save: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint."""
