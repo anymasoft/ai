@@ -17,6 +17,9 @@ from collections import deque
 # ⭐ Новый модульный phone_extractor (v1.0)
 from phone_extractor import extract_phones_from_crawl_result
 
+# ⭐ NEW: Contact Discovery Engine (v1.0)
+from contact_discovery import ContactDiscoveryEngine
+
 logger = logging.getLogger(__name__)
 
 
@@ -32,10 +35,15 @@ class Crawl4AIClient:
         - max_pages = 25 (was 10) - crawl more pages
         - max_depth = 3 (was 2) - go deeper
         - max_links = 100 (was 30) - gather more candidates
+
+        INTEGRATION: Contact Discovery Engine (v1.0)
         """
         self.timeout = timeout
         self.max_pages = max_pages
         self.max_depth = max_depth
+
+        # ⭐ Initialize Contact Discovery Engine
+        self.discovery_engine = ContactDiscoveryEngine()
 
     def _merge_fragmented_numbers(self, text: str) -> str:
         """
@@ -591,10 +599,28 @@ class Crawl4AIClient:
         status_per_site = {}
         page_count = 0
 
-        # Manual BFS traversal
-        queue = deque([(domain_url, 0)])  # (url, depth)
+        # ⭐ MULTI-ENTRY STRATEGY (v4.0)
+        # Don't start only from homepage - add seed URLs that likely have contacts
+        # This gives us parallel paths to find contacts faster
+        seed_urls = [
+            domain_url,
+            urljoin(domain_url, '/contact'),
+            urljoin(domain_url, '/contacts'),
+            urljoin(domain_url, '/about'),
+        ]
+
+        queue = deque()
+        for seed_url in seed_urls:
+            # Normalize and deduplicate
+            normalized = seed_url.split('#')[0].split('?')[0]
+            queue.append((normalized, 0))
+
         visited = set()
         crawl4ai_failed = False  # Flag to activate fallback crawler
+
+        logger.info(f"[MULTI-ENTRY] Starting from {len(seed_urls)} entry points:")
+        for url in seed_urls:
+            logger.info(f"  → {url.replace(f'https://{domain}', '')}")
 
         try:
             async with AsyncWebCrawler() as crawler:
@@ -659,7 +685,6 @@ class Crawl4AIClient:
             logger.error(f"Fatal error: {e}", exc_info=True)
 
         # Build final result
-        # RECALL-FIRST: NO SLICING - return ALL found contacts!
         # Format phones: convert dict values to display format
         phones_list = []
         for normalized_key, phone_data in sorted(all_phones.items()):
@@ -674,6 +699,16 @@ class Crawl4AIClient:
                     "phone": phone_data,
                     "source_page": ""
                 })
+
+        # ⭐ LIMIT CANDIDATES (important for LLM performance)
+        # Collect all candidates, but limit to 30 for LLM processing
+        # (More than 30 is rare, and LLM can't handle too many at once)
+        if len(phones_list) > 30:
+            logger.warning(
+                f"[CANDIDATE LIMIT] Found {len(phones_list)} candidates, "
+                f"limiting to 30 for LLM (others will be discarded)"
+            )
+            phones_list = phones_list[:30]
 
         # ========== STAGE 4: FINAL LLM VALIDATION (NEW!) ==========
         # ⭐ CRITICAL: Validate all phones through LLM before returning
@@ -783,6 +818,102 @@ class Crawl4AIClient:
             logger.debug(f"Fetch error for {url}: {e}")
             return None
 
+    def _score_url_for_contacts(self, url: str, anchor_text: str = "") -> int:
+        """
+        ⭐ CONTACT DISCOVERY ENGINE (v4.0)
+        Оценить вероятность что URL содержит контакты.
+
+        Scoring система:
+        - High priority keywords (contact, contacts, контакты): +5
+        - Medium priority keywords (about, team, office, офис): +3
+        - Low priority keywords (help, support, feedback): +1
+        - Anchor text > URL (более надежный источник): +2 bonus
+        - Close to root (fewer slashes): +1
+
+        Результат: URL с высоким score обходятся ПЕРВЫМИ
+        """
+        url_lower = url.lower()
+        text_lower = (anchor_text or "").lower()
+
+        score = 0
+
+        # HIGH PRIORITY: контактные страницы
+        high_priority = [
+            "contact", "contacts",
+            "контакты", "контакт",
+            "свяжитесь", "связь"
+        ]
+        for kw in high_priority:
+            if kw in text_lower:
+                score += 7  # Текст ссылки важнее!
+            elif kw in url_lower:
+                score += 5
+
+        # MEDIUM PRIORITY: информационные страницы
+        medium_priority = [
+            "about", "company", "team", "office",
+            "о нас", "о компании", "команда", "офис",
+            "реквизиты", "адрес"
+        ]
+        for kw in medium_priority:
+            if kw in text_lower:
+                score += 4
+            elif kw in url_lower:
+                score += 2
+
+        # LOW PRIORITY: поддержка
+        low_priority = [
+            "support", "help", "feedback", "faq",
+            "поддержка", "помощь", "обратная связь"
+        ]
+        for kw in low_priority:
+            if kw in text_lower:
+                score += 2
+            elif kw in url_lower:
+                score += 1
+
+        # Бонус за глубину (ближе к корню — часто контакты)
+        if url_lower.count('/') <= 3:
+            score += 1
+
+        return score
+
+    def _extract_footer_links(self, html: str, domain: str) -> List[tuple]:
+        """
+        ⭐ FOOTER EXTRACTION (v4.0)
+        Найти и выделить ссылки из футера.
+        Давать им BOOST +3 к score.
+
+        90% контактов находится в футере!
+        """
+        footer_links = []
+
+        try:
+            from bs4 import BeautifulSoup
+
+            soup = BeautifulSoup(html, 'html.parser')
+            footer = soup.find("footer")
+
+            if footer:
+                for link in footer.find_all("a", href=True):
+                    href = link.get("href", "")
+                    text = link.get_text(strip=True)
+
+                    if href and text:
+                        # Normalize URL
+                        normalized_url = urljoin(f'https://{domain}/', href)
+                        normalized_url = normalized_url.split('#')[0].split('?')[0]
+
+                        # Footer boost: +3 к score
+                        footer_links.append((normalized_url, text, 3))  # (url, text, boost)
+
+                        logger.debug(f"[FOOTER] Found link: {text} → {normalized_url}")
+
+        except Exception as e:
+            logger.debug(f"[FOOTER EXTRACTION] Error: {e}")
+
+        return footer_links
+
     def _traverse_links(
         self,
         result,
@@ -822,15 +953,51 @@ class Crawl4AIClient:
                 links_added += 1
                 logger.debug(f"  → Added forced URL: {forced_url.replace(f'https://{domain}', '')}")
 
-        # === ADD EXTRACTED LINKS (Regular Priority) ===
+        # === ADD EXTRACTED LINKS WITH PRIORITY SCORING (v4.0) ===
+        scored_links = []
+
         try:
-            # Get internal links from Crawl4AI
+            # ⭐ STEP 1: Extract footer links using Discovery Engine (they have +3 boost)
+            html_content = getattr(result, 'html', '')
+            footer_links = self.discovery_engine.extract_footer_links(html_content)
+            if footer_links:
+                logger.info(f"  📍 Found {len(footer_links)} footer links")
+                for footer_url, footer_text, boost in footer_links:
+                    # Normalize footer URL
+                    normalized_footer_url = urljoin(current_url, footer_url)
+                    normalized_footer_url = normalized_footer_url.split('#')[0]
+                    normalized_footer_url = normalized_footer_url.split('?')[0]
+
+                    # Score using Discovery Engine
+                    url_score = self.discovery_engine.score_url(normalized_footer_url)
+                    text_score = self.discovery_engine.score_anchor_text(footer_text)
+                    total_score = url_score + text_score + boost
+                    scored_links.append((normalized_footer_url, total_score, "footer"))
+
+            # ⭐ STEP 1b: Extract header links using Discovery Engine (they have +1 boost)
+            header_links = self.discovery_engine.extract_header_links(html_content)
+            if header_links:
+                logger.info(f"  📍 Found {len(header_links)} header links")
+                for header_url, header_text, boost in header_links:
+                    # Normalize header URL
+                    normalized_header_url = urljoin(current_url, header_url)
+                    normalized_header_url = normalized_header_url.split('#')[0]
+                    normalized_header_url = normalized_header_url.split('?')[0]
+
+                    # Score using Discovery Engine
+                    url_score = self.discovery_engine.score_url(normalized_header_url)
+                    text_score = self.discovery_engine.score_anchor_text(header_text)
+                    total_score = url_score + text_score + boost
+                    scored_links.append((normalized_header_url, total_score, "header"))
+
+            # ⭐ STEP 2: Score extracted links from Crawl4AI
             internal_links = result.links.get("internal", [])
 
             for link in internal_links:
                 try:
                     # Get href from Dict
                     href = link.get("href") if isinstance(link, dict) else str(link)
+                    anchor_text = link.get("text", "") if isinstance(link, dict) else ""
                     if not href:
                         continue
 
@@ -840,7 +1007,6 @@ class Crawl4AIClient:
                     normalized_url = normalized_url.split('?')[0]  # Remove query
 
                     # === FILTER 1: Skip query parameters ===
-                    # Don't add URLs with ? (they create duplicates)
                     if '?' in href:
                         continue
 
@@ -861,24 +1027,40 @@ class Crawl4AIClient:
                     if current_depth + 1 > self.max_depth:
                         continue
 
-                    # Check if priority URL (should already be in queue, but check anyway)
+                    # ⭐ SCORE THE LINK using Discovery Engine
+                    url_score = self.discovery_engine.score_url(normalized_url)
+                    text_score = self.discovery_engine.score_anchor_text(anchor_text)
+                    score = url_score + text_score
+
+                    # Skip if already in forced URLs
                     url_lower = normalized_url.lower()
-                    is_priority = any(kw in url_lower for kw in ['contact', 'contacts', 'about', 'team'])
+                    if any(kw in url_lower for kw in ['contact', 'contacts', 'about', 'team']):
+                        continue  # Already added as forced URL
 
-                    if is_priority:
-                        # Already added as forced URL above, skip
-                        continue
-
-                    # Add to BACK of queue (regular priority)
-                    queue.append((normalized_url, current_depth + 1))
-                    links_added += 1
+                    scored_links.append((normalized_url, score, "crawled"))
 
                 except Exception as e:
                     logger.debug(f"Link parsing error: {e}")
                     continue
 
+            # ⭐ STEP 3: Sort links by score (highest first)
+            scored_links.sort(key=lambda x: x[1], reverse=True)
+
+            # ⭐ STEP 4: Add scored links to queue
+            high_score_links = 0
+            for url, score, source in scored_links:
+                if score >= 2:  # Only add links with meaningful score
+                    queue.append((url, current_depth + 1))
+                    links_added += 1
+                    if score >= 5:
+                        high_score_links += 1
+                    logger.debug(f"  → [{source}] Added URL (score={score}): {url.replace(f'https://{domain}', '')}")
+
+            if high_score_links > 0:
+                logger.info(f"  ⭐ Added {high_score_links} high-score contact pages")
+
         except Exception as e:
-            logger.debug(f"Traversal error: {e}")
+            logger.debug(f"Traversal scoring error: {e}")
 
         # Log summary
         if forced_urls_added > 0:
@@ -1346,12 +1528,92 @@ class Crawl4AIClient:
             except Exception as e:
                 logger.debug(f"[CONTACT REGEX] Error: {e}")
 
-            # ========== PASS 4: WIDE PHONE REGEX (RECALL-FIRST + SANITY FILTER) ==========
-            # CRITICAL: This wide regex catches almost all phone-like patterns
+            # ========== PASS 3.7: AGGRESSIVE RUSSIAN PHONE PATTERN (NEW!) ==========
+            # ⭐ NEW: Специализированный regex для русских номеров (без требования контекста)
+            # Ловит:
+            # * +7 (812) 250-62-10
+            # * 8 812 250 62 10
+            # * 8122506210
+            # * 812-250-6210
+            # Без фильтров (фильтры будут в LLM)
+            try:
+                # Pattern: (+ or 8 or nothing) + area code + number parts
+                # Very permissive - catches almost any 10-11 digit sequence
+                russian_pattern = r'(?:\+7|8)?[\s\-\(\)]*\d{3}[\s\-\(\)]*\d{3}[\s\-\(\)]*\d{2}[\s\-\(\)]*\d{2}'
+
+                russian_matches = re.finditer(russian_pattern, normalized_text)
+                russian_count = 0
+
+                for match in russian_matches:
+                    phone_raw = match.group(0).strip()
+                    if not phone_raw:
+                        continue
+
+                    phone_clean = self._clean_phone_extension(phone_raw)
+                    if not phone_clean:
+                        continue
+
+                    # CRITICAL: ⚠️ NOT FILTERING HERE - let LLM decide!
+                    # Мы собираем ВСЕ кандидаты, LLM их отфильтрует
+
+                    normalized = self._normalize_phone(phone_clean)
+                    if len(normalized) >= 7:
+                        if normalized not in all_phones:
+                            all_phones[normalized] = {"original": phone_clean, "source": source_url}
+                            phones_on_page.add(phone_clean)
+                            russian_count += 1
+
+                if russian_count > 0:
+                    logger.info(f"[EXTRACTION - RUSSIAN PATTERN] Found {russian_count} phones (aggressive Russian pattern)")
+            except Exception as e:
+                logger.debug(f"[RUSSIAN PATTERN] Error: {e}")
+
+            # ========== PASS 3.8: DIGIT-ONLY DETECTION (NEW!) ==========
+            # ⭐ NEW: Ищем строки с 10 или 11 цифр подряд (потенциальные номера)
+            # Примеры: "7812250621", "79123456789", "8123456789"
+            try:
+                # Find all sequences of 10-11 digits
+                digit_pattern = r'\b\d{10,11}\b'
+                digit_matches = re.finditer(digit_pattern, normalized_text)
+                digit_count = 0
+
+                for match in digit_matches:
+                    digits_raw = match.group(0)
+
+                    # Add + prefix if starts with 7 or 79 (Russian)
+                    if digits_raw.startswith('79'):
+                        phone_raw = '+' + digits_raw
+                    elif digits_raw.startswith('7'):
+                        phone_raw = '+' + digits_raw
+                    else:
+                        phone_raw = digits_raw  # Maybe 8... or 1... (international)
+
+                    phone_clean = self._clean_phone_extension(phone_raw)
+                    if not phone_clean:
+                        continue
+
+                    # NO FILTERS - collect candidates
+
+                    normalized = self._normalize_phone(phone_clean)
+                    if len(normalized) >= 7:
+                        if normalized not in all_phones:
+                            all_phones[normalized] = {"original": phone_clean, "source": source_url}
+                            phones_on_page.add(phone_clean)
+                            digit_count += 1
+
+                if digit_count > 0:
+                    logger.info(f"[EXTRACTION - DIGIT PATTERN] Found {digit_count} phones (10-11 digits)")
+            except Exception as e:
+                logger.debug(f"[DIGIT PATTERN] Error: {e}")
+
+            # ========== PASS 4: WIDE PHONE REGEX (RAW CANDIDATE COLLECTION) ==========
+            # ⭐ IMPORTANT: This is the FINAL catch-all for any phone-like patterns
+            # We collect RAW candidates here - ALL filtering is done by LLM later
             # Pattern: [+\d][\d\-\(\)\s]{6,}\d
             # Matches: +7 (383) 209-21-27, 8(383)209-27, +1-555-0000, etc.
             #
-            # v2.0 IMPROVEMENT: Apply sanity filter to remove 80-90% garbage
+            # NOTE: sanity/structural filters removed from here!
+            # Those are now a job for phone_final_validator.py (LLM stage)
             try:
                 wide_phone_regex = r'[\+\d][\d\-\(\)\s\.]\.?{6,}\d'
                 # Actually, let's use a simpler and more reliable pattern:
@@ -1366,37 +1628,23 @@ class Crawl4AIClient:
                     if not phone_clean:
                         continue
 
-                    # v2.0: SANITY FILTER (убрать очевидный мусор)
-                    # Это удалит ~80-90% false positives (float, даты, ID, etc.)
-                    if not self._is_sane_phone_candidate(phone_clean):
-                        logger.debug(f"[WIDE REGEX] Sanity filter rejected: {phone_clean}")
-                        continue
-
-                    # v2.5: STRUCTURAL FILTER (удалить мусор по структуре)
-                    # Это удалит ID, даты, годы, чистые числа
-                    if not self._is_structural_phone(phone_clean):
-                        logger.debug(f"[WIDE REGEX] Structural filter rejected: {phone_clean}")
-                        continue
-
-                    if not self._is_valid_phone(phone_clean):
-                        logger.debug(f"[WIDE REGEX] Valid check rejected: {phone_clean}")
-                        continue
+                    # ⭐ NO FILTERS HERE ANYMORE!
+                    # OLD: sanity + structural filters were applied here
+                    # NEW: Collect ALL candidates, let LLM filter them
+                    # (This increases recall significantly)
 
                     normalized = self._normalize_phone(phone_clean)
-                    if len(normalized) >= 7:
-                        # RECALL-FIRST: Add if not already present (but accept duplicates from different sources)
+                    if len(normalized) >= 5:  # Very permissive (usually 7+, but be lenient)
+                        # RECALL-FIRST: Add if not already present
                         if normalized not in all_phones:
                             all_phones[normalized] = {"original": phone_clean, "source": source_url}
                             phones_on_page.add(phone_clean)
                             regex_count += 1
-                        else:
-                            # Already exists, but maybe different format - log it
-                            logger.debug(f"[WIDE REGEX] Duplicate normalized phone: {normalized} (original: {phone_clean})")
 
                 if regex_count > 0:
-                    logger.info(f"[EXTRACTION - WIDE REGEX] Found: {regex_count} phones (after sanity + structural filters)")
+                    logger.info(f"[EXTRACTION - WIDE REGEX] Found: {regex_count} phones (NO filters - candidates for LLM)")
                 else:
-                    logger.debug(f"[EXTRACTION - WIDE REGEX] No phones passed filters (raw found: {raw_count})")
+                    logger.debug(f"[EXTRACTION - WIDE REGEX] No phones matched wide pattern (raw found: {raw_count})")
             except Exception as e:
                 logger.debug(f"[WIDE REGEX] Error: {e}")
 
