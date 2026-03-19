@@ -864,7 +864,8 @@ class Crawl4AIClient:
         page_metadata = []
 
         try:
-            async with AsyncWebCrawler() as crawler:
+            async with AsyncWebCrawler(timeout=self.timeout) as crawler:
+                page_count = 0
                 while queue and len(visited) < self.max_pages:
                     current_url, depth = queue.popleft()
 
@@ -966,18 +967,20 @@ class Crawl4AIClient:
 
         logger.info(f"\n{'='*60}")
         logger.info(f"✓ Completed HTML save")
-        logger.info(f"  Saved {len(saved_pages)} pages")
+        logger.info(f"  Visited {len(visited)} pages, saved {len(saved_pages)}")
         logger.info(f"  Folder: {output_dir}")
         logger.info(f"  Metadata: {metadata_file}")
         logger.info(f"{'='*60}\n")
 
+        # Even if no pages were saved, still return success with metadata
         return {
             "url": domain_url,
             "domain": domain,
             "saved_pages": len(saved_pages),
+            "visited_pages": len(visited),
             "folder": output_dir,
             "metadata_file": metadata_file,
-            "total_html_size": sum(p["html_size"] for p in saved_pages.values())
+            "total_html_size": sum(p["html_size"] for p in saved_pages.values()) if saved_pages else 0
         }
 
     def _url_to_filename(self, url: str, domain: str) -> str:
