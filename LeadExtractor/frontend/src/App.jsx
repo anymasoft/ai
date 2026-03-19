@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { extractContacts } from './api'
+import { extractContacts, saveHtmlPages } from './api'
 import ResultsTable from './components/ResultsTable'
 import Header from './components/Header'
 
@@ -11,6 +11,8 @@ export default function App() {
   const [success, setSuccess] = useState('')
   const [progress, setProgress] = useState({ current: 0, total: 0 })
   const [toastMessage, setToastMessage] = useState('')
+  const [savingHtml, setSavingHtml] = useState(false)
+  const [saveHtmlMessage, setSaveHtmlMessage] = useState('')
 
   // Показать toast
   const showToast = (message) => {
@@ -146,6 +148,42 @@ export default function App() {
     }
   }
 
+  const handleSaveHtml = async () => {
+    setSaveHtmlMessage('')
+    setError('')
+
+    const urlList = urls
+      .split('\n')
+      .map(url => url.trim())
+      .filter(url => url.length > 0)
+
+    if (urlList.length === 0) {
+      setError('Please enter at least one URL to save HTML from')
+      return
+    }
+
+    setSavingHtml(true)
+
+    try {
+      const data = await saveHtmlPages(urlList)
+
+      if (data.results && data.results.length > 0) {
+        const firstResult = data.results[0]
+        const pagesCount = firstResult.saved_pages
+        const folder = firstResult.folder
+        setSaveHtmlMessage(`✓ Saved ${pagesCount} HTML pages to:\n${folder}`)
+        showToast(`Saved ${pagesCount} pages`)
+      } else {
+        setSaveHtmlMessage('No pages were saved')
+      }
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to save HTML pages')
+      console.error('Error saving HTML:', err)
+    } finally {
+      setSavingHtml(false)
+    }
+  }
+
   const handleExportCSV = () => {
     const headers = ['Website', 'Email', 'Phone', 'Source']
     const rows = []
@@ -200,7 +238,7 @@ export default function App() {
           disabled={loading}
         />
 
-        <div>
+        <div style={{ display: 'flex', gap: '10px' }}>
           <button onClick={handleExtract} disabled={loading}>
             {loading ? (
               <>
@@ -208,6 +246,15 @@ export default function App() {
               </>
             ) : (
               'Find Contacts'
+            )}
+          </button>
+          <button onClick={handleSaveHtml} disabled={savingHtml} style={{ backgroundColor: '#10b981' }}>
+            {savingHtml ? (
+              <>
+                <span className="loading"></span> Saving...
+              </>
+            ) : (
+              '📥 Save Crawled HTML'
             )}
           </button>
         </div>
@@ -228,6 +275,11 @@ export default function App() {
 
         {error && <div className="error">{error}</div>}
         {success && <div className="success">{success}</div>}
+        {saveHtmlMessage && (
+          <div className="success" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+            {saveHtmlMessage}
+          </div>
+        )}
 
         {results.length > 0 && (
           <>
