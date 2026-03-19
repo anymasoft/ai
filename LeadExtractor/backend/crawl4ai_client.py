@@ -17,6 +17,9 @@ from collections import deque
 # ⭐ Новый модульный phone_extractor (v1.0)
 from phone_extractor import extract_phones_from_crawl_result
 
+# ⭐ NEW: Contact Discovery Engine (v1.0)
+from contact_discovery import ContactDiscoveryEngine
+
 logger = logging.getLogger(__name__)
 
 
@@ -32,10 +35,15 @@ class Crawl4AIClient:
         - max_pages = 25 (was 10) - crawl more pages
         - max_depth = 3 (was 2) - go deeper
         - max_links = 100 (was 30) - gather more candidates
+
+        INTEGRATION: Contact Discovery Engine (v1.0)
         """
         self.timeout = timeout
         self.max_pages = max_pages
         self.max_depth = max_depth
+
+        # ⭐ Initialize Contact Discovery Engine
+        self.discovery_engine = ContactDiscoveryEngine()
 
     def _merge_fragmented_numbers(self, text: str) -> str:
         """
@@ -949,13 +957,38 @@ class Crawl4AIClient:
         scored_links = []
 
         try:
-            # ⭐ STEP 1: Extract footer links (they have +3 boost)
-            footer_links = self._extract_footer_links(getattr(result, 'html', ''), domain)
+            # ⭐ STEP 1: Extract footer links using Discovery Engine (they have +3 boost)
+            html_content = getattr(result, 'html', '')
+            footer_links = self.discovery_engine.extract_footer_links(html_content)
             if footer_links:
                 logger.info(f"  📍 Found {len(footer_links)} footer links")
                 for footer_url, footer_text, boost in footer_links:
-                    score = self._score_url_for_contacts(footer_url, footer_text) + boost
-                    scored_links.append((footer_url, score, "footer"))
+                    # Normalize footer URL
+                    normalized_footer_url = urljoin(current_url, footer_url)
+                    normalized_footer_url = normalized_footer_url.split('#')[0]
+                    normalized_footer_url = normalized_footer_url.split('?')[0]
+
+                    # Score using Discovery Engine
+                    url_score = self.discovery_engine.score_url(normalized_footer_url)
+                    text_score = self.discovery_engine.score_anchor_text(footer_text)
+                    total_score = url_score + text_score + boost
+                    scored_links.append((normalized_footer_url, total_score, "footer"))
+
+            # ⭐ STEP 1b: Extract header links using Discovery Engine (they have +1 boost)
+            header_links = self.discovery_engine.extract_header_links(html_content)
+            if header_links:
+                logger.info(f"  📍 Found {len(header_links)} header links")
+                for header_url, header_text, boost in header_links:
+                    # Normalize header URL
+                    normalized_header_url = urljoin(current_url, header_url)
+                    normalized_header_url = normalized_header_url.split('#')[0]
+                    normalized_header_url = normalized_header_url.split('?')[0]
+
+                    # Score using Discovery Engine
+                    url_score = self.discovery_engine.score_url(normalized_header_url)
+                    text_score = self.discovery_engine.score_anchor_text(header_text)
+                    total_score = url_score + text_score + boost
+                    scored_links.append((normalized_header_url, total_score, "header"))
 
             # ⭐ STEP 2: Score extracted links from Crawl4AI
             internal_links = result.links.get("internal", [])
@@ -994,8 +1027,10 @@ class Crawl4AIClient:
                     if current_depth + 1 > self.max_depth:
                         continue
 
-                    # ⭐ SCORE THE LINK
-                    score = self._score_url_for_contacts(normalized_url, anchor_text)
+                    # ⭐ SCORE THE LINK using Discovery Engine
+                    url_score = self.discovery_engine.score_url(normalized_url)
+                    text_score = self.discovery_engine.score_anchor_text(anchor_text)
+                    score = url_score + text_score
 
                     # Skip if already in forced URLs
                     url_lower = normalized_url.lower()
