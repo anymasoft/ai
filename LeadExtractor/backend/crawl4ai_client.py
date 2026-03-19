@@ -10,6 +10,9 @@ import asyncio
 import re
 import logging
 import requests
+import json
+import os
+from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Set
 from urllib.parse import urlparse, urljoin
 from collections import deque
@@ -823,6 +826,168 @@ class Crawl4AIClient:
         logger.info(f"{'='*60}\n")
 
         return result
+
+    async def save_html_pages(self, domain_url: str) -> Dict:
+        """
+        PHASE 4: DEBUG HTML SAVING
+        Save crawled HTML pages locally for dataset creation.
+        BFS traversal similar to extract(), but saves HTML instead of extracting contacts.
+        """
+        from crawl4ai import AsyncWebCrawler
+
+        # Normalize URL
+        if not domain_url.startswith(('http://', 'https://')):
+            domain_url = f'https://{domain_url}'
+
+        domain = urlparse(domain_url).netloc
+
+        # Create output directory: /debug_html/{domain}_{timestamp}/
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_dir = f"/tmp/debug_html/{domain}_{timestamp}"
+        os.makedirs(output_dir, exist_ok=True)
+
+        logger.info(f"\n{'='*60}")
+        logger.info(f"Starting HTML save: {domain_url}")
+        logger.info(f"Output directory: {output_dir}")
+        logger.info(f"Max pages: {self.max_pages}, Max depth: {self.max_depth}")
+        logger.info(f"{'='*60}\n")
+
+        # BFS traversal
+        queue = deque([(domain_url, 0)])
+        visited = set()
+        saved_pages = {}
+        page_metadata = []
+
+        async with AsyncWebCrawler() as crawler:
+            while queue and len(visited) < self.max_pages:
+                current_url, depth = queue.popleft()
+
+                # Skip if already visited or depth exceeded
+                if current_url in visited or depth > self.max_depth:
+                    continue
+
+                visited.add(current_url)
+
+                # Fetch page
+                result = await self._fetch_page(crawler, current_url)
+                if result is None:
+                    logger.warning(f"[Page {len(visited)}/{self.max_pages}] Depth {depth} → {current_url} (FAILED)")
+                    continue
+
+                logger.info(f"[Page {len(visited)}/{self.max_pages}] Depth {depth} → {current_url}")
+
+                # Generate filename from URL
+                filename = self._url_to_filename(current_url, domain)
+                filepath = os.path.join(output_dir, filename)
+
+                # Ensure directory exists for nested paths
+                os.makedirs(os.path.dirname(filepath), exist_ok=True)
+
+                # Save HTML
+                html_content = result.html or result.cleaned_html or ""
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    f.write(html_content)
+
+                logger.info(f"  ✓ Saved: {filename}")
+
+                # Store metadata
+                saved_pages[current_url] = {
+                    "filename": filename,
+                    "depth": depth,
+                    "html_size": len(html_content),
+                    "url": current_url
+                }
+
+                page_metadata.append({
+                    "url": current_url,
+                    "filename": filename,
+                    "depth": depth,
+                    "html_size": len(html_content),
+                    "links_found": len(result.links.get("internal", [])) if result.links else 0
+                })
+
+                # Traverse links
+                if result.links:
+                    internal_links = result.links.get("internal", [])
+                    for link in internal_links:
+                        link_url = link.get("href")
+                        if not link_url:
+                            continue
+
+                        # Resolve relative URLs
+                        link_url = urljoin(current_url, link_url)
+                        link_url = link_url.split('#')[0]  # Remove fragments
+
+                        # Check if same domain
+                        link_domain = urlparse(link_url).netloc
+                        if link_domain != domain:
+                            continue
+
+                        # Check if not visited
+                        if link_url not in visited and link_url not in [url for url, _ in queue]:
+                            queue.append((link_url, depth + 1))
+
+        # Save metadata.json
+        metadata_file = os.path.join(output_dir, "metadata.json")
+        with open(metadata_file, 'w', encoding='utf-8') as f:
+            json.dump({
+                "domain": domain,
+                "crawl_time": timestamp,
+                "max_pages": self.max_pages,
+                "max_depth": self.max_depth,
+                "pages_saved": len(saved_pages),
+                "total_html_size": sum(p["html_size"] for p in saved_pages.values()),
+                "pages": page_metadata
+            }, f, indent=2, ensure_ascii=False)
+
+        logger.info(f"\n{'='*60}")
+        logger.info(f"✓ Completed HTML save")
+        logger.info(f"  Saved {len(saved_pages)} pages")
+        logger.info(f"  Folder: {output_dir}")
+        logger.info(f"  Metadata: {metadata_file}")
+        logger.info(f"{'='*60}\n")
+
+        return {
+            "url": domain_url,
+            "domain": domain,
+            "saved_pages": len(saved_pages),
+            "folder": output_dir,
+            "metadata_file": metadata_file,
+            "total_html_size": sum(p["html_size"] for p in saved_pages.values())
+        }
+
+    def _url_to_filename(self, url: str, domain: str) -> str:
+        """
+        Convert URL to safe filesystem filename.
+        Examples:
+        - https://example.com/ → index.html
+        - https://example.com/about → about.html
+        - https://example.com/about/team → about_team.html
+        - https://example.com/contact?id=1 → contact.html
+        """
+        parsed = urlparse(url)
+        path = parsed.path.strip('/')
+
+        # Remove query params and fragments
+        # (already done in BFS traversal, but be safe)
+        if '?' in path:
+            path = path.split('?')[0]
+        if '#' in path:
+            path = path.split('#')[0]
+
+        # If root, use index.html
+        if not path:
+            return "index.html"
+
+        # Replace slashes with underscores, remove special chars
+        # Keep only alphanumeric, hyphen, underscore
+        filename = re.sub(r'[^a-zA-Z0-9_/-]', '', path)
+        filename = filename.replace('/', '_').lower()
+
+        # Handle duplicates (should not happen in BFS but be safe)
+        filename = f"{filename}.html"
+
+        return filename
 
     async def _fetch_page(self, crawler, url: str):
         """
