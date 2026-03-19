@@ -160,10 +160,13 @@ class Crawl4AIClient:
 
             # КЛЮЧЕВАЯ ПРОВЕРКА 6: ДОЛЖНЫ содержать разделители
             # Разделители: +, (, ), -, пробелы
-            # Это признак структурированного телефона
+            # ИЛИ быть digit-only с 10-11 цифрами (допускаем чистые номера)
+            digits = re.sub(r'\D', '', candidate)
             if not re.search(r'[\(\)\-\+\s]', candidate):
-                logger.debug(f"[STRUCTURAL FILTER] No phone-like separators: {candidate}")
-                return False
+                # Нет разделителей - OK только если ровно 10-11 цифр
+                if not (len(digits) == 10 or len(digits) == 11):
+                    logger.debug(f"[STRUCTURAL FILTER] No separators AND not 10-11 digits: {candidate}")
+                    return False
 
             # ✅ Все проверки пройдены
             logger.debug(f"[STRUCTURAL FILTER] PASS: {candidate}")
@@ -495,11 +498,15 @@ class Crawl4AIClient:
 
                         normalized = self._normalize_phone(phone_clean)
                         if len(normalized) >= 7:
-                            # 🔴 DEBUG: DISABLED DEDUP
-                            # if len(normalized) >= 7 and normalized not in all_phones:
-                            logger.info(f"[FALLBACK DEBUG DEDUP DISABLED] Tel link: {phone_clean}")
-                            all_phones[normalized] = {"original": phone_clean, "source": source_url}
-                            phones_on_page.add(phone_clean)
+                            if normalized not in all_phones:
+                                # ЗАДАЧА 2: SCORING для fallback tel links
+                                score = 100  # Tel links = highest
+                                all_phones[normalized] = {
+                                    "original": phone_clean,
+                                    "source": source_url,
+                                    "score": score  # ← NEW
+                                }
+                                phones_on_page.add(phone_clean)
             except Exception as e:
                 logger.debug(f"[FALLBACK] Tel link error: {e}")
 
@@ -558,11 +565,15 @@ class Crawl4AIClient:
 
                         normalized = self._normalize_phone(phone_clean)
                         if len(normalized) >= 7:
-                            # 🔴 DEBUG: DISABLED DEDUP
-                            # if len(normalized) >= 7 and normalized not in all_phones:
-                            logger.info(f"[FALLBACK DEBUG DEDUP DISABLED] Phone: {phone_clean}")
-                            all_phones[normalized] = {"original": phone_clean, "source": source_url}
-                            phones_on_page.add(phone_clean)
+                            if normalized not in all_phones:
+                                # ЗАДАЧА 2: SCORING для fallback phones
+                                score = 30  # Fallback = lower score
+                                all_phones[normalized] = {
+                                    "original": phone_clean,
+                                    "source": source_url,
+                                    "score": score  # ← NEW
+                                }
+                                phones_on_page.add(phone_clean)
 
             except Exception as e:
                 logger.debug(f"[FALLBACK] Phone extraction error: {e}")
@@ -684,31 +695,43 @@ class Crawl4AIClient:
         except Exception as e:
             logger.error(f"Fatal error: {e}", exc_info=True)
 
-        # Build final result
-        # Format phones: convert dict values to display format
-        phones_list = []
-        for normalized_key, phone_data in sorted(all_phones.items()):
+        # Build final result - with scoring and filtering
+        # ЗАДАЧА 1 & 2: Конвертировать в phones_list с scoring
+        phones_list_with_score = []
+        for normalized_key, phone_data in all_phones.items():
             if isinstance(phone_data, dict):
-                phones_list.append({
-                    "phone": phone_data["original"],  # Show original format
-                    "source_page": phone_data["source"]
+                phone = phone_data["original"]
+                score = phone_data.get("score", 0)  # Default score=0 if missing
+                phones_list_with_score.append({
+                    "phone": phone,
+                    "source_page": phone_data["source"],
+                    "score": score  # ← NEW
                 })
             else:
                 # Fallback for old format
-                phones_list.append({
+                phones_list_with_score.append({
                     "phone": phone_data,
-                    "source_page": ""
+                    "source_page": "",
+                    "score": 0
                 })
 
-        # ⭐ LIMIT CANDIDATES (important for LLM performance)
-        # Collect all candidates, but limit to 30 for LLM processing
-        # (More than 30 is rare, and LLM can't handle too many at once)
-        if len(phones_list) > 30:
-            logger.warning(
-                f"[CANDIDATE LIMIT] Found {len(phones_list)} candidates, "
-                f"limiting to 30 for LLM (others will be discarded)"
-            )
-            phones_list = phones_list[:30]
+        # ЗАДАЧА 3: PREFILTER перед LLM
+        phones_list_filtered = [p for p in phones_list_with_score if self._prefilter_phone_for_llm(p["phone"])]
+
+        # ЗАДАЧА 4: Сортировка по score (highest first)
+        phones_list_filtered.sort(key=lambda x: x["score"], reverse=True)
+
+        # ЗАДАЧА 4: LIMIT 15 (вместо 30, и ТОЛЬКО после фильтра+сортировки)
+        phones_list = phones_list_filtered[:15]
+
+        # ЗАДАЧА 9: DEBUG ЛОГИ
+        logger.info(f"[PRE-LLM] Raw candidates: {len(phones_list_with_score)}")
+        logger.info(f"[PRE-LLM] After prefilter: {len(phones_list_filtered)}")
+        logger.info(f"[PRE-LLM] After sorting & limit: {len(phones_list)}")
+        if phones_list:
+            logger.info(f"[PRE-LLM] Top candidates:")
+            for i, p in enumerate(phones_list[:5], 1):
+                logger.info(f"  [{i}] {p['phone']} | score={p['score']}")
 
         # ========== STAGE 4: FINAL LLM VALIDATION (NEW!) ==========
         # ⭐ CRITICAL: Validate all phones through LLM before returning
@@ -1203,23 +1226,77 @@ class Crawl4AIClient:
 
     def _normalize_phone(self, phone: str) -> str:
         """
-        Normalize phone for deduplication.
-        - Remove +7 prefix (Russian)
-        - Keep only digits
-        Returns normalized phone as string
+        Normalize phone for deduplication and storage.
+        - Convert 8 prefix to +7 (Russian)
+        - Preserve structure (don't strip formatting)
+        - Return: +7XXXXXXXXXX (for dedup) or original format (for storage)
         """
         try:
-            # Remove leading +7 (Russian prefix)
             normalized = phone.strip()
-            if normalized.startswith('+7'):
-                normalized = normalized[2:]
 
-            # Keep only digits
-            normalized = re.sub(r'\D', '', normalized)
+            # Extract only digits
+            digits = re.sub(r'\D', '', normalized)
 
-            return normalized
+            # If starts with 8 and length 11 → convert to +7
+            if normalized.startswith('8') and len(digits) == 11:
+                # 8 → +7, keep rest as-is
+                normalized = '+7' + digits[1:]  # Remove first 8, add +7
+
+            # Ensure it starts with +7 if Russian
+            if not normalized.startswith('+7') and len(digits) == 11 and digits.startswith('7'):
+                normalized = '+7' + digits[1:]
+
+            # Return normalized (digits only) for use as dict key
+            return re.sub(r'\D', '', normalized)
+
         except Exception:
             return ""
+
+    def _prefilter_phone_for_llm(self, phone: str) -> bool:
+        """
+        ЗАДАЧА 3: PREFILTER перед LLM
+        ОСТАВЛЯЕМ ТОЛЬКО если:
+        1. Кол-во цифр: >= 10 и <= 11
+        2. НЕ содержит: более 1 точки, паттерны дат, IP
+        3. Должно быть одно из: начинается с +7/8 или ровно 10-11 цифр
+        """
+        try:
+            if not phone or not isinstance(phone, str):
+                return False
+
+            digits = re.sub(r'\D', '', phone)
+            phone_lower = phone.lower()
+
+            # Проверка 1: Кол-во цифр >= 10 и <= 11
+            if len(digits) < 10 or len(digits) > 11:
+                logger.debug(f"[PREFILTER] Wrong digit count ({len(digits)}): {phone}")
+                return False
+
+            # Проверка 2: НЕ содержит более 1 точки
+            if phone.count('.') > 1:
+                logger.debug(f"[PREFILTER] Too many dots: {phone}")
+                return False
+
+            # Проверка 3: НЕ дата (dd.mm.yyyy, yyyy-mm-dd)
+            if re.search(r'\d{1,2}[.\-]\d{1,2}[.\-]\d{2,4}', phone):
+                logger.debug(f"[PREFILTER] Date pattern: {phone}")
+                return False
+
+            # Проверка 4: НЕ IP адрес (xxx.xxx.xxx.xxx)
+            if re.search(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', phone):
+                logger.debug(f"[PREFILTER] IP address: {phone}")
+                return False
+
+            # Проверка 5: Должно быть +7/8 в начале или ровно 10-11 цифр
+            if not (phone.startswith('+7') or phone.startswith('8') or len(digits) == 10 or len(digits) == 11):
+                logger.debug(f"[PREFILTER] No +7/8 prefix and not 10-11 digits: {phone}")
+                return False
+
+            return True
+
+        except Exception as e:
+            logger.debug(f"[PREFILTER] Exception: {e}")
+            return False
 
     def _normalize_html_entities(self, text: str) -> str:
         """
@@ -1440,10 +1517,13 @@ class Crawl4AIClient:
 
                     # STEP 4: Add ALL tel: links (no length check, no validation)
                     # Even if normalized seems "wrong", keep the original format
+                    # ЗАДАЧА 2: ДОБАВИТЬ SCORING
+                    score = 100  # Tel links = highest score
                     all_phones[normalized] = {
                         "original": phone_clean,
                         "source": source_url,
-                        "confidence": "tel_link"  # Highest confidence marker
+                        "confidence": "tel_link",
+                        "score": score  # ← NEW
                     }
                     phones_on_page.add(phone_clean)
                     tel_count += 1
@@ -1519,7 +1599,17 @@ class Crawl4AIClient:
                     normalized = self._normalize_phone(phone_clean)
                     if len(normalized) >= 7:
                         if normalized not in all_phones:
-                            all_phones[normalized] = {"original": phone_clean, "source": source_url}
+                            # ЗАДАЧА 2: SCORING для contact regex
+                            score = 80  # Context keyword = high score
+                            if "+7" in phone_clean or "+7" in phone_raw:
+                                score += 50  # Has +7
+                            if re.search(r'[\(\)\-]', phone_clean):
+                                score += 30  # Has structure
+                            all_phones[normalized] = {
+                                "original": phone_clean,
+                                "source": source_url,
+                                "score": score  # ← NEW
+                            }
                             phones_on_page.add(phone_clean)
                             contact_count += 1
 
@@ -1553,13 +1643,27 @@ class Crawl4AIClient:
                     if not phone_clean:
                         continue
 
-                    # CRITICAL: ⚠️ NOT FILTERING HERE - let LLM decide!
-                    # Мы собираем ВСЕ кандидаты, LLM их отфильтрует
+                    # ЗАДАЧА 7: ОГРАНИЧИТЬ RUSSIAN PATTERN
+                    digits = re.sub(r'\D', '', phone_clean)
+                    # Только 10-11 цифр (нет очень длинных кандидатов)
+                    if len(digits) < 10:
+                        continue
+                    # Убрать кандидаты с точками (скорее всего даты или версии)
+                    if "." in phone_clean:
+                        continue
 
                     normalized = self._normalize_phone(phone_clean)
                     if len(normalized) >= 7:
                         if normalized not in all_phones:
-                            all_phones[normalized] = {"original": phone_clean, "source": source_url}
+                            # ЗАДАЧА 2: SCORING для russian pattern
+                            score = 75  # Russian pattern = decent score
+                            if re.search(r'[\(\)\-]', phone_clean):
+                                score += 30  # Has structure
+                            all_phones[normalized] = {
+                                "original": phone_clean,
+                                "source": source_url,
+                                "score": score  # ← NEW
+                            }
                             phones_on_page.add(phone_clean)
                             russian_count += 1
 
@@ -1597,7 +1701,17 @@ class Crawl4AIClient:
                     normalized = self._normalize_phone(phone_clean)
                     if len(normalized) >= 7:
                         if normalized not in all_phones:
-                            all_phones[normalized] = {"original": phone_clean, "source": source_url}
+                            # ЗАДАЧА 2: SCORING для digit-only
+                            score = 40  # Digit-only = lower score (no context)
+                            # Check if 10 or 11 digits
+                            digits = re.sub(r'\D', '', phone_clean)
+                            if len(digits) == 10 or len(digits) == 11:
+                                score += 40  # Correct length
+                            all_phones[normalized] = {
+                                "original": phone_clean,
+                                "source": source_url,
+                                "score": score  # ← NEW
+                            }
                             phones_on_page.add(phone_clean)
                             digit_count += 1
 
@@ -1628,16 +1742,36 @@ class Crawl4AIClient:
                     if not phone_clean:
                         continue
 
-                    # ⭐ NO FILTERS HERE ANYMORE!
-                    # OLD: sanity + structural filters were applied here
-                    # NEW: Collect ALL candidates, let LLM filter them
-                    # (This increases recall significantly)
+                    # ЗАДАЧА 8: ОГРАНИЧИТЬ WIDE REGEX
+                    digits = re.sub(r'\D', '', phone_clean)
+                    # Только 10-11 цифр
+                    if len(digits) < 10:
+                        continue
+                    # Требуем хотя бы один разделитель (не pure digits)
+                    if not re.search(r'[\(\)\-+]', phone_clean):
+                        continue
 
                     normalized = self._normalize_phone(phone_clean)
-                    if len(normalized) >= 5:  # Very permissive (usually 7+, but be lenient)
+                    if len(normalized) >= 7:  # Standard 7+ digits
                         # RECALL-FIRST: Add if not already present
                         if normalized not in all_phones:
-                            all_phones[normalized] = {"original": phone_clean, "source": source_url}
+                            # ЗАДАЧА 2: SCORING для wide regex
+                            score = 5  # Wide regex = lowest score (catch-all)
+                            # Boost if has +7
+                            if "+7" in phone_clean:
+                                score += 50
+                            # Boost if has structure
+                            if re.search(r'[\(\)\-]', phone_clean):
+                                score += 30
+                            # Check correct length
+                            digits = re.sub(r'\D', '', phone_clean)
+                            if len(digits) == 10 or len(digits) == 11:
+                                score += 40
+                            all_phones[normalized] = {
+                                "original": phone_clean,
+                                "source": source_url,
+                                "score": score  # ← NEW
+                            }
                             phones_on_page.add(phone_clean)
                             regex_count += 1
 
@@ -1731,11 +1865,19 @@ class Crawl4AIClient:
 
                             normalized = self._normalize_phone(phone_clean)
                             if len(normalized) >= 7:
-                                # 🔴 DEBUG: DISABLED DEDUP
-                                # if normalized not in all_phones:
-                                logger.info(f"[TABLE DEBUG DEDUP DISABLED] Phone: {phone_clean}")
-                                all_phones[normalized] = {"original": phone_clean.strip(), "source": source_url}
-                                table_phones += 1
+                                if normalized not in all_phones:
+                                    # ЗАДАЧА 2: SCORING для table extraction
+                                    score = 60  # Table = medium score
+                                    if "+7" in phone_clean or "8" in phone_clean:
+                                        score += 30
+                                    if re.search(r'[\(\)\-]', phone_clean):
+                                        score += 20
+                                    all_phones[normalized] = {
+                                        "original": phone_clean.strip(),
+                                        "source": source_url,
+                                        "score": score  # ← NEW
+                                    }
+                                    table_phones += 1
 
             if table_emails > 0 or table_phones > 0:
                 logger.debug(f"[TABLE EXTRACTION] Found {table_emails} emails, {table_phones} phones")
