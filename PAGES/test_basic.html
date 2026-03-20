@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head><title>Базовый тест</title></head>
+<body>
+  <h1>Контакты</h1>
+  <p>Телефон: +7 (985) 123-45-67</p>
+  <p>Телефон: 8 495 123 45 67</p>
+  <p>Email: info@example.com</p>
+  <a href="mailto:sales@example.com">Написать</a>
+  <a href="tel:+79031234567">Позвонить</a>
+
+  <!-- EDGE CASE #1: голое число — НЕ должно ловиться -->
+  <p>ИНН: 74951234567</p>
+
+  <!-- EDGE CASE #9: ложный email -->
+  <img src="icon@2x.png">
+  <img src="image@3x.svg">
+
+  <!-- EDGE CASE #7: добавочный номер -->
+  <p>+7 (495) 999-88-77 доб. 123</p>
+
+  <!-- EDGE CASE #8: дубликат в другом формате -->
+  <p>8 985 123-45-67</p>
+
+  <script>
+    // EDGE CASE #4: контакт в JS — должен быть проигнорирован
+    var phone = "79991234567";
+    document.write("hidden@script.com");
+  </script>
+
+  <style>
+    /* EDGE CASE: числа в CSS */
+    .el { z-index: 79851234567; }
+  </style>
+</body>
+</html>
