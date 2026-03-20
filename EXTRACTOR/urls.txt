@@ -1,1 +1,7 @@
+# Примеры URL для тестирования crawler-а
+# Раскомментируй нужные строки или добавь свои
+
 https://1cca.ru
+# https://example.com
+# https://koderline.com
+# https://rarus.ru

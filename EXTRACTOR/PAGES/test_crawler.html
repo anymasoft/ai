@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Тест Crawler</title>
+  <link rel="stylesheet" href="/styles/main.css">
+  <link rel="icon" href="/favicon.ico">
+</head>
+<body>
+  <h1>Тест Crawler</h1>
+
+  <nav>
+    <a href="/">Главная</a>
+    <a href="/about">О нас</a>
+    <a href="/contact">Контакты</a>
+    <a href="/services">Услуги</a>
+  </nav>
+
+  <main>
+    <a href="/blog">Блог</a>
+    <a href="/products">Продукты</a>
+    <a href="/pricing">Цены</a>
+
+    <!-- Относительные ссылки -->
+    <a href="page.html">Страница</a>
+    <a href="./subdir/nested.html">Вложенная</a>
+    <a href="../parent.html">Родитель</a>
+
+    <!-- С якорями и параметрами (должны быть нормализованы) -->
+    <a href="/products#section1">Продукты 1</a>
+    <a href="/products?id=123">Продукт 123</a>
+    <a href="/products?id=456#details">Продукт 456</a>
+
+    <!-- Внешние ссылки (должны быть исключены) -->
+    <a href="https://google.com">Google</a>
+    <a href="https://github.com/user/repo">GitHub</a>
+
+    <!-- Специальные ссылки (должны быть исключены) -->
+    <a href="mailto:info@example.com">Написать</a>
+    <a href="tel:+79999999999">Позвонить</a>
+    <a href="javascript:void(0)">JS Link</a>
+    <a href="">Пустая ссылка</a>
+  </main>
+
+  <footer>
+    <a href="/privacy">Приватность</a>
+    <a href="/terms">Условия</a>
+  </footer>
+
+  <script src="/js/main.js"></script>
+  <script src="/js/analytics.js"></script>
+</body>
+</html>
