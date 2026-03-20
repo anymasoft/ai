@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head><title>Тест кодирования</title></head>
+<body>
+  <!-- EDGE CASE #1: percent-encoding -->
+  <a href="mailto:info%40encoded.com">Email</a>
+  <a href="tel:%2B79161234567">Телефон</a>
+
+  <!-- EDGE CASE #2: HTML entities -->
+  <p>contact&#64;entity.com</p>
+
+  <!-- EDGE CASE #6: &nbsp; разделители -->
+  <p>+7&nbsp;985&nbsp;111-22-33</p>
+
+  <!-- EDGE CASE #6: точки как разделители -->
+  <p>+7.495.222.33.44</p>
+
+  <!-- EDGE CASE #5, #16: номер разбит по span -->
+  <p>
+    <span>+7</span>
+    <span>(926)</span>
+    <span>333-44-55</span>
+  </p>
+
+  <!-- EDGE CASE #13: слишком длинное число -->
+  <p>ID: 12345678901234567890</p>
+
+  <!-- EDGE CASE #14: короткий номер -->
+  <p>Код: 12345</p>
+</body>
+</html>
