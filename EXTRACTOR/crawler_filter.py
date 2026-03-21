@@ -349,19 +349,23 @@ def filter_links(links: list[tuple[str, str]], base_domain: str) -> list[str]:
     # ШАГ 4: сортировка по score DESC
     scored.sort(key=lambda x: x[1], reverse=True)
 
-    # ШАГ 5: diversity filter + top N
-    # максимум MAX_PER_SEGMENT ссылок с одинаковым первым сегментом пути
-    segment_count = {}  # первый сегмент → количество
+    # ШАГ 5: сначала гарантируем strong anchor ссылки
     top = []
+    top_urls = set()
+    for norm_url, s, depth, anchor in scored:
+        anchor_lower = anchor.lower() if anchor else ""
+        if any(w in anchor_lower for w in STRONG_ANCHORS):
+            if norm_url not in top_urls:
+                top.append((norm_url, s, depth, anchor))
+                top_urls.add(norm_url)
+
+    # ШАГ 5.1: diversity filter + top N (остальные ссылки)
+    segment_count = {}  # первый сегмент → количество
     for item in scored:
         if len(top) >= MAX_LINKS:
             break
         norm_url, s, depth, anchor = item
-        anchor_lower = anchor.lower() if anchor else ""
-        is_strong = any(w in anchor_lower for w in STRONG_ANCHORS)
-        # bypass: сильный anchor ИЛИ высокий score → обход diversity-лимита
-        if is_strong or s >= DIVERSITY_BYPASS_SCORE:
-            top.append(item)
+        if norm_url in top_urls:
             continue
         seg = urlparse(norm_url).path.strip("/").split("/")[0] if urlparse(norm_url).path.strip("/") else ""
         count = segment_count.get(seg, 0)
