@@ -23,15 +23,8 @@ import subprocess
 import requests
 from pathlib import Path
 from dotenv import load_dotenv
-
-try:
-    import pymorphy2
-    from iuliia import Schema, translate
-except ImportError as e:
-    print(f"[!] Ошибка импорта: {e}")
-    print("\nУстановите зависимости:")
-    print("  pip install pymorphy2 python-Levenshtein iuliia")
-    sys.exit(1)
+import pymorphy2
+import iuliia
 
 # Загружаем переменные окружения
 load_dotenv()
@@ -59,10 +52,8 @@ OUTPUT_FILE = SCRIPT_DIR / "results.csv"
 # Исключения для 2GIS (города с нестандартными slug'ами)
 EXCEPTIONS_2GIS = {
     "moskva": "moscow",
-    "moskva": "moscow",
     "москва": "moscow",
     "sankt-peterburg": "spb",
-    "sanktpeterburg": "spb",
     "sanktpeterburg": "spb",
     "sv-peterburg": "spb",
     "pitep": "spb",
