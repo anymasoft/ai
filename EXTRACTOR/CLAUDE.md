@@ -52,11 +52,12 @@ python search_duckduckgo.py "стоматологии в москве"
 
 ---
 
-### 2. `search_2gis.py`
+### 2. `PARSER/search_2gis.py`
 **Назначение:** Поиск контактов компаний в 2GIS
 
 **Использование:**
 ```bash
+cd PARSER
 echo "автомойки в иркутске" > query.txt
 python search_2gis.py
 ```
@@ -74,12 +75,14 @@ python search_2gis.py
 
 **Требуемые зависимости:**
 ```bash
+# В отдельном виртуальном окружении (PARSER/parser_env)
+cd PARSER
 pip install pymorphy2 python-Levenshtein iuliia parser-2gis
 ```
 
 **Требуемые файлы:**
-- `query.txt` — запрос
-- `russia-cities.json` — список городов (скачать отсюда: https://github.com/arbaev/russia-cities/blob/master/cities.json)
+- `query.txt` — запрос (создавайте в PARSER/)
+- `russia-cities.json` — список городов (скачать в PARSER/ отсюда: https://github.com/arbaev/russia-cities/blob/master/cities.json)
 
 ---
 
@@ -192,10 +195,22 @@ parser-2gis \
 
 ## Требования
 
-### Обязательные зависимости
+### Зависимости для search_duckduckgo.py (основной)
 
 ```bash
-pip install requests beautifulsoup4 pymorphy2 python-Levenshtein iuliia parser-2gis
+pip install requests beautifulsoup4
+```
+
+### Зависимости для PARSER/search_2gis.py (в отдельном окружении)
+
+```bash
+cd PARSER
+python -m venv parser_env
+source parser_env/bin/activate  # Linux/macOS
+# или
+parser_env\Scripts\activate     # Windows
+
+pip install pymorphy2 python-Levenshtein iuliia parser-2gis
 ```
 
 ### Файлы данных
@@ -372,6 +387,29 @@ for url in filtered:
 - Все скрипты: Production-ready, используется в реальных проектах
 - Используемые библиотеки: Open source (MIT, GPL и т.д.)
 - API: Соблюдаются ToS всех используемых сервисов
+
+---
+
+## 📍 Файловая структура
+
+```
+/home/user/ai/EXTRACTOR/
+├── search_duckduckgo.py      (поиск сайтов)
+├── CLAUDE.md                  (полная документация)
+├── .gitignore                 (правила игнорирования)
+│
+└── PARSER/                    (отдельное окружение для parser-2gis)
+    ├── parser_env/            (виртуальное окружение, НЕ в git)
+    ├── search_2gis.py         (парсер 2GIS)
+    ├── README_2GIS.md         (гайд для быстрого старта)
+    ├── PARSER_2GIS_DOCS.md    (полная документация parser-2gis)
+    ├── EXAMPLES.sh            (примеры использования)
+    ├── query.txt              (создавайте перед запуском)
+    ├── russia-cities.json     (скачайте отсюда)
+    └── results.csv            (результаты парсинга)
+```
+
+**Примечание:** Папка `PARSER/parser_env/` добавлена в `.gitignore` и не коммитится на GitHub.
 
 ---
 
