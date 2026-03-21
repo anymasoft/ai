@@ -319,6 +319,9 @@ def run_parser(url: str, output_file: Path) -> bool:
     """
     Запускает parser-2gis с прямым потоком вывода в консоль (realtime).
 
+    На Windows: без --chrome.headless (он ломает рендеринг на 2GIS)
+    На Linux: с --chrome.headless yes (работает стабильно)
+
     Вывод parser-2gis идет в консоль БЕЗ буферизации, как при ручном запуске CLI.
 
     Возвращает:
@@ -330,8 +333,13 @@ def run_parser(url: str, output_file: Path) -> bool:
         "-o", str(output_file),
         "-f", "csv",
         "--parser.delay_between_clicks", "200",
-        "--chrome.headless", "yes",
     ]
+
+    # На Linux используем headless, на Windows отключаем
+    if os.name != "nt":
+        cmd += ["--chrome.headless", "yes"]
+    else:
+        logger.info(f"[*] Windows обнаружена — headless отключен (стабильность)")
 
     logger.info(f"[*] Запуск парсера...")
     logger.info(f"    URL: {url}")
