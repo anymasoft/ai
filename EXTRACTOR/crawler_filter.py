@@ -24,7 +24,8 @@ except ImportError:
 
 URLS_FILE = Path(__file__).parent / "urls.txt"
 MAX_LINKS = 20
-MAX_PER_SEGMENT = 2  # diversity: макс. ссылок с одинаковым первым сегментом
+MAX_PER_SEGMENT = 3  # diversity: макс. ссылок с одинаковым первым сегментом
+DIVERSITY_BYPASS_SCORE = 120  # score >= этого → обход diversity-фильтра
 
 # ---------------------------------------------------------------------------
 # ШАГ 1: HARD FILTER
@@ -350,6 +351,10 @@ def filter_links(links: list[tuple[str, str]], base_domain: str) -> list[str]:
         if len(top) >= MAX_LINKS:
             break
         norm_url, s, depth, anchor = item
+        # bypass: сильные ссылки (контакты, о нас) обходят diversity-лимит
+        if s >= DIVERSITY_BYPASS_SCORE:
+            top.append(item)
+            continue
         seg = urlparse(norm_url).path.strip("/").split("/")[0] if urlparse(norm_url).path.strip("/") else ""
         count = segment_count.get(seg, 0)
         if seg and count >= MAX_PER_SEGMENT:
