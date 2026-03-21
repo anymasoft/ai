@@ -317,24 +317,18 @@ def build_2gis_url(niche: str, city_slug: str) -> str:
 
 def run_parser(url: str, output_file: Path) -> bool:
     """
-    Запускает parser-2gis через subprocess и выводит результаты в консоль.
+    Запускает parser-2gis с прямым потоком вывода в консоль (realtime).
 
-    Процесс:
-    1. Парсер сохраняет результаты в JSON (временный файл)
-    2. JSON читается и парсится
-    3. Данные выводятся красиво в консоль
-    4. Временный файл удаляется
+    Вывод parser-2gis идет в консоль БЕЗ буферизации, как при ручном запуске CLI.
 
     Возвращает:
         True если успешно, False если ошибка
     """
-    temp_json = output_file.parent / "temp_results.json"
-
     cmd = [
         "parser-2gis",
         "-i", url,
-        "-o", str(temp_json),
-        "-f", "json",
+        "-o", str(output_file),
+        "-f", "csv",
         "--parser.delay_between_clicks", "200",
         "--chrome.headless", "yes",
     ]
@@ -342,50 +336,24 @@ def run_parser(url: str, output_file: Path) -> bool:
     logger.info(f"[*] Запуск парсера...")
     logger.info(f"    URL: {url}")
 
-    result = subprocess.run(cmd, timeout=3600)
+    # Popen с прямым потоком вывода (БЕЗ буферизации)
+    process = subprocess.Popen(
+        cmd,
+        stdout=sys.stdout,
+        stderr=sys.stderr,
+        text=True
+    )
 
-    if result.returncode == 0:
+    # Ждем завершения процесса
+    process.wait()
+
+    if process.returncode == 0:
         logger.info(f"[✓] Парсер завершён успешно!")
-
-        if temp_json.exists():
-            with open(temp_json, "r", encoding="utf-8") as f:
-                results = json.load(f)
-
-            if results:
-                logger.info(f"[*] Найдено записей: {len(results)}")
-                logger.info("")
-
-                print("=" * 100)
-                print("РЕЗУЛЬТАТЫ ПАРСИНГА")
-                print("=" * 100)
-
-                for idx, item in enumerate(results, 1):
-                    print(f"\n{idx}. {item.get('Наименование', 'N/A')}")
-                    print(f"   Адрес: {item.get('Адрес', 'N/A')}")
-                    print(f"   Телефон: {item.get('Телефон_1', 'N/A')}")
-                    if item.get('Телефон_2'):
-                        print(f"   Телефон_2: {item.get('Телефон_2')}")
-                    if item.get('Телефон_3'):
-                        print(f"   Телефон_3: {item.get('Телефон_3')}")
-                    if item.get('Email'):
-                        print(f"   Email: {item.get('Email')}")
-                    if item.get('Сайт'):
-                        print(f"   Сайт: {item.get('Сайт')}")
-                    if item.get('Часы работы'):
-                        print(f"   Часы работы: {item.get('Часы работы')}")
-                    if item.get('Рубрики'):
-                        print(f"   Рубрики: {item.get('Рубрики')}")
-
-                print("\n" + "=" * 100)
-            else:
-                print("Результатов не найдено")
-
-            temp_json.unlink()
-            logger.info(f"[✓] Временный файл удалён")
-
+        if output_file.exists():
+            logger.info(f"[✓] Результаты сохранены в: {output_file.name}")
         return True
     else:
-        logger.error(f"[!] Парсер вернул код ошибки: {result.returncode}")
+        logger.error(f"[!] Парсер завершился с ошибкой: {process.returncode}")
         return False
 
 
