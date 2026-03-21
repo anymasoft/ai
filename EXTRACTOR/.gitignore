@@ -1,4 +1,4 @@
-urls.txt
+*.txt
 parser_env/
 PARSER/parser_env/
 results.csv
