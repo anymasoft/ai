@@ -356,59 +356,12 @@ def run_parser(url: str, output_file: Path) -> bool:
 
     if process.returncode == 0:
         logger.info(f"[✓] Парсер завершён успешно!")
-
-        # Пост-обработка: вывод результатов красиво
         if output_file.exists():
             logger.info(f"[✓] Результаты сохранены в: {output_file.name}")
-            _print_results_beautified(output_file)
-
         return True
     else:
         logger.error(f"[!] Парсер завершился с ошибкой: {process.returncode}")
         return False
-
-
-def _print_results_beautified(csv_file: Path) -> None:
-    """
-    Читает CSV результаты и выводит красиво с названием, сайтом, email, телефоном.
-    """
-    import csv
-
-    try:
-        with open(csv_file, "r", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            results = list(reader)
-
-        if not results:
-            logger.info("[*] Результаты пусты")
-            return
-
-        logger.info("")
-        logger.info("=" * 100)
-        logger.info(f"ИТОГО: Найдено компаний: {len(results)}")
-        logger.info("=" * 100)
-
-        for idx, row in enumerate(results, 1):
-            name = row.get("Наименование", "").strip()
-            website = row.get("Сайт", "").strip()
-            email = row.get("E-Mail", "").strip()
-            phone = row.get("Телефон_1", "").strip()
-
-            # Главная строка: название + сайт + email + телефон
-            parts = [name]
-            if website:
-                parts.append(f"| 🌐 {website}")
-            if email:
-                parts.append(f"| 📧 {email}")
-            if phone:
-                parts.append(f"| ☎️ {phone}")
-
-            logger.info(f"[{idx}] {' '.join(parts)}")
-
-        logger.info("=" * 100)
-
-    except Exception as e:
-        logger.error(f"[!] Ошибка при чтении результатов: {e}")
 
 
 def main():
