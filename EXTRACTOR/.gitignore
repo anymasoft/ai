@@ -1,1 +1,7 @@
 urls.txt
+parser_env/
+PARSER/parser_env/
+results.csv
+*.pyc
+__pycache__/
+.DS_Store
