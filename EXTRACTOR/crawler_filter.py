@@ -393,7 +393,8 @@ def filter_links(links: list[tuple[str, str]], base_domain: str) -> list[str]:
             continue
         seg = urlparse(norm_url).path.strip("/").split("/")[0] if urlparse(norm_url).path.strip("/") else ""
         count = segment_count.get(seg, 0)
-        if seg and count >= MAX_PER_SEGMENT:
+        # ШАГ 5.1.1: bypass diversity filter для высокий score
+        if seg and count >= MAX_PER_SEGMENT and item[1] < DIVERSITY_BYPASS_SCORE:
             continue
         top.append(item)
         top_urls.add(norm_url)
