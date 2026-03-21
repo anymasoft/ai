@@ -320,9 +320,9 @@ def run_parser(url: str, output_file: Path) -> bool:
     Запускает parser-2gis через subprocess и выводит результаты в консоль.
 
     Команда:
-        parser-2gis -i "URL" --parser.delay_between_clicks 200 --chrome.headless yes
+        parser-2gis -i "URL" -o "results.csv" -f csv --parser.delay_between_clicks 200 --chrome.headless yes
 
-    Результаты выводятся прямо в консоль (без сохранения в файл).
+    Результаты сохраняются в файл, потом выводятся в консоль, файл удаляется.
 
     Возвращает:
         True если успешно, False если ошибка
@@ -330,6 +330,8 @@ def run_parser(url: str, output_file: Path) -> bool:
     cmd = [
         "parser-2gis",
         "-i", url,
+        "-o", str(output_file),
+        "-f", "csv",
         "--parser.delay_between_clicks", "200",
         "--chrome.headless", "yes",
     ]
@@ -345,6 +347,17 @@ def run_parser(url: str, output_file: Path) -> bool:
 
     if result.returncode == 0:
         logger.info(f"[✓] Парсер завершён успешно!")
+
+        if output_file.exists():
+            logger.info(f"[*] Результаты парсинга:")
+            logger.info("")
+            with open(output_file, "r", encoding="utf-8") as f:
+                content = f.read()
+                print(content)
+            logger.info("")
+            output_file.unlink()
+            logger.info(f"[✓] Временный файл удалён")
+
         return True
     else:
         logger.error(f"[!] Парсер вернул код ошибки: {result.returncode}")
