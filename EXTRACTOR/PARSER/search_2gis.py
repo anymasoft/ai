@@ -20,10 +20,15 @@ import sys
 import json
 import logging
 import subprocess
+import requests
 from pathlib import Path
+from dotenv import load_dotenv
 
 import pymorphy2
 import iuliia
+
+# Загружаем переменные окружения
+load_dotenv()
 
 # ============================================================================
 # Конфигурация логирования
@@ -74,6 +79,82 @@ EXCEPTIONS_2GIS = {
 # ============================================================================
 
 morph = pymorphy2.MorphAnalyzer()
+
+# ============================================================================
+# LLM Парсинг запроса
+# ============================================================================
+
+
+def parse_query_with_llm(query: str) -> tuple[str, str]:
+    """
+    Парсит поисковый запрос через GPT-4o-mini.
+
+    Вход: "тату-салоны в братске"
+    Выход: ("тату-салоны", "братск")
+
+    Возвращает:
+        (niche, city)
+
+    Выбросит исключение если:
+    - Нет API ключа
+    - Ошибка API
+    - Невалидный JSON
+    """
+    api_key = os.getenv("OPENAI_API_KEY")
+    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+    if not api_key:
+        raise ValueError("[!] OPENAI_API_KEY не установлен. Создайте .env файл.")
+
+    # Промпт для LLM
+    system_prompt = """Ты извлекаешь структуру из поискового запроса.
+Верни ТОЛЬКО JSON:
+{
+  "niche": "...",
+  "city": "..."
+}
+
+Правила:
+- city — в именительном падеже, без предлогов
+- niche — без предлогов, в том виде как указано
+- не добавляй ничего кроме JSON"""
+
+    user_message = f"Распарси запрос: \"{query}\""
+
+    # POST запрос к OpenAI API
+    url = "https://api.openai.com/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message},
+        ],
+        "temperature": 0,
+    }
+
+    response = requests.post(url, json=payload, headers=headers)
+    response.raise_for_status()  # Выбросит исключение если ошибка HTTP
+
+    data = response.json()
+
+    # Извлекаем текст ответа
+    content = data["choices"][0]["message"]["content"].strip()
+
+    # Парсим JSON
+    result = json.loads(content)
+
+    niche = result.get("niche", "").strip()
+    city = result.get("city", "").strip()
+
+    if not niche or not city:
+        raise ValueError("[!] LLM вернул пустые значения niche или city")
+
+    return niche, city
 
 # ============================================================================
 # Функции
@@ -227,20 +308,12 @@ def read_query_file() -> tuple[str, str]:
         logger.error(f"[!] Файл {QUERY_FILE.name} пуст!")
         sys.exit(1)
 
-    # Парсим: niche = всё кроме последнего слова, city = последнее слово
-    words = query.split()
-    if len(words) < 2:
-        logger.error(f"[!] Неверный формат запроса: '{query}'")
-        logger.error("   Ожидается: 'niche в city' (минимум 2 слова)")
-        sys.exit(1)
-
-    # Последнее слово = город
-    city_raw = words[-1]
-
-    # Всё остальное = ниша
-    niche = " ".join(words[:-1])
-
     logger.info(f"[✓] Прочитан query.txt: '{query}'")
+
+    # Парсим через LLM
+    logger.info(f"[*] LLM parsing используется")
+    niche, city_raw = parse_query_with_llm(query)
+
     logger.info(f"    Ниша: '{niche}'")
     logger.info(f"    Город (raw): '{city_raw}'")
 
