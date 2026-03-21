@@ -338,11 +338,9 @@ def run_parser(url: str, output_file: Path) -> bool:
     # На Linux используем headless, на Windows отключаем
     if os.name != "nt":
         cmd += ["--chrome.headless", "yes"]
-    else:
-        logger.info(f"[*] Windows обнаружена — headless отключен (стабильность)")
 
     logger.info(f"[*] Запуск парсера...")
-    logger.info(f"    URL: {url}")
+    logger.info(f"    Команда: {' '.join(cmd)}")
 
     # Popen с прямым потоком вывода (БЕЗ буферизации)
     process = subprocess.Popen(
