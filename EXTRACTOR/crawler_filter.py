@@ -106,17 +106,31 @@ NEGATIVE_URL_KEYWORDS = {
 }
 
 POSITIVE_ANCHOR_KEYWORDS = {
-    # +40 — прямые контактные слова
-    40: [
-        "контакт", "contact", "связаться", "написать", "телефон", "email",
-        "e-mail", "позвонить", "обратная связь", "напишите", "свяжитесь",
-        "звоните", "наш адрес", "как связаться", "write us", "call us",
-        "get in touch", "reach us",
+    # +100 — прямые контактные слова (HIGH PRIORITY)
+    100: [
+        "контакты", "контакт", "contact", "contacts", "связаться",
+        "написать нам", "напишите нам", "свяжитесь", "обратная связь",
+        "write us", "call us", "get in touch", "reach us",
     ],
-    # +20 — о компании
-    20: [
-        "о нас", "компания", "about", "about us", "о компании", "кто мы",
-        "наша команда", "our team", "our company", "реквизиты",
+    # +80 — о компании (MEDIUM)
+    80: [
+        "о нас", "о компании", "about", "about us", "about company",
+        "кто мы", "наша компания", "our company", "who we are",
+    ],
+    # +60 — офисы / адреса / команда (LOWER)
+    60: [
+        "офисы", "филиалы", "адрес", "адреса", "locations", "offices",
+        "наш адрес", "где мы", "как добраться", "наша команда",
+        "команда", "team", "our team", "реквизиты",
+        "телефон", "email", "e-mail", "позвонить", "звоните",
+    ],
+}
+
+NEGATIVE_ANCHOR_KEYWORDS = {
+    # -40 — контент / новости / блог
+    -40: [
+        "новости", "блог", "статьи", "news", "blog", "articles",
+        "пресс", "press", "публикации", "publications",
     ],
 }
 
@@ -274,8 +288,15 @@ def _score_link(url: str, anchor: str, base_domain: str) -> int:
     elif depth > 3:
         score -= 20
 
-    # 3.4 anchor text scoring
+    # 3.4 anchor text scoring (positive)
     for points, keywords in POSITIVE_ANCHOR_KEYWORDS.items():
+        for kw in keywords:
+            if kw in low_anchor:
+                score += points
+                break
+
+    # 3.4.1 anchor text scoring (negative)
+    for points, keywords in NEGATIVE_ANCHOR_KEYWORDS.items():
         for kw in keywords:
             if kw in low_anchor:
                 score += points
@@ -363,15 +384,16 @@ def filter_links(links: list[tuple[str, str]], base_domain: str) -> list[str]:
         top = top[:MAX_LINKS + 1]
 
     # ШАГ 7: отладочный вывод
-    print(f"\n{'='*75}")
+    print(f"\n{'='*95}")
     print(f"  FILTERED LINKS ({len(top)} из {len(links)} исходных)")
-    print(f"{'='*75}")
-    print(f"  {'URL':<55} {'SCORE':>6} {'DEPTH':>5}")
-    print(f"  {'-'*55} {'-'*6} {'-'*5}")
+    print(f"{'='*95}")
+    print(f"  {'URL':<50} {'ANCHOR':<20} {'SCORE':>6} {'DEPTH':>5}")
+    print(f"  {'-'*50} {'-'*20} {'-'*6} {'-'*5}")
     for norm_url, s, depth, anchor in top:
-        display = norm_url if len(norm_url) <= 55 else norm_url[:52] + "..."
-        print(f"  {display:<55} {s:>6} {depth:>5}")
-    print(f"{'='*75}\n")
+        u = norm_url if len(norm_url) <= 50 else norm_url[:47] + "..."
+        a = anchor if len(anchor) <= 20 else anchor[:17] + "..."
+        print(f"  {u:<50} {a:<20} {s:>6} {depth:>5}")
+    print(f"{'='*95}\n")
 
     return [item[0] for item in top]
 
