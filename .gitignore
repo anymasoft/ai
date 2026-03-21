@@ -56,5 +56,7 @@ astro/package-lock.json
 
 # Audit repos (cloned for review, not part of project)
 audit_repos/
-EXTRACTOR/urls.txt
-EXTRACTOR/urls.txt
+
+# EXTRACTOR — рабочие txt-файлы (urls, links и т.д.)
+EXTRACTOR/*.txt
+
