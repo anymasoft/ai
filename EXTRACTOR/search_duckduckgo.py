@@ -42,6 +42,43 @@ EXCLUDED_DOMAINS = {
     "duckduckgo.com",
 }
 
+# Агрегаторы и каталоги — АГРЕССИВНЫЙ ФИЛЬТР
+BLACKLIST_DOMAINS = {
+    "zoon.ru",
+    "flamp.ru",
+    "yandex.ru",
+    "2gis.ru",
+    "google.com",
+    "avito.ru",
+    "jsprav.ru",
+    "rubrikator.org",
+    "narule.ru",
+    "ya38.ru",
+    "likeability.ru",
+    "ipoteka.ru",
+    "ru-ru.facebook.com",
+    "web.telegram.org",
+    "t.me",
+    "instagram.com",
+    "vk.com",
+}
+
+# URL паттерны которые указывают на каталоги/агрегаторы
+CATALOG_PATTERNS = {
+    "/catalog",
+    "/category",
+    "/type",
+    "/org",
+    "/orgs",
+    "/list",
+    "/search",
+    "/filter",
+    "/companies",
+    "/organizations",
+    "/business",
+    "/results",
+}
+
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -88,6 +125,66 @@ def _is_valid_url(url: str) -> bool:
     if not url:
         return False
     return url.startswith(("http://", "https://"))
+
+
+def _is_blacklisted_domain(domain: str) -> bool:
+    """Проверяет домен против BLACKLIST_DOMAINS."""
+    domain_lower = domain.lower()
+    for blacklisted in BLACKLIST_DOMAINS:
+        if blacklisted.lower() in domain_lower or domain_lower.endswith(blacklisted.lower()):
+            return True
+    return False
+
+
+def _has_catalog_pattern(url: str) -> bool:
+    """Проверяет наличие паттернов каталогов в URL."""
+    url_lower = url.lower()
+    for pattern in CATALOG_PATTERNS:
+        if pattern in url_lower:
+            return True
+    return False
+
+
+def _calculate_url_depth(url: str) -> int:
+    """
+    Вычисляет глубину URL.
+    site.ru → 0
+    site.ru/page → 1
+    site.ru/a/b → 2
+    """
+    try:
+        parsed = urlparse(url)
+        path = parsed.path.strip("/")
+        if not path:
+            return 0
+        # Считаем слэши в пути
+        depth = path.count("/")
+        return depth
+    except Exception:
+        return 0
+
+
+def _is_suspicious_domain(domain: str) -> bool:
+    """
+    Проверяет качество домена по эвристикам:
+    - длина > 25 символов
+    - много дефисов (> 2)
+    - выглядит как агрегатор
+    """
+    if len(domain) > 25:
+        return True
+
+    # Много дефисов = подозрительно (агрегаторы часто называются так)
+    dash_count = domain.count("-")
+    if dash_count > 2:
+        return True
+
+    # Много точек = подозрительно
+    dot_count = domain.count(".")
+    if dot_count > 3:
+        return True
+
+    return False
 
 
 # ============================================================================
@@ -243,20 +340,72 @@ def filter_domains(results: List[Tuple[str, str]]) -> dict[str, str]:
     return filtered
 
 
+def filter_company_sites(urls: List[str]) -> List[str]:
+    """
+    АГРЕССИВНЫЙ фильтр для отсеивания агрегаторов и каталогов.
+    Оставляет только сайты с высокой вероятностью наличия контактов.
+
+    Применяет фильтры (в порядке приоритета):
+    1. BLACKLIST_DOMAINS — агрегаторы и каталоги
+    2. CATALOG_PATTERNS — URL паттерны (/catalog, /list, и т.д.)
+    3. URL depth — если глубина > 2 → удалить
+    4. Domain quality — подозрительные домены
+
+    Args:
+        urls: список URL с поиска
+
+    Returns:
+        список отфильтрованных URL
+    """
+    filtered = {}  # {domain: url}
+
+    for url in urls:
+        if not _is_valid_url(url):
+            continue
+
+        domain = _extract_domain(url)
+        if not domain:
+            continue
+
+        # Фильтр 1: BLACKLIST_DOMAINS
+        if _is_blacklisted_domain(domain):
+            continue
+
+        # Фильтр 2: URL паттерны каталогов
+        if _has_catalog_pattern(url):
+            continue
+
+        # Фильтр 3: Глубина URL (агрессивный фильтр)
+        depth = _calculate_url_depth(url)
+        if depth > 2:
+            continue
+
+        # Фильтр 4: Качество домена
+        if _is_suspicious_domain(domain):
+            continue
+
+        # Дедупликация по домену (берём первый URL)
+        if domain not in filtered:
+            filtered[domain] = url
+
+    return list(filtered.values())
+
+
 # ============================================================================
 # Основной поиск
 # ============================================================================
 
-def search(query: str, verbose: bool = False) -> List[str]:
+def search(query: str, verbose: bool = False, strict_filter: bool = True) -> List[str]:
     """
     Поиск сайтов компаний по текстовому запросу.
 
     Args:
         query: текстовый запрос (например, "стоматологии в челябинске")
         verbose: выводить отладочную информацию
+        strict_filter: применять агрессивный фильтр агрегаторов (по умолчанию True)
 
     Returns:
-        list[str] — список уникальных URL (до 50)
+        list[str] — список уникальных URL
     """
     if not query or not query.strip():
         print("[!] Пустой запрос")
@@ -265,12 +414,13 @@ def search(query: str, verbose: bool = False) -> List[str]:
     all_domains = {}  # {domain: url}
     empty_pages = 0
     page = 1
+    max_iterations = MAX_DOMAINS * 2  # Ищем больше чтобы потом отфильтровать
 
     if verbose:
         print(f"\n[*] Поиск: '{query}'")
         print(f"[*] Максимум {MAX_DOMAINS} доменов, останавливается при {MAX_EMPTY_PAGES} пустых страницах подряд\n")
 
-    while len(all_domains) < MAX_DOMAINS and empty_pages < MAX_EMPTY_PAGES:
+    while len(all_domains) < max_iterations and empty_pages < MAX_EMPTY_PAGES:
         if verbose:
             print(f"[*] Страница {page}...", end=" ")
 
@@ -291,7 +441,7 @@ def search(query: str, verbose: bool = False) -> List[str]:
         if verbose:
             print(f"({len(results)} результатов)", end="")
 
-        # Фильтруем
+        # Фильтруем базовые исключения
         page_domains = filter_domains(results)
 
         # Считаем новые домены
@@ -311,11 +461,27 @@ def search(query: str, verbose: bool = False) -> List[str]:
 
         page += 1
 
-    # Возвращаем список URL (до MAX_DOMAINS)
-    urls = list(all_domains.values())[:MAX_DOMAINS]
+    # Получаем список URL
+    urls = list(all_domains.values())
+
+    # Применяем агрессивный фильтр если он включен
+    if strict_filter:
+        if verbose:
+            before_count = len(urls)
+        urls = filter_company_sites(urls)
+        if verbose:
+            after_count = len(urls)
+            removed = before_count - after_count
+            print(f"[*] Фильтрация: {before_count} → {after_count} (удалено {removed} агрегаторов)\n")
+    else:
+        if verbose:
+            print()
+
+    # Ограничиваем результат
+    urls = urls[:MAX_DOMAINS]
 
     if verbose:
-        print(f"\n[✓] Найдено {len(urls)} уникальных доменов\n")
+        print(f"[✓] Найдено {len(urls)} уникальных сайтов компаний\n")
 
     return urls
 
