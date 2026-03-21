@@ -23,7 +23,8 @@ except ImportError:
 # ---------------------------------------------------------------------------
 
 URLS_FILE = Path(__file__).parent / "urls.txt"
-MAX_LINKS = 15
+MAX_LINKS = 20
+MAX_PER_SEGMENT = 2  # diversity: макс. ссылок с одинаковым первым сегментом
 
 # ---------------------------------------------------------------------------
 # ШАГ 1: HARD FILTER
@@ -36,13 +37,12 @@ EXCLUDED_EXTENSIONS = {
     ".woff2", ".ttf", ".eot", ".map",
 }
 
+# Hard filter — ТОЛЬКО технический мусор (не контентные страницы!)
 EXCLUDED_PATTERNS = [
-    "/bitrix/", "/wp-", "/admin/", "/api/", "/static/", "/assets/",
-    "/cache/", "/catalog/", "/product/", "/shop/", "/cart/", "/checkout/",
-    "/blog/", "/news/", "/auth/", "/login/", "/register/", "/wp-content/",
-    "/wp-includes/", "/wp-admin/", "/cgi-bin/", "/feed/", "/rss/",
-    "/print/", "/ajax/", "/upload/", "/uploads/", "/media/",
-    "/tags/", "/tag/", "/category/", "/archive/",
+    "/bitrix/", "/wp-content/", "/wp-includes/", "/wp-admin/",
+    "/admin/", "/api/", "/static/", "/assets/", "/cache/",
+    "/cgi-bin/", "/feed/", "/rss/", "/print/", "/ajax/",
+    "/upload/", "/uploads/",
 ]
 
 EXCLUDED_PREFIXES = ("mailto:", "tel:", "javascript:", "data:", "ftp:")
@@ -52,8 +52,8 @@ EXCLUDED_PREFIXES = ("mailto:", "tel:", "javascript:", "data:", "ftp:")
 # ---------------------------------------------------------------------------
 
 POSITIVE_URL_KEYWORDS = {
-    # +100 — прямые контакты
-    100: [
+    # +200 — прямые контакты (МАКСИМАЛЬНЫЙ ПРИОРИТЕТ)
+    200: [
         "contact", "contacts", "kontakt", "kontakty", "kontakte",
         "контакты", "контакт", "связаться", "svyaz", "обратная-связь",
         "feedback-form", "write-us", "napisat",
@@ -78,19 +78,28 @@ POSITIVE_URL_KEYWORDS = {
 }
 
 NEGATIVE_URL_KEYWORDS = {
-    # -80 — каталог / товары
+    # -80 — каталог / товары (мягкий штраф, НЕ исключение)
     -80: [
-        "catalog", "catalogue", "product", "products", "shop", "store",
-        "tovar", "tovary", "price", "prices", "prays", "цена", "цены",
+        "catalog", "catalogue", "shop", "store", "cart", "checkout",
         "корзина", "оплата", "payment", "order", "zakaz",
     ],
-    # -40 — блог / новости
+    # -50 — товары / цены
+    -50: [
+        "product", "products", "tovar", "tovary", "price", "prices",
+        "prays", "цена", "цены",
+    ],
+    # -40 — юр. документы / политики
     -40: [
+        "privacy", "policy", "agreement", "terms", "cookies", "gdpr",
+        "politika", "конфиденциальност", "соглашение", "оферта", "oferta",
         "blog", "news", "article", "post", "novosti", "новости", "статья",
         "stati", "press", "публикации", "publications", "journal",
+        "tags", "tag", "category", "archive", "media",
     ],
-    # -30 — авторизация
+    # -30 — портфолио / проекты / авторизация
     -30: [
+        "project", "projects", "case", "cases", "portfolio", "проект",
+        "проекты", "кейс", "кейсы", "портфолио",
         "login", "register", "signup", "signin", "auth", "oauth",
         "password", "recovery", "войти", "регистрация",
     ],
@@ -212,22 +221,14 @@ def _hard_filter(url: str) -> bool:
 # ШАГ 2: НОРМАЛИЗАЦИЯ
 # ---------------------------------------------------------------------------
 
-_UTM_RE = re.compile(r"[?&](utm_\w+=[^&]*)", re.IGNORECASE)
-
 def normalize(url: str) -> str:
-    """lower, убрать #anchor, utm, trailing /"""
+    """lower, убрать #anchor, ВСЕ query-параметры, trailing /"""
     url = unquote(url).lower()
     url = url.split("#")[0]
 
-    # убираем utm-параметры
+    # полностью удаляем query-параметры (?city=..., ?page=..., utm_... и т.д.)
     parsed = urlparse(url)
-    if parsed.query:
-        params = [
-            p for p in parsed.query.split("&")
-            if not p.startswith("utm_")
-        ]
-        query = "&".join(params)
-        url = parsed._replace(query=query).geturl()
+    url = parsed._replace(query="").geturl()
 
     url = url.rstrip("/")
     return url
@@ -266,9 +267,12 @@ def _score_link(url: str, anchor: str, base_domain: str) -> int:
                 score += points  # points уже отрицательные
                 break
 
-    # 3.3 depth scoring
+    # 3.3 depth scoring (мягкий — не режем, а штрафуем)
     depth = _url_depth(url)
-    score += (3 - depth) * 10
+    if depth <= 2:
+        score += 10
+    elif depth > 3:
+        score -= 20
 
     # 3.4 anchor text scoring
     for points, keywords in POSITIVE_ANCHOR_KEYWORDS.items():
@@ -317,10 +321,22 @@ def filter_links(links: list[tuple[str, str]], base_domain: str) -> list[str]:
     # ШАГ 4: сортировка по score DESC
     scored.sort(key=lambda x: x[1], reverse=True)
 
-    # ШАГ 5: top N
-    top = scored[:MAX_LINKS]
+    # ШАГ 5: diversity filter + top N
+    # максимум MAX_PER_SEGMENT ссылок с одинаковым первым сегментом пути
+    segment_count = {}  # первый сегмент → количество
+    top = []
+    for item in scored:
+        if len(top) >= MAX_LINKS:
+            break
+        norm_url, s, depth, anchor = item
+        seg = urlparse(norm_url).path.strip("/").split("/")[0] if urlparse(norm_url).path.strip("/") else ""
+        count = segment_count.get(seg, 0)
+        if seg and count >= MAX_PER_SEGMENT:
+            continue
+        top.append(item)
+        segment_count[seg] = count + 1
 
-    # ШАГ 6: гарантии — обязательные страницы
+    # ШАГ 6: гарантии — обязательные страницы (добавляем, даже если не вошли в top)
     guaranteed_patterns = [
         ("homepage", lambda u: urlparse(u).path.strip("/") == ""),
         ("contact", lambda u: any(k in urlparse(u).path for k in
