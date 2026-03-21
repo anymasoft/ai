@@ -44,12 +44,23 @@ EXCLUDED_EXTENSIONS = {
     ".woff2", ".ttf", ".eot", ".map",
 }
 
-# Hard filter — ТОЛЬКО технический мусор (не контентные страницы!)
+# Hard filter — технический мусор + юридические страницы
 EXCLUDED_PATTERNS = [
+    # CMS / технические
     "/bitrix/", "/wp-content/", "/wp-includes/", "/wp-admin/",
     "/admin/", "/api/", "/static/", "/assets/", "/cache/",
     "/cgi-bin/", "/feed/", "/rss/", "/print/", "/ajax/",
     "/upload/", "/uploads/",
+    # Юридические / политики (на любой глубине)
+    "privacy-policy", "privacy-agreement", "privacy_policy",
+    "terms-of-use", "terms-of-service", "terms_of_use",
+    "cookie-policy", "cookie_policy",
+    "legal-notice", "legal_notice",
+    "user-agreement", "user_agreement",
+    "politika-konfidencialnosti", "soglashenie",
+    "personal-data", "personal_data",
+    "обработка-персональных", "пользовательское-соглашение",
+    "политика-конфиденциальности",
 ]
 
 EXCLUDED_PREFIXES = ("mailto:", "tel:", "javascript:", "data:", "ftp:")
