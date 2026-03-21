@@ -332,20 +332,34 @@ def filter_links(links: list[tuple[str, str]], base_domain: str) -> list[str]:
     # ШАГ 1: hard filter
     passed = [(url, anchor) for url, anchor in links if _hard_filter(url)]
 
-    # ШАГ 2: нормализация + дедупликация
-    # При дубле URL — сохраняем самый длинный (информативный) anchor
-    seen = {}  # normalized_url -> (original_url, anchor)
+    # ШАГ 2: нормализация + дедупликация (хранить ВСЕ anchor)
+    seen = {}  # normalized_url -> list[str] (все anchor)
     for url, anchor in passed:
         norm = normalize(url)
-        if norm not in seen or len(anchor) > len(seen[norm][1]):
-            seen[norm] = (norm, anchor)
+        if norm not in seen:
+            seen[norm] = []
+        if anchor:
+            seen[norm].append(anchor)
 
-    # ШАГ 3: scoring
+    # ШАГ 3: scoring (по лучшему anchor из всех)
     scored = []
-    for norm_url, anchor in seen.values():
-        s = _score_link(norm_url, anchor, base_domain)
+    for norm_url, anchors in seen.items():
+        best_score = -9999
+        best_anchor = ""
+        is_strong = False
+        for a in (anchors or [""]):
+            s = _score_link(norm_url, a, base_domain)
+            if s > best_score:
+                best_score = s
+                best_anchor = a
+            a_lower = a.lower()
+            if any(w in a_lower for w in STRONG_ANCHORS):
+                is_strong = True
+        # если anchor пустой — считаем score без anchor
+        if not anchors:
+            best_score = _score_link(norm_url, "", base_domain)
         depth = _url_depth(norm_url)
-        scored.append((norm_url, s, depth, anchor))
+        scored.append((norm_url, best_score, depth, best_anchor, is_strong, len(anchors)))
 
     # ШАГ 4: сортировка по score DESC
     scored.sort(key=lambda x: x[1], reverse=True)
@@ -353,19 +367,17 @@ def filter_links(links: list[tuple[str, str]], base_domain: str) -> list[str]:
     # ШАГ 5: сначала гарантируем strong anchor ссылки
     top = []
     top_urls = set()
-    for norm_url, s, depth, anchor in scored:
-        anchor_lower = anchor.lower() if anchor else ""
-        if any(w in anchor_lower for w in STRONG_ANCHORS):
-            if norm_url not in top_urls:
-                top.append((norm_url, s, depth, anchor))
-                top_urls.add(norm_url)
+    for norm_url, s, depth, anchor, is_strong, n_anchors in scored:
+        if is_strong and norm_url not in top_urls:
+            top.append((norm_url, s, depth, anchor, is_strong, n_anchors))
+            top_urls.add(norm_url)
 
     # ШАГ 5.1: diversity filter + top N (остальные ссылки)
     segment_count = {}  # первый сегмент → количество
     for item in scored:
         if len(top) >= MAX_LINKS:
             break
-        norm_url, s, depth, anchor = item
+        norm_url = item[0]
         if norm_url in top_urls:
             continue
         seg = urlparse(norm_url).path.strip("/").split("/")[0] if urlparse(norm_url).path.strip("/") else ""
@@ -373,6 +385,7 @@ def filter_links(links: list[tuple[str, str]], base_domain: str) -> list[str]:
         if seg and count >= MAX_PER_SEGMENT:
             continue
         top.append(item)
+        top_urls.add(norm_url)
         segment_count[seg] = count + 1
 
     # ШАГ 6: гарантии — обязательные страницы (добавляем, даже если не вошли в top)
@@ -383,21 +396,18 @@ def filter_links(links: list[tuple[str, str]], base_domain: str) -> list[str]:
             ["about", "о-нас", "o-nas", "о-компании", "o-kompanii"])),
     ]
 
-    top_urls = {item[0] for item in top}
     for label, check_fn in guaranteed_patterns:
-        for norm_url, s, depth, anchor in scored:
+        for item in scored:
+            norm_url = item[0]
             if check_fn(norm_url) and norm_url not in top_urls:
-                top.append((norm_url, s, depth, anchor))
+                top.append(item)
                 top_urls.add(norm_url)
                 break
 
     # ШАГ 6.1: homepage ВСЕГДА на позиции #1
     homepage = normalize(base_domain)
-    # убираем дубли homepage из списка
     top = [item for item in top if item[0] != homepage]
-    # вставляем в начало
-    top.insert(0, (homepage, 999, 0, "homepage"))
-    # обрезаем хвост если превысили лимит (homepage не трогаем)
+    top.insert(0, (homepage, 999, 0, "homepage", False, 0))
     if len(top) > MAX_LINKS + 1:
         top = top[:MAX_LINKS + 1]
 
@@ -405,14 +415,13 @@ def filter_links(links: list[tuple[str, str]], base_domain: str) -> list[str]:
     print(f"\n{'='*95}")
     print(f"  FILTERED LINKS ({len(top)} из {len(links)} исходных)")
     print(f"{'='*95}")
-    print(f"  {'URL':<50} {'ANCHOR':<18} {'SCORE':>6} {'DEPTH':>5} {'STR':>3}")
-    print(f"  {'-'*50} {'-'*18} {'-'*6} {'-'*5} {'-'*3}")
-    for norm_url, s, depth, anchor in top:
-        u = norm_url if len(norm_url) <= 50 else norm_url[:47] + "..."
+    print(f"  {'URL':<48} {'ANCHOR':<18} {'SCORE':>6} {'DEPTH':>3} {'STR':>3} {'#A':>3}")
+    print(f"  {'-'*48} {'-'*18} {'-'*6} {'-'*3} {'-'*3} {'-'*3}")
+    for norm_url, s, depth, anchor, is_strong, n_anchors in top:
+        u = norm_url if len(norm_url) <= 48 else norm_url[:45] + "..."
         a = anchor if len(anchor) <= 18 else anchor[:15] + "..."
-        anchor_lower = anchor.lower() if anchor else ""
-        strong = "+" if any(w in anchor_lower for w in STRONG_ANCHORS) else ""
-        print(f"  {u:<50} {a:<18} {s:>6} {depth:>5} {strong:>3}")
+        strong = "+" if is_strong else ""
+        print(f"  {u:<48} {a:<18} {s:>6} {depth:>3} {strong:>3} {n_anchors:>3}")
     print(f"{'='*95}\n")
 
     return [item[0] for item in top]
