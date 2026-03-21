@@ -23,15 +23,8 @@ import subprocess
 import requests
 from pathlib import Path
 from dotenv import load_dotenv
-
-try:
-    import pymorphy2
-    from iuliia import YANDEX_MAPS
-except ImportError as e:
-    print(f"[!] Ошибка импорта: {e}")
-    print("\nУстановите зависимости:")
-    print("  pip install pymorphy2 python-Levenshtein iuliia")
-    sys.exit(1)
+import pymorphy2
+from iuliia import YANDEX_MAPS
 
 # Загружаем переменные окружения
 load_dotenv()
