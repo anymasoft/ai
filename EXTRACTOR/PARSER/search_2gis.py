@@ -25,6 +25,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 import pymorphy2
 import iuliia
+from iuliia import Schema, translate
 
 # Загружаем переменные окружения
 load_dotenv()
@@ -217,7 +218,6 @@ def load_russia_cities() -> dict:
         logger.error(f"[!] Ошибка при загрузке russia-cities.json: {e}")
         return {}
 
-
 def city_to_2gis_slug(raw_city: str, cities_map: dict) -> str:
     """
     Преобразует raw_city в slug для 2GIS.
@@ -226,7 +226,6 @@ def city_to_2gis_slug(raw_city: str, cities_map: dict) -> str:
     1. Нормализация через pymorphy2 (приведение к номинативу)
     2. Поиск в исключениях (EXCEPTIONS_2GIS)
     3. Поиск в russia-cities.json
-    4. Fallback: iuliia с schema='yandex_maps'
     5. Если ничего не сработало: возвращаем как есть
     """
     raw_city = raw_city.strip()
@@ -265,22 +264,12 @@ def city_to_2gis_slug(raw_city: str, cities_map: dict) -> str:
         logger.info(f"[*] Найдено в russia-cities.json (по нормализованному имени): '{slug}'")
         return slug
 
-    # Шаг 4: Fallback через iuliia
-    try:
-        schema = Schema.load("yandex_maps")
-        slug = translate(normalized, schema)
-        slug = slug.replace(" ", "-").lower()
-        logger.debug(f"[DEBUG] iuliia result: '{slug}'")
-        logger.info(f"[*] Использован iuliia (yandex_maps): '{slug}'")
-        return slug
-    except Exception as e:
-        logger.warning(f"[!] Ошибка iuliia: {e}")
-
-    # Шаг 5: Последний вариант — как есть
-    fallback = normalized_slug
-    logger.warning(f"[!] Использован fallback (как есть): '{fallback}'")
-    return fallback
-
+    schema = Schema.load("yandex_maps")
+    slug = translate(normalized, schema)
+    slug = slug.replace(" ", "-").lower()
+    logger.debug(f"[DEBUG] iuliia result: '{slug}'")
+    logger.info(f"[*] Использован iuliia (yandex_maps): '{slug}'")
+    return slug
 
 def read_query_file() -> tuple[str, str]:
     """
