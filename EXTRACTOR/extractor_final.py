@@ -16,10 +16,7 @@ from urllib.parse import unquote
 
 from bs4 import BeautifulSoup, Comment
 
-try:
-    import chardet
-except ImportError:
-    chardet = None
+import chardet
 
 # ---------------------------------------------------------------------------
 # Конфигурация
