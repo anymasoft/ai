@@ -11,6 +11,7 @@ import re
 import html
 import glob
 import sys
+import json
 from urllib.parse import unquote
 
 from bs4 import BeautifulSoup, Comment
@@ -327,6 +328,223 @@ def extract_local_phones(text: str) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
+# Pipeline v2 — ШАГ 1: Загрузка кодов телефонов
+# ---------------------------------------------------------------------------
+
+_PHONE_CODES_CACHE: set[str] | None = None
+
+_FALLBACK_CODES = {
+    "495", "499", "812", "800",
+    "343", "383", "831", "846", "863",
+    "351", "861", "843", "845",
+}
+
+
+def load_phone_codes() -> set[str]:
+    """Загружает коды из codes.txt рядом с extractor_final.py. Кэширует."""
+    global _PHONE_CODES_CACHE
+    if _PHONE_CODES_CACHE is not None:
+        return _PHONE_CODES_CACHE
+
+    codes_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "codes.txt"
+    )
+    if os.path.isfile(codes_path):
+        codes = set()
+        with open(codes_path, encoding="utf-8") as f:
+            for line in f:
+                code = line.strip()
+                if code:
+                    codes.add(code)
+        _PHONE_CODES_CACHE = codes if codes else _FALLBACK_CODES
+    else:
+        _PHONE_CODES_CACHE = _FALLBACK_CODES
+
+    return _PHONE_CODES_CACHE
+
+
+# ---------------------------------------------------------------------------
+# Pipeline v2 — ШАГ 2: RAW CANDIDATES
+# ---------------------------------------------------------------------------
+
+_CANDIDATE_RE = re.compile(r"[\+\d][\d\-\(\)\s]{5,}")
+
+
+def extract_phone_candidates(text: str) -> list[tuple[str, int, int]]:
+    """Находит все возможные телефонные паттерны в тексте."""
+    results = []
+    for m in _CANDIDATE_RE.finditer(text):
+        results.append((m.group(0), m.start(), m.end()))
+    return results
+
+
+# ---------------------------------------------------------------------------
+# Pipeline v2 — ШАГ 3: NORMALIZATION
+# ---------------------------------------------------------------------------
+
+def normalize_candidate(raw: str) -> str | None:
+    """Нормализует сырой кандидат к 7XXXXXXXXXX или None."""
+    digits = re.sub(r"\D", "", raw)
+    if len(digits) == 10:
+        return "7" + digits
+    if len(digits) == 11:
+        if digits[0] in ("7", "8"):
+            return "7" + digits[1:]
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Pipeline v2 — ШАГ 4: CONTEXT
+# ---------------------------------------------------------------------------
+
+def extract_context(text: str, start: int, end: int, window: int = 50) -> str:
+    """Извлекает контекст ±window символов вокруг найденного кандидата."""
+    ctx_start = max(0, start - window)
+    ctx_end = min(len(text), end + window)
+    return text[ctx_start:ctx_end]
+
+
+# ---------------------------------------------------------------------------
+# Pipeline v2 — ШАГ 5: SCORING (расширенный)
+# ---------------------------------------------------------------------------
+
+_POSITIVE_CONTEXT_WORDS = ["тел", "phone", "call", "contact", "связ", "звон"]
+_NEGATIVE_INN = ["инн", "огрн", "кпп"]
+_NEGATIVE_BANK = ["счет", "расчетный", "банк"]
+_NEGATIVE_ORDER = ["заказ", "order", "артикул", "код товара"]
+
+
+def score_phone(digits: str, context: str, raw: str, codes: set[str]) -> int:
+    """Рассчитывает score кандидата телефона."""
+    score = 0
+    ctx = context.lower()
+    raw_lower = raw.lower()
+
+    # --- POSITIVE ---
+    if "tel:" in raw_lower or "tel:" in ctx:
+        score += 5
+
+    if any(w in ctx for w in _POSITIVE_CONTEXT_WORDS):
+        score += 4
+
+    # мобильный код (9XX)
+    if len(digits) >= 4 and digits[1] == "9":
+        score += 3
+
+    # код города в codes.txt
+    if len(digits) >= 4 and digits[1:4] in codes:
+        score += 2
+
+    # структурированный формат (скобки, дефисы)
+    if "(" in raw or "-" in raw:
+        score += 2
+
+    # --- NEGATIVE ---
+    if any(w in ctx for w in _NEGATIVE_INN):
+        score -= 5
+
+    if any(w in ctx for w in _NEGATIVE_BANK):
+        score -= 4
+
+    if any(w in ctx for w in _NEGATIVE_ORDER):
+        score -= 3
+
+    # --- FALLBACK ---
+    has_context = any(w in ctx for w in _POSITIVE_CONTEXT_WORDS) or "tel:" in ctx
+    has_code = (len(digits) >= 4 and
+                (digits[1] == "9" or digits[1:4] in codes))
+    if not has_context and not has_code:
+        score -= 2
+
+    return score
+
+
+# ---------------------------------------------------------------------------
+# Pipeline v2 — ШАГ 6: STRUCTURED DATA
+# ---------------------------------------------------------------------------
+
+def extract_structured_phones(soup: BeautifulSoup) -> list[str]:
+    """Извлекает телефоны из JSON-LD, meta, microdata (high-confidence)."""
+    phones = []
+
+    # 1. JSON-LD
+    for script in soup.find_all("script", type="application/ld+json"):
+        try:
+            data = json.loads(script.string or "")
+            _extract_telephone_from_jsonld(data, phones)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    # 2. meta property="og:phone" или подобное
+    for meta in soup.find_all("meta"):
+        prop = meta.get("property", "") or meta.get("name", "")
+        if "phone" in prop.lower() or "telephone" in prop.lower():
+            content = meta.get("content", "")
+            if content:
+                phones.append(content)
+
+    # 3. microdata itemprop="telephone"
+    for tag in soup.find_all(attrs={"itemprop": "telephone"}):
+        text = tag.get("content") or tag.get_text(strip=True)
+        if text:
+            phones.append(text)
+
+    # Нормализация и dedup
+    seen = set()
+    result = []
+    for raw in phones:
+        normalized = normalize_candidate(raw)
+        if normalized and normalized not in seen:
+            seen.add(normalized)
+            result.append(_format_phone(normalized))
+    return result
+
+
+def _extract_telephone_from_jsonld(data, phones: list):
+    """Рекурсивно ищет 'telephone' в JSON-LD структуре."""
+    if isinstance(data, dict):
+        for key, val in data.items():
+            if key.lower() == "telephone":
+                if isinstance(val, str):
+                    phones.append(val)
+                elif isinstance(val, list):
+                    phones.extend(v for v in val if isinstance(v, str))
+            else:
+                _extract_telephone_from_jsonld(val, phones)
+    elif isinstance(data, list):
+        for item in data:
+            _extract_telephone_from_jsonld(item, phones)
+
+
+# ---------------------------------------------------------------------------
+# Pipeline v2 — ШАГ 7: ОСНОВНОЙ PIPELINE
+# ---------------------------------------------------------------------------
+
+def extract_phones_v2(text: str, soup: BeautifulSoup) -> list[str]:
+    """Новый pipeline: candidates → normalize → context → score → filter."""
+    codes = load_phone_codes()
+    candidates = extract_phone_candidates(text)
+
+    seen = set()
+    result = []
+    threshold = 2
+
+    for raw, start, end in candidates:
+        normalized = normalize_candidate(raw)
+        if normalized is None:
+            continue
+
+        context = extract_context(text, start, end)
+        sc = score_phone(normalized, context, raw, codes)
+
+        if sc >= threshold and normalized not in seen:
+            seen.add(normalized)
+            result.append(_format_phone(normalized))
+
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Обработка файла
 # ---------------------------------------------------------------------------
 
@@ -343,13 +561,21 @@ def process_file(filepath: str) -> dict:
         e.lower() for e in emails_text + emails_href + emails_data
     ))
 
-    # Телефоны: текст + href + локальные
+    # Телефоны: текст + href + локальные + v2 pipeline + structured
     phones_text = extract_phones(clean_text)
     phones_href = extract_phones_from_hrefs(hrefs)
     phones_local = extract_local_phones(clean_text)
+    phones_v2 = extract_phones_v2(clean_text, soup)
+    phones_struct = extract_structured_phones(soup)
 
     seen_digits = set()
     all_phones = []
+    # structured phones — высший приоритет (high-confidence)
+    for phone in phones_struct:
+        digits = re.sub(r"\D", "", phone)
+        if digits not in seen_digits:
+            seen_digits.add(digits)
+            all_phones.append(phone)
     for phone in phones_text:
         digits = re.sub(r"\D", "", phone)
         if digits not in seen_digits:
@@ -360,6 +586,11 @@ def process_file(filepath: str) -> dict:
             seen_digits.add(digits)
             all_phones.append(formatted)
     for phone in phones_local:
+        digits = re.sub(r"\D", "", phone)
+        if digits not in seen_digits:
+            seen_digits.add(digits)
+            all_phones.append(phone)
+    for phone in phones_v2:
         digits = re.sub(r"\D", "", phone)
         if digits not in seen_digits:
             seen_digits.add(digits)
