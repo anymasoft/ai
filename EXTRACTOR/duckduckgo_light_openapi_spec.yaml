@@ -1,0 +1,284 @@
+openapi: 3.0.0
+info:
+  title: DuckDuckGo Light Search API
+  description: |
+    DuckDuckGo Light Search API provides a streamlined version of DuckDuckGo Search, delivering organic results,
+    ads, and knowledge graph data with fast response times.
+
+    The API supports locale-based targeting, time-based filtering, and pagination through next page tokens.
+
+    **Cross-linking**: For a full-featured DuckDuckGo search with AI overview, inline images, videos, top stories,
+    and related searches, use the DuckDuckGo Search API (engine=duckduckgo).
+  version: 1.0.0
+servers:
+  - url: https://www.searchapi.io/api/v1
+paths:
+  /search:
+    get:
+      summary: DuckDuckGo Light Search
+      security:
+        - ApiKeyAuth: []
+        - ApiKeyQuery: []
+      parameters:
+        - name: engine
+          in: query
+          required: true
+          description: The search engine to use
+          schema:
+            type: string
+            enum: ["duckduckgo_light"]
+        - name: q
+          in: query
+          required: true
+          description: Search query
+          schema:
+            type: string
+            maxLength: 500
+        - name: locale
+          in: query
+          required: false
+          description: Search locale for region and language
+          schema:
+            type: string
+            enum: ["xa-ar", "xa-en", "ar-es", "au-en", "at-de", "be-fr", "be-nl", "br-pt", "bg-bg", "ca-en", "ca-fr", "ct-ca", "cl-es", "cn-zh", "co-es", "hr-hr", "cz-cs", "dk-da", "ee-et", "fi-fi", "fr-fr", "de-de", "gr-el", "hk-tzh", "hu-hu", "in-en", "id-id", "id-en", "ie-en", "il-he", "it-it", "jp-jp", "kr-kr", "lv-lv", "lt-lt", "xl-es", "my-ms", "my-en", "mx-es", "nl-nl", "nz-en", "no-no", "pe-es", "ph-en", "ph-tl", "pl-pl", "pt-pt", "ro-ro", "ru-ru", "sg-en", "sk-sk", "sl-sl", "za-en", "es-es", "se-sv", "ch-de", "ch-fr", "ch-it", "tw-tzh", "th-th", "tr-tr", "ua-uk", "uk-en", "us-en", "ue-es", "ve-es", "vn-vi", "wt-wt"]
+            default: "us-en"
+        - name: time_period
+          in: query
+          required: false
+          description: Filter results by time period or date range (YYYY-MM-DD..YYYY-MM-DD)
+          schema:
+            type: string
+            pattern: '^(\d{4}-\d{2}-\d{2}\.\.\d{4}-\d{2}-\d{2}|any_time|past_year|past_month|past_week|past_day)$'
+            default: "any_time"
+        - name: next_page_token
+          in: query
+          required: false
+          description: Token for pagination to get the next page of results
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '400':
+          description: Validation Error. There is an issue with query parameters, such as missing required parameters or invalid values.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication Error. The API key is missing or invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate Limit Exceeded. The number of allowed requests has been exceeded. Consider upgrading your plan or waiting for the limit to reset.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server Error. Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Timeout. We could not retrieve results in 90 seconds.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: 'Use Bearer authentication. Format: "Bearer YOUR_API_KEY"'
+    ApiKeyQuery:
+      type: apiKey
+      in: query
+      name: api_key
+      description: Pass API key as query parameter
+  schemas:
+    SearchResponse:
+      type: object
+      properties:
+        search_metadata:
+          $ref: '#/components/schemas/SearchMetadata'
+        search_parameters:
+          $ref: '#/components/schemas/SearchParameters'
+        error:
+          type: string
+          description: Error message when no results are returned
+        knowledge_graph:
+          $ref: '#/components/schemas/KnowledgeGraph'
+        ads:
+          type: array
+          items:
+            $ref: '#/components/schemas/Ad'
+        organic_results:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrganicResult'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    SearchMetadata:
+      type: object
+      required: [id, status, created_at]
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the search request
+        status:
+          type: string
+          description: Status of the search request
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the search was created
+        request_time_taken:
+          type: number
+          description: Time taken to make the request in seconds
+        parsing_time_taken:
+          type: number
+          description: Time taken to parse the results in seconds
+        total_time_taken:
+          type: number
+          description: Total time taken for the search in seconds
+        request_url:
+          type: string
+          description: DuckDuckGo Light URL for this search
+        html_url:
+          type: string
+          description: URL to view HTML results
+        json_url:
+          type: string
+          description: URL to view JSON results
+
+    SearchParameters:
+      type: object
+      properties:
+        engine:
+          type: string
+          description: Search engine used
+        q:
+          type: string
+          description: Search query
+        locale:
+          type: string
+          description: Search locale for region and language
+        time_period:
+          type: string
+          description: Time period filter
+        next_page_token:
+          type: string
+          description: Token for pagination
+
+    KnowledgeGraph:
+      type: object
+      properties:
+        title:
+          type: string
+          description: Main title of the knowledge graph entity
+        description:
+          type: string
+          description: Description of the entity
+        source:
+          type: object
+          properties:
+            name:
+              type: string
+              description: Name of the data source
+            link:
+              type: string
+              description: Link to the source
+        thumbnail:
+          type: string
+          description: Image URL for the entity
+
+    Ad:
+      type: object
+      required: [position, title, link, tracking_link, displayed_link, snippet]
+      properties:
+        position:
+          type: integer
+          description: Position of the ad in the results
+        title:
+          type: string
+          description: Title of the ad
+        link:
+          type: string
+          description: Destination URL of the ad
+        tracking_link:
+          type: string
+          description: Original DuckDuckGo tracking/redirect URL for the ad
+        displayed_link:
+          type: string
+          description: Display URL shown in the ad
+        snippet:
+          type: string
+          description: Description text of the ad
+        snippet_highlighted_words:
+          type: array
+          items:
+            type: string
+          description: Highlighted words from the snippet
+        date:
+          type: string
+          description: Date information if available
+        favicon:
+          type: string
+          description: Favicon URL of the advertiser
+
+    OrganicResult:
+      type: object
+      required: [position, title, link, displayed_link, snippet, favicon]
+      properties:
+        position:
+          type: integer
+          description: Position in search results
+        title:
+          type: string
+          description: Title of the result
+        link:
+          type: string
+          description: URL of the result
+        displayed_link:
+          type: string
+          description: Display URL shown in the result
+        snippet:
+          type: string
+          description: Description snippet
+        snippet_highlighted_words:
+          type: array
+          items:
+            type: string
+          description: Highlighted words from the snippet
+        date:
+          type: string
+          description: Date information if available
+        favicon:
+          type: string
+          description: Favicon URL
+
+    Pagination:
+      type: object
+      properties:
+        next_page_token:
+          type: string
+          description: Token to retrieve the next page of results
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Error message describing what went wrong
