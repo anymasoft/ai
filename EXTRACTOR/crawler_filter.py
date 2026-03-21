@@ -338,7 +338,6 @@ def filter_links(links: list[tuple[str, str]], base_domain: str) -> list[str]:
 
     # ШАГ 6: гарантии — обязательные страницы (добавляем, даже если не вошли в top)
     guaranteed_patterns = [
-        ("homepage", lambda u: urlparse(u).path.strip("/") == ""),
         ("contact", lambda u: any(k in urlparse(u).path for k in
             ["contact", "kontakt", "контакт", "связ", "svyaz"])),
         ("about", lambda u: any(k in urlparse(u).path for k in
@@ -352,6 +351,16 @@ def filter_links(links: list[tuple[str, str]], base_domain: str) -> list[str]:
                 top.append((norm_url, s, depth, anchor))
                 top_urls.add(norm_url)
                 break
+
+    # ШАГ 6.1: homepage ВСЕГДА на позиции #1
+    homepage = normalize(base_domain)
+    # убираем дубли homepage из списка
+    top = [item for item in top if item[0] != homepage]
+    # вставляем в начало
+    top.insert(0, (homepage, 999, 0, "homepage"))
+    # обрезаем хвост если превысили лимит (homepage не трогаем)
+    if len(top) > MAX_LINKS + 1:
+        top = top[:MAX_LINKS + 1]
 
     # ШАГ 7: отладочный вывод
     print(f"\n{'='*75}")
