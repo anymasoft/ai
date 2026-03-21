@@ -56,7 +56,8 @@ EMAIL_STOP_PATTERNS = [
 
 def read_html_file(filepath: str) -> str:
     """Читает HTML-файл с автоопределением кодировки через chardet + fallback."""
-    raw = open(filepath, "rb").read()
+    with open(filepath, "rb") as f:
+        raw = f.read()
 
     if chardet:
         detected = chardet.detect(raw)
@@ -408,7 +409,7 @@ def extract_context(text: str, start: int, end: int, window: int = 50) -> str:
 # Pipeline v2 — ШАГ 5: SCORING (расширенный)
 # ---------------------------------------------------------------------------
 
-_POSITIVE_CONTEXT_WORDS = ["тел", "phone", "call", "contact", "связ", "звон"]
+_POSITIVE_CONTEXT_WORDS = ["тел.", "тел:", "телефон", "phone", "call", "contact", "связ", "звон"]
 _NEGATIVE_INN = ["инн", "огрн", "кпп"]
 _NEGATIVE_BANK = ["счет", "расчетный", "банк"]
 _NEGATIVE_ORDER = ["заказ", "order", "артикул", "код товара"]
@@ -463,17 +464,27 @@ def score_phone(digits: str, context: str, raw: str, codes: set[str]) -> int:
 # Pipeline v2 — ШАГ 6: STRUCTURED DATA
 # ---------------------------------------------------------------------------
 
-def extract_structured_phones(soup: BeautifulSoup) -> list[str]:
+def extract_structured_phones(soup: BeautifulSoup, raw_html: str = "") -> list[str]:
     """Извлекает телефоны из JSON-LD, meta, microdata (high-confidence)."""
     phones = []
 
-    # 1. JSON-LD
-    for script in soup.find_all("script", type="application/ld+json"):
-        try:
-            data = json.loads(script.string or "")
-            _extract_telephone_from_jsonld(data, phones)
-        except (json.JSONDecodeError, TypeError):
-            pass
+    # 1. JSON-LD (из raw_html, т.к. clean_html() удаляет <script>)
+    if raw_html:
+        json_soup = BeautifulSoup(raw_html, "html.parser")
+        for script in json_soup.find_all("script", type="application/ld+json"):
+            try:
+                data = json.loads(script.string or "")
+                _extract_telephone_from_jsonld(data, phones)
+            except (json.JSONDecodeError, TypeError):
+                pass
+    else:
+        # fallback если raw_html не передан
+        for script in soup.find_all("script", type="application/ld+json"):
+            try:
+                data = json.loads(script.string or "")
+                _extract_telephone_from_jsonld(data, phones)
+            except (json.JSONDecodeError, TypeError):
+                pass
 
     # 2. meta property="og:phone" или подобное
     for meta in soup.find_all("meta"):
@@ -566,7 +577,7 @@ def process_file(filepath: str) -> dict:
     phones_href = extract_phones_from_hrefs(hrefs)
     phones_local = extract_local_phones(clean_text)
     phones_v2 = extract_phones_v2(clean_text, soup)
-    phones_struct = extract_structured_phones(soup)
+    phones_struct = extract_structured_phones(soup, raw_html)
 
     seen_digits = set()
     all_phones = []
