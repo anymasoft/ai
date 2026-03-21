@@ -320,7 +320,7 @@ def run_parser(url: str, output_file: Path) -> bool:
     Запускает parser-2gis через subprocess.
 
     Команда:
-        parser-2gis -i "URL" -o "results.csv" -f csv --parser.delay_between_clicks 200
+        parser-2gis -i "URL" -o "results.csv" -f csv --parser.delay_between_clicks 200 --chrome.headless yes
 
     Возвращает:
         True если успешно, False если ошибка
@@ -331,6 +331,7 @@ def run_parser(url: str, output_file: Path) -> bool:
         "-o", str(output_file),
         "-f", "csv",
         "--parser.delay_between_clicks", "200",
+        "--chrome.headless", "yes",
     ]
 
     logger.info(f"[*] Запуск парсера...")
