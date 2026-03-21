@@ -23,8 +23,15 @@ import subprocess
 import requests
 from pathlib import Path
 from dotenv import load_dotenv
-import pymorphy2
-import iuliia
+
+try:
+    import pymorphy2
+    from iuliia import YANDEX_MAPS
+except ImportError as e:
+    print(f"[!] Ошибка импорта: {e}")
+    print("\nУстановите зависимости:")
+    print("  pip install pymorphy2 python-Levenshtein iuliia")
+    sys.exit(1)
 
 # Загружаем переменные окружения
 load_dotenv()
@@ -266,20 +273,11 @@ def city_to_2gis_slug(raw_city: str, cities_map: dict) -> str:
         return slug
 
     # Шаг 4: Fallback через iuliia
-    try:
-        schema = Schema.load("yandex_maps")
-        slug = translate(normalized, schema)
-        slug = slug.replace(" ", "-").lower()
-        logger.debug(f"[DEBUG] iuliia result: '{slug}'")
-        logger.info(f"[*] Использован iuliia (yandex_maps): '{slug}'")
-        return slug
-    except Exception as e:
-        logger.warning(f"[!] Ошибка iuliia: {e}")
-
-    # Шаг 5: Последний вариант — как есть
-    fallback = normalized_slug
-    logger.warning(f"[!] Использован fallback (как есть): '{fallback}'")
-    return fallback
+    slug = YANDEX_MAPS.translate(normalized)
+    slug = slug.replace(" ", "-").lower()
+    logger.debug(f"[DEBUG] iuliia result: '{slug}'")
+    logger.info(f"[*] Использован iuliia (yandex_maps): '{slug}'")
+    return slug
 
 
 def read_query_file() -> tuple[str, str]:
