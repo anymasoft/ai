@@ -317,10 +317,12 @@ def build_2gis_url(niche: str, city_slug: str) -> str:
 
 def run_parser(url: str, output_file: Path) -> bool:
     """
-    Запускает parser-2gis через subprocess.
+    Запускает parser-2gis через subprocess и выводит результаты в консоль.
 
     Команда:
-        parser-2gis -i "URL" -o "results.csv" -f csv --parser.delay_between_clicks 200 --chrome.headless yes
+        parser-2gis -i "URL" --parser.delay_between_clicks 200 --chrome.headless yes
+
+    Результаты выводятся прямо в консоль (без сохранения в файл).
 
     Возвращает:
         True если успешно, False если ошибка
@@ -328,48 +330,24 @@ def run_parser(url: str, output_file: Path) -> bool:
     cmd = [
         "parser-2gis",
         "-i", url,
-        "-o", str(output_file),
-        "-f", "csv",
         "--parser.delay_between_clicks", "200",
         "--chrome.headless", "yes",
     ]
 
     logger.info(f"[*] Запуск парсера...")
     logger.info(f"    Команда: {' '.join(cmd)}")
+    logger.info(f"[*] Результаты будут выведены в консоль:")
+    logger.info("=" * 70)
 
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
+    result = subprocess.run(cmd, timeout=3600)
 
-        if result.returncode == 0:
-            logger.info(f"[✓] Парсер завершён успешно!")
+    logger.info("=" * 70)
 
-            # Проверяем существование файла результатов
-            if output_file.exists():
-                file_size = output_file.stat().st_size
-                logger.info(f"[✓] Результаты сохранены в: {output_file}")
-                logger.info(f"    Размер файла: {file_size} байт")
-                return True
-            else:
-                logger.warning(f"[!] Файл результатов не создан")
-                return False
-        else:
-            logger.error(f"[!] Парсер вернул код ошибки: {result.returncode}")
-            if result.stdout:
-                logger.error(f"    stdout: {result.stdout[:500]}")
-            if result.stderr:
-                logger.error(f"    stderr: {result.stderr[:500]}")
-            return False
-
-    except subprocess.TimeoutExpired:
-        logger.error(f"[!] Парсер превысил timeout (1 час)")
-        return False
-    except FileNotFoundError:
-        logger.error(f"[!] Команда parser-2gis не найдена!")
-        logger.error(f"\n    Установите parser-2gis:")
-        logger.error(f"    pip install parser-2gis")
-        return False
-    except Exception as e:
-        logger.error(f"[!] Ошибка при запуске парсера: {e}")
+    if result.returncode == 0:
+        logger.info(f"[✓] Парсер завершён успешно!")
+        return True
+    else:
+        logger.error(f"[!] Парсер вернул код ошибки: {result.returncode}")
         return False
 
 
@@ -399,13 +377,11 @@ def main():
     logger.info(f"[✓] Построен URL: {url}")
 
     # Запускаем парсер
-    logger.info("=" * 70)
     success = run_parser(url, OUTPUT_FILE)
-    logger.info("=" * 70)
 
     if success:
         logger.info(f"\n[✓] ВСЁ ГОТОВО!")
-        logger.info(f"    Результаты в: {OUTPUT_FILE}")
+        logger.info(f"    Результаты выведены выше в консоль")
         return 0
     else:
         logger.error(f"\n[!] Ошибка при парсинге")
