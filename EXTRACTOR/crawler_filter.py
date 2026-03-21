@@ -27,6 +27,12 @@ MAX_LINKS = 20
 MAX_PER_SEGMENT = 3  # diversity: макс. ссылок с одинаковым первым сегментом
 DIVERSITY_BYPASS_SCORE = 120  # score >= этого → обход diversity-фильтра
 
+# Anchor-based bypass: эти слова в anchor ВСЕГДА обходят diversity-лимит
+STRONG_ANCHORS = [
+    "контакт", "contact", "о нас", "about",
+    "о компании", "company", "связаться", "свяжитесь",
+]
+
 # ---------------------------------------------------------------------------
 # ШАГ 1: HARD FILTER
 # ---------------------------------------------------------------------------
@@ -351,8 +357,10 @@ def filter_links(links: list[tuple[str, str]], base_domain: str) -> list[str]:
         if len(top) >= MAX_LINKS:
             break
         norm_url, s, depth, anchor = item
-        # bypass: сильные ссылки (контакты, о нас) обходят diversity-лимит
-        if s >= DIVERSITY_BYPASS_SCORE:
+        anchor_lower = anchor.lower() if anchor else ""
+        is_strong = any(w in anchor_lower for w in STRONG_ANCHORS)
+        # bypass: сильный anchor ИЛИ высокий score → обход diversity-лимита
+        if is_strong or s >= DIVERSITY_BYPASS_SCORE:
             top.append(item)
             continue
         seg = urlparse(norm_url).path.strip("/").split("/")[0] if urlparse(norm_url).path.strip("/") else ""
@@ -392,12 +400,14 @@ def filter_links(links: list[tuple[str, str]], base_domain: str) -> list[str]:
     print(f"\n{'='*95}")
     print(f"  FILTERED LINKS ({len(top)} из {len(links)} исходных)")
     print(f"{'='*95}")
-    print(f"  {'URL':<50} {'ANCHOR':<20} {'SCORE':>6} {'DEPTH':>5}")
-    print(f"  {'-'*50} {'-'*20} {'-'*6} {'-'*5}")
+    print(f"  {'URL':<50} {'ANCHOR':<18} {'SCORE':>6} {'DEPTH':>5} {'STR':>3}")
+    print(f"  {'-'*50} {'-'*18} {'-'*6} {'-'*5} {'-'*3}")
     for norm_url, s, depth, anchor in top:
         u = norm_url if len(norm_url) <= 50 else norm_url[:47] + "..."
-        a = anchor if len(anchor) <= 20 else anchor[:17] + "..."
-        print(f"  {u:<50} {a:<20} {s:>6} {depth:>5}")
+        a = anchor if len(anchor) <= 18 else anchor[:15] + "..."
+        anchor_lower = anchor.lower() if anchor else ""
+        strong = "+" if any(w in anchor_lower for w in STRONG_ANCHORS) else ""
+        print(f"  {u:<50} {a:<18} {s:>6} {depth:>5} {strong:>3}")
     print(f"{'='*95}\n")
 
     return [item[0] for item in top]
