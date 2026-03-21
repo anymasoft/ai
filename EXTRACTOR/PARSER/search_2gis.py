@@ -24,8 +24,7 @@ import requests
 from pathlib import Path
 from dotenv import load_dotenv
 import pymorphy2
-import iuliia
-from iuliia import Schema, translate
+from iuliia import YANDEX_MAPS
 
 # Загружаем переменные окружения
 load_dotenv()
@@ -264,12 +263,21 @@ def city_to_2gis_slug(raw_city: str, cities_map: dict) -> str:
         logger.info(f"[*] Найдено в russia-cities.json (по нормализованному имени): '{slug}'")
         return slug
 
+<<<<<<< HEAD
+    # Шаг 4: Fallback через iuliia
+    slug = YANDEX_MAPS.translate(normalized)
+=======
     schema = Schema.load("yandex_maps")
     slug = translate(normalized, schema)
+>>>>>>> origin/main
     slug = slug.replace(" ", "-").lower()
     logger.debug(f"[DEBUG] iuliia result: '{slug}'")
     logger.info(f"[*] Использован iuliia (yandex_maps): '{slug}'")
     return slug
+<<<<<<< HEAD
+
+=======
+>>>>>>> origin/main
 
 def read_query_file() -> tuple[str, str]:
     """
