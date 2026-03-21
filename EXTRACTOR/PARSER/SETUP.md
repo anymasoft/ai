@@ -31,7 +31,7 @@ parser_env\Scripts\activate
 ### 3. Установить зависимости
 
 ```bash
-pip install pymorphy2 python-Levenshtein iuliia parser-2gis
+pip install pymorphy2 python-Levenshtein iuliia parser-2gis requests python-dotenv
 ```
 
 ### 4. Скачать базу городов
@@ -41,6 +41,21 @@ curl -o russia-cities.json https://raw.githubusercontent.com/arbaev/russia-citie
 ```
 
 Или скачайте вручную: https://raw.githubusercontent.com/arbaev/russia-cities/master/cities.json
+
+### 5. Создать файл конфигурации .env
+
+Скопируйте `.env.example` в `.env` и добавьте свой OpenAI API ключ:
+
+```bash
+cp .env.example .env
+nano .env  # или используйте ваш редактор
+
+# Содержимое .env:
+OPENAI_API_KEY=sk-your-actual-api-key-here
+OPENAI_MODEL=gpt-4o-mini
+```
+
+**Важно:** Не коммитьте `.env` файл в git! Используйте только `.env.example` как шаблон.
 
 ---
 
@@ -82,6 +97,8 @@ deactivate
 ```
 PARSER/
 ├── parser_env/                 ← Виртуальное окружение (не в git)
+├── .env                        ← Переменные окружения (создайте, не в git)
+├── .env.example                ← Шаблон .env
 ├── search_2gis.py              ← Основной скрипт
 ├── README_2GIS.md              ← Гайд для быстрого старта
 ├── PARSER_2GIS_DOCS.md         ← Полная документация parser-2gis
@@ -112,7 +129,7 @@ PARSER/
 Используйте `python3`:
 ```bash
 python3 -m venv parser_env
-python3 -m pip install pymorphy2 python-Levenshtein iuliia parser-2gis
+python3 -m pip install pymorphy2 python-Levenshtein iuliia parser-2gis requests python-dotenv
 ```
 
 ### Ошибка: "No module named 'pymorphy2'"
@@ -120,7 +137,7 @@ python3 -m pip install pymorphy2 python-Levenshtein iuliia parser-2gis
 Убедитесь что окружение активировано:
 ```bash
 source parser_env/bin/activate  # или в Windows: parser_env\Scripts\activate
-pip install pymorphy2 python-Levenshtein iuliia parser-2gis
+pip install pymorphy2 python-Levenshtein iuliia parser-2gis requests python-dotenv
 ```
 
 ### Ошибка: "parser-2gis: command not found"

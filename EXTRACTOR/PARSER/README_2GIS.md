@@ -5,10 +5,27 @@
 ### 1️⃣ Установка зависимостей
 
 ```bash
-pip install pymorphy2 python-Levenshtein iuliia parser-2gis
+pip install pymorphy2 python-Levenshtein iuliia parser-2gis requests python-dotenv
 ```
 
-### 2️⃣ Скачивание russia-cities.json
+### 2️⃣ Конфигурация OpenAI API (для LLM парсинга)
+
+Скопируйте `.env.example` в `.env`:
+
+```bash
+cp .env.example .env
+```
+
+Отредактируйте `.env` и добавьте ваш OpenAI API ключ:
+
+```bash
+OPENAI_API_KEY=sk-your-actual-key-here
+OPENAI_MODEL=gpt-4o-mini
+```
+
+> **Примечание:** Если API ключа нет, скрипт выбросит ошибку. Получить ключ: https://platform.openai.com/api-keys
+
+### 3️⃣ Скачивание russia-cities.json
 
 ```bash
 curl -o russia-cities.json https://raw.githubusercontent.com/arbaev/russia-cities/master/cities.json
@@ -16,13 +33,24 @@ curl -o russia-cities.json https://raw.githubusercontent.com/arbaev/russia-citie
 
 Или вручную: https://github.com/arbaev/russia-cities/blob/master/cities.json → скачать → положить в папку со скриптом
 
-### 3️⃣ Создание query.txt
+### 4️⃣ Создание query.txt
 
 ```bash
 echo "автомойки в иркутске" > query.txt
 ```
 
-**Формат:** `niche в city` (минимум 2 слова)
+**Формат:** Произвольный текст, LLM сам распарсит нишу и город
+
+**Примеры:**
+```
+тату-салоны в братске
+кафе в москве
+стоматологии в челябинске
+салоны красоты в санкт-петербурге
+парикмахерские в екатеринбурге
+автомойки в братске
+что-нибудь еще в иркутске
+```
 
 **Примеры:**
 ```
@@ -33,13 +61,13 @@ echo "автомойки в иркутске" > query.txt
 автомойки в братске
 ```
 
-### 4️⃣ Запуск парсера
+### 5️⃣ Запуск парсера
 
 ```bash
 python search_2gis.py
 ```
 
-### 5️⃣ Результаты
+### 6️⃣ Результаты
 
 Файл `results.csv` с колонками:
 - Название
@@ -52,23 +80,53 @@ python search_2gis.py
 
 ---
 
-## Что делает скрипт
+## Как это работает
+
+### Архитектура pipeline
 
 ```
-query.txt: "автомойки в иркутске"
+query.txt: "тату-салоны в братске"
     ↓
-Парсинг: niche="автомойки", city="иркутске"
+🤖 LLM парсинг (GPT-4o-mini через OpenAI API)
+    → Распаршивает: niche="тату-салоны", city="братск"
     ↓
-Нормализация города через pymorphy2: "иркутске" → "иркутск"
+Нормализация города через pymorphy2: "братск" → "братск"
     ↓
-Поиск в russia-cities.json: "иркутск" → "irkutsk"
+Поиск в russia-cities.json: "братск" → "bratsk"
     ↓
-Построение URL: https://2gis.ru/irkutsk/search/автомойки
+Построение URL: https://2gis.ru/bratsk/search/тату-салоны
     ↓
 Запуск parser-2gis с задержкой 200 мс между кликами
     ↓
 Результат в results.csv
 ```
+
+### LLM парсинг (новое)
+
+**Функция:** `parse_query_with_llm(query: str) → (niche, city)`
+
+**Что делает:**
+- Принимает произвольный текст из query.txt
+- Отправляет на OpenAI API (gpt-4o-mini)
+- Возвращает структурированный JSON с niche и city
+
+**Пример:**
+
+```python
+input: "тату-салоны в братске"
+output: {"niche": "тату-салоны", "city": "братск"}
+
+input: "кафе в москве"
+output: {"niche": "кафе", "city": "москва"}
+
+input: "что-нибудь еще в иркутске"
+output: {"niche": "что-нибудь еще", "city": "иркутск"}
+```
+
+**Параметры API:**
+- `model`: gpt-4o-mini (дешёвая и быстрая)
+- `temperature`: 0 (детерминированные результаты)
+- `api_key`: из переменной окружения OPENAI_API_KEY
 
 ---
 
@@ -87,16 +145,17 @@ python search_2gis.py
 [INFO] PARSER 2GIS — Поиск компаний по нише и городу
 [INFO] ================================================================================
 [INFO] [✓] Прочитан query.txt: 'салоны красоты в москве'
+[INFO] [*] LLM parsing используется
 [INFO]     Ниша: 'салоны красоты'
-[INFO]     Город (raw): 'москве'
-[INFO] [*] Исходный город: 'москве'
+[INFO]     Город (raw): 'москва'
+[INFO] [*] Исходный город: 'москва'
 [INFO] [*] После pymorphy2: 'москва'
 [INFO] [*] Найдено в исключениях: 'moscow'
 [INFO] [✓] City slug для 2GIS: 'moscow'
-[INFO] [✓] Построен URL: https://2gis.ru/moscow/search/салоны красоты
+[INFO] [✓] Построен URL: https://2gis.ru/moscow/search/салоны%20красоты
 [INFO] ================================================================================
 [INFO] [*] Запуск парсера...
-[INFO]     Команда: parser-2gis -i https://2gis.ru/moscow/search/салоны ... -f csv ...
+[INFO]     Команда: parser-2gis -i https://2gis.ru/moscow/search/салоны%20красоты ... -f csv ...
 [INFO] [✓] Парсер завершён успешно!
 [INFO] [✓] Результаты сохранены в: results.csv
 [INFO]     Размер файла: 125430 байт
@@ -118,6 +177,63 @@ python search_2gis.py
 echo "автомойки в братске" > query.txt
 python search_2gis.py
 ```
+
+---
+
+## 🐛 Решение проблем
+
+### ошибка: "OPENAI_API_KEY не установлен"
+
+**Причина:** Переменная окружения не загружена из .env
+
+**Решение:**
+1. Убедитесь что файл `.env` существует в папке PARSER:
+   ```bash
+   ls -la .env
+   ```
+
+2. Содержимое `.env` должно быть:
+   ```
+   OPENAI_API_KEY=sk-your-actual-key-here
+   OPENAI_MODEL=gpt-4o-mini
+   ```
+
+3. Перезагрузите скрипт:
+   ```bash
+   python search_2gis.py
+   ```
+
+### Ошибка: "No module named 'dotenv'"
+
+**Причина:** Не установлена библиотека python-dotenv
+
+**Решение:**
+```bash
+pip install python-dotenv
+```
+
+### Ошибка: "401 Unauthorized" от OpenAI
+
+**Причина:** Неверный или истёкший API ключ
+
+**Решение:**
+1. Проверьте API ключ: https://platform.openai.com/api-keys
+2. Скопируйте правильный ключ в `.env`
+3. Попробуйте снова
+
+### Ошибка: "LLM вернул пустые значения"
+
+**Причина:** LLM не смог распарсить query
+
+**Решение:**
+1. Убедитесь что query.txt содержит понятный текст
+2. Добавьте предлог "в": "ниша в город"
+3. Примеры хороших запросов:
+   ```
+   кафе в москве
+   салоны красоты в санкт-петербурге
+   парикмахерские в екатеринбурге
+   ```
 
 ---
 
