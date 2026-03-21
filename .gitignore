@@ -59,3 +59,4 @@ audit_repos/
 
 # EXTRACTOR — рабочие txt-файлы (urls, links и т.д.)
 EXTRACTOR/*.txt
+
