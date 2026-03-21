@@ -291,6 +291,42 @@ def extract_phones_from_hrefs(hrefs: list[str]) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
+# Извлечение локальных телефонов (без +7/8 префикса)
+# ---------------------------------------------------------------------------
+
+_LOCAL_PHONE_RE = re.compile(
+    r"(?<!\d)"
+    r"\(\s*(\d{3,5})\s*\)"       # код города в скобках: (495), (812), (34567)
+    r"[\s\-.]?"
+    r"(\d{2,3})"                  # первая группа цифр
+    r"[\s\-.]?"
+    r"(\d{2})"                    # вторая
+    r"[\s\-.]?"
+    r"(\d{2})"                    # третья
+    r"(?!\d)"
+)
+
+
+def extract_local_phones(text: str) -> list[str]:
+    """Извлекает локальные телефоны вида (495) 737-92-57 без +7/8."""
+    text_clean = _EXT_RE.sub("", text)
+    result = []
+
+    for match in _LOCAL_PHONE_RE.finditer(text_clean):
+        digits = re.sub(r"\D", "", match.group(0))
+        if len(digits) == 10:
+            normalized = _normalize_phone(digits)
+            if normalized:
+                result.append(_format_phone(normalized))
+        elif len(digits) == 11:
+            normalized = _normalize_phone(digits)
+            if normalized:
+                result.append(_format_phone(normalized))
+
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Обработка файла
 # ---------------------------------------------------------------------------
 
@@ -307,9 +343,10 @@ def process_file(filepath: str) -> dict:
         e.lower() for e in emails_text + emails_href + emails_data
     ))
 
-    # Телефоны: текст + href
+    # Телефоны: текст + href + локальные
     phones_text = extract_phones(clean_text)
     phones_href = extract_phones_from_hrefs(hrefs)
+    phones_local = extract_local_phones(clean_text)
 
     seen_digits = set()
     all_phones = []
@@ -322,6 +359,11 @@ def process_file(filepath: str) -> dict:
         if digits not in seen_digits:
             seen_digits.add(digits)
             all_phones.append(formatted)
+    for phone in phones_local:
+        digits = re.sub(r"\D", "", phone)
+        if digits not in seen_digits:
+            seen_digits.add(digits)
+            all_phones.append(phone)
 
     return {
         "file": os.path.basename(filepath),

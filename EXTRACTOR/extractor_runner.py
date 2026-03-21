@@ -18,6 +18,7 @@ from extractor_final import (
     extract_emails_from_data_attrs,
     extract_phones,
     extract_phones_from_hrefs,
+    extract_local_phones,
 )
 
 LINKS_FILE = Path(__file__).parent / "links.txt"
@@ -57,9 +58,10 @@ def process_html(html: str) -> dict:
         e.lower() for e in emails_text + emails_href + emails_data
     ))
 
-    # Телефоны: текст + href
+    # Телефоны: текст + href + локальные
     phones_text = extract_phones(clean_text)
     phones_href = extract_phones_from_hrefs(hrefs)
+    phones_local = extract_local_phones(clean_text)
 
     seen_digits = set()
     all_phones = []
@@ -72,6 +74,11 @@ def process_html(html: str) -> dict:
         if digits not in seen_digits:
             seen_digits.add(digits)
             all_phones.append(formatted)
+    for phone in phones_local:
+        digits = re.sub(r"\D", "", phone)
+        if digits not in seen_digits:
+            seen_digits.add(digits)
+            all_phones.append(phone)
 
     return {"phones": all_phones, "emails": all_emails}
 
