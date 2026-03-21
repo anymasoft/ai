@@ -1,0 +1,829 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+    
+
+    
+
+
+
+
+
+
+
+
+
+
+    
+        
+        
+        
+            
+        
+    
+
+
+
+
+
+    <title>
+        
+        
+            
+            
+                Фирма 1С
+            
+        
+    </title>
+
+    
+
+
+	<script src='/static/js/jquery-1.10.2.min.js'></script>
+	<script src='/static/js/bootstrap.min.js'></script>
+	<script src='/static/lib/treeview/jquery.treeview.js'></script>
+
+	<script src='/static/js/jquery.browser.min.js'></script>
+	<script src='/static/js/jquery.lazyload.min.js'></script>
+
+	<link rel="stylesheet" type="text/css" href='/static/lib/treeview/jquery.treeview.css' media="all">
+
+	<link rel="preload" href='https://static.1c.ru/lib/build/css/style.min.css?hash=100029' as="style">
+	<link rel="stylesheet" type="text/css" href='https://static.1c.ru/lib/build/css/style.min.css?hash=100029' media="all">
+
+    
+	
+	<script src="https://static.1c.ru/js/jquery.mCustomScrollbar.concat.min.js"></script>		
+			
+	
+
+		
+
+		
+	
+	
+	
+	
+		<script src='/static/js/jquery.lightbox-0.5.min.js'></script>
+		<link rel="stylesheet" type="text/css" href='/static/css/jquery.lightbox-0.5.css' media="all" />
+	
+
+    <!--[if lte IE 9]>
+	<link rel="stylesheet" type="text/css" href="/static/css/ie9.css" media="all">
+	<![endif]-->
+    <!--[if lt IE 9]>
+    <script src="/static/js/ie8.js"></script>
+    <link rel="stylesheet" type="text/css"   href="/static/css/ie8.css"  media = "all" >
+    <![endif]-->    
+   	<!--[if IE]>
+   	<style>
+		@page {
+		    margin-right:1cm;
+		    margin-left:1cm;
+		}
+	</style>
+	<![endif]-->
+
+    <script src='/static/js/prettify.js'></script>
+    <link href='/static/css/prettify.css' type="text/css" rel="stylesheet">
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+
+
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript" >
+  (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+  m[i].l=1*new Date();
+  for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+  k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+  (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+  ym(22936357, "init", {
+        clickmap:true,
+        trackLinks:true,
+        accurateTrackBounce:true,
+        webvisor:true
+  });
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/22936357" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+    
+
+</head>
+
+<body>
+
+
+
+
+
+
+
+
+
+
+
+<!-- header -->
+<header class="header_main header_main__inner">
+	<div class="container">
+		<div class="header_main__row">
+			<div class="header_main__info">
+				<div class="header_main__logo">
+					<a class="header_main__logo_link" href="/">
+						<picture>
+							<source srcset="https://static.1c.ru/images/logo_1C_small.svg" media="(max-width: 1024px)">						
+							<img src="/static/images/logo.png" alt="1С" />
+						</picture>
+					</a>
+				</div>
+				<ul class="header_main__info_top">
+					<li>
+						<a href="/eng/title.htm">EN</a>
+					</li>
+					<li>
+						<a href="/search" class="header_main__link_search">
+							<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 24 24" style="enable-background:new 0 0 24 24;" xml:space="preserve">
+								<path d="M23.6,21.5l-6-6c-0.1-0.1-0.3-0.2-0.4-0.3c1.2-1.6,1.9-3.5,1.9-5.6C19,4.3,14.7,0,9.5,0S0,4.3,0,9.5 S4.3,19,9.5,19c2.1,0,4-0.7,5.6-1.9c0.1,0.2,0.2,0.3,0.3,0.4l6,6c0.3,0.3,0.7,0.4,1.1,0.4c0.4,0,0.8-0.1,1.1-0.4 C24.1,23,24.1,22,23.6,21.5z M9.5,17C5.4,17,2,13.6,2,9.5S5.4,2,9.5,2S17,5.4,17,9.5S13.6,17,9.5,17z"/>
+							</svg>
+						</a>
+					</li>
+				</ul>
+			</div>
+			<div class="header_main__links">
+				<div class="header_main__col">
+					<div class="header_main__title">
+						<span class="header_main__title_txt">Разделы</span>
+						<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+							<path d="M4.06994 6.32124C4.2613 6.14047 4.56005 6.13904 4.75314 6.31796L7.66018 9.01168C7.85191 9.18934 8.14813 9.18934 8.33986 9.01168L11.2469 6.31796C11.44 6.13904 11.7387 6.14047 11.9301 6.32125L12.613 6.96637C12.8227 7.16447 12.8217 7.49845 12.6108 7.69532L8.68244 11.3629C8.29821 11.7216 7.70183 11.7216 7.3176 11.3629L3.38917 7.69532C3.17831 7.49845 3.17732 7.16447 3.38703 6.96637L4.06994 6.32124Z"/>
+						</svg>
+					</div>
+					<nav class="header_main__nav">
+						<ul class="header_main__nav_list">
+							<li class="header_main__nav_item"><a href="/news/newslist.jsp">Новости</a></li>
+							<li class="header_main__nav_item"><a href="/rus/firm1c/firm1c.htm">Фирма 1С</a></li>
+							<li class="header_main__nav_item"><a href="/rus/products/products.htm">Продукция</a></li>
+							<li class="header_main__nav_item"><a href="/rus/partners/franch-citylist.jsp">Где купить</a></li>	
+						</ul>
+						<ul class="header_main__nav_list">
+							<li class="header_main__nav_item"><a href="/rus/partners/training/default.jsp">Курсы 1С / экзамены 1С</a></li>
+							<li class="header_main__nav_item"><a href="/rus/products/1c/predpr/compat/compatible.jsp">1С:Совместимо</a></li>
+							<li class="header_main__nav_item"><a href="/rus/support/support.htm">Официальная поддержка</a></li>
+							<li class="header_main__nav_item"><a href="/rus/partners/inform.htm">Партнерам</a></li>
+						</ul>
+					</nav>
+				</div>
+				<div class="header_main__col header_main__col_sites">
+					<div class="header_main__title">
+						<span class="header_main__title_txt">Cайты</span>
+						<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+							<path d="M4.06994 6.32124C4.2613 6.14047 4.56005 6.13904 4.75314 6.31796L7.66018 9.01168C7.85191 9.18934 8.14813 9.18934 8.33986 9.01168L11.2469 6.31796C11.44 6.13904 11.7387 6.14047 11.9301 6.32125L12.613 6.96637C12.8227 7.16447 12.8217 7.49845 12.6108 7.69532L8.68244 11.3629C8.29821 11.7216 7.70183 11.7216 7.3176 11.3629L3.38917 7.69532C3.17831 7.49845 3.17732 7.16447 3.38703 6.96637L4.06994 6.32124Z"/>
+						</svg>
+					</div>
+					<nav class="header_main__nav">
+						<ul class="header_main__nav_list">
+							<li class="header_main__nav_item"><a class="nowrap" href="http://v8.1c.ru/">1С:Предприятие 8</a></li>
+							<li class="header_main__nav_item"><a href="http://its.1c.ru/">ИТС.1C.ru</a></li>
+							<li class="header_main__nav_item"><a href="http://www.buh.ru/">БУХ.1С</a></li>
+							<li class="header_main__nav_item"><a href="http://consulting.1c.ru/">1С:Консалтинг</a></li>
+						</ul>
+						<ul class="header_main__nav_list">
+							<li class="header_main__nav_item"><a href="http://dist.1c.ru/">1С:Дистрибьюция</a></li>
+							<li class="header_main__nav_item"><a href="http://www.1csoft.ru/">1Софт</a></li>
+							<li class="header_main__nav_item"><a href="http://solutions.1c.ru/">1С Отраслевые решения</a></li>
+							<li class="header_main__nav_item"><a href="http://online.1c.ru/">1С-Онлайн</a></li>
+						</ul>
+						<ul class="header_main__nav_list">
+							<li class="header_main__nav_item"><a href="http://www.1c-interes.ru/">1С Интерес</a></li>
+							<li class="header_main__nav_item"><a href="http://edu.1c.ru/">1С:Образование</a></li>
+							<li class="header_main__nav_item"><a href="http://obr.1c.ru/">Образовательные программы</a></li>
+							<li class="header_main__nav_item"><a href="http://www.softclub.ru/">1С:Игры</a></li>
+						</ul>
+					</nav>
+				</div>
+			</div>
+		</div>
+	</div>
+</header>
+<!-- END header --> 
+
+<div class="main content_page bg_grey">
+    <div class="container_main container">
+
+        <!-- sidebar -->
+        
+        <aside class="sidebar">
+            
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- leftMenu -->
+
+
+    
+    
+
+    
+
+    <nav class="sidebar_nav">
+        <h2 class="sidebar_nav__header">Фирма 1С</h2>
+        <ul class="sidebar_nav__list">
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/rus/firm1c/firm1c.htm">О фирме</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/rus/products/1c/default.jsp">Продукты фирмы 1C</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/news/pressrelises.jsp">Пресс-релизы</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/news/press.jsp">Публикации в прессе</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/rus/firm1c/vacan/index.jsp">Вакансии</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/uk/qual/skv.htm">ТСКФ. ISO 9000</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/rus/firm1c/address.htm">Наши координаты</a></li>
+            
+        </ul>
+    </nav>
+
+    
+    
+
+    
+
+    <nav class="sidebar_nav">
+        <h2 class="sidebar_nav__header">Партнерская сеть</h2>
+        <ul class="sidebar_nav__list">
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/rus/partners/PartnersRatings/CORP/corp.jsp">Партнеры по корпоративным проектам</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/rus/firm1c/become-partner/">Станьте нашим партнером!</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/rus/firm1c/partypes.htm">Партнерская сеть</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/rus/firm1c/become-partner/">Дилеры</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/rus/firm1c/franch.htm">1С:Франчайзинг</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/partners-pp/fresh.jsp">Партнеры по облакам (1С:Фреш, Аренда, Инфраструктура)</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="http://consulting.1c.ru/partners">Сеть партнеров 1С:Консалтинг</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/cso-part/rus/partners/training/cso/default.htm">Центры Сертифицированного Обучения (ЦСО)</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/rus/firm1c/auc.htm">Учебные центры (УЦ)</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/rus/firm1c/oo.htm">Образовательные организации</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/rus/partners/service.jsp">Центры Сопровождения и Сервис-партнеры</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/rus/firm1c/partypes.htm#2">Дистрибьюторы</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/prof/acs-list.jsp">АЦС (1С:Профессионал)</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/rus/partners/rcko/default.jsp">Региональные центры компетенции по отчетности (РЦКО)</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="http://v8.1c.ru/solutions/product.jsp?prod_id=169">Центры разработки</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/rus/partners/ckerp.jsp">Центры компетенции "1С:Центр ERP"</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/rus/partners/crm.jsp">Центры компетенции 1C:CRM</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/rus/partners/ckd.jsp">Центры компетенции по документообороту (ЦКД)</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/rus/partners/ckb.jsp">Центры компетенции по бюджетному учету (ЦКБ)</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/rus/partners/cko.jsp">Центры компетенции по образованию (ЦКО)</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/rus/partners/ckm.jsp">Центры компетенции по медицине (ЦКМ)</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/rus/partners/cra.jsp">Центры реальной автоматизации</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/rus/partners/kkt-citylist.jsp">Центры компетенции 1С по 54-ФЗ</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/rus/partners/empl.jsp">Центры компетенции по кадровому ЭДО (1С:Кабинет сотрудника)</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/rus/partners/edo.jsp">Центры компетенции по ЭДО</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/rus/partners/sip.jsp">Сертифицированные индивидуальные предприниматели (СИП)</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/ckmdm/default.jsp">Центры компетенции по MDM-решениям</a></li>
+            
+                <li class="sidebar_nav__item"><a class="sidebar_nav__link" href="/rus/partners/search.htm">Поиск партнеров</a></li>
+            
+        </ul>
+    </nav>
+
+
+<div class="sidebar_footer">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+        
+    
+    
+        
+    
+
+			
+
+    
+        
+    
+
+
+
+    
+        
+    
+
+
+
+    
+        
+    
+
+</div>
+<!-- END leftMenu -->
+
+        </aside>
+        
+        <!-- END sidebar -->
+
+        <div class="content inner-content">
+
+            
+				<!-- breadcrumb -->
+					<ul class="breadcrumb">
+						<li><a href="/">Главная</a></li>
+						
+					</ul>
+				<!-- END breadcrumb -->
+
+
+                        
+
+            <div class="redhead">
+
+                <div class="widebox" id="pagecontentforsolr">
+                    
+                    
+                    
+                    
+                        
+                        
+                        
+                            
+                                
+                                    <h1>Фирма 1С</h1>
+                                
+                            
+
+                        
+                    
+                                    
+                    
+
+
+                    
+<!-- content -->
+<style>.panel > *:last-child {margin-bottom: 0;}</style>
+
+<div class="span3 panel hintbox pull-right">
+	<h2 class="text-center">ПРИНЦИПЫ<br />работы фирмы "1С"</h2>
+	<ul>
+		<li><em>Делать то, что действительно нужно пользователям, обществу, людям.</em></li>
+		<li><em>Работать рентабельно.</em></li>
+		<li><em>Быть надежным и выгодным партнером, честно относиться к партнерам, конечным пользователям, сотрудникам.</em></li>
+		<li><em>Работать хорошо, делать и продавать продукцию лучше конкурентов.</em></li>
+		<li><em>Опираться на собственные силы и на кооперацию с лидерами.</em></li>
+		<li><em>Изучать чужой опыт, но думать своей головой.</em></li>
+	</ul>
+</div>
+
+<p>Фирма "1С" основана в 1991 г. и специализируется на разработке, дистрибьюции, издании и поддержке компьютерных программ делового и домашнего назначения.</p>
+<p>Из собственных разработок фирмы "1С" наиболее известны программы системы "1С:Предприятие", а также продукты для домашних компьютеров и образовательной сферы.</p>
+
+<p>
+	Система программ <a href="http://v8.1c.ru/overview/" target="_blank">"1С:Предприятие"</a>
+	предназначена для автоматизации управления и учета на предприятиях
+	различных отраслей, видов деятельности и типов финансирования, и
+	включает в себя решения для комплексной автоматизации <a
+		href="http://v8.1c.ru/erp/" target="_blank">производственных</a>, <a
+		href="http://v8.1c.ru/trade/" target="_blank">торговых и сервисных предприятий</a>, <a
+		href="http://v8.1c.ru/consolid/" target="_blank">продукты для управления финансами
+		холдингов и отдельных предприятий</a>, <a href="http://v8.1c.ru/buhv8/" target="_blank">ведения
+		бухгалтерского учета</a> ("1С:Бухгалтерия" самая известная учетная
+	программа в ряде стран), <a href="http://v8.1c.ru/hrm/" target="_blank">расчета
+		зарплаты и управления кадрами</a>, <a href="http://v8.1c.ru/stateacc/" target="_blank">для
+		учета в бюджетных учреждениях</a>, <a href="http://v8.1c.ru/solutions/" target="_blank">разнообразные
+		отраслевые и специализированные решения</a>, разработанные самой фирмой
+	"1С", ее партнерами и независимыми организациями.
+</p>
+
+<p>
+	Система "1С:Предприятие" состоит из <a
+		href="http://v8.1c.ru/overview/Platform.htm" target="_blank">передовой
+		технологической платформы (ядра)</a> и разработанных на ее основе <a
+		href="http://v8.1c.ru/solutions/applied_solutions.htm" target="_blank">прикладных
+		решений ("конфигураций")</a>. Такая архитектура системы принесла ей
+	высокую популярность, поскольку обеспечивает открытость прикладных
+	решений, высокую функциональность и гибкость, масштабируемость от
+	однопользовательских до клиент-серверных и территориально
+	распределенных решений, от самых малых до весьма крупных организаций и
+	бизнес-структур.
+</p>
+
+<p>
+	Система "1С:Предприятие" широко распространена в России и странах СНГ, успешно применяется организациями многих стран
+	мира. <a href="/rus/news/prsrel/2002/1c-abby/">
+		Постановлением Правительства России от 21 марта 2002 года за создание
+		и внедрение в отраслях экономики системы программ "1С:Предприятие"
+		коллективу разработчиков – сотрудников "1С" была присуждена Премия
+		Правительства РФ в области науки и техники</a>.
+</p>
+
+<p>"1С" уделяет большое внимание программам для обучения и развлечения. Среди наиболее известных собственных разработок система для организации учебного процесса "1С:Образование", серия "1С:Аудиокниги", библиотека электронных материалов для учителей и школьников "1С:Урок", серия мобильных детских образовательных игр по популярным российским франшизам, серия игр <a href="http://www.softclub.ru/il2/default.htm" target="_blank">"Ил-2 Штурмовик"</a>, <a href="http://www.softclub.ru/" target="_blank"> "Искусство Войны" и "Вторая Мировая", издательские проекты "В тылу врага", King’s Bounty и другие</a>.</p>
+<p>Фирма "1С" является <a href="https://dist.1c.ru/vendors/" target="_blank" rel="noopener">официальным дистрибьютором деловых программных продуктов зарубежных и отечественных производителей</a>, таких как ALT Linux, AnyDesk, Dr.Web, Getscreen, Ideco, Kaspersky, Mind, Postgres Pro, SHUTLE Tsplus, SkyDNS, Tegu, TrueConf, UserGate, АСКОН, Ассистент, Атлант, Вкурсе, ГК &laquo;Астра&raquo;, ИКС, Киберпротект (Акронис-Инфозащита), Контент ИИ, МойОфис, Основа, Р7, РедСофт, РОСА, Смарт-Софт, Телемост.</p>
+<p>В настоящий момент фирма "1С" &ndash; это группа компаний, ядро которой составляют ООО&nbsp;"1С", ООО&nbsp;"1С-Софт", ООО&nbsp;«Софтехно», ЧОУ&nbsp;ДПО "1С-Образование", ООО&nbsp;"1С-Паблишинг", ООО&nbsp;"1С-Онлайн", ООО&nbsp;"1С-БухОбслуживание" и другие.</p>
+<p>"1С" работает с пользователями через разветвленную партнерскую сеть, которая включает более 10 000 постоянных партнеров в 600 городах 25 стран:</p>
+
+<ul>
+	<li><a href="/rus/partners/franch-citylist.jsp">предприятия сети "1С:Франчайзинг"</a> &ndash; более 8000 предприятий, сертифицированных фирмой "1С" на оказание комплексных услуг по автоматизации управления и учета на базе программных продуктов "1С". Особо выделяются партнеры, технология внедрения у которых сертифицирована по стандарту качества ISO 9001:2008 (см. <a href="/uk/qual/sk_tskf.htm">"ТСКФ. ISO 9001"</a>);</li>
+	<li><a href="http://consulting.1c.ru/partners" target="_blank">1С:Консалтинг</a> – сеть высококвалифицированных партнеров, выполняющих комплексные проекты, включающие в себя консалтинговые услуги в совокупности с услугами по автоматизации на базе решений "1С:Предприятие 8";</li>
+	<li><a href="http://its.1c.ru/about.php?section=how&city=" target="_blank">сервис-центры и сервис-партнеры</a> оказывают квалифицированные услуги<a href="http://its.1c.ru/about.php" target="_blank">по информационно-технологическому сопровождению</a> пользователей "1С:Предприятия";</li>	
+	<li>
+		<a href="/rus/partners/ckerp.jsp">центры компетенции по ERP-решениям (1С:Центр ERP)</a>,
+		<a href="/rus/partners/crm.jsp">центры компетенции 1C:CRM (ЦК 1С:CRM)</a>,
+		<a href="/rus/partners/ckd.jsp">документообороту (ЦКД)</a>,
+		<a href="/rus/partners/ckb.jsp">бюджетному учету (ЦКБ)</a> и <a href="/rus/partners/cko.jsp">автоматизации образовательных учреждений (ЦКО)</a>,
+		<a href="/rus/partners/ckm.jsp">автоматизации медицинских организаций (ЦКМ)</a>;
+	</li>
+	<li><a href="/cso-part/rus/partners/training/cso/default.htm">центры сертифицированного обучения</a> по "1С:Предприятию 8";</li>
+	<li><a href="/prof/acs-list.jsp">авторизованные центры сертификации</a> в рамках <a href="/prof/prof.htm">проекта "1С:Профессионал"</a>;</li>
+	<li><a href="/rus/partners/distributors.jsp">дистрибьюторы</a> в регионах;</li>
+	<li>розничные магазины и сети, осуществляющие продажи игр и программ для домашних компьютеров;</li>
+	<li>дилеры <a href="http://www.1csoft.ru/" target="_blank">"1Софт"</a>. Под этой маркой развивается сеть партнеров фирмы "1С", оказывающих профессиональные услуги по поставке программного обеспечения отечественных и зарубежных вендоров на базе дистрибьюторского портфеля "1С".</li>
+</ul>
+
+</div>
+
+<div class="spr"></div>
+
+<div class="widebox clearfix">
+
+<h1>Адреса, телефоны, контакты</h1>
+
+<strong>Почтовый адрес: 123056, Россия, Москва, а/я 64</strong>
+
+<ul>
+	<li><a href="#id1">Торговые службы</a></li>
+	<li><a href="#id8">Центр исследования, разработки и обучения</a></li>
+	<li><a href="#id2">Отдел технической поддержки (линия консультации)</a></li>
+	<li><a href="#id7">1С:Лекторий</a></li>
+	<li><a href="#id4">Логистический центр</a></li>
+	<li><a href="#id5">1С:Учебный центр №1</a></li>
+	<li><a href="#id6">1С-Учебный центр №3</a></li>
+</ul>
+
+<h2>e-mail</h2>
+
+<ul>
+	<li>Общие вопросы: <A href="mailto:1c@1c.ru"><strong>1c@1c.ru</strong></a></li>
+	<li>Вопросы приобретения программных продуктов и заключения
+		партнерских договоров: <A href="mailto:sales@1c.ru"><strong>sales@1c.ru</strong></a>
+	</li>
+	<li>Отдел технической поддержки (линия консультации): <a
+		href="mailto:hline@1c.ru"><strong>hline@1c.ru</strong></a></li>
+	<li>Устройство на работу: <A href="mailto:job@1c.ru"><strong>job@1c.ru</strong></a></li>
+	<li>Отдел франчайзинга: <A href="mailto:fran@1c.ru"><strong>fran@1c.ru</strong></a></li>
+	<li>Учебный центр №1: <A href="mailto:uc@1c.ru"><strong>uc@1c.ru</strong></a></li>
+	<li>Учебный центр №3: <A href="mailto:uc3@1c.ru"><strong>uc3@1c.ru</strong></a></li>
+	<li>Вопросы дистрибьюции программного обеспечения других
+		разработчиков: <A href="mailto:dist@1c.ru"><strong>dist@1c.ru</strong></a>
+	</li>
+</ul>
+
+	<a name="id1"></a>
+	<div class="panel">
+		<h2>Торговые службы</h2>
+		<P>
+			<em>Адрес:</em> <strong>Селезневская ул., д.21</strong><br>
+			<em>Режим работы: </em><strong>9:30 &ndash; 18:00</strong> (по рабочим дням)<br>
+			<em>Телефон:</em> (495) <strong>737-92-57</strong> <em>(многоканальный)</em><br>
+			<em>Факс:</em> (495) <strong>681-44-07</strong>
+		</p>
+		<br>
+		<p>
+			<a href="proezds21.htm">Схема проезда</a><br><br>
+			<em>Проезд:</em> до станции метро "Достоевская", после стеклянных
+			дверей налево, потом ближайший выход в город слева на ул.
+			Селезневская (2 мин. пешком); или до станции метро "Новослободская",
+			при выходе в город налево по Селезневской улице в направлении Театра
+			Российской Армии (около 10 мин. пешком)
+		</p>
+	</div>
+	
+	<a name="id8"></a>
+	<div class="panel">
+		<h2>Центр исследования, разработки и обучения</h2>
+		<P>
+			<em>Адрес:</em> <strong>Дмитровское ш., д. 9</strong><br>
+		</p>
+		<p><a href="/rus/firm1c/scheme_d9.htm">Схема проезда</a></p>
+		<p>
+			<em>Проезд:</em> до станции метро "Тимирязевская" <br>
+			<a href="d9.html">Подробная информация о новой территории</a>
+		</p>
+	</div>
+
+
+	<a name="id2"></a>
+	<div class="panel">
+		<h2>Отдел технической поддержки (линия консультации)</a></h2>
+		<p>Опытные специалисты ответят на вопросы по использованию программных продуктов фирмы «1С» по телефону или электронной почте.</p>
+		<p>Подробная информация по <a href="/rus/support/hline.htm">поддержке</a>.</p>
+	</div>
+
+
+	<a name="id7"></a>
+	<div class="panel">
+		<h2>1С:Лекторий</h2>
+		<p>
+			<em>Адрес:</em> <strong>Селезневская ул., д.34</strong><br> <em>Проезд:</em>
+			до станции метро "Достоевская", "Новослободская"<br> <em>Расписание
+				мероприятий и другая информация:</em> <a href="http://its.1c.ru/lector/">http://its.1c.ru/lector/</a><br>
+		
+		</p>
+	</div>
+
+	<a name="id4"></a>
+	<div class="panel">
+		<h2>Логистический центр</h2>
+		<p>
+			<em>Адрес:</em> Москва, ул. Клары Цеткин, д.26А<br /> <em>Телефон:</em>
+			(495) 450-62-74<br />
+			<br />
+		</p>
+	</div>
+
+	<a name="id5"></a>
+	<div class="panel">
+	
+		<h2>
+			<a href="/rus/partners/training/uc1/">1С:Учебный центр&nbsp;№1</a>
+		</h2>
+		
+		<p>
+			<em>Адрес: </em> <strong>Москва, Дмитровское шоссе, д. 9</strong><br>
+			<em>Проезд:</em>метро "Тимирязевская"		
+		</p>
+		
+		<p><a href="/rus/firm1c/scheme_d9.htm">Схема проезда</a></p>
+		
+		<p>
+			<em>Режим работы: </em><strong>9:30 &ndash; 18:00</strong> (по рабочим дням)<br>
+			<em>Телефон:</em>
+			<nobr>
+				(495) <strong>688-9002</strong>
+			</nobr>
+			<br> <em>Факс:</em>
+			<nobr>
+				(495) <strong>681-44-07</strong>
+			</nobr>
+			<br> <em>E-mail:</em> <a href="mailto:uc@1c.ru">uc@1c.ru</a>
+		</p>
+	</div>
+
+<a name="id6"></a>
+<div class="panel">
+	<h2>
+		<a href="/rus/partners/training/uc3/">1С-Учебный центр&nbsp;№3</a>
+	</h2>	
+	<p>
+		<em>Адрес:</em> <strong>г.&nbsp;Москва, 3-й&nbsp;Самотечный пер., д.&nbsp;23</strong><br />
+		<em>Проезд:</em><br />
+		- м. Достоевская (3-5 минут пешком)<br />
+		- м. Новослободская (7-10 минут пешком)<br />
+		- м. Менделеевская (12-15 минут пешком)
+	</p>
+	<p>
+		<em>Режим работы:</em> <strong>9:30&nbsp;-&nbsp;18:00</strong> (по&nbsp;будням)
+	</p>
+	<p>
+		<em>E-mail:</em> <a href="mailto:uc3@1c.ru">uc3@1c.ru</a><br />
+		<em>Телефон:</em> +7&nbsp;(495)&nbsp;373-00-07 (для звонков)<br />
+		<em>WhatsApp:</em> +7&nbsp;(991)&nbsp;628-16-40 (для сообщений)<br />	
+	</p>
+	<p>
+		<em>Вконтакте:</em> <a href="https://vk.com/public_1cuc3" target="_blank">https://vk.com/public_1cuc3</a><br />
+		<em>Канал в телеграмм</em>: <a href="https://t.me/uc3_1c" target="_blank">t.me/uc3_1c</a>
+	</p>
+</div>
+
+<!-- END content -->
+
+
+                </div>
+
+            </div>
+                                    
+            
+            
+        </div>
+
+    </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="footer bg_white">
+	<div class="container">
+		<div class="s_row s_row__footer_main">
+			<div class="col col-2">
+				<h5 class="footer-hd indent20">Фирма 1С</h5>
+				<div class="s_row">
+					<div class="col col-2">
+						<nav class="footer_nav indent20">
+							<ul class="footer_nav__list">
+                                <li class="footer_nav__item"><a class="footer_nav__link" href='/map.jsp'>Весь сайт</a></li>
+                                <li class="footer_nav__item"><a class="footer_nav__link" href='/rus/firm1c/firm1c.htm'>О фирме</a></li>
+                                <li class="footer_nav__item"><a class="footer_nav__link" href='/rus/firm1c/vacan/index.jsp'>Работа в фирме "1С"</a></li>
+                                <li class="footer_nav__item"><a class="footer_nav__link" href='/rus/firm1c/vacan/fran-job.jsp'>Работа в фирмах-партнерах "1С"</a></li>
+                                <li class="footer_nav__item"><a class="footer_nav__link" href='/rus/products/products.htm'>Программные продукты</a></li>
+                                <li class="footer_nav__item"><a class="footer_nav__link" href='/rus/partners/pricelst.jsp'>Прайс-листы</a></li>
+                                <li class="footer_nav__item"><a class="footer_nav__link" target="_blank" href="https://solutions.1c.ru/demo/">Демоверсии</a></li>
+                                <li class="footer_nav__item"><a class="footer_nav__link" href='/rus/support/support.htm'>Поддержка</a></li>
+                                <li class="footer_nav__item"><a class="footer_nav__link" href='/news/pressrelises.jsp'>Пресс-релизы</a></li>
+                                <li class="footer_nav__item"><a class="footer_nav__link" href='/rus/partners/training/default.jsp'>Курсы 1С / Экзамены 1С</a></li>
+                                <li class="footer_nav__item"><a class="footer_nav__link" target="_blank" href='http://www.1c-interes.ru/catalog/application-software-1c.php'>Интернет-магазин (розница)</a></li>
+							</ul>
+						</nav>
+					</div>
+					<div class="col col-2">
+						<nav class="footer_nav">
+							<ul class="footer_nav__list">
+                                <li class="footer_nav__item"><a class="footer_nav__link" href='/eng/title.htm'>English</a></li>
+                                <li class="footer_nav__item"><a class="footer_nav__link" href='/rus/partners/inform.htm'>Партнерам</a></li>
+                                <li class="footer_nav__item"><a class="footer_nav__link" href='/developers/default.jsp'>Разработчикам</a></li>
+                                <li class="footer_nav__item"><a class="footer_nav__link" target="_blank" href='https://1c.kz'>1С Казахстан</a></li>
+							</ul>
+						</nav>
+					</div>
+				</div>
+			</div>
+			<div class="col col-2">
+				<h5 class="footer-hd indent20">Другие сайты 1С</h5>
+				<div class="s_row">
+					<div class="col col-2">
+						<nav class="footer_nav indent20">
+							<ul class="footer_nav__list">
+                                <li class="footer_nav__item"><a class="footer_nav__link" target="_blank" href='http://v8.1c.ru/'>1С:Предприятие 8</a></li>
+                                <li class="footer_nav__item"><a class="footer_nav__link" target="_blank" href='http://solutions.1c.ru/'>1С Отраслевые решения</a></li>
+                                <li class="footer_nav__item"><a class="footer_nav__link" target="_blank" href='http://its.1c.ru/'>ИТС.1C.ru</a></li>
+                                <li class="footer_nav__item"><a class="footer_nav__link" target="_blank" href='http://www.buh.ru/'>БУХ.1С.ru</a></li>
+                                <li class="footer_nav__item"><a class="footer_nav__link" target="_blank" href='https://1c.link/'>1С:Линк</a></li>
+                                <li class="footer_nav__item"><a class="footer_nav__link" target="_blank" href='http://consulting.1c.ru/'>1С:Консалтинг</a></li>
+                                <li class="footer_nav__item"><a class="footer_nav__link" target="_blank" href='http://1cbo.ru/'>1С:БухОбслуживание</a></li>
+                                <li class="footer_nav__item"><a class="footer_nav__link" target="_blank" href='http://club.1c.ru/'>1С:Клуб программистов</a></li>
+                                <li class="footer_nav__item"><a class="footer_nav__link" target="_blank" href='http://obrazovanie.1c.ru'>1С:Образование</a></li>
+                                <li class="footer_nav__item"><a class="footer_nav__link" target="_blank" href='https://uc1.1c.ru/type/video'>Видеокурсы 1С</a></li>
+                                <li class="footer_nav__item"><a class="footer_nav__link" target="_blank" href='https://cloud.1c.ru/'>1С:Облако</a></li>
+							</ul>
+						</nav>
+					</div>
+					<div class="col col-2">
+						<nav class="footer_nav">
+							<ul class="footer_nav__list">
+								<li class="footer_nav__item"><a class="footer_nav__link" target="_blank" href='https://dist.1c.ru'>1С:Дистрибьюция</a></li>
+								<li class="footer_nav__item"><a class="footer_nav__link" target="_blank" href='https://1csoft.ru'>1Софт</a></li>
+								<li class="footer_nav__item"><a class="footer_nav__link" target="_blank" href='https://online.1c.ru'>1С-Онлайн</a></li>
+								<li class="footer_nav__item"><a class="footer_nav__link" target="_blank" href='https://www.1c-interes.ru'>1С Интерес</a></li>
+								<li class="footer_nav__item"><a class="footer_nav__link" target="_blank" href='https://obr.1c.ru'>Образовательные программы</a></li>
+								<li class="footer_nav__item"><a class="footer_nav__link" target="_blank" href='https://www.softclub.ru'>1С:Игры</a></li>
+								<li class="footer_nav__item"><a class="footer_nav__link" target="_blank" href='https://torg.1c.ru'>torg.1c.ru</a></li>
+								<li class="footer_nav__item"><a class="footer_nav__link" target="_blank" href='https://mobile.1c.ru'>1С в мобильном</a></li>
+								<li class="footer_nav__item"><a class="footer_nav__link" target="_blank" href='https://1c-prosto.ru'>1C-Просто</a></li>
+								<li class="footer_nav__item"><a class="footer_nav__link" target="_blank" href='https://1c.market/p/about-service?utm_source=1C&utm_medium=about-service&utm_campaign=chapter'>1С:Бизнес-сеть. Торговая&nbsp;площадка</a></li>
+								<li class="footer_nav__item"><a class="footer_nav__link" target="_blank" href='https://sovmestimo.1c.ru'>Дистрибьюция 1С:Совместимо</a></li>
+							</ul>
+						</nav>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="footer_bottom">
+			<div class="footer_bottom__txt">
+				&copy; АО "Группа 1С" (правопреемник ООО "1С"). Все права защищены. Все торговые марки являются собственностью их правообладателей.
+				
+					
+						
+							<br>
+							<span class="footer-navigation f-small"><a href="/about.html">О нас</a></span>
+							<span class="footer-navigation indent20 f-small"><a href="/policy.html">Политика конфиденциальности</a></span>
+						
+						
+					
+					
+			</div>
+			<div class="footer_bottom__design">
+				Дизайн сайта <a href="http://www.aic.ru" target="_blank" class="aic">aic</a>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script src='https://static.1c.ru/lib/build/js/main.min.js?100026'></script>
+
+
+
+		
+
+		
+
+
+
+		    
+	
+	
+
+<script>
+    var dynamicTitle = "";   //это может приходить из  jsp-шек
+    if (dynamicTitle) {
+        document.title = document.title + " / " + dynamicTitle.replace(new RegExp('&quot;', 'g'), '"');
+    }
+</script>
+
+</body>
+
+</html>
