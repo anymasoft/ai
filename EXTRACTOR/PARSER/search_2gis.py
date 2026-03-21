@@ -22,14 +22,8 @@ import logging
 import subprocess
 from pathlib import Path
 
-try:
-    import pymorphy2
-    import iuliia
-except ImportError as e:
-    print(f"[!] Ошибка импорта: {e}")
-    print("\nУстановите зависимости:")
-    print("  pip install pymorphy2 python-Levenshtein iuliia")
-    sys.exit(1)
+import pymorphy2
+import iuliia
 
 # ============================================================================
 # Конфигурация логирования
@@ -54,10 +48,8 @@ OUTPUT_FILE = SCRIPT_DIR / "results.csv"
 # Исключения для 2GIS (города с нестандартными slug'ами)
 EXCEPTIONS_2GIS = {
     "moskva": "moscow",
-    "moskva": "moscow",
     "москва": "moscow",
     "sankt-peterburg": "spb",
-    "sanktpeterburg": "spb",
     "sanktpeterburg": "spb",
     "sv-peterburg": "spb",
     "pitep": "spb",
