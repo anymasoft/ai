@@ -333,10 +333,11 @@ def filter_links(links: list[tuple[str, str]], base_domain: str) -> list[str]:
     passed = [(url, anchor) for url, anchor in links if _hard_filter(url)]
 
     # ШАГ 2: нормализация + дедупликация
-    seen = {}  # normalized_url -> (original_url, anchor, ...)
+    # При дубле URL — сохраняем самый длинный (информативный) anchor
+    seen = {}  # normalized_url -> (original_url, anchor)
     for url, anchor in passed:
         norm = normalize(url)
-        if norm not in seen:
+        if norm not in seen or len(anchor) > len(seen[norm][1]):
             seen[norm] = (norm, anchor)
 
     # ШАГ 3: scoring
