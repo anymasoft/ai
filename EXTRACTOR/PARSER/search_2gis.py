@@ -26,7 +26,7 @@ from dotenv import load_dotenv
 
 try:
     import pymorphy2
-    import iuliia
+    from iuliia import Schema, translate
 except ImportError as e:
     print(f"[!] Ошибка импорта: {e}")
     print("\nУстановите зависимости:")
@@ -276,8 +276,10 @@ def city_to_2gis_slug(raw_city: str, cities_map: dict) -> str:
 
     # Шаг 4: Fallback через iuliia
     try:
-        slug = iuliia.translate(normalized, schema="yandex_maps")
+        schema = Schema.load("yandex_maps")
+        slug = translate(normalized, schema)
         slug = slug.replace(" ", "-").lower()
+        logger.debug(f"[DEBUG] iuliia result: '{slug}'")
         logger.info(f"[*] Использован iuliia (yandex_maps): '{slug}'")
         return slug
     except Exception as e:
