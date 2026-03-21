@@ -324,6 +324,28 @@ def search(query: str, verbose: bool = False) -> List[str]:
 # CLI
 # ============================================================================
 
+def read_query_from_file() -> str | None:
+    """
+    Пытается прочитать запрос из query.txt рядом со скриптом.
+    Возвращает содержимое или None если файла нет.
+    """
+    from pathlib import Path
+
+    script_dir = Path(__file__).parent
+    query_file = script_dir / "query.txt"
+
+    if query_file.exists():
+        try:
+            with open(query_file, "r", encoding="utf-8") as f:
+                content = f.read().strip()
+                if content:
+                    return content
+        except Exception as e:
+            print(f"[!] Ошибка при чтении query.txt: {e}")
+
+    return None
+
+
 def main():
     """Интерфейс командной строки."""
     if hasattr(sys.stdout, "reconfigure"):
@@ -332,15 +354,25 @@ def main():
         import io
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
-    if len(sys.argv) < 2:
-        print("Использование: python search_duckduckgo.py '<ЗАПРОС>'")
-        print("\nПримеры:")
-        print("  python search_duckduckgo.py 'стоматологии в челябинске'")
-        print("  python search_duckduckgo.py 'клиники в москве'")
-        print("  python search_duckduckgo.py 'франчайзи 1с'")
-        sys.exit(1)
+    # Приоритет 1: query.txt рядом со скриптом
+    query = read_query_from_file()
 
-    query = " ".join(sys.argv[1:])
+    # Приоритет 2: аргумент командной строки
+    if not query and len(sys.argv) > 1:
+        query = " ".join(sys.argv[1:])
+
+    # Если ничего не найдено — ошибка
+    if not query:
+        print("Использование:")
+        print("  Вариант 1: поместите запрос в файл query.txt рядом со скриптом")
+        print("  Вариант 2: python search_duckduckgo.py '<ЗАПРОС>'")
+        print("\nПримеры query.txt:")
+        print("  стоматологии в челябинске")
+        print("  клиники в москве")
+        print("  франчайзи 1с")
+        print("\nИли через аргумент:")
+        print("  python search_duckduckgo.py 'стоматологии в челябинске'")
+        sys.exit(1)
 
     # Поиск с выводом информации
     urls = search(query, verbose=True)
