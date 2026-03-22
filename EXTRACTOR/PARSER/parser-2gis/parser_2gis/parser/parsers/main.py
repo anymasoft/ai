@@ -131,8 +131,12 @@ class MainParser:
         """
         available_pages = self._get_available_pages()
         if n_page in available_pages:
-            self._chrome_remote.perform_click(available_pages[n_page])
-            return n_page
+            try:
+                self._chrome_remote.perform_click(available_pages[n_page])
+                return n_page
+            except Exception as e:
+                logger.warning('Ошибка при переходе на страницу %d: %s. Завершение парсинга.', n_page, str(e))
+                return None
 
         return None
 
@@ -202,46 +206,51 @@ class MainParser:
             if not walk_page_number:
                 # Iterate through gathered links
                 for link in links:
-                    for _ in range(3):  # 3 attempts to get response
-                        # Click the link to provoke request
-                        # with a auth key and secret arguments
-                        self._chrome_remote.perform_click(link)
+                    try:
+                        for _ in range(3):  # 3 attempts to get response
+                            # Click the link to provoke request
+                            # with a auth key and secret arguments
+                            self._chrome_remote.perform_click(link)
 
-                        # Delay between clicks, could be usefull if
-                        # 2GIS's anti-bot service become more strict.
-                        if self._options.delay_between_clicks:
-                            self._chrome_remote.wait(self._options.delay_between_clicks / 1000)
+                            # Delay between clicks, could be usefull if
+                            # 2GIS's anti-bot service become more strict.
+                            if self._options.delay_between_clicks:
+                                self._chrome_remote.wait(self._options.delay_between_clicks / 1000)
 
-                        # Gather response and collect useful payload.
-                        resp = self._chrome_remote.wait_response(self._item_response_pattern)
+                            # Gather response and collect useful payload.
+                            resp = self._chrome_remote.wait_response(self._item_response_pattern)
 
-                        # If request is failed - repeat, otherwise go further.
+                            # If request is failed - repeat, otherwise go further.
+                            if resp and resp['status'] >= 0:
+                                break
+
+                        # Get response body data
                         if resp and resp['status'] >= 0:
-                            break
+                            data = self._chrome_remote.get_response_body(resp, timeout=10) if resp else None
 
-                    # Get response body data
-                    if resp and resp['status'] >= 0:
-                        data = self._chrome_remote.get_response_body(resp, timeout=10) if resp else None
-
-                        try:
-                            doc = json.loads(data)
-                        except json.JSONDecodeError:
-                            logger.error('Сервер вернул некорректный JSON документ: "%s", пропуск позиции.', data)
+                            try:
+                                doc = json.loads(data)
+                            except json.JSONDecodeError:
+                                logger.error('Сервер вернул некорректный JSON документ: "%s", пропуск позиции.', data)
+                                doc = None
+                        else:
                             doc = None
-                    else:
-                        doc = None
 
-                    if doc:
-                        # Write API document into a file
-                        writer.write(doc)
-                        collected_records += 1
-                    else:
-                        logger.error('Данные не получены, пропуск позиции.')
+                        if doc:
+                            # Write API document into a file
+                            writer.write(doc)
+                            collected_records += 1
+                        else:
+                            logger.error('Данные не получены, пропуск позиции.')
 
-                    # We've reached our limit, bail
-                    if collected_records >= self._options.max_records:
-                        logger.info('Спарсено максимально разрешенное количество записей с данного URL.')
-                        return
+                        # We've reached our limit, bail
+                        if collected_records >= self._options.max_records:
+                            logger.info('Спарсено максимально разрешенное количество записей с данного URL.')
+                            return
+
+                    except Exception as e:
+                        logger.warning('Ошибка при обработке компании: %s. Пропуск позиции.', str(e))
+                        continue
 
             # Evaluate Garbage Collection if it's been exposed and enabled
             if self._options.use_gc and current_page_number % self._options.gc_pages_interval == 0:
