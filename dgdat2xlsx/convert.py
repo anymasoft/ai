@@ -833,16 +833,6 @@ def build_all_rows(dump: dict) -> list:
     return rows
 
 
-def _row_key(values):
-    """Ключ записи для сопоставления строк: (ID, Название).
-    Адрес не включён — он является данными и может меняться."""
-    # values[0]=ID, values[1]=Название
-    return (
-        str(values[0] or ''),
-        str(values[1] or ''),
-    )
-
-
 def _normalize_cell(val):
     """Нормализует значение ячейки для сравнения."""
     if val is None:
@@ -871,8 +861,8 @@ def _setup_sheet_headers(ws):
     ws.auto_filter.ref = f'A1:{last_col_letter}1'
 
 
-def create_new_xlsx(rows: list, output_path: str):
-    """Создаёт новый XLSX файл из списка строк."""
+def write_xlsx(rows: list, output_path: str):
+    """Создаёт XLSX файл из списка строк."""
     wb = Workbook()
     ws = wb.active
     _setup_sheet_headers(ws)
@@ -890,82 +880,28 @@ def create_new_xlsx(rows: list, output_path: str):
             print(f"  {row_idx - 1}/{len(rows)}")
 
     wb.save(output_path)
-    print(f"  Создан: {output_path} ({len(rows)} записей)")
 
 
-def update_existing_xlsx(rows: list, output_path: str):
-    """Обновляет существующий XLSX: изменённые строки обновляются, новые добавляются."""
-    wb = load_workbook(output_path)
+def xlsx_matches_rows(rows: list, xlsx_path: str) -> bool:
+    """Сравнивает данные в существующем XLSX с новыми строками.
+    Возвращает True, если данные полностью совпадают."""
+    wb = load_workbook(xlsx_path)
     ws = wb.active
 
-    default_font = Font(name='Arial', size=10)
-    default_align = Alignment(wrap_text=True, vertical='top', horizontal='left')
-
-    # Загрузить существующие строки в индекс по ключу (ID, Название, Адрес) -> row_number
-    # Если несколько строк с одинаковым ключом, сохраняем список номеров строк
-    existing = {}  # key -> [row_numbers]
-    max_row = ws.max_row
     num_cols = len(COLUMNS)
+    existing_row_count = ws.max_row - 1  # минус заголовок
 
-    for row_num in range(2, max_row + 1):
-        cell_values = [_normalize_cell(ws.cell(row=row_num, column=c).value) for c in range(1, num_cols + 1)]
-        key = _row_key(cell_values)
-        if key not in existing:
-            existing[key] = []
-        existing[key].append(row_num)
+    if existing_row_count != len(rows):
+        return False
 
-    updated = 0
-    added = 0
-    unchanged = 0
+    for row_idx, new_values in enumerate(rows, 2):
+        for col_idx, new_val in enumerate(new_values, 1):
+            old_val = _normalize_cell(ws.cell(row=row_idx, column=col_idx).value)
+            new_val_norm = _normalize_cell(new_val)
+            if old_val != new_val_norm:
+                return False
 
-    # Для новых строк с одинаковым ключом, отслеживаем использованные row_numbers
-    used_rows = set()
-
-    # Сгруппировать новые строки по ключу для корректного сопоставления дубликатов
-    new_by_key = {}
-    for values in rows:
-        key = _row_key(values)
-        if key not in new_by_key:
-            new_by_key[key] = []
-        new_by_key[key].append(values)
-
-    for key, new_values_list in new_by_key.items():
-        existing_row_nums = existing.get(key, [])
-
-        for idx, values in enumerate(new_values_list):
-            if idx < len(existing_row_nums):
-                # Есть соответствующая строка — сравниваем
-                row_num = existing_row_nums[idx]
-                used_rows.add(row_num)
-
-                changed = False
-                for col_idx, val in enumerate(values, 1):
-                    old_val = _normalize_cell(ws.cell(row=row_num, column=col_idx).value)
-                    new_val = _normalize_cell(val)
-                    if old_val != new_val:
-                        changed = True
-                        break
-
-                if changed:
-                    for col_idx, val in enumerate(values, 1):
-                        cell = ws.cell(row=row_num, column=col_idx, value=val)
-                        cell.font = default_font
-                        cell.alignment = default_align
-                    updated += 1
-                else:
-                    unchanged += 1
-            else:
-                # Новая строка — добавить в конец
-                next_row = ws.max_row + 1
-                for col_idx, val in enumerate(values, 1):
-                    cell = ws.cell(row=next_row, column=col_idx, value=val)
-                    cell.font = default_font
-                    cell.alignment = default_align
-                added += 1
-
-    wb.save(output_path)
-    print(f"  Обновлён: {output_path}")
-    print(f"  Без изменений: {unchanged}, обновлено: {updated}, добавлено: {added}")
+    return True
 
 
 # ============================================================
@@ -1024,7 +960,9 @@ def main():
 
 
 def convert_file(input_file: str, output_file: str):
-    """Конвертирует один .dgdat файл в .xlsx (создаёт новый или обновляет существующий)."""
+    """Конвертирует один .dgdat файл в .xlsx.
+    Если xlsx уже существует и данные совпадают — пропускает.
+    Если есть расхождения или файла нет — создаёт/перезаписывает."""
     print(f"\nПарсинг: {input_file}")
     dump, prop = parse_dgdat(input_file)
     print(f"  Город: {prop.get('name', '?')}")
@@ -1033,10 +971,14 @@ def convert_file(input_file: str, output_file: str):
     print(f"  Записей в dgdat: {len(rows)}")
 
     if os.path.exists(output_file):
-        print(f"  Файл {os.path.basename(output_file)} существует — инкрементальное обновление...")
-        update_existing_xlsx(rows, output_file)
-    else:
-        create_new_xlsx(rows, output_file)
+        print(f"  Сравнение с {os.path.basename(output_file)}...")
+        if xlsx_matches_rows(rows, output_file):
+            print("  Данные актуальны, обновление не требуется.")
+            return
+        print("  Обнаружены расхождения — перезапись...")
+
+    write_xlsx(rows, output_file)
+    print(f"  Сохранено: {output_file} ({len(rows)} записей)")
 
 
 if __name__ == '__main__':
