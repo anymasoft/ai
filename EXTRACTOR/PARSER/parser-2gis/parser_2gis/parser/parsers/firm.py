@@ -35,29 +35,41 @@ class FirmParser(MainParser):
             return
         document_response = responses[0]
 
-        # Handle 404
-        assert document_response['mimeType'] == 'text/html'
+        # Handle unexpected MIME type
+        if document_response.get('mimeType') != 'text/html':
+            logger.error('Неожиданный MIME-тип ответа: %s, ожидался text/html.', document_response.get('mimeType'))
+            return
+
         if document_response['status'] == 404:
             logger.warn('Сервер вернул сообщение "Организация не найдена".')
 
             if self._options.skip_404_response:
                 return
 
-        # Wait all 2GIS requests get finished
-        self._wait_requests_finished()
+        try:
+            # Wait all 2GIS requests get finished
+            self._wait_requests_finished()
 
-        # Gather response and collect useful payload.
-        initial_state = self._chrome_remote.execute_script('window.initialState')
-        data = list(initial_state['data']['entity']['profile'].values())
-        if not data:
-            logger.warn('Данные организации не найдены.')
-            return
-        doc = data[0]
+            # Gather response and collect useful payload.
+            initial_state = self._chrome_remote.execute_script('window.initialState')
+            if not initial_state:
+                logger.error('window.initialState не найден на странице.')
+                return
 
-        # Write API document into a file
-        writer.write({
-            'result': {
-                'items': [doc['data']]
-            },
-            'meta': doc['meta']
-        })
+            data = list(initial_state['data']['entity']['profile'].values())
+            if not data:
+                logger.warn('Данные организации не найдены.')
+                return
+            doc = data[0]
+
+            # Write API document into a file
+            writer.write({
+                'result': {
+                    'items': [doc['data']]
+                },
+                'meta': doc['meta']
+            })
+        except (KeyError, TypeError, AttributeError) as e:
+            logger.error('Ошибка извлечения данных организации: %s', e)
+        except Exception as e:
+            logger.error('Непредвиденная ошибка при парсинге организации: %s', e)

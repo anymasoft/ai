@@ -21,21 +21,26 @@ class CLIRunner(AbstractRunner):
         try:
             with get_writer(self._output_path, self._format, self._config.writer) as writer:
                 for url in self._urls:
-                    logger.info(f'Парсинг ссылки {url}')
-                    with get_parser(url,
-                                    chrome_options=self._config.chrome,
-                                    parser_options=self._config.parser) as parser:
-                        try:
+                    try:
+                        logger.info(f'Парсинг ссылки {url}')
+                        with get_parser(url,
+                                        chrome_options=self._config.chrome,
+                                        parser_options=self._config.parser) as parser:
                             parser.parse(writer)
-                        finally:
-                            logger.info('Парсинг ссылки завершён.')
+                    except (KeyboardInterrupt, ChromeUserAbortException):
+                        logger.error('Работа парсера прервана пользователем.')
+                        break
+                    except Exception as e:
+                        if isinstance(e, ChromeRuntimeException) and str(e) == 'Tab has been stopped':
+                            logger.error('Вкладка браузера была закрыта для ссылки %s.', url)
+                        else:
+                            logger.error('Ошибка при парсинге ссылки %s.', url, exc_info=True)
+                    finally:
+                        logger.info('Парсинг ссылки завершён.')
         except (KeyboardInterrupt, ChromeUserAbortException):
             logger.error('Работа парсера прервана пользователем.')
         except Exception as e:
-            if isinstance(e, ChromeRuntimeException) and str(e) == 'Tab has been stopped':
-                logger.error('Вкладка браузера была закрыта.')
-            else:
-                logger.error('Ошибка во время работы парсера.', exc_info=True)
+            logger.error('Критическая ошибка парсера.', exc_info=True)
         finally:
             logger.info('Парсинг завершён.')
 
