@@ -834,12 +834,12 @@ def build_all_rows(dump: dict) -> list:
 
 
 def _row_key(values):
-    """Ключ записи для сопоставления строк: (ID, Название, Адрес)."""
-    # values[0]=ID, values[1]=Название, values[10]=Адрес
+    """Ключ записи для сопоставления строк: (ID, Название).
+    Адрес не включён — он является данными и может меняться."""
+    # values[0]=ID, values[1]=Название
     return (
         str(values[0] or ''),
         str(values[1] or ''),
-        str(values[10] or ''),
     )
 
 
