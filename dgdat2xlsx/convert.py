@@ -864,32 +864,66 @@ def dump_to_xlsx(dump: dict, output_path: str):
 # ============================================================
 
 def main():
-    if len(sys.argv) < 2:
-        print("Использование: python dgdat2xlsx.py <файл.dgdat> [выходной.xlsx]")
-        print("Пример: python dgdat2xlsx.py Almetevsk-24.0.0.dgdat Almetevsk.xlsx")
-        sys.exit(1)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    download_dir = os.path.join(script_dir, 'download')
 
-    input_file = sys.argv[1]
+    if len(sys.argv) >= 2:
+        # Явно указан файл
+        input_file = sys.argv[1]
+        if not os.path.exists(input_file):
+            print(f"Файл не найден: {input_file}")
+            sys.exit(1)
 
-    if not os.path.exists(input_file):
-        print(f"Файл не найден: {input_file}")
-        sys.exit(1)
+        if len(sys.argv) >= 3:
+            output_file = sys.argv[2]
+        else:
+            base = os.path.splitext(os.path.basename(input_file))[0]
+            name_part = base.split('-')[0] if '-' in base else base
+            output_file = os.path.join(os.path.dirname(input_file) or '.', name_part + ".xlsx")
 
-    if len(sys.argv) >= 3:
-        output_file = sys.argv[2]
+        convert_file(input_file, output_file)
     else:
-        base = os.path.splitext(os.path.basename(input_file))[0]
-        # Убрать версию из имени (Almetevsk-24.0.0 -> Almetevsk)
-        name_part = base.split('-')[0] if '-' in base else base
-        output_file = name_part + ".xlsx"
+        # Без аргументов — обработать все .dgdat в download/
+        if not os.path.isdir(download_dir):
+            print(f"Папка {download_dir} не найдена.")
+            print()
+            print("Использование:")
+            print(f"  python {os.path.basename(__file__)}                          — конвертирует все .dgdat из download/")
+            print(f"  python {os.path.basename(__file__)} <файл.dgdat>             — конвертирует один файл")
+            print(f"  python {os.path.basename(__file__)} <файл.dgdat> <выход.xlsx> — с указанием выходного файла")
+            sys.exit(1)
 
-    print(f"Парсинг: {input_file}")
+        dgdat_files = sorted(
+            f for f in os.listdir(download_dir) if f.lower().endswith('.dgdat')
+        )
+
+        if not dgdat_files:
+            print(f"Нет .dgdat файлов в {download_dir}")
+            sys.exit(0)
+
+        print(f"Найдено файлов: {len(dgdat_files)}")
+        for dgdat in dgdat_files:
+            input_path = os.path.join(download_dir, dgdat)
+            name_part = dgdat.split('-')[0] if '-' in dgdat else os.path.splitext(dgdat)[0]
+            output_path = os.path.join(download_dir, name_part + ".xlsx")
+
+            if os.path.exists(output_path):
+                print(f"Пропуск {dgdat} — {name_part}.xlsx уже существует")
+                continue
+
+            convert_file(input_path, output_path)
+
+        print("\nВсе файлы обработаны.")
+
+
+def convert_file(input_file: str, output_file: str):
+    """Конвертирует один .dgdat файл в .xlsx."""
+    print(f"\nПарсинг: {input_file}")
     dump, prop = parse_dgdat(input_file)
-
-    print(f"Свойства: {prop}")
-    print("Генерация XLSX...")
+    print(f"  Город: {prop.get('name', '?')}")
+    print("  Генерация XLSX...")
     dump_to_xlsx(dump, output_file)
-    print("Готово.")
+    print(f"  Готово: {output_file}")
 
 
 if __name__ == '__main__':

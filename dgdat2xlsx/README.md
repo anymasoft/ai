@@ -1,19 +1,43 @@
 # dgdat to xlsx конвертер
 
-Конвертирует базы ДубльГис [https://2gis.ru/](https://2gis.ru/) в файлы формата Microsoft Excel.  
-Все данные берутся только из файлов формата dgdat, обращение к интернету не требуется.  
+Конвертирует базы ДубльГис [https://2gis.ru/](https://2gis.ru/) в файлы формата Microsoft Excel.
+Все данные берутся только из файлов формата dgdat, обращение к интернету не требуется.
+
+Порт PHP-проекта [DgdatToXlsx](https://github.com/mbry/DgdatToXlsx/) на Python.
 
 ## Установка
 
 ```
-git clone https://github.com/mbry/DgdatToXlsx
-composer update
+pip install -r requirements.txt
 ```
 
-## Сконвертировать все *.dgdat файлы в папке download в файлы формата Ms Excel
+## Структура папок
 
 ```
-php convert.php
+dgdat2xlsx/
+  convert.py         — основной скрипт конвертации
+  requirements.txt   — зависимости Python (openpyxl)
+  download/          — сюда класть .dgdat файлы, сюда же сохраняются .xlsx
+```
+
+## Использование
+
+Сконвертировать все `*.dgdat` файлы из папки `download/`:
+
+```
+python convert.py
+```
+
+Сконвертировать один файл:
+
+```
+python convert.py download/Almetevsk-24.0.0.dgdat
+```
+
+Указать выходной файл:
+
+```
+python convert.py download/Almetevsk-24.0.0.dgdat result.xlsx
 ```
 
 ## Следующие поля присутствуют в результирующем Excel файле
