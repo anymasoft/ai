@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import json
 import re
+import time
 import urllib.parse
 from typing import TYPE_CHECKING, Optional
 
@@ -98,6 +99,62 @@ class MainParser:
         '''
         self._chrome_remote.add_start_script(xhr_script)
 
+    def _find_node_by_href(self, target_href: str) -> Optional[DOMNode]:
+        """Find a fresh DOMNode by href from current DOM snapshot.
+
+        Args:
+            target_href: Target href to find.
+
+        Returns:
+            Fresh DOMNode or None if not found.
+        """
+        links = self._get_links()
+        if not links:
+            return None
+        for link in links:
+            if link.attributes.get('href') == target_href:
+                return link
+        return None
+
+    def _safe_click_and_wait(self, target_href: str, max_attempts: int = 3) -> Optional[dict]:
+        """Find element by href in fresh DOM, click it, wait for response.
+
+        Args:
+            target_href: Target href to click.
+            max_attempts: Max retry attempts.
+
+        Returns:
+            Response dict or None.
+        """
+        for attempt in range(1, max_attempts + 1):
+            # Каждая попытка — свежий DOM
+            node = self._find_node_by_href(target_href)
+            if not node:
+                logger.warning('Элемент с href не найден в DOM (попытка %d/%d): %s',
+                               attempt, max_attempts, target_href[:80])
+                time.sleep(0.5)
+                continue
+
+            clicked = self._chrome_remote.perform_click(node)
+            if not clicked:
+                logger.debug('Клик не удался (попытка %d/%d), переполучаю DOM...', attempt, max_attempts)
+                time.sleep(0.3)
+                continue
+
+            # Задержка между кликами
+            if self._options.delay_between_clicks:
+                self._chrome_remote.wait(self._options.delay_between_clicks / 1000)
+
+            # Ждём response
+            resp = self._chrome_remote.wait_response(self._item_response_pattern)
+            if resp and resp.get('status', -1) >= 0:
+                return resp
+
+            logger.debug('Нет ответа после клика (попытка %d/%d)', attempt, max_attempts)
+            time.sleep(0.5)
+
+        return None
+
     @wait_until_finished(timeout=120)
     def _wait_requests_finished(self) -> bool:
         """Wait for all pending requests."""
@@ -185,86 +242,60 @@ class MainParser:
         # Parsed records
         collected_records = 0
 
-        # Already visited links
-        visited_links: set[str] = set()
+        # Already visited hrefs (NOT DOMNode objects — they go stale)
+        visited_hrefs: set[str] = set()
 
-        # This wrapper is not necessary, but I'd like to be sure
-        # we haven't gathered links from old DOM somehow.
         @wait_until_finished(timeout=10, throw_exception=False)
-        def get_unique_links() -> list[DOMNode]:
+        def get_unique_hrefs() -> list[str]:
+            """Get hrefs from current DOM that haven't been visited yet."""
             links = self._get_links()
-            link_addresses = set(x.attributes['href'] for x in links)
-            if link_addresses & visited_links:
+            if not links:
                 return []
-
-            visited_links.update(link_addresses)
-            return links
+            hrefs = []
+            for link in links:
+                href = link.attributes.get('href', '')
+                if href and href not in visited_hrefs:
+                    hrefs.append(href)
+            if not hrefs:
+                return []
+            visited_hrefs.update(hrefs)
+            return hrefs
 
         while True:
             # Wait all 2GIS requests get finished
             self._wait_requests_finished()
 
-            # Gather links to be clicked
-            links = get_unique_links()
+            # Gather hrefs (strings, not DOM nodes)
+            target_hrefs = get_unique_hrefs()
 
             # We should parse the page if we are not walking
             if not walk_page_number:
-                # Iterate through gathered links
-                for link in links:
-                    link_href = link.attributes.get('href', '')
-
-                    for _ in range(3):  # 3 attempts to get response
-                        # Click the link to provoke request
-                        # with a auth key and secret arguments
-                        clicked = self._chrome_remote.perform_click(link)
-
-                        # If click failed (stale DOM node) — re-fetch DOM
-                        # and find the same element by href
-                        if not clicked and link_href:
-                            logger.debug('Stale node, re-fetching DOM for href: %s', link_href)
-                            fresh_links = self._get_links()
-                            fresh_link = next(
-                                (l for l in fresh_links
-                                 if l.attributes.get('href') == link_href),
-                                None)
-                            if fresh_link:
-                                link = fresh_link
-                                clicked = self._chrome_remote.perform_click(link)
-
-                        if not clicked:
-                            logger.warning('Не удалось кликнуть по элементу, пропуск.')
-                            continue
-
-                        # Delay between clicks, could be usefull if
-                        # 2GIS's anti-bot service become more strict.
-                        if self._options.delay_between_clicks:
-                            self._chrome_remote.wait(self._options.delay_between_clicks / 1000)
-
-                        # Gather response and collect useful payload.
-                        resp = self._chrome_remote.wait_response(self._item_response_pattern)
-
-                        # If request is failed - repeat, otherwise go further.
-                        if resp and resp['status'] >= 0:
-                            break
+                # Iterate through gathered hrefs
+                for link_index, target_href in enumerate(target_hrefs, 1):
+                    # Click with fresh DOM lookup each time
+                    resp = self._safe_click_and_wait(target_href)
 
                     # Get response body data
-                    if resp and resp['status'] >= 0:
-                        data = self._chrome_remote.get_response_body(resp, timeout=10) if resp else None
+                    if resp:
+                        data = self._chrome_remote.get_response_body(resp, timeout=10)
 
                         try:
                             doc = json.loads(data)
                         except json.JSONDecodeError:
-                            logger.error('Сервер вернул некорректный JSON документ: "%s", пропуск позиции.', data)
+                            logger.error('[Компания %d] Некорректный JSON: "%s", пропуск.',
+                                         link_index, data[:100] if data else '')
                             doc = None
                     else:
+                        logger.warning('[Компания %d] Не удалось получить ответ, пропуск.', link_index)
                         doc = None
 
                     if doc:
                         # Write API document into a file
                         writer.write(doc)
                         collected_records += 1
+                        logger.info('[Компания %d] Запись сохранена. Всего: %d', link_index, collected_records)
                     else:
-                        logger.error('Данные не получены, пропуск позиции.')
+                        logger.error('[Компания %d] Данные не получены, пропуск позиции.', link_index)
 
                     # We've reached our limit, bail
                     if collected_records >= self._options.max_records:
