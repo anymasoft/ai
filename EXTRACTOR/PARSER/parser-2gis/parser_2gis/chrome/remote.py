@@ -420,7 +420,7 @@ class ChromeRemote:
                     f"backendNodeId={dom_node.backend_id}. "
                     f"Пропуск этой позиции."
                 )
-                raise  # Пробросить исключение для парсера
+                return  # Просто вернуться без исключения
 
     def wait(self, timeout: float | None = None) -> None:
         """Idle for `timeout` seconds."""
