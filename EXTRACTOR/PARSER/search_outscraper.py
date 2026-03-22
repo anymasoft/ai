@@ -201,8 +201,8 @@ def search_outscraper(niche: str, city: str) -> list[dict]:
 
     try:
         logger.info(f"[*] Отправляю запрос к Outscraper...")
-        response = client.google_maps_search_v2(
-            queries=[search_query],
+        response = client.google_maps_search(
+            search_query,
             limit=100,
             language="ru"
         )
