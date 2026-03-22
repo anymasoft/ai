@@ -3,7 +3,6 @@ from __future__ import annotations
 import base64
 import json
 import re
-import time
 import urllib.parse
 from typing import TYPE_CHECKING, Optional
 
@@ -132,24 +131,14 @@ class MainParser:
         """
         available_pages = self._get_available_pages()
         if n_page in available_pages:
-            max_retries = 5
-            for attempt in range(1, max_retries + 1):
-                try:
-                    logger.info('[Страница %d] Попытка %d/%d: Переход на страницу...', n_page, attempt, max_retries)
-                    self._chrome_remote.perform_click(available_pages[n_page])
-                    logger.info('[Страница %d] ✓ Успешный переход на страницу', n_page)
-                    return n_page
-                except Exception as e:
-                    error_msg = str(e)
-                    logger.warning('[Страница %d] ✗ Ошибка на попытке %d/%d: %s', n_page, attempt, max_retries, error_msg)
-
-                    if attempt < max_retries:
-                        wait_time = 2  # 2 секунды между попытками
-                        logger.info('[Страница %d] Ожидание %d сек перед повторной попыткой...', n_page, wait_time)
-                        time.sleep(wait_time)
-                    else:
-                        logger.error('[Страница %d] ✗ Исчерпаны все %d попыток. Завершение парсинга.', n_page, max_retries)
-                        return None
+            clicked = self._chrome_remote.perform_click(available_pages[n_page])
+            if not clicked:
+                # Stale node — re-fetch pages and retry once
+                available_pages = self._get_available_pages()
+                if n_page in available_pages:
+                    clicked = self._chrome_remote.perform_click(available_pages[n_page])
+            if clicked:
+                return n_page
 
         return None
 
@@ -212,125 +201,97 @@ class MainParser:
             return links
 
         while True:
-            try:
-                # Wait all 2GIS requests get finished
-                self._wait_requests_finished()
-            except Exception as e:
-                logger.error('Ошибка при ожидании завершения запросов: %s. Продолжаю...', e)
+            # Wait all 2GIS requests get finished
+            self._wait_requests_finished()
 
             # Gather links to be clicked
-            try:
-                links = get_unique_links()
-            except Exception as e:
-                logger.error('Ошибка при получении ссылок: %s. Завершение парсинга.', e)
-                break
+            links = get_unique_links()
 
             # We should parse the page if we are not walking
             if not walk_page_number:
                 # Iterate through gathered links
-                link_index = 0
                 for link in links:
-                    link_index += 1
-                    max_retries = 5
+                    link_href = link.attributes.get('href', '')
 
-                    for attempt in range(1, max_retries + 1):
-                        try:
-                            logger.info('[Компания %d] Попытка %d/%d: Обработка компании...', link_index, attempt, max_retries)
+                    for _ in range(3):  # 3 attempts to get response
+                        # Click the link to provoke request
+                        # with a auth key and secret arguments
+                        clicked = self._chrome_remote.perform_click(link)
 
-                            for _ in range(3):  # 3 attempts to get response
-                                # Click the link to provoke request
-                                # with a auth key and secret arguments
-                                logger.debug('[Компания %d] Клик на элемент...', link_index)
-                                self._chrome_remote.perform_click(link)
+                        # If click failed (stale DOM node) — re-fetch DOM
+                        # and find the same element by href
+                        if not clicked and link_href:
+                            logger.debug('Stale node, re-fetching DOM for href: %s', link_href)
+                            fresh_links = self._get_links()
+                            fresh_link = next(
+                                (l for l in fresh_links
+                                 if l.attributes.get('href') == link_href),
+                                None)
+                            if fresh_link:
+                                link = fresh_link
+                                clicked = self._chrome_remote.perform_click(link)
 
-                                # Delay between clicks, could be usefull if
-                                # 2GIS's anti-bot service become more strict.
-                                if self._options.delay_between_clicks:
-                                    self._chrome_remote.wait(self._options.delay_between_clicks / 1000)
+                        if not clicked:
+                            logger.warning('Не удалось кликнуть по элементу, пропуск.')
+                            continue
 
-                                # Gather response and collect useful payload.
-                                logger.debug('[Компания %d] Ожидание ответа от сервера...', link_index)
-                                resp = self._chrome_remote.wait_response(self._item_response_pattern)
+                        # Delay between clicks, could be usefull if
+                        # 2GIS's anti-bot service become more strict.
+                        if self._options.delay_between_clicks:
+                            self._chrome_remote.wait(self._options.delay_between_clicks / 1000)
 
-                                # If request is failed - repeat, otherwise go further.
-                                if resp and resp['status'] >= 0:
-                                    logger.debug('[Компания %d] Ответ получен, статус: %d', link_index, resp['status'])
-                                    break
+                        # Gather response and collect useful payload.
+                        resp = self._chrome_remote.wait_response(self._item_response_pattern)
 
-                            # Get response body data
-                            if resp and resp['status'] >= 0:
-                                logger.debug('[Компания %d] Извлечение данных из ответа...', link_index)
-                                data = self._chrome_remote.get_response_body(resp, timeout=10) if resp else None
-
-                                try:
-                                    doc = json.loads(data)
-                                    logger.debug('[Компания %d] JSON успешно распарсен', link_index)
-                                except json.JSONDecodeError:
-                                    logger.error('[Компания %d] Сервер вернул некорректный JSON документ: "%s", пропуск позиции.', link_index, data)
-                                    doc = None
-                            else:
-                                logger.warning('[Компания %d] Не получен ответ от сервера', link_index)
-                                doc = None
-
-                            if doc:
-                                # Write API document into a file
-                                logger.info('[Компания %d] ✓ Запись сохранена в файл', link_index)
-                                writer.write(doc)
-                                collected_records += 1
-                            else:
-                                logger.error('[Компания %d] Данные не получены, пропуск позиции.', link_index)
-
-                            # We've reached our limit, bail
-                            if collected_records >= self._options.max_records:
-                                logger.info('Спарсено максимально разрешенное количество записей с данного URL.')
-                                return
-
-                            # Успешная обработка, выходим из цикла retry
-                            logger.info('[Компания %d] ✓ Успешно обработана', link_index)
+                        # If request is failed - repeat, otherwise go further.
+                        if resp and resp['status'] >= 0:
                             break
 
-                        except Exception as e:
-                            error_msg = str(e)
-                            logger.warning('[Компания %d] ✗ Ошибка на попытке %d/%d: %s', link_index, attempt, max_retries, error_msg)
+                    # Get response body data
+                    if resp and resp['status'] >= 0:
+                        data = self._chrome_remote.get_response_body(resp, timeout=10) if resp else None
 
-                            if attempt < max_retries:
-                                wait_time = 2  # 2 секунды между попытками
-                                logger.info('[Компания %d] Ожидание %d сек перед повторной попыткой...', link_index, wait_time)
-                                time.sleep(wait_time)
-                            else:
-                                logger.error('[Компания %d] ✗ Исчерпаны все %d попыток. Пропуск компании.', link_index, max_retries)
+                        try:
+                            doc = json.loads(data)
+                        except json.JSONDecodeError:
+                            logger.error('Сервер вернул некорректный JSON документ: "%s", пропуск позиции.', data)
+                            doc = None
+                    else:
+                        doc = None
+
+                    if doc:
+                        # Write API document into a file
+                        writer.write(doc)
+                        collected_records += 1
+                    else:
+                        logger.error('Данные не получены, пропуск позиции.')
+
+                    # We've reached our limit, bail
+                    if collected_records >= self._options.max_records:
+                        logger.info('Спарсено максимально разрешенное количество записей с данного URL.')
+                        return
 
             # Evaluate Garbage Collection if it's been exposed and enabled
-            try:
-                if self._options.use_gc and current_page_number % self._options.gc_pages_interval == 0:
-                    logger.debug('Запуск сборщика мусора.')
-                    self._chrome_remote.execute_script('"gc" in window && window.gc()')
-            except Exception as e:
-                logger.warning('Ошибка при сборке мусора: %s', e)
+            if self._options.use_gc and current_page_number % self._options.gc_pages_interval == 0:
+                logger.debug('Запуск сборщика мусора.')
+                self._chrome_remote.execute_script('"gc" in window && window.gc()')
 
             # Free memory allocated for collected requests
-            try:
-                self._chrome_remote.clear_requests()
-            except Exception as e:
-                logger.warning('Ошибка при очистке запросов: %s', e)
+            self._chrome_remote.clear_requests()
 
             # Calculate next page number and navigate it
-            try:
-                if walk_page_number:
-                    available_pages = self._get_available_pages()
-                    available_pages_ahead = {k: v for k, v in available_pages.items()
-                                             if k > current_page_number}
-                    next_page_number = min(available_pages_ahead, key=lambda n: abs(n - walk_page_number),  # type: ignore
-                                           default=current_page_number + 1)
-                else:
-                    next_page_number = current_page_number + 1
+            if walk_page_number:
+                available_pages = self._get_available_pages()
+                available_pages_ahead = {k: v for k, v in available_pages.items()
+                                         if k > current_page_number}
+                next_page_number = min(available_pages_ahead, key=lambda n: abs(n - walk_page_number),  # type: ignore
+                                       default=current_page_number + 1)
+            else:
+                next_page_number = current_page_number + 1
 
-                current_page_number = self._go_page(next_page_number)  # type: ignore
-                if not current_page_number:
-                    break  # Reached the end of the search results
-            except Exception as e:
-                logger.error('Ошибка при переходе на следующую страницу: %s. Завершение парсинга.', e)
-                break
+            current_page_number = self._go_page(next_page_number)  # type: ignore
+            if not current_page_number:
+                break  # Reached the end of the search results
 
             # Unset walking page if we've done walking to the desired page
             if walk_page_number and walk_page_number <= current_page_number:
