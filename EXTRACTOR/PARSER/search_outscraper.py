@@ -201,12 +201,13 @@ def search_outscraper(niche: str, city: str) -> list[dict]:
 
     try:
         logger.info(f"[*] Отправляю запрос к Outscraper...")
-        response = client.google_maps_search(
-            search_query,
+        response = client.google_maps_search_v2(
+            queries=[search_query],
             limit=100,
             language="ru",
             enrichment=["company_websites_finder"]
         )
+        logger.info("[✓] Ответ от Outscraper получен")
     except Exception as e:
         logger.error(f"[!] Ошибка API Outscraper: {e}")
         sys.exit(1)
@@ -232,13 +233,6 @@ def search_outscraper(niche: str, city: str) -> list[dict]:
         else:
             # Простой список: response = [{...}, {...}]
             items_to_process = response
-
-    # DEBUG: показать структуру первого элемента (удалить после проверки)
-    if items_to_process:
-        import pprint
-        logger.info("[DEBUG] Структура первого элемента ответа API:")
-        pprint.pprint(items_to_process[0])
-        sys.exit()
 
     # Извлечение данных
     for item in items_to_process:
