@@ -16,8 +16,18 @@ from io import BytesIO
 
 import re
 
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Protection
+
+# ============================================================
+# НАСТРОЙКИ ПУТЕЙ — измените при необходимости
+# ============================================================
+
+# Папка с входными .dgdat файлами
+DGDAT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'download')
+
+# Папка для выходных .xlsx файлов
+XLSX_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'output')
 
 # Паттерн для удаления недопустимых символов XML (управляющие символы кроме \t, \n, \r)
 ILLEGAL_CHARS_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f]')
@@ -646,44 +656,18 @@ COLUMNS = [
 ]
 
 
-def dump_to_xlsx(dump: dict, output_path: str):
-    """Генерирует XLSX файл из распарсенных данных."""
+def build_all_rows(dump: dict) -> list:
+    """Формирует список строк (list of lists) из распарсенных данных dgdat.
+    Каждая строка — список из 23 значений, соответствующих COLUMNS."""
 
     fil_address_fil2, fil_contact_fil2, orgrub_org2, filrub_fil2 = build_inverse_maps(dump)
 
-    wb = Workbook()
-    ws = wb.active
-
-    # Заголовки
-    header_fill = PatternFill(start_color="FFC4D79B", end_color="FFC4D79B", fill_type="solid")
-    header_font = Font(name='Arial', size=10, color="0000FF")
-    header_align = Alignment(vertical='center', wrap_text=True, horizontal='left')
-
-    for col_idx, (col_name, width) in enumerate(COLUMNS, 1):
-        cell = ws.cell(row=1, column=col_idx, value=col_name)
-        cell.fill = header_fill
-        cell.font = header_font
-        cell.alignment = header_align
-        ws.column_dimensions[cell.column_letter].width = width
-
-    ws.row_dimensions[1].height = 50
-    ws.freeze_panes = 'A2'
-    last_col_letter = ws.cell(row=1, column=len(COLUMNS)).column_letter
-    ws.auto_filter.ref = f'A1:{last_col_letter}1'
-
-    default_font = Font(name='Arial', size=10)
-    default_align = Alignment(wrap_text=True, vertical='top', horizontal='left')
-
     fil_org = dump.get("fil_org", {})
-    total = len(fil_org)
-    print(f"Записей для экспорта: {total}")
-
-    row_num = 2
+    rows = []
     prev_id = None
     prev_data = {}
 
     for key, fil in sorted(fil_org.items()):
-        # Типы платежей
         payments_list = dump.get("payment", {}).get(key, [])
         payments = "\n".join(payments_list) if payments_list else ""
 
@@ -709,7 +693,7 @@ def dump_to_xlsx(dump: dict, output_path: str):
         faxes = []
         wwws = []
         emails = []
-        links = {}  # type -> list
+        links = {}
 
         contact_rows = fil_contact_fil2.get(key, [])
         for crow in contact_rows:
@@ -822,13 +806,11 @@ def dump_to_xlsx(dump: dict, output_path: str):
         if name and isinstance(name, str) and name.startswith("="):
             name = name[1:]
 
-        # Назначение и имя строения
         bld_purpose_id = dump.get("bld_purpose_x", {}).get(key)
         bld_purpose = dump.get("bld_purpose", {}).get(bld_purpose_id, "") if bld_purpose_id else ""
         bld_name_id = dump.get("bld_name_x", {}).get(key)
         bld_name = dump.get("bld_name", {}).get(bld_name_id, "") if bld_name_id else ""
 
-        # Запись строки
         values = [
             org_id, name, cityname, rubs1_str, rubs2_str, rubs3_str,
             phones_str, faxes_str, emails_str, wwws_str, address,
@@ -836,14 +818,10 @@ def dump_to_xlsx(dump: dict, output_path: str):
             vk, fb, skype, twitter, insta, icq, jabber
         ]
 
-        for col_idx, val in enumerate(values, 1):
-            if isinstance(val, str):
-                val = ILLEGAL_CHARS_RE.sub('', val)
-            cell = ws.cell(row=row_num, column=col_idx, value=val)
-            cell.font = default_font
-            cell.alignment = default_align
+        # Очистка управляющих символов
+        values = [ILLEGAL_CHARS_RE.sub('', v) if isinstance(v, str) else v for v in values]
 
-        row_num += 1
+        rows.append(values)
 
         prev_id = org_id
         prev_data = {
@@ -852,11 +830,142 @@ def dump_to_xlsx(dump: dict, output_path: str):
             'skype': skype, 'icq': icq, 'jabber': jabber,
         }
 
-        if row_num % 1000 == 0:
-            print(f"  {row_num - 2}/{total}")
+    return rows
+
+
+def _row_key(values):
+    """Ключ записи для сопоставления строк: (ID, Название, Адрес)."""
+    # values[0]=ID, values[1]=Название, values[10]=Адрес
+    return (
+        str(values[0] or ''),
+        str(values[1] or ''),
+        str(values[10] or ''),
+    )
+
+
+def _normalize_cell(val):
+    """Нормализует значение ячейки для сравнения."""
+    if val is None:
+        return ''
+    if isinstance(val, (int, float)):
+        return val
+    return str(val)
+
+
+def _setup_sheet_headers(ws):
+    """Настраивает заголовки и стили листа."""
+    header_fill = PatternFill(start_color="FFC4D79B", end_color="FFC4D79B", fill_type="solid")
+    header_font = Font(name='Arial', size=10, color="0000FF")
+    header_align = Alignment(vertical='center', wrap_text=True, horizontal='left')
+
+    for col_idx, (col_name, width) in enumerate(COLUMNS, 1):
+        cell = ws.cell(row=1, column=col_idx, value=col_name)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = header_align
+        ws.column_dimensions[cell.column_letter].width = width
+
+    ws.row_dimensions[1].height = 50
+    ws.freeze_panes = 'A2'
+    last_col_letter = ws.cell(row=1, column=len(COLUMNS)).column_letter
+    ws.auto_filter.ref = f'A1:{last_col_letter}1'
+
+
+def create_new_xlsx(rows: list, output_path: str):
+    """Создаёт новый XLSX файл из списка строк."""
+    wb = Workbook()
+    ws = wb.active
+    _setup_sheet_headers(ws)
+
+    default_font = Font(name='Arial', size=10)
+    default_align = Alignment(wrap_text=True, vertical='top', horizontal='left')
+
+    for row_idx, values in enumerate(rows, 2):
+        for col_idx, val in enumerate(values, 1):
+            cell = ws.cell(row=row_idx, column=col_idx, value=val)
+            cell.font = default_font
+            cell.alignment = default_align
+
+        if row_idx % 1000 == 0:
+            print(f"  {row_idx - 1}/{len(rows)}")
 
     wb.save(output_path)
-    print(f"Сохранено: {output_path} ({row_num - 2} записей)")
+    print(f"  Создан: {output_path} ({len(rows)} записей)")
+
+
+def update_existing_xlsx(rows: list, output_path: str):
+    """Обновляет существующий XLSX: изменённые строки обновляются, новые добавляются."""
+    wb = load_workbook(output_path)
+    ws = wb.active
+
+    default_font = Font(name='Arial', size=10)
+    default_align = Alignment(wrap_text=True, vertical='top', horizontal='left')
+
+    # Загрузить существующие строки в индекс по ключу (ID, Название, Адрес) -> row_number
+    # Если несколько строк с одинаковым ключом, сохраняем список номеров строк
+    existing = {}  # key -> [row_numbers]
+    max_row = ws.max_row
+    num_cols = len(COLUMNS)
+
+    for row_num in range(2, max_row + 1):
+        cell_values = [_normalize_cell(ws.cell(row=row_num, column=c).value) for c in range(1, num_cols + 1)]
+        key = _row_key(cell_values)
+        if key not in existing:
+            existing[key] = []
+        existing[key].append(row_num)
+
+    updated = 0
+    added = 0
+    unchanged = 0
+
+    # Для новых строк с одинаковым ключом, отслеживаем использованные row_numbers
+    used_rows = set()
+
+    # Сгруппировать новые строки по ключу для корректного сопоставления дубликатов
+    new_by_key = {}
+    for values in rows:
+        key = _row_key(values)
+        if key not in new_by_key:
+            new_by_key[key] = []
+        new_by_key[key].append(values)
+
+    for key, new_values_list in new_by_key.items():
+        existing_row_nums = existing.get(key, [])
+
+        for idx, values in enumerate(new_values_list):
+            if idx < len(existing_row_nums):
+                # Есть соответствующая строка — сравниваем
+                row_num = existing_row_nums[idx]
+                used_rows.add(row_num)
+
+                changed = False
+                for col_idx, val in enumerate(values, 1):
+                    old_val = _normalize_cell(ws.cell(row=row_num, column=col_idx).value)
+                    new_val = _normalize_cell(val)
+                    if old_val != new_val:
+                        changed = True
+                        break
+
+                if changed:
+                    for col_idx, val in enumerate(values, 1):
+                        cell = ws.cell(row=row_num, column=col_idx, value=val)
+                        cell.font = default_font
+                        cell.alignment = default_align
+                    updated += 1
+                else:
+                    unchanged += 1
+            else:
+                # Новая строка — добавить в конец
+                next_row = ws.max_row + 1
+                for col_idx, val in enumerate(values, 1):
+                    cell = ws.cell(row=next_row, column=col_idx, value=val)
+                    cell.font = default_font
+                    cell.alignment = default_align
+                added += 1
+
+    wb.save(output_path)
+    print(f"  Обновлён: {output_path}")
+    print(f"  Без изменений: {unchanged}, обновлено: {updated}, добавлено: {added}")
 
 
 # ============================================================
@@ -864,8 +973,7 @@ def dump_to_xlsx(dump: dict, output_path: str):
 # ============================================================
 
 def main():
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    download_dir = os.path.join(script_dir, 'download')
+    os.makedirs(XLSX_DIR, exist_ok=True)
 
     if len(sys.argv) >= 2:
         # Явно указан файл
@@ -879,37 +987,36 @@ def main():
         else:
             base = os.path.splitext(os.path.basename(input_file))[0]
             name_part = base.split('-')[0] if '-' in base else base
-            output_file = os.path.join(os.path.dirname(input_file) or '.', name_part + ".xlsx")
+            output_file = os.path.join(XLSX_DIR, name_part + ".xlsx")
 
         convert_file(input_file, output_file)
     else:
-        # Без аргументов — обработать все .dgdat в download/
-        if not os.path.isdir(download_dir):
-            print(f"Папка {download_dir} не найдена.")
+        # Без аргументов — обработать все .dgdat из DGDAT_DIR
+        if not os.path.isdir(DGDAT_DIR):
+            print(f"Папка {DGDAT_DIR} не найдена.")
             print()
             print("Использование:")
-            print(f"  python {os.path.basename(__file__)}                          — конвертирует все .dgdat из download/")
+            print(f"  python {os.path.basename(__file__)}                          — конвертирует все .dgdat из DGDAT_DIR")
             print(f"  python {os.path.basename(__file__)} <файл.dgdat>             — конвертирует один файл")
             print(f"  python {os.path.basename(__file__)} <файл.dgdat> <выход.xlsx> — с указанием выходного файла")
             sys.exit(1)
 
         dgdat_files = sorted(
-            f for f in os.listdir(download_dir) if f.lower().endswith('.dgdat')
+            f for f in os.listdir(DGDAT_DIR) if f.lower().endswith('.dgdat')
         )
 
         if not dgdat_files:
-            print(f"Нет .dgdat файлов в {download_dir}")
+            print(f"Нет .dgdat файлов в {DGDAT_DIR}")
             sys.exit(0)
 
         print(f"Найдено файлов: {len(dgdat_files)}")
-        for dgdat in dgdat_files:
-            input_path = os.path.join(download_dir, dgdat)
-            name_part = dgdat.split('-')[0] if '-' in dgdat else os.path.splitext(dgdat)[0]
-            output_path = os.path.join(download_dir, name_part + ".xlsx")
+        print(f"  Вход: {DGDAT_DIR}")
+        print(f"  Выход: {XLSX_DIR}")
 
-            if os.path.exists(output_path):
-                print(f"Пропуск {dgdat} — {name_part}.xlsx уже существует")
-                continue
+        for dgdat in dgdat_files:
+            input_path = os.path.join(DGDAT_DIR, dgdat)
+            name_part = dgdat.split('-')[0] if '-' in dgdat else os.path.splitext(dgdat)[0]
+            output_path = os.path.join(XLSX_DIR, name_part + ".xlsx")
 
             convert_file(input_path, output_path)
 
@@ -917,13 +1024,19 @@ def main():
 
 
 def convert_file(input_file: str, output_file: str):
-    """Конвертирует один .dgdat файл в .xlsx."""
+    """Конвертирует один .dgdat файл в .xlsx (создаёт новый или обновляет существующий)."""
     print(f"\nПарсинг: {input_file}")
     dump, prop = parse_dgdat(input_file)
     print(f"  Город: {prop.get('name', '?')}")
-    print("  Генерация XLSX...")
-    dump_to_xlsx(dump, output_file)
-    print(f"  Готово: {output_file}")
+    print("  Формирование данных...")
+    rows = build_all_rows(dump)
+    print(f"  Записей в dgdat: {len(rows)}")
+
+    if os.path.exists(output_file):
+        print(f"  Файл {os.path.basename(output_file)} существует — инкрементальное обновление...")
+        update_existing_xlsx(rows, output_file)
+    else:
+        create_new_xlsx(rows, output_file)
 
 
 if __name__ == '__main__':
