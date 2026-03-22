@@ -1,2 +1,0 @@
-graft parser_2gis
-recursive-exclude * *.pyc *.pyo *.swo *.swp
