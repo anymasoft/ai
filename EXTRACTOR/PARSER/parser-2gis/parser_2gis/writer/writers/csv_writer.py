@@ -14,6 +14,20 @@ from ..models import CatalogItem
 from .file_writer import FileWriter
 
 
+def _clean_csv_content(content: str) -> str:
+    """Очистить CSV контент от NUL символов и других проблемных символов.
+
+    Args:
+        content: Исходный контент CSV файла
+
+    Returns:
+        Очищенный контент без NUL символов
+    """
+    # Удалить NUL символы (\x00)
+    content = content.replace('\x00', '')
+    return content
+
+
 class CSVWriter(FileWriter):
     """Writer to CSV table."""
     @property
@@ -65,30 +79,93 @@ class CSVWriter(FileWriter):
         }
 
     def _writerow(self, row: dict[str, Any]) -> None:
-        """Write a `row` into CSV."""
+        """Write a `row` into CSV.
+
+        Gracefully handles write errors - логирует но не выбрасывает исключение,
+        позволяя парсеру продолжить работу при ошибках записи.
+        """
         if self._options.verbose:
-            logger.info('Парсинг [%d] > %s', self._wrote_count + 1, row['name'])
+            logger.info('Парсинг [%d] > %s', self._wrote_count + 1, row.get('name', 'N/A'))
 
         try:
             self._writer.writerow(row)
+        except UnicodeEncodeError as e:
+            logger.warning('Ошибка кодировки при записи строки: %s. Строка пропущена.', e)
+        except csv.Error as e:
+            logger.warning('Ошибка CSV при записи строки: %s. Строка пропущена.', e)
         except Exception as e:
-            logger.error('Ошибка во время записи: %s', e)
+            logger.warning('Неизвестная ошибка во время записи строки: %s. Строка пропущена.', e)
 
     def __enter__(self) -> CSVWriter:
-        super().__enter__()
-        self._writer = csv.DictWriter(self._file, self._data_mapping.keys())
-        self._writer.writerow(self._data_mapping)  # Write header
-        self._wrote_count = 0
+        # Используем режим append если файл уже существует
+        file_exists = os.path.exists(self._file_path)
+
+        if file_exists:
+            logger.info(f"CSV файл {self._file_path} уже существует. Будет использован режим дописывания.")
+            # Закрыть файл что был открыт в super().__enter__() в режиме 'w'
+            if hasattr(self, '_file') and self._file:
+                self._file.close()
+            # Открыть в режиме append
+            self._file = self._open_file(self._file_path, 'a')
+            self._wrote_count = self._count_existing_rows()
+        else:
+            super().__enter__()
+            self._writer = csv.DictWriter(self._file, self._data_mapping.keys())
+            self._writer.writerow(self._data_mapping)  # Write header
+            self._wrote_count = 0
+
+        if not hasattr(self, '_writer'):
+            self._writer = csv.DictWriter(self._file, self._data_mapping.keys())
+
         return self
 
+    def _count_existing_rows(self) -> int:
+        """Подсчитать существующие строки CSV файла (исключая заголовок).
+
+        Returns:
+            Количество строк данных в файле (0 если файл пуст или содержит ошибки)
+        """
+        try:
+            with self._open_file(self._file_path, 'r') as f:
+                content = f.read()
+                content = _clean_csv_content(content)
+
+            row_count = 0
+            for i, line in enumerate(content.split('\n')):
+                # Пропустить первую строку (заголовок) и пустые строки
+                if i == 0 or not line.strip():
+                    continue
+                row_count += 1
+
+            logger.info(f"В CSV файле найдено {row_count} строк данных.")
+            return row_count
+        except Exception as e:
+            logger.warning(f"Ошибка при подсчёте существующих строк: {e}. Начинаем с 0.")
+            return 0
+
     def __exit__(self, *exc_info) -> None:
-        super().__exit__(*exc_info)
-        if self._options.csv.remove_empty_columns:
-            logger.info('Удаление пустых колонок CSV.')
-            self._remove_empty_columns()
-        if self._options.csv.remove_duplicates:
-            logger.info('Удаление повторяющихся записей CSV.')
-            self._remove_duplicates()
+        # Безопасно закрыть файл
+        try:
+            if hasattr(self, '_file') and self._file and not self._file.closed:
+                self._file.flush()  # Убедиться что все данные записаны
+                self._file.close()
+        except Exception as e:
+            logger.warning(f"Ошибка при закрытии файла: {e}")
+
+        # Пост-обработка CSV (graceful degradation при ошибках)
+        try:
+            if self._options.csv.remove_empty_columns:
+                logger.info('Удаление пустых колонок CSV.')
+                self._remove_empty_columns()
+        except Exception as e:
+            logger.warning(f"Ошибка при удалении пустых колонок: {e}. Продолжение работы.")
+
+        try:
+            if self._options.csv.remove_duplicates:
+                logger.info('Удаление повторяющихся записей CSV.')
+                self._remove_duplicates()
+        except Exception as e:
+            logger.warning(f"Ошибка при удалении дубликатов: {e}. Продолжение работы.")
 
     def _remove_empty_columns(self) -> None:
         """Post-process: Remove empty columns."""
@@ -96,14 +173,31 @@ class CSVWriter(FileWriter):
         complex_columns_count = {c: 0 for c in self._data_mapping.keys() if
                                  re.match('|'.join(fr'^{x}_\d+$' for x in complex_columns), c)}
 
-        # Looking for empty columns
-        with self._open_file(self._file_path, 'r') as f_csv:
-            csv_reader = csv.DictReader(f_csv, self._data_mapping.keys())  # type: ignore
-            next(csv_reader, None)  # Skip header
-            for row in csv.DictReader(f_csv, self._data_mapping.keys()):  # type: ignore
-                for column_name in complex_columns_count.keys():
-                    if row[column_name] != '':
-                        complex_columns_count[column_name] += 1
+        # Looking for empty columns (с обработкой ошибок CSV)
+        try:
+            with self._open_file(self._file_path, 'r') as f_csv:
+                # Очистить контент от NUL символов перед парсингом
+                content = f_csv.read()
+                content = _clean_csv_content(content)
+
+            # Перепроверить на очищенном контенте
+            import io
+            f_clean = io.StringIO(content)
+            try:
+                csv_reader = csv.DictReader(f_clean, self._data_mapping.keys())  # type: ignore
+                next(csv_reader, None)  # Skip header
+                for row in csv_reader:
+                    for column_name in complex_columns_count.keys():
+                        if row and column_name in row and row[column_name] != '':
+                            complex_columns_count[column_name] += 1
+            except csv.Error as e:
+                logger.warning(f"Ошибка чтения CSV при подсчёте пустых колонок: {e}. Пропуск пост-обработки.")
+                return
+            finally:
+                f_clean.close()
+        except Exception as e:
+            logger.warning(f"Ошибка при открытии CSV для подсчёта пустых колонок: {e}. Пропуск пост-обработки.")
+            return
 
         # Generate new data mapping
         new_data_mapping: dict[str, Any] = {}
@@ -119,38 +213,100 @@ class CSVWriter(FileWriter):
             if f'{column}_1' in new_data_mapping and f'{column}_2' not in new_data_mapping:
                 new_data_mapping[f'{column}_1'] = re.sub(r'\s+\d+$', '', new_data_mapping[f'{column}_1'])
 
-        # Populate new csv
+        # Populate new csv (с обработкой ошибок и graceful degradation)
         tmp_csv_name = os.path.splitext(self._file_path)[0] + '.removed-columns.csv'
 
-        with self._open_file(tmp_csv_name, 'w') as f_tmp_csv, \
-                self._open_file(self._file_path, 'r') as f_csv:
-            csv_writer = csv.DictWriter(f_tmp_csv, new_data_mapping.keys())  # type: ignore
-            csv_reader = csv.DictReader(f_csv, self._data_mapping.keys())  # type: ignore
-            csv_writer.writerow(new_data_mapping)  # Write new header
-            next(csv_reader, None)  # Skip header
+        try:
+            with self._open_file(tmp_csv_name, 'w') as f_tmp_csv, \
+                    self._open_file(self._file_path, 'r') as f_csv:
+                # Очистить контент от NUL символов
+                content = f_csv.read()
+                content = _clean_csv_content(content)
 
-            for row in csv_reader:
-                new_row = {k: v for k, v in row.items() if k in new_data_mapping}
-                csv_writer.writerow(new_row)
+                import io
+                f_clean = io.StringIO(content)
+                csv_writer = csv.DictWriter(f_tmp_csv, new_data_mapping.keys())  # type: ignore
+                csv_reader = csv.DictReader(f_clean, self._data_mapping.keys())  # type: ignore
+                csv_writer.writerow(new_data_mapping)  # Write new header
+                next(csv_reader, None)  # Skip header
 
-        # Replace original table with new one
-        shutil.move(tmp_csv_name, self._file_path)
+                row_count = 0
+                error_count = 0
+                for row in csv_reader:
+                    try:
+                        if row:  # Пропустить пустые строки
+                            new_row = {k: v for k, v in row.items() if k in new_data_mapping}
+                            csv_writer.writerow(new_row)
+                            row_count += 1
+                    except Exception as e:
+                        error_count += 1
+                        logger.warning(f"Ошибка при обработке строки: {e}. Пропуск строки.")
+                        continue
+
+                if error_count > 0:
+                    logger.info(f"Обработка CSV завершена: {row_count} строк успешно, {error_count} строк пропущено.")
+
+                f_clean.close()
+
+            # Replace original table with new one
+            shutil.move(tmp_csv_name, self._file_path)
+        except Exception as e:
+            logger.error(f"Критическая ошибка при удалении пустых колонок: {e}. CSV файл остался без изменений.")
+            if os.path.exists(tmp_csv_name):
+                try:
+                    os.remove(tmp_csv_name)
+                except:
+                    pass
 
     def _remove_duplicates(self) -> None:
         """Post-process: Remove duplicates."""
         tmp_csv_name = os.path.splitext(self._file_path)[0] + '.deduplicated.csv'
-        with self._open_file(tmp_csv_name, 'w') as f_tmp_csv, \
-                self._open_file(self._file_path, 'r') as f_csv:
-            seen_records = set()
-            for line in f_csv:
-                if line in seen_records:
-                    continue
 
-                seen_records.add(line)
-                f_tmp_csv.write(line)
+        try:
+            with self._open_file(self._file_path, 'r') as f_csv:
+                # Очистить контент от NUL символов перед обработкой
+                content = f_csv.read()
+                content = _clean_csv_content(content)
 
-        # Replace original table with new one
-        shutil.move(tmp_csv_name, self._file_path)
+            with self._open_file(tmp_csv_name, 'w') as f_tmp_csv:
+                seen_records = set()
+                lines_written = 0
+                lines_skipped = 0
+
+                try:
+                    for i, line in enumerate(content.split('\n')):
+                        # Пропустить пустые строки
+                        if not line.strip():
+                            continue
+
+                        try:
+                            if line in seen_records:
+                                lines_skipped += 1
+                                continue
+
+                            seen_records.add(line)
+                            f_tmp_csv.write(line + '\n')
+                            lines_written += 1
+                        except Exception as e:
+                            logger.warning(f"Ошибка при обработке строки {i}: {e}. Пропуск строки.")
+                            lines_skipped += 1
+                            continue
+                except Exception as e:
+                    logger.error(f"Критическая ошибка при удалении дубликатов: {e}")
+                    raise
+
+                if lines_skipped > 0:
+                    logger.info(f"Удаление дубликатов завершено: {lines_written} строк написано, {lines_skipped} дубликатов/ошибок пропущено.")
+
+            # Replace original table with new one
+            shutil.move(tmp_csv_name, self._file_path)
+        except Exception as e:
+            logger.error(f"Критическая ошибка при удалении дубликатов: {e}. CSV файл остался без изменений.")
+            if os.path.exists(tmp_csv_name):
+                try:
+                    os.remove(tmp_csv_name)
+                except:
+                    pass
 
     def write(self, catalog_doc: Any) -> None:
         """Write Catalog Item API JSON document down to CSV table.
