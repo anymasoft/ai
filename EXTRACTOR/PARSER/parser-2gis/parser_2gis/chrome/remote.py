@@ -353,19 +353,21 @@ class ChromeRemote:
         return eval_result['result'].get('value', None)
 
     def perform_click(self, dom_node: DOMNode, timeout: Optional[int] = None) -> None:
-        """Perform mouse click on DOM node with graceful fallback for any CDP errors.
+        """Perform mouse click on DOM node. НИКОГДА не бросает исключений.
+
+        Любая ошибка (CDP, WebSocket, Connection, Runtime) подавляется
+        и логируется. Вызывающий код гарантированно не упадёт.
 
         Args:
             dom_node: DOMNode element.
             timeout: Optional timeout for DOM resolution.
         """
-        # JavaScript функция для клика с прокруткой в центр экрана
         click_function = '''
             (function() { this.scrollIntoView({ block: "center",  behavior: "instant" }); this.click(); })
         '''
 
+        # Попытка 1
         try:
-            # Попытка 1: Стандартный клик
             resolved_node = self._chrome_tab.DOM.resolveNode(
                 backendNodeId=dom_node.backend_id,
                 _timeout=timeout
@@ -375,17 +377,15 @@ class ChromeRemote:
                 objectId=object_id,
                 functionDeclaration=click_function
             )
-            return  # Успех
-
-        except pychrome.CallMethodException as e:
+            return
+        except Exception as e:
             logger.debug(
-                f"CDP ошибка при клике (попытка 1). backendNodeId={dom_node.backend_id}. "
-                f"Ошибка: {e}. Переспроба после задержки..."
+                f"Ошибка клика (попытка 1). backendNodeId={dom_node.backend_id}. "
+                f"{type(e).__name__}: {e}"
             )
 
-        # Попытка 2: Подождать и повторить (DOM может пересчитываться)
+        # Попытка 2: пауза и повтор
         time.sleep(0.15)
-
         try:
             resolved_node = self._chrome_tab.DOM.resolveNode(
                 backendNodeId=dom_node.backend_id,
@@ -396,14 +396,12 @@ class ChromeRemote:
                 objectId=object_id,
                 functionDeclaration=click_function
             )
-            logger.debug("Успешно кликнут после переспробы")
-
-        except pychrome.CallMethodException as e2:
-            # Любая CDP-ошибка после 2 попыток — просто пропускаем
+            logger.debug("Успешно кликнут после повтора")
+            return
+        except Exception as e2:
             logger.warning(
-                f"CDP ошибка при клике (попытка 2). "
-                f"backendNodeId={dom_node.backend_id}. "
-                f"Ошибка: {e2}. Пропуск этой позиции."
+                f"Ошибка клика (попытка 2). backendNodeId={dom_node.backend_id}. "
+                f"{type(e2).__name__}: {e2}. Пропуск позиции."
             )
 
     def wait(self, timeout: float | None = None) -> None:
