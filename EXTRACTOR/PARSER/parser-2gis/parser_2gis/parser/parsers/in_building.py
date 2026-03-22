@@ -67,72 +67,50 @@ class InBuildingParser(MainParser):
         # Parsed records
         collected_records = 0
 
-        # Already visited links
-        visited_links: set[str] = set()
+        # Already visited hrefs (NOT DOMNode objects — they go stale)
+        visited_hrefs: set[str] = set()
 
-        # Get new links
+        # Get new hrefs from current DOM
         @wait_until_finished(timeout=5, throw_exception=False)
-        def get_unique_links() -> list[DOMNode]:
+        def get_unique_hrefs() -> list[str]:
             links = self._get_links()
-            link_addresses = set(x.attributes['href'] for x in links) - visited_links
-            visited_links.update(link_addresses)
-            return [x for x in links if x.attributes['href'] in link_addresses]
+            if not links:
+                return []
+            new_hrefs = []
+            for link in links:
+                href = link.attributes.get('href', '')
+                if href and href not in visited_hrefs:
+                    new_hrefs.append(href)
+            visited_hrefs.update(new_hrefs)
+            return new_hrefs
 
         # Loop down through lazy load organizations list
         while True:
             # Wait all 2GIS requests get finished
             self._wait_requests_finished()
 
-            # Gather links to be clicked
-            links = get_unique_links()
-            if not links:
+            # Gather hrefs (strings, not DOM nodes)
+            target_hrefs = get_unique_hrefs()
+            if not target_hrefs:
                 break
 
-            # Iterate through gathered links
-            for link in links:
-                link_href = link.attributes.get('href', '')
-
-                for _ in range(3):  # 3 attempts to get response
-                    # Click the link to provoke request
-                    # with a auth key and secret arguments
-                    clicked = self._chrome_remote.perform_click(link)
-
-                    # If click failed (stale DOM node) — re-fetch DOM
-                    if not clicked and link_href:
-                        fresh_links = self._get_links()
-                        fresh_link = next(
-                            (l for l in fresh_links
-                             if l.attributes.get('href') == link_href),
-                            None)
-                        if fresh_link:
-                            link = fresh_link
-                            clicked = self._chrome_remote.perform_click(link)
-
-                    if not clicked:
-                        continue
-
-                    # Delay between clicks, could be usefull if
-                    # 2GIS's anti-bot service become more strict.
-                    if self._options.delay_between_clicks:
-                        self._chrome_remote.wait(self._options.delay_between_clicks / 1000)
-
-                    # Gather response and collect useful payload.
-                    resp = self._chrome_remote.wait_response(self._item_response_pattern)
-
-                    # If request is failed - repeat, otherwise go further.
-                    if resp and resp['status'] >= 0:
-                        break
+            # Iterate through gathered hrefs
+            for link_index, target_href in enumerate(target_hrefs, 1):
+                # Click with fresh DOM lookup each time
+                resp = self._safe_click_and_wait(target_href)
 
                 # Get response body data
-                if resp and resp['status'] >= 0:
-                    data = self._chrome_remote.get_response_body(resp, timeout=10) if resp else None
+                if resp:
+                    data = self._chrome_remote.get_response_body(resp, timeout=10)
 
                     try:
                         doc = json.loads(data)
                     except json.JSONDecodeError:
-                        logger.error('Сервер вернул некорректный JSON документ: "%s", пропуск позиции.', data)
+                        logger.error('[Компания %d] Некорректный JSON: "%s", пропуск.',
+                                     link_index, data[:100] if data else '')
                         doc = None
                 else:
+                    logger.warning('[Компания %d] Не удалось получить ответ, пропуск.', link_index)
                     doc = None
 
                 if doc:
@@ -140,7 +118,7 @@ class InBuildingParser(MainParser):
                     writer.write(doc)
                     collected_records += 1
                 else:
-                    logger.error('Данные не получены, пропуск позиции.')
+                    logger.error('[Компания %d] Данные не получены, пропуск позиции.', link_index)
 
                 # We've reached our limit, bail
                 if collected_records >= self._options.max_records:
