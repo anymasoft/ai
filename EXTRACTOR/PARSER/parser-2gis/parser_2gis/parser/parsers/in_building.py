@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import re
-import time
 from typing import TYPE_CHECKING
 
 from ...common import wait_until_finished
@@ -81,73 +80,67 @@ class InBuildingParser(MainParser):
 
         # Loop down through lazy load organizations list
         while True:
-            try:
-                # Wait all 2GIS requests get finished
-                self._wait_requests_finished()
+            # Wait all 2GIS requests get finished
+            self._wait_requests_finished()
 
-                # Gather links to be clicked
-                links = get_unique_links()
-                if not links:
-                    break
-            except Exception as e:
-                logger.error('Ошибка при получении списка ссылок: %s. Завершение парсинга.', e)
+            # Gather links to be clicked
+            links = get_unique_links()
+            if not links:
                 break
 
             # Iterate through gathered links
-            link_index = 0
             for link in links:
-                link_index += 1
-                max_retries = 5
+                link_href = link.attributes.get('href', '')
 
-                for attempt in range(1, max_retries + 1):
-                    try:
-                        resp = None
-                        for _ in range(3):  # 3 attempts to get response
-                            # Click the link to provoke request
-                            # with a auth key and secret arguments
-                            self._chrome_remote.perform_click(link)
+                for _ in range(3):  # 3 attempts to get response
+                    # Click the link to provoke request
+                    # with a auth key and secret arguments
+                    clicked = self._chrome_remote.perform_click(link)
 
-                            # Delay between clicks, could be usefull if
-                            # 2GIS's anti-bot service become more strict.
-                            if self._options.delay_between_clicks:
-                                self._chrome_remote.wait(self._options.delay_between_clicks / 1000)
+                    # If click failed (stale DOM node) — re-fetch DOM
+                    if not clicked and link_href:
+                        fresh_links = self._get_links()
+                        fresh_link = next(
+                            (l for l in fresh_links
+                             if l.attributes.get('href') == link_href),
+                            None)
+                        if fresh_link:
+                            link = fresh_link
+                            clicked = self._chrome_remote.perform_click(link)
 
-                            # Gather response and collect useful payload.
-                            resp = self._chrome_remote.wait_response(self._item_response_pattern)
+                    if not clicked:
+                        continue
 
-                            # If request is failed - repeat, otherwise go further.
-                            if resp and resp['status'] >= 0:
-                                break
+                    # Delay between clicks, could be usefull if
+                    # 2GIS's anti-bot service become more strict.
+                    if self._options.delay_between_clicks:
+                        self._chrome_remote.wait(self._options.delay_between_clicks / 1000)
 
-                        # Get response body data
-                        if resp and resp['status'] >= 0:
-                            data = self._chrome_remote.get_response_body(resp, timeout=10) if resp else None
+                    # Gather response and collect useful payload.
+                    resp = self._chrome_remote.wait_response(self._item_response_pattern)
 
-                            try:
-                                doc = json.loads(data)
-                            except json.JSONDecodeError:
-                                logger.error('[Компания %d] Некорректный JSON документ: "%s", пропуск.', link_index, data)
-                                doc = None
-                        else:
-                            doc = None
-
-                        if doc:
-                            # Write API document into a file
-                            writer.write(doc)
-                            collected_records += 1
-                        else:
-                            logger.error('[Компания %d] Данные не получены, пропуск позиции.', link_index)
-
-                        # Успешная обработка (даже если doc=None), выходим из retry
+                    # If request is failed - repeat, otherwise go further.
+                    if resp and resp['status'] >= 0:
                         break
 
-                    except Exception as e:
-                        logger.warning('[Компания %d] Ошибка на попытке %d/%d: %s', link_index, attempt, max_retries, e)
+                # Get response body data
+                if resp and resp['status'] >= 0:
+                    data = self._chrome_remote.get_response_body(resp, timeout=10) if resp else None
 
-                        if attempt < max_retries:
-                            time.sleep(2)
-                        else:
-                            logger.error('[Компания %d] Исчерпаны все %d попыток. Пропуск компании.', link_index, max_retries)
+                    try:
+                        doc = json.loads(data)
+                    except json.JSONDecodeError:
+                        logger.error('Сервер вернул некорректный JSON документ: "%s", пропуск позиции.', data)
+                        doc = None
+                else:
+                    doc = None
+
+                if doc:
+                    # Write API document into a file
+                    writer.write(doc)
+                    collected_records += 1
+                else:
+                    logger.error('Данные не получены, пропуск позиции.')
 
                 # We've reached our limit, bail
                 if collected_records >= self._options.max_records:

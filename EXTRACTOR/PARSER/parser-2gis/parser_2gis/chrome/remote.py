@@ -4,7 +4,6 @@ import base64
 import queue
 import re
 import threading
-import time
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
 
 import pychrome
@@ -352,57 +351,37 @@ class ChromeRemote:
                                                         returnByValue=True)
         return eval_result['result'].get('value', None)
 
-    def perform_click(self, dom_node: DOMNode, timeout: Optional[int] = None) -> None:
-        """Perform mouse click on DOM node. НИКОГДА не бросает исключений.
-
-        Любая ошибка (CDP, WebSocket, Connection, Runtime) подавляется
-        и логируется. Вызывающий код гарантированно не упадёт.
+    def perform_click(self, dom_node: DOMNode, timeout: Optional[int] = None) -> bool:
+        """Perform mouse click on DOM node.
 
         Args:
             dom_node: DOMNode element.
             timeout: Optional timeout for DOM resolution.
+
+        Returns:
+            True if click succeeded, False if node is stale/invalid.
         """
-        click_function = '''
-            (function() { this.scrollIntoView({ block: "center",  behavior: "instant" }); this.click(); })
-        '''
-
-        # Попытка 1
         try:
             resolved_node = self._chrome_tab.DOM.resolveNode(
-                backendNodeId=dom_node.backend_id,
-                _timeout=timeout
-            )
+                backendNodeId=dom_node.backend_id, _timeout=timeout)
             object_id = resolved_node['object']['objectId']
             self._chrome_tab.Runtime.callFunctionOn(
                 objectId=object_id,
-                functionDeclaration=click_function
-            )
-            return
-        except Exception as e:
+                functionDeclaration='''
+                    (function() { this.scrollIntoView({ block: "center",  behavior: "instant" }); this.click(); })
+                ''')
+            return True
+        except pychrome.CallMethodException as e:
             logger.debug(
-                f"Ошибка клика (попытка 1). backendNodeId={dom_node.backend_id}. "
-                f"{type(e).__name__}: {e}"
-            )
-
-        # Попытка 2: пауза и повтор
-        time.sleep(0.15)
-        try:
-            resolved_node = self._chrome_tab.DOM.resolveNode(
-                backendNodeId=dom_node.backend_id,
-                _timeout=timeout
-            )
-            object_id = resolved_node['object']['objectId']
-            self._chrome_tab.Runtime.callFunctionOn(
-                objectId=object_id,
-                functionDeclaration=click_function
-            )
-            logger.debug("Успешно кликнут после повтора")
-            return
-        except Exception as e2:
+                f"Stale node: backendNodeId={dom_node.backend_id}. {e}")
+            return False
+        except (pychrome.RuntimeException, pychrome.UserAbortException):
+            raise  # Критические ошибки пробрасываем наверх
+        except Exception as e:
             logger.warning(
-                f"Ошибка клика (попытка 2). backendNodeId={dom_node.backend_id}. "
-                f"{type(e2).__name__}: {e2}. Пропуск позиции."
-            )
+                f"Неожиданная ошибка клика: backendNodeId={dom_node.backend_id}. "
+                f"{type(e).__name__}: {e}")
+            return False
 
     def wait(self, timeout: float | None = None) -> None:
         """Idle for `timeout` seconds."""
