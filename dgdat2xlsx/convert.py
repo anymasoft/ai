@@ -26,8 +26,8 @@ from openpyxl.styles import Font, Alignment, PatternFill, Protection
 # Папка с входными .dgdat файлами
 DGDAT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'download')
 
-# Папка для выходных .xlsx файлов (по умолчанию та же, что и DGDAT_DIR)
-XLSX_DIR = DGDAT_DIR
+# Папка для выходных .xlsx файлов
+XLSX_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'output')
 
 # Паттерн для удаления недопустимых символов XML (управляющие символы кроме \t, \n, \r)
 ILLEGAL_CHARS_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f]')
@@ -973,6 +973,8 @@ def update_existing_xlsx(rows: list, output_path: str):
 # ============================================================
 
 def main():
+    os.makedirs(XLSX_DIR, exist_ok=True)
+
     if len(sys.argv) >= 2:
         # Явно указан файл
         input_file = sys.argv[1]
