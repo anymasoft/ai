@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import json
 import re
+import time
 import urllib.parse
 from typing import TYPE_CHECKING, Optional
 
@@ -131,8 +132,24 @@ class MainParser:
         """
         available_pages = self._get_available_pages()
         if n_page in available_pages:
-            self._chrome_remote.perform_click(available_pages[n_page])
-            return n_page
+            max_retries = 5
+            for attempt in range(1, max_retries + 1):
+                try:
+                    logger.info('[Страница %d] Попытка %d/%d: Переход на страницу...', n_page, attempt, max_retries)
+                    self._chrome_remote.perform_click(available_pages[n_page])
+                    logger.info('[Страница %d] ✓ Успешный переход на страницу', n_page)
+                    return n_page
+                except Exception as e:
+                    error_msg = str(e)
+                    logger.warning('[Страница %d] ✗ Ошибка на попытке %d/%d: %s', n_page, attempt, max_retries, error_msg)
+
+                    if attempt < max_retries:
+                        wait_time = 2  # 2 секунды между попытками
+                        logger.info('[Страница %d] Ожидание %d сек перед повторной попыткой...', n_page, wait_time)
+                        time.sleep(wait_time)
+                    else:
+                        logger.error('[Страница %d] ✗ Исчерпаны все %d попыток. Завершение парсинга.', n_page, max_retries)
+                        return None
 
         return None
 
@@ -201,47 +218,77 @@ class MainParser:
             # We should parse the page if we are not walking
             if not walk_page_number:
                 # Iterate through gathered links
+                link_index = 0
                 for link in links:
-                    for _ in range(3):  # 3 attempts to get response
-                        # Click the link to provoke request
-                        # with a auth key and secret arguments
-                        self._chrome_remote.perform_click(link)
+                    link_index += 1
+                    max_retries = 5
 
-                        # Delay between clicks, could be usefull if
-                        # 2GIS's anti-bot service become more strict.
-                        if self._options.delay_between_clicks:
-                            self._chrome_remote.wait(self._options.delay_between_clicks / 1000)
+                    for attempt in range(1, max_retries + 1):
+                        try:
+                            logger.info('[Компания %d] Попытка %d/%d: Обработка компании...', link_index, attempt, max_retries)
 
-                        # Gather response and collect useful payload.
-                        resp = self._chrome_remote.wait_response(self._item_response_pattern)
+                            for _ in range(3):  # 3 attempts to get response
+                                # Click the link to provoke request
+                                # with a auth key and secret arguments
+                                logger.debug('[Компания %d] Клик на элемент...', link_index)
+                                self._chrome_remote.perform_click(link)
 
-                        # If request is failed - repeat, otherwise go further.
-                        if resp and resp['status'] >= 0:
+                                # Delay between clicks, could be usefull if
+                                # 2GIS's anti-bot service become more strict.
+                                if self._options.delay_between_clicks:
+                                    self._chrome_remote.wait(self._options.delay_between_clicks / 1000)
+
+                                # Gather response and collect useful payload.
+                                logger.debug('[Компания %d] Ожидание ответа от сервера...', link_index)
+                                resp = self._chrome_remote.wait_response(self._item_response_pattern)
+
+                                # If request is failed - repeat, otherwise go further.
+                                if resp and resp['status'] >= 0:
+                                    logger.debug('[Компания %d] Ответ получен, статус: %d', link_index, resp['status'])
+                                    break
+
+                            # Get response body data
+                            if resp and resp['status'] >= 0:
+                                logger.debug('[Компания %d] Извлечение данных из ответа...', link_index)
+                                data = self._chrome_remote.get_response_body(resp, timeout=10) if resp else None
+
+                                try:
+                                    doc = json.loads(data)
+                                    logger.debug('[Компания %d] JSON успешно распарсен', link_index)
+                                except json.JSONDecodeError:
+                                    logger.error('[Компания %d] Сервер вернул некорректный JSON документ: "%s", пропуск позиции.', link_index, data)
+                                    doc = None
+                            else:
+                                logger.warning('[Компания %d] Не получен ответ от сервера', link_index)
+                                doc = None
+
+                            if doc:
+                                # Write API document into a file
+                                logger.info('[Компания %d] ✓ Запись сохранена в файл', link_index)
+                                writer.write(doc)
+                                collected_records += 1
+                            else:
+                                logger.error('[Компания %d] Данные не получены, пропуск позиции.', link_index)
+
+                            # We've reached our limit, bail
+                            if collected_records >= self._options.max_records:
+                                logger.info('Спарсено максимально разрешенное количество записей с данного URL.')
+                                return
+
+                            # Успешная обработка, выходим из цикла retry
+                            logger.info('[Компания %d] ✓ Успешно обработана', link_index)
                             break
 
-                    # Get response body data
-                    if resp and resp['status'] >= 0:
-                        data = self._chrome_remote.get_response_body(resp, timeout=10) if resp else None
+                        except Exception as e:
+                            error_msg = str(e)
+                            logger.warning('[Компания %d] ✗ Ошибка на попытке %d/%d: %s', link_index, attempt, max_retries, error_msg)
 
-                        try:
-                            doc = json.loads(data)
-                        except json.JSONDecodeError:
-                            logger.error('Сервер вернул некорректный JSON документ: "%s", пропуск позиции.', data)
-                            doc = None
-                    else:
-                        doc = None
-
-                    if doc:
-                        # Write API document into a file
-                        writer.write(doc)
-                        collected_records += 1
-                    else:
-                        logger.error('Данные не получены, пропуск позиции.')
-
-                    # We've reached our limit, bail
-                    if collected_records >= self._options.max_records:
-                        logger.info('Спарсено максимально разрешенное количество записей с данного URL.')
-                        return
+                            if attempt < max_retries:
+                                wait_time = 2  # 2 секунды между попытками
+                                logger.info('[Компания %d] Ожидание %d сек перед повторной попыткой...', link_index, wait_time)
+                                time.sleep(wait_time)
+                            else:
+                                logger.error('[Компания %d] ✗ Исчерпаны все %d попыток. Пропуск компании.', link_index, max_retries)
 
             # Evaluate Garbage Collection if it's been exposed and enabled
             if self._options.use_gc and current_page_number % self._options.gc_pages_interval == 0:
