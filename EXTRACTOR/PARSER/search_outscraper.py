@@ -232,11 +232,24 @@ def search_outscraper(niche: str, city: str) -> list[dict]:
             # Простой список: response = [{...}, {...}]
             items_to_process = response
 
+    # DEBUG: показать структуру первого элемента (удалить после проверки)
+    if items_to_process:
+        import pprint
+        logger.info("[DEBUG] Структура первого элемента ответа API:")
+        pprint.pprint(items_to_process[0])
+        sys.exit()
+
     # Извлечение данных
     for item in items_to_process:
         if isinstance(item, dict):
             name = item.get("name", "")
-            site = item.get("site") or ""
+            site = (
+                item.get("site")
+                or item.get("website")
+                or (item.get("links") or {}).get("website")
+                or item.get("domain")
+                or ""
+            )
 
             if name:  # Добавляем только если есть название
                 results.append({
