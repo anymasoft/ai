@@ -22,10 +22,9 @@ from openpyxl import load_workbook
 # ============================================================
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-BASE_DIR = os.path.dirname(SCRIPT_DIR)
 
-XLSX_FOLDER = os.path.join(BASE_DIR, "output")
-DB_PATH = os.path.join(BASE_DIR, "data", "local.db")
+XLSX_FOLDER = os.path.join(SCRIPT_DIR, "output")
+DB_PATH = os.path.join(SCRIPT_DIR, "data", "local.db")
 
 # Индексы колонок (0-based) в XLSX
 COL = {
