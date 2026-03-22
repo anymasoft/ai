@@ -1,0 +1,64 @@
+# Node.js dependencies
+node_modules/
+.npm/
+**/.next/
+
+**/download/
+
+
+# Tailwind CSS standalone CLI
+tailwindcss-linux-x64
+
+# Python virtual environments
+venv/
+env/
+__pycache__/
+*.pyc
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+build/
+*.log
+
+# Local sandboxes (runtime, not part of repo)
+sandboxes/
+
+# ignore all environment files
+.env
+.env.*
+!.env.example
+*.env
+*.env.*
+
+YouTubeAnalitycs/sqlite.db
+YouTubeAnalitycs/sqlite.db
+*.db
+*.db
+YouTubeAnalitycs/package-lock.json
+YouTubeAnalitycs/package.json
+/astro/.astro
+astro/.astro/types.d.ts
+astro/.astro/types.d.ts
+astro/.astro/types.d.ts
+astro/.astro/content.d.ts
+astro/.astro/types.d.ts
+astro/.astro/types.d.ts
+astro/package-lock.json
+
+# Audit repos (cloned for review, not part of project)
+audit_repos/
+
+# EXTRACTOR — рабочие txt-файлы (urls, links и т.д.)
+EXTRACTOR/*.txt
+
