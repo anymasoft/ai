@@ -182,8 +182,11 @@ class MainParser:
             return
         document_response = responses[0]
 
-        # Handle 404
-        assert document_response['mimeType'] == 'text/html'
+        # Handle unexpected MIME type
+        if document_response.get('mimeType') != 'text/html':
+            logger.error('Неожиданный MIME-тип ответа: %s, ожидался text/html.', document_response.get('mimeType'))
+            return
+
         if document_response['status'] == 404:
             logger.warn('Сервер вернул сообщение "Точных совпадений нет / Не найдено".')
 
@@ -209,11 +212,18 @@ class MainParser:
             return links
 
         while True:
-            # Wait all 2GIS requests get finished
-            self._wait_requests_finished()
+            try:
+                # Wait all 2GIS requests get finished
+                self._wait_requests_finished()
+            except Exception as e:
+                logger.error('Ошибка при ожидании завершения запросов: %s. Продолжаю...', e)
 
             # Gather links to be clicked
-            links = get_unique_links()
+            try:
+                links = get_unique_links()
+            except Exception as e:
+                logger.error('Ошибка при получении ссылок: %s. Завершение парсинга.', e)
+                break
 
             # We should parse the page if we are not walking
             if not walk_page_number:
@@ -291,26 +301,36 @@ class MainParser:
                                 logger.error('[Компания %d] ✗ Исчерпаны все %d попыток. Пропуск компании.', link_index, max_retries)
 
             # Evaluate Garbage Collection if it's been exposed and enabled
-            if self._options.use_gc and current_page_number % self._options.gc_pages_interval == 0:
-                logger.debug('Запуск сборщика мусора.')
-                self._chrome_remote.execute_script('"gc" in window && window.gc()')
+            try:
+                if self._options.use_gc and current_page_number % self._options.gc_pages_interval == 0:
+                    logger.debug('Запуск сборщика мусора.')
+                    self._chrome_remote.execute_script('"gc" in window && window.gc()')
+            except Exception as e:
+                logger.warning('Ошибка при сборке мусора: %s', e)
 
             # Free memory allocated for collected requests
-            self._chrome_remote.clear_requests()
+            try:
+                self._chrome_remote.clear_requests()
+            except Exception as e:
+                logger.warning('Ошибка при очистке запросов: %s', e)
 
             # Calculate next page number and navigate it
-            if walk_page_number:
-                available_pages = self._get_available_pages()
-                available_pages_ahead = {k: v for k, v in available_pages.items()
-                                         if k > current_page_number}
-                next_page_number = min(available_pages_ahead, key=lambda n: abs(n - walk_page_number),  # type: ignore
-                                       default=current_page_number + 1)
-            else:
-                next_page_number = current_page_number + 1
+            try:
+                if walk_page_number:
+                    available_pages = self._get_available_pages()
+                    available_pages_ahead = {k: v for k, v in available_pages.items()
+                                             if k > current_page_number}
+                    next_page_number = min(available_pages_ahead, key=lambda n: abs(n - walk_page_number),  # type: ignore
+                                           default=current_page_number + 1)
+                else:
+                    next_page_number = current_page_number + 1
 
-            current_page_number = self._go_page(next_page_number)  # type: ignore
-            if not current_page_number:
-                break  # Reached the end of the search results
+                current_page_number = self._go_page(next_page_number)  # type: ignore
+                if not current_page_number:
+                    break  # Reached the end of the search results
+            except Exception as e:
+                logger.error('Ошибка при переходе на следующую страницу: %s. Завершение парсинга.', e)
+                break
 
             # Unset walking page if we've done walking to the desired page
             if walk_page_number and walk_page_number <= current_page_number:

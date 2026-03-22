@@ -353,14 +353,11 @@ class ChromeRemote:
         return eval_result['result'].get('value', None)
 
     def perform_click(self, dom_node: DOMNode, timeout: Optional[int] = None) -> None:
-        """Perform mouse click on DOM node with graceful fallback for deleted nodes.
+        """Perform mouse click on DOM node with graceful fallback for any CDP errors.
 
         Args:
             dom_node: DOMNode element.
             timeout: Optional timeout for DOM resolution.
-
-        Raises:
-            pychrome.CallMethodException: If DOM node cannot be found after retries.
         """
         # JavaScript функция для клика с прокруткой в центр экрана
         click_function = '''
@@ -378,49 +375,36 @@ class ChromeRemote:
                 objectId=object_id,
                 functionDeclaration=click_function
             )
+            return  # Успех
 
         except pychrome.CallMethodException as e:
-            error_message = str(e)
-
-            # Проверить, именно ли это ошибка "no node"
-            if "No node with given id found" not in error_message:
-                # Это другая ошибка - пробросить выше
-                raise
-
-            # Логировать первый отказ
             logger.debug(
-                f"DOM узел удален (попытка 1). backendNodeId={dom_node.backend_id}. "
-                f"Переспроба после задержки..."
+                f"CDP ошибка при клике (попытка 1). backendNodeId={dom_node.backend_id}. "
+                f"Ошибка: {e}. Переспроба после задержки..."
             )
 
-            # Попытка 2: Подождать и повторить (DOM может пересчитываться)
-            time.sleep(0.15)
+        # Попытка 2: Подождать и повторить (DOM может пересчитываться)
+        time.sleep(0.15)
 
-            try:
-                resolved_node = self._chrome_tab.DOM.resolveNode(
-                    backendNodeId=dom_node.backend_id,
-                    _timeout=timeout
-                )
-                object_id = resolved_node['object']['objectId']
-                self._chrome_tab.Runtime.callFunctionOn(
-                    objectId=object_id,
-                    functionDeclaration=click_function
-                )
-                logger.debug("Успешно кликнут после переспробы")
+        try:
+            resolved_node = self._chrome_tab.DOM.resolveNode(
+                backendNodeId=dom_node.backend_id,
+                _timeout=timeout
+            )
+            object_id = resolved_node['object']['objectId']
+            self._chrome_tab.Runtime.callFunctionOn(
+                objectId=object_id,
+                functionDeclaration=click_function
+            )
+            logger.debug("Успешно кликнут после переспробы")
 
-            except pychrome.CallMethodException as e2:
-                # Если снова "no node" - значит узел действительно удален
-                if "No node with given id found" not in str(e2):
-                    raise e2
-
-                # Graceful fallback: логировать и пробросить дальше
-                # (парсер обработает как failed click и будет retry)
-                logger.warning(
-                    f"DOM узел был окончательно удален (попытка 2). "
-                    f"backendNodeId={dom_node.backend_id}. "
-                    f"Пропуск этой позиции."
-                )
-                return  # Просто вернуться без исключения
+        except pychrome.CallMethodException as e2:
+            # Любая CDP-ошибка после 2 попыток — просто пропускаем
+            logger.warning(
+                f"CDP ошибка при клике (попытка 2). "
+                f"backendNodeId={dom_node.backend_id}. "
+                f"Ошибка: {e2}. Пропуск этой позиции."
+            )
 
     def wait(self, timeout: float | None = None) -> None:
         """Idle for `timeout` seconds."""
