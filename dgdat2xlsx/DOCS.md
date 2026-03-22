@@ -100,16 +100,16 @@ python convert.py input.dgdat output.xlsx
 
 ---
 
-## 2. xlsx2db/import_db.py — Импорт XLSX → SQLite
+## 2. import_db.py — Импорт XLSX → SQLite
 
-**Расположение:** `dgdat2xlsx/xlsx2db/import_db.py`
+**Расположение:** `dgdat2xlsx/import_db.py`
 
 ### Назначение
 Читает все XLSX из папки, создаёт нормализованную SQLite-базу. Идемпотентен — повторный запуск не создаёт дублей.
 
 ### Запуск
 ```bash
-python xlsx2db/import_db.py
+python import_db.py
 ```
 
 ### Настройки (переменные в начале файла)

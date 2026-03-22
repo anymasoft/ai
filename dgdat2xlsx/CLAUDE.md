@@ -7,13 +7,12 @@
 ## Структура
 ```
 dgdat2xlsx/
-├── convert.py          # dgdat → xlsx (парсинг бинарных данных)
-├── xlsx2db/
-│   └── import_db.py    # xlsx → sqlite (нормализованная БД)
-├── download/           # входные .dgdat файлы
-├── output/             # выходные .xlsx (генерируются convert.py)
-├── data/               # SQLite БД (генерируется import_db.py)
-└── requirements.txt    # openpyxl
+├── convert.py       # dgdat → xlsx (парсинг бинарных данных)
+├── import_db.py     # xlsx → sqlite (нормализованная БД)
+├── download/        # входные .dgdat файлы
+├── output/          # выходные .xlsx (генерируются convert.py)
+├── data/            # SQLite БД (генерируется import_db.py)
+└── requirements.txt # openpyxl
 ```
 
 ## Ключевые правила
