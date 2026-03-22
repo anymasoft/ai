@@ -204,7 +204,8 @@ def search_outscraper(niche: str, city: str) -> list[dict]:
         response = client.google_maps_search(
             search_query,
             limit=100,
-            language="ru"
+            language="ru",
+            enrichment=["company_websites_finder"]
         )
     except Exception as e:
         logger.error(f"[!] Ошибка API Outscraper: {e}")
