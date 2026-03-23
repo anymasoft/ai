@@ -40,6 +40,47 @@
             animation: spin 0.8s linear infinite;
             display: inline-block;
         }
+        .company-row {
+            cursor: pointer;
+        }
+        .company-row:hover {
+            background-color: #f9fafb;
+        }
+        .details-row {
+            display: none;
+            background-color: #f8fafc;
+        }
+        .details-row.open {
+            display: table-row;
+        }
+        .details-content {
+            padding: 16px 24px;
+        }
+        .details-content h4 {
+            font-weight: 600;
+            font-size: 13px;
+            color: #374151;
+            margin-bottom: 4px;
+            margin-top: 12px;
+        }
+        .details-content h4:first-child {
+            margin-top: 0;
+        }
+        .details-content ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .details-content li {
+            font-size: 13px;
+            color: #4b5563;
+            padding: 2px 0;
+        }
+        .details-loading {
+            color: #9ca3af;
+            font-size: 13px;
+            padding: 8px 0;
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -239,24 +280,20 @@
                 </div>
 
                 <!-- Table -->
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
-                        <thead>
-                            <tr class="border-b-2 border-gray-200">
-                                <th class="text-left px-4 py-3 font-semibold text-gray-900">Название</th>
-                                <th class="text-left px-4 py-3 font-semibold text-gray-900">Город</th>
-                                <th class="text-left px-4 py-3 font-semibold text-gray-900">Адрес</th>
-                                <th class="text-left px-4 py-3 font-semibold text-gray-900">Домен</th>
-                                <th class="text-left px-4 py-3 font-semibold text-gray-900">Телефоны</th>
-                                <th class="text-left px-4 py-3 font-semibold text-gray-900">Email</th>
-                                <th class="text-left px-4 py-3 font-semibold text-gray-900">Категории</th>
-                            </tr>
-                        </thead>
-                        <tbody id="results-table">
-                            <!-- Результаты вставляются сюда -->
-                        </tbody>
-                    </table>
-                </div>
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b-2 border-gray-200">
+                            <th class="text-left px-4 py-3 font-semibold text-gray-900">Название</th>
+                            <th class="text-left px-4 py-3 font-semibold text-gray-900">Город</th>
+                            <th class="text-left px-4 py-3 font-semibold text-gray-900">Домен</th>
+                            <th class="text-left px-4 py-3 font-semibold text-gray-900">Телефон</th>
+                            <th class="text-left px-4 py-3 font-semibold text-gray-900">Email</th>
+                        </tr>
+                    </thead>
+                    <tbody id="results-table">
+                        <!-- Результаты вставляются сюда -->
+                    </tbody>
+                </table>
 
                 <!-- Pagination Info -->
                 <div class="mt-4 text-center text-sm text-gray-600">
@@ -489,26 +526,151 @@
             tbody.innerHTML = '';
 
             data.data.forEach(company => {
+                // Первый телефон и первый email для компактного отображения
+                const firstPhone = company.phones ? company.phones.split(',')[0].trim() : '—';
+                const firstEmail = company.emails ? company.emails.split(',')[0].trim() : '—';
+
+                // Основная строка (кликабельная)
                 const row = document.createElement('tr');
-                row.className = 'border-b border-gray-200 hover:bg-gray-50 cursor-pointer';
-                row.onclick = () => viewCompanyDetail(company.id);
+                row.className = 'company-row border-b border-gray-200';
+                row.onclick = () => toggleRow(company.id);
 
                 row.innerHTML = `
                     <td class="px-4 py-3 font-medium text-blue-600">${escapeHtml(company.name)}</td>
                     <td class="px-4 py-3">${escapeHtml(company.city || '—')}</td>
-                    <td class="px-4 py-3 text-xs">${escapeHtml(company.address || '—')}</td>
-                    <td class="px-4 py-3 text-blue-600">${company.domain ? `<a href="http://${escapeHtml(company.domain)}" target="_blank">${escapeHtml(company.domain)}</a>` : '—'}</td>
-                    <td class="px-4 py-3 text-xs">${escapeHtml(company.phones || '—')}</td>
-                    <td class="px-4 py-3 text-xs">${escapeHtml(company.emails || '—')}</td>
-                    <td class="px-4 py-3 text-xs">${escapeHtml(company.categories || '—')}</td>
+                    <td class="px-4 py-3">${company.domain ? `<a href="http://${escapeHtml(company.domain)}" target="_blank" onclick="event.stopPropagation()">${escapeHtml(company.domain)}</a>` : '—'}</td>
+                    <td class="px-4 py-3 text-xs">${escapeHtml(firstPhone)}</td>
+                    <td class="px-4 py-3 text-xs">${escapeHtml(firstEmail)}</td>
                 `;
                 tbody.appendChild(row);
+
+                // Скрытая строка с деталями
+                const detailsRow = document.createElement('tr');
+                detailsRow.id = `details-${company.id}`;
+                detailsRow.className = 'details-row border-b border-gray-100';
+                detailsRow.innerHTML = `
+                    <td colspan="5">
+                        <div class="details-content">
+                            <span class="details-loading">Загрузка...</span>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(detailsRow);
             });
 
             document.getElementById('result-count').textContent =
                 `Найдено компаний: ${data.total}`;
             document.getElementById('pagination-info').textContent =
                 `${data.data.length} из ${data.total}`;
+        }
+
+        // Кеш загруженных деталей
+        const detailsCache = {};
+
+        async function toggleRow(id) {
+            const row = document.getElementById(`details-${id}`);
+            if (!row) return;
+
+            // Закрываем если открыта
+            if (row.classList.contains('open')) {
+                row.classList.remove('open');
+                return;
+            }
+
+            // Открываем
+            row.classList.add('open');
+
+            // Если уже загружено — не грузим повторно
+            if (detailsCache[id]) {
+                renderDetails(id, detailsCache[id]);
+                return;
+            }
+
+            // Загружаем через API
+            try {
+                const resp = await fetch(`/api/companies/${id}`);
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const data = await resp.json();
+                detailsCache[id] = data;
+                renderDetails(id, data);
+            } catch (e) {
+                const container = row.querySelector('.details-content');
+                container.innerHTML = `<span style="color:#ef4444">Ошибка загрузки: ${e.message}</span>`;
+            }
+        }
+
+        function renderDetails(id, data) {
+            const row = document.getElementById(`details-${id}`);
+            if (!row) return;
+            const container = row.querySelector('.details-content');
+            let html = '';
+
+            // Адреса (филиалы)
+            if (data.branches && data.branches.length > 0) {
+                html += '<h4>Адреса</h4><ul>';
+                data.branches.forEach(b => {
+                    if (b.address && b.address !== 'enriched') {
+                        let line = escapeHtml(b.address);
+                        if (b.working_hours) line += ` <span style="color:#9ca3af">(${escapeHtml(b.working_hours)})</span>`;
+                        html += `<li>${line}</li>`;
+                    }
+                });
+                html += '</ul>';
+            }
+
+            // Все телефоны
+            const allPhones = [];
+            if (data.branches) {
+                data.branches.forEach(b => {
+                    if (b.phones) b.phones.forEach(p => {
+                        if (p && !allPhones.includes(p)) allPhones.push(p);
+                    });
+                });
+            }
+            if (allPhones.length > 0) {
+                html += '<h4>Телефоны</h4><ul>';
+                allPhones.forEach(p => {
+                    html += `<li><a href="tel:${escapeHtml(p)}" style="color:#2563eb">${escapeHtml(p)}</a></li>`;
+                });
+                html += '</ul>';
+            }
+
+            // Все email
+            if (data.emails && data.emails.length > 0) {
+                html += '<h4>Email</h4><ul>';
+                data.emails.forEach(e => {
+                    html += `<li><a href="mailto:${escapeHtml(e)}" style="color:#2563eb">${escapeHtml(e)}</a></li>`;
+                });
+                html += '</ul>';
+            }
+
+            // Категории
+            if (data.categories && data.categories.length > 0) {
+                html += '<h4>Категории</h4><ul>';
+                data.categories.forEach(c => {
+                    html += `<li>${escapeHtml(c.name)}</li>`;
+                });
+                html += '</ul>';
+            }
+
+            // Соцсети
+            if (data.socials && Object.keys(data.socials).length > 0) {
+                html += '<h4>Соцсети</h4><ul>';
+                for (const [type, urls] of Object.entries(data.socials)) {
+                    urls.forEach(url => {
+                        html += `<li>${escapeHtml(type)}: <a href="${escapeHtml(url)}" target="_blank" style="color:#2563eb">${escapeHtml(url)}</a></li>`;
+                    });
+                }
+                html += '</ul>';
+            }
+
+            // Сайт
+            if (data.company && data.company.website) {
+                html += `<h4>Сайт</h4><ul><li><a href="${escapeHtml(data.company.website)}" target="_blank" style="color:#2563eb">${escapeHtml(data.company.website)}</a></li></ul>`;
+            }
+
+            if (!html) html = '<span style="color:#9ca3af">Нет дополнительных данных</span>';
+            container.innerHTML = html;
         }
 
         async function exportCSV() {
@@ -551,10 +713,6 @@
             document.getElementById('empty-state').innerHTML =
                 '<p class="text-gray-500 text-lg">Нажмите кнопку "Найти" для поиска компаний</p>';
             lastSearchActive = false;
-        }
-
-        function viewCompanyDetail(companyId) {
-            console.log('Просмотр компании:', companyId);
         }
 
         function escapeHtml(text) {
