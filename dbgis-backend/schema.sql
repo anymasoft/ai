@@ -47,6 +47,7 @@ CREATE TABLE phones (
     id SERIAL PRIMARY KEY,
     branch_id INTEGER NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
     phone TEXT NOT NULL,
+    source TEXT DEFAULT '2gis',
     UNIQUE(branch_id, phone)
 );
 
@@ -54,6 +55,7 @@ CREATE TABLE emails (
     id SERIAL PRIMARY KEY,
     company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
     email TEXT NOT NULL,
+    source TEXT DEFAULT '2gis',
     UNIQUE(company_id, email)
 );
 

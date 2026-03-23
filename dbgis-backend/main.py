@@ -191,13 +191,13 @@ COMPANIES_LIST_SQL = """
         STRING_AGG(DISTINCT cat.name, ', ') as categories
     FROM companies c
     LEFT JOIN LATERAL (
-        SELECT STRING_AGG(p.phone, ', ') as phones
+        SELECT STRING_AGG(p.phone, ', ' ORDER BY CASE WHEN p.source = 'enrichment' THEN 1 ELSE 2 END) as phones
         FROM phones p
         JOIN branches b ON p.branch_id = b.id
         WHERE b.company_id = c.id
     ) ph ON TRUE
     LEFT JOIN LATERAL (
-        SELECT STRING_AGG(e.email, ', ') as emails
+        SELECT STRING_AGG(e.email, ', ' ORDER BY CASE WHEN e.source = 'enrichment' THEN 1 ELSE 2 END) as emails
         FROM emails e
         WHERE e.company_id = c.id
     ) em ON TRUE
@@ -376,7 +376,7 @@ async def get_company_detail(company_id: int):
             SELECT b.id, b.address, b.postal_code, b.working_hours,
                    b.building_name, b.building_type,
                    COALESCE(
-                       (SELECT STRING_AGG(p.phone, ', ')
+                       (SELECT STRING_AGG(p.phone, ', ' ORDER BY CASE WHEN p.source = 'enrichment' THEN 1 ELSE 2 END)
                         FROM phones p WHERE p.branch_id = b.id), ''
                    ) as phones
             FROM branches b
@@ -390,9 +390,9 @@ async def get_company_detail(company_id: int):
                             if p.strip()] if bd["phones"] else []
             branches.append(bd)
 
-        # Email
+        # Email (сортируем: enrichment первым)
         cur.execute(
-            "SELECT email FROM emails WHERE company_id = %s",
+            "SELECT email FROM emails WHERE company_id = %s ORDER BY CASE WHEN source = 'enrichment' THEN 1 ELSE 2 END",
             (company_id,)
         )
         emails = [row["email"] for row in cur.fetchall()]
