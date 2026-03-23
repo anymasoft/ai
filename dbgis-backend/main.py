@@ -263,12 +263,9 @@ def build_filter_clause(city, category, has_email, has_phone, has_website,
         params.append(f"%{city}%")
 
     if category_ids:
-        # Поиск по списку ID категорий (включая дочерние для каждого)
-        placeholders = ", ".join(["%s"] * len(category_ids))
-        clauses.append(
-            f"(cat.id IN ({placeholders}) OR cat.parent_id IN ({placeholders}))"
-        )
-        params.extend(category_ids + category_ids)
+        # Поиск по списку ID категорий напрямую через company_categories
+        clauses.append("cc.category_id = ANY(%s)")
+        params.append(list(category_ids))
     elif category_exact:
         clauses.append("cat.name = %s")
         params.append(category_exact)
