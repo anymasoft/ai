@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Тестирование системы AI-поиска.
+Тестирование системы AI-поиска (flat-архитектура).
 Прогоняет список запросов через resolve_category_with_ai() и выводит таблицу результатов.
 
 Запуск:
@@ -148,44 +148,43 @@ def run_tests():
     results = []
     total = len(TEST_QUERIES)
 
-    print(f"\n{'='*100}")
-    print(f"ТЕСТИРОВАНИЕ AI-ПОИСКА — {total} запросов")
-    print(f"{'='*100}\n")
+    print(f"\n{'='*110}")
+    print(f"ТЕСТИРОВАНИЕ AI-ПОИСКА (FLAT) — {total} запросов")
+    print(f"{'='*110}\n")
 
     for i, query in enumerate(TEST_QUERIES, 1):
-        print(f"[{i}/{total}] Тестирую: \"{query}\" ...", end=" ", flush=True)
+        print(f"[{i}/{total}] \"{query}\" ...", end=" ", flush=True)
 
         start = time.time()
         try:
             result = resolve_category_with_ai(query, conn)
             elapsed = time.time() - start
 
-            root = result.get("root_category")
             final = result.get("final_category")
             normalized = result.get("normalized_query", "")
             method = result.get("method", "")
 
-            root_name = root["name"] if root else "—"
             final_name = final["name"] if final else "—"
+            final_id = final["id"] if final else "—"
 
             results.append({
                 "query": query,
-                "root": root_name,
                 "final": final_name,
+                "final_id": final_id,
                 "normalized": normalized,
                 "method": method,
                 "elapsed": elapsed,
                 "error": None,
             })
 
-            print(f"→ {root_name} → {final_name} ({elapsed:.1f}s)")
+            print(f"→ {final_name} (id={final_id}) [{method}] ({elapsed:.1f}s)")
 
         except Exception as e:
             elapsed = time.time() - start
             results.append({
                 "query": query,
-                "root": "ERROR",
                 "final": "ERROR",
+                "final_id": "—",
                 "normalized": "",
                 "method": "error",
                 "elapsed": elapsed,
@@ -193,26 +192,25 @@ def run_tests():
             })
             print(f"→ ОШИБКА: {e}")
 
-        # Небольшая пауза чтобы не упереться в rate limit
+        # Пауза для rate limit
         time.sleep(0.3)
 
     conn.close()
 
     # --- Вывод таблицы ---
-    print(f"\n\n{'='*140}")
+    print(f"\n\n{'='*120}")
     print("РЕЗУЛЬТАТЫ ТЕСТИРОВАНИЯ")
-    print(f"{'='*140}")
-    print(f"{'QUERY':<40} | {'ROOT':<25} | {'FINAL':<25} | {'NORMALIZED':<25} | {'METHOD':<10} | {'TIME':>5}")
-    print(f"{'-'*40}-+-{'-'*25}-+-{'-'*25}-+-{'-'*25}-+-{'-'*10}-+-{'-'*5}")
+    print(f"{'='*120}")
+    print(f"{'QUERY':<40} | {'CATEGORY':<30} | {'NORMALIZED':<25} | {'METHOD':<10} | {'TIME':>5}")
+    print(f"{'-'*40}-+-{'-'*30}-+-{'-'*25}-+-{'-'*10}-+-{'-'*5}")
 
     for r in results:
         q = r["query"][:38]
-        root = r["root"][:23]
-        final = r["final"][:23]
+        final = r["final"][:28]
         norm = r["normalized"][:23]
         method = r["method"][:8]
         t = f"{r['elapsed']:.1f}s"
-        print(f"{q:<40} | {root:<25} | {final:<25} | {norm:<25} | {method:<10} | {t:>5}")
+        print(f"{q:<40} | {final:<30} | {norm:<25} | {method:<10} | {t:>5}")
 
     # --- Сохранение JSON ---
     output_file = "test_search_results.json"
@@ -229,11 +227,18 @@ def run_tests():
     print(f"\n{'='*60}")
     print(f"СТАТИСТИКА:")
     print(f"  Всего запросов:    {len(results)}")
-    print(f"  Exact match:       {exact_count}")
-    print(f"  Fallback:          {fallback_count}")
+    print(f"  Exact match:       {exact_count} ({exact_count*100//len(results)}%)")
+    print(f"  Fallback:          {fallback_count} ({fallback_count*100//len(results)}%)")
     print(f"  Ошибки:            {error_count}")
     print(f"  Среднее время:     {avg_time:.1f}s")
     print(f"{'='*60}")
+
+    # --- Группировка fallback-ов ---
+    fallbacks = [r for r in results if r["method"] == "fallback"]
+    if fallbacks:
+        print(f"\nFALLBACK ЗАПРОСЫ ({len(fallbacks)}):")
+        for r in fallbacks:
+            print(f"  \"{r['query']}\" → normalized: \"{r['normalized']}\"")
 
 
 if __name__ == "__main__":
