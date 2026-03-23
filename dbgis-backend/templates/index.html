@@ -166,8 +166,9 @@
                             <tr class="border-b-2 border-gray-200">
                                 <th class="text-left px-4 py-3 font-semibold text-gray-900">Название</th>
                                 <th class="text-left px-4 py-3 font-semibold text-gray-900">Город</th>
+                                <th class="text-left px-4 py-3 font-semibold text-gray-900">Адрес</th>
                                 <th class="text-left px-4 py-3 font-semibold text-gray-900">Домен</th>
-                                <th class="text-left px-4 py-3 font-semibold text-gray-900">Телефон</th>
+                                <th class="text-left px-4 py-3 font-semibold text-gray-900">Телефоны</th>
                                 <th class="text-left px-4 py-3 font-semibold text-gray-900">Email</th>
                                 <th class="text-left px-4 py-3 font-semibold text-gray-900">Категории</th>
                             </tr>
@@ -273,9 +274,10 @@
                 row.innerHTML = `
                     <td class="px-4 py-3 font-medium text-blue-600">${escapeHtml(company.name)}</td>
                     <td class="px-4 py-3">${escapeHtml(company.city || '—')}</td>
-                    <td class="px-4 py-3 text-blue-600"><a href="http://${company.domain}" target="_blank">${escapeHtml(company.domain || '—')}</a></td>
-                    <td class="px-4 py-3"><a href="tel:${company.phone}" class="text-blue-600">${escapeHtml(company.phone || '—')}</a></td>
-                    <td class="px-4 py-3"><a href="mailto:${company.email}" class="text-blue-600">${escapeHtml(company.email || '—')}</a></td>
+                    <td class="px-4 py-3 text-xs">${escapeHtml(company.address || '—')}</td>
+                    <td class="px-4 py-3 text-blue-600">${company.domain ? `<a href="http://${escapeHtml(company.domain)}" target="_blank">${escapeHtml(company.domain)}</a>` : '—'}</td>
+                    <td class="px-4 py-3 text-xs">${escapeHtml(company.phones || '—')}</td>
+                    <td class="px-4 py-3 text-xs">${escapeHtml(company.emails || '—')}</td>
                     <td class="px-4 py-3 text-xs">${escapeHtml(company.categories || '—')}</td>
                 `;
                 tbody.appendChild(row);
