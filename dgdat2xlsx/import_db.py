@@ -156,29 +156,39 @@ def clean_text(value: str) -> str | None:
     return text if text else None
 
 
-def extract_domain(website: str) -> str | None:
-    """Извлекает домен из URL: убирает http(s), www, приводит к lowercase.
+def _extract_one_domain(url: str) -> str | None:
+    """Извлекает домен из одного URL: убирает http(s), www, приводит к lowercase."""
+    if not url:
+        return None
+    text = url.strip().lower()
+    match = re.search(r'(?:https?://)?(?:www\.)?([a-z0-9.-]+\.[a-z]{2,})', text)
+    if match:
+        domain = match.group(1)
+        if domain.startswith("www."):
+            domain = domain[4:]
+        return domain if domain else None
+    return None
 
-    Сначала очищает текст от переводов строк, затем извлекает домен с помощью regex.
+
+def extract_domain(website: str) -> str | None:
+    """Извлекает все уникальные домены из website (может содержать несколько URL через \\n или пробел).
+
+    Возвращает домены через запятую или None.
     """
     if not website:
         return None
 
-    # Очищаем текст от переводов строк
-    text = str(website).replace("\n", " ").lower().strip()
-    if not text:
-        return None
+    # Разбиваем по \n и пробелам — каждый фрагмент может быть отдельным URL
+    parts = re.split(r'[\n\s]+', str(website))
+    domains = []
+    seen = set()
+    for part in parts:
+        d = _extract_one_domain(part.strip())
+        if d and d not in seen:
+            seen.add(d)
+            domains.append(d)
 
-    # Пытаемся найти домен используя regex: domain.tld
-    match = re.search(r'(?:https?://)?(?:www\.)?([a-z0-9.-]+\.[a-z]{2,})', text)
-    if match:
-        domain = match.group(1)
-        # Убираем www. если осталось
-        if domain.startswith("www."):
-            domain = domain[4:]
-        return domain if domain else None
-
-    return None
+    return ", ".join(domains) if domains else None
 
 
 def split_values(text: str) -> list[str]:
@@ -324,8 +334,8 @@ def process_row(cur: sqlite3.Cursor, values: list, stats: dict):
     city = cell_str(values[COL["city"]]) or None
     website_raw = cell_str(values[COL["website"]]) or None
 
-    # Очищаем website и извлекаем домен
-    website = clean_text(website_raw) if website_raw else None
+    # website храним как есть (с \n), домены извлекаем из всех URL
+    website = website_raw.strip() if website_raw else None
     domain = extract_domain(website) if website else None
 
     # --- Company: INSERT ON CONFLICT DO NOTHING ---
@@ -430,14 +440,18 @@ def process_row(cur: sqlite3.Cursor, values: list, stats: dict):
             (company_id, email_lower),
         )
 
-    # --- Socials ---
+    # --- Socials (каждый URL отдельной записью) ---
     for social_type, col_idx in SOCIAL_COLS:
-        url = cell_str(values[col_idx])
-        if is_valid(url):
-            cur.execute(
-                "INSERT INTO socials (company_id, type, url) VALUES (?, ?, ?) ON CONFLICT(company_id, type, url) DO NOTHING",
-                (company_id, social_type, url),
-            )
+        raw = cell_str(values[col_idx])
+        if not is_valid(raw):
+            continue
+        for url in raw.split("\n"):
+            url = url.strip()
+            if url:
+                cur.execute(
+                    "INSERT INTO socials (company_id, type, url) VALUES (?, ?, ?) ON CONFLICT(company_id, type, url) DO NOTHING",
+                    (company_id, social_type, url),
+                )
 
     # --- Categories ---
     section = cell_str(values[COL["section"]])
