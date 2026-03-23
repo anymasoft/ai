@@ -203,25 +203,36 @@ SELECT companies WHERE enrichment_status IN ('pending','failed') AND domain IS N
 
 ### Запуск enrich.py
 ```bash
-python enrich.py                     # батч 100 компаний
-python enrich.py --batch-size 500    # другой размер батча
-python enrich.py --company-id 12345  # одна компания
-python enrich.py --status            # статистика
-python enrich.py --start             # сброс в pending + запуск
+python enrich.py                              # один батч 100 компаний, затем выход
+python enrich.py --continuous                # крутить цикл до конца всех pending
+python enrich.py --batch-size 500            # другой размер батча
+python enrich.py --batch-size 200 --continuous  # цикл с батчами по 200
+python enrich.py --company-id 12345          # одна компания
+python enrich.py --status                    # статистика
+python enrich.py --start                     # сброс всех в pending + запуск
+python enrich.py --start --continuous        # сброс + цикл до конца
 
-# Cron (каждые 30 минут):
+# Cron (каждые 30 минут, один батч):
 */30 * * * * cd /path/to/dbgis-backend && python enrich.py --batch-size 200 >> logs/enrich.log 2>&1
+
+# Для непрерывного обогащения (например, ночное время):
+0 2 * * * cd /path/to/dbgis-backend && python enrich.py --batch-size 500 --continuous >> logs/enrich.log 2>&1
 ```
 
 ### API endpoints обогащения
 | Метод | Путь | Описание |
 |-------|------|----------|
-| POST | `/api/enrich/start` | Запустить enrich.py (background subprocess) |
-| GET | `/api/enrich/status` | Статистика: total/pending/processing/done/failed/progress_percent |
+| POST | `/api/enrich/start` | Запустить enrich.py в режиме непрерывного цикла |
+| GET | `/api/enrich/status` | Статистика: total/pending/processing/done/failed/progress_percent/is_running |
 
 `POST /api/enrich/start` параметры:
-- `batch_size` (int, default 100) — размер батча
+- `batch_size` (int, default 100) — размер одного батча
 - `reset` (bool, default false) — сбросить все в pending перед запуском
+
+Поведение:
+- Запускает `enrich.py --continuous`, который крутит цикл до обогащения всех pending компаний
+- Если pending = 0, автоматически сбрасывает все в 'pending' и начинает цикл
+- Батчи обрабатываются по очереди, между ними паузы для снижения нагрузки
 
 ### UI: прогресс-бар и auto-refresh
 - **Прогресс-бар**: polling `/api/enrich/status` каждые **2 сек**
@@ -238,6 +249,13 @@ python enrich.py --start             # сброс в pending + запуск
 - **Сохранение состояния**: открытые строки остаются открытыми при auto-refresh таблицы (каждые 5 сек)
 - **Детали включают**: адреса (без 'enriched'), все телефоны, все email, категории, соцсети, сайт
 - **Интерактивные ссылки**: в деталях телефоны как `tel:`, email как `mailto:`, соцсети открываются в новой вкладке
+
+### UI: обогащение работает непрерывно
+- **Прогресс-бар**: обновляется каждые 2 сек (polling `/api/enrich/status`)
+- **Кнопка "Обогатить"** запускает цикл до конца всех pending компаний (флаг `--continuous`)
+- **Кнопка не блокируется**: остается крутящейся пока идет обогащение
+- **Таблица обновляется**: каждые 5 сек, показывая новые контакты в реальном времени
+- **Статус**: pending → processing → done/failed, счетчики обновляются при каждом завершении обогащения компании
 
 ### Виртуальный филиал для enriched телефонов
 Телефоны в БД привязаны к `branch_id`. Enrichment:
