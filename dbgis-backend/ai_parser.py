@@ -49,19 +49,8 @@ def parse_query_fallback(query: str) -> Dict[str, Optional[str]]:
     if " в " in lower:
         parts = lower.split(" в ")
         filters["category"] = parts[0].strip()
-<<<<<<< HEAD
         raw_city = parts[1].split(" с ")[0].strip()
         filters["city"] = normalize_city(raw_city)
-=======
-        city_raw = parts[1].split(" с ")[0].strip()
-        # Обрезаем окончание падежа (москве→моск, казани→казан, краснодаре→краснодар)
-        if len(city_raw) > 3:
-            filters["city"] = city_raw[:-2]
-        elif len(city_raw) > 1:
-            filters["city"] = city_raw[:-1]
-        else:
-            filters["city"] = city_raw
->>>>>>> origin/main
     elif " с " in lower:
         filters["category"] = lower.split(" с ")[0].strip()
     else:
