@@ -1,19 +1,17 @@
 # -*- coding: utf-8 -*-
 """
 AI-парсер запросов через OpenAI API.
-Двухшаговая категоризация: ROOT → CHILD → точная категория из БД.
+Прямая категоризация: запрос → leaf-категория из БД (без ROOT→CHILD).
 """
 
 import os
 import json
 import logging
-from typing import Dict, Optional, List, Tuple
+from typing import Dict, Optional, List
 
-# Инициализируем логирование
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
-# Попытаемся импортировать OpenAI (опционально)
 try:
     from openai import OpenAI
     OPENAI_AVAILABLE = True
@@ -26,19 +24,10 @@ except ImportError:
 # ФУНКЦИИ РАБОТЫ С КАТЕГОРИЯМИ ИЗ БД
 # ============================================================
 
-def get_root_categories(conn) -> List[Dict]:
-    """Получить список ROOT категорий (parent_id IS NULL)."""
+def get_leaf_categories(conn) -> List[Dict]:
+    """Получить ВСЕ leaf-категории (бизнес-категории, parent_id IS NOT NULL)."""
     cur = conn.cursor()
-    cur.execute("SELECT id, name FROM categories WHERE parent_id IS NULL ORDER BY name")
-    rows = cur.fetchall()
-    cur.close()
-    return [dict(r) for r in rows]
-
-
-def get_child_categories(conn, parent_id: int) -> List[Dict]:
-    """Получить дочерние категории для parent_id."""
-    cur = conn.cursor()
-    cur.execute("SELECT id, name FROM categories WHERE parent_id = %s ORDER BY name", (parent_id,))
+    cur.execute("SELECT id, name FROM categories WHERE parent_id IS NOT NULL ORDER BY name")
     rows = cur.fetchall()
     cur.close()
     return [dict(r) for r in rows]
@@ -57,7 +46,7 @@ def validate_category(selected_name: str, valid_categories: List[Dict]) -> Optio
 
 
 # ============================================================
-# LLM ВЫЗОВЫ ДЛЯ КАТЕГОРИЗАЦИИ
+# LLM ВЫЗОВЫ
 # ============================================================
 
 def _get_openai_client():
@@ -70,62 +59,59 @@ def _get_openai_client():
     return OpenAI(api_key=api_key)
 
 
-def _llm_select_category(client, query: str, categories: List[Dict], step: str, strict: bool = False) -> Optional[str]:
-    """Попросить LLM выбрать одну категорию из списка.
-
-    Args:
-        client: OpenAI клиент
-        query: поисковый запрос пользователя
-        categories: список {id, name} — допустимые категории
-        step: "ROOT" или "CHILD" — для логирования
-        strict: True = retry-режим с усиленными ограничениями
-    """
+def _llm_select_category(client, query: str, categories: List[Dict], strict: bool = False) -> Optional[str]:
+    """Попросить LLM выбрать одну категорию из списка."""
     names = [c["name"] for c in categories]
     names_str = "\n".join(f"- {n}" for n in names)
-
-    # Правило выбора бизнес-категорий (общее для обоих режимов)
-    business_rule = """ПРАВИЛО ВЫБОРА КАТЕГОРИИ:
-Пользователь ищет КОМПАНИИ, а не товары.
-Категории бывают двух типов:
-1. Тип бизнеса (компания, сервис, место) — отвечает на вопрос "кто это?"
-2. Тип товара (еда, продукция, вещи) — отвечает на вопрос "что это?"
-
-Выбирай ТОЛЬКО тип бизнеса. Товарные категории ЗАПРЕЩЕНЫ.
-
-Примеры:
-- "продуктовые магазины" → выбери категорию про магазины, НЕ про продукты питания
-- "где поесть" → выбери категорию про рестораны/кафе, НЕ про еду/блюда
-- "купить цветы" → выбери категорию про цветочные магазины, НЕ про растения
-
-Если есть выбор между товаром и бизнесом — ВСЕГДА выбирай бизнес."""
 
     if strict:
         prompt = f"""КРИТИЧЕСКАЯ ЗАДАЧА. Ошибка недопустима.
 
-Пользователь ищет: "{query}"
+Пользователь ищет КОМПАНИИ. Запрос: "{query}"
 
-{business_rule}
+Выбери СТРОГО ОДНУ категорию из списка ниже.
+ЗАПРЕЩЕНО изменять текст, добавлять слова или придумывать новые.
 
-Выбери СТРОГО ОДНУ категорию из списка ниже. ЗАПРЕЩЕНО изменять текст, добавлять слова или придумывать новые категории.
-Верни ТОЛЬКО название категории из списка — ничего больше.
+ПРАВИЛА:
+1. Пользователь ищет МЕСТО, УСЛУГУ или КОМПАНИЮ
+2. Если запрос про товар — выбери место, где его продают
+3. Если запрос про действие — выбери место, где это делают
+
+ПРИМЕРЫ:
+"где поесть" → ищи "Ресторан", "Кафе" и т.п.
+"купить продукты" → ищи "Магазин продуктов", "Супермаркет"
+"подстричься" → ищи "Парикмахерская", "Барбершоп"
+"починить телефон" → ищи "Ремонт телефонов"
+
+Если ни одна не подходит — выбери НАИБОЛЕЕ БЛИЗКУЮ.
 
 Список категорий:
 {names_str}
 
-Если ни одна не подходит — выбери НАИБОЛЕЕ БЛИЗКУЮ категорию бизнеса.
-Ответ — ТОЛЬКО название категории, без кавычек, без пояснений."""
+Ответ — ТОЛЬКО название категории из списка, без кавычек, без пояснений."""
     else:
-        prompt = f"""Пользователь ищет: "{query}"
-
-{business_rule}
+        prompt = f"""Пользователь ищет КОМПАНИИ. Запрос: "{query}"
 
 Выбери ОДНУ наиболее подходящую категорию из списка ниже.
-Верни ТОЛЬКО название категории из списка — ничего больше.
+
+ПРАВИЛА:
+1. Пользователь ищет МЕСТО, УСЛУГУ или КОМПАНИЮ
+2. Если запрос про товар — выбери место, где его продают
+3. Если запрос про действие — выбери место, где это делают
+4. Если есть несколько подходящих — выбери наиболее популярный/общий вариант
+5. НЕ выбирай товарные категории (еда, напитки, материалы) — только бизнес
+
+ПРИМЕРЫ:
+"где поесть" → "Ресторан" или "Кафе"
+"купить продукты" → "Магазин продуктов" или "Супермаркет"
+"подстричься" → "Парикмахерская"
+"починить телефон" → "Ремонт телефонов"
+"где купить цветы" → "Цветочный магазин"
 
 Список категорий:
 {names_str}
 
-Ответ — ТОЛЬКО название категории, без кавычек, без пояснений."""
+Ответ — ТОЛЬКО название категории из списка, без кавычек, без пояснений."""
 
     try:
         response = client.chat.completions.create(
@@ -134,49 +120,44 @@ def _llm_select_category(client, query: str, categories: List[Dict], step: str, 
             temperature=0,
             max_tokens=100
         )
-        result = response.choices[0].message.content.strip()
-        # Убираем кавычки если LLM их добавил
-        result = result.strip('"\'')
-        log.info(f"[SEARCH] STEP {step}: LLM выбрал '{result}' (strict={strict})")
+        result = response.choices[0].message.content.strip().strip('"\'')
+        log.info(f"[SEARCH] LLM выбрал: '{result}' (strict={strict})")
         return result
     except Exception as e:
-        log.error(f"[SEARCH] Ошибка LLM на шаге {step}: {e}")
+        log.error(f"[SEARCH] Ошибка LLM: {e}")
         return None
 
 
-def _llm_filter_categories(client, query: str, categories: List[Dict], step: str) -> List[Dict]:
+def _llm_filter_categories(client, query: str, categories: List[Dict]) -> List[Dict]:
     """Мягкая фильтрация: убирает только явные товарные категории.
 
-    НЕ пытается определить релевантность — только убирает мусор.
-    Гарантирует минимум 5 категорий на выходе.
+    Гарантирует минимум 10 категорий на выходе.
     """
-    if len(categories) <= 5:
+    if len(categories) <= 15:
         return categories
 
     names = [c["name"] for c in categories]
     names_str = "\n".join(f"- {n}" for n in names)
 
-    prompt = f"""Пользователь ищет КОМПАНИИ (места, сервисы, организации).
-Запрос: "{query}"
+    prompt = f"""Пользователь ищет КОМПАНИИ. Запрос: "{query}"
 
 Твоя задача — слегка очистить список категорий.
 
 ПРАВИЛА:
 1. УДАЛИ только очевидные товарные категории (еда, напитки, материалы, продукция, сырьё)
-2. НЕ удаляй категории бизнеса, даже если они кажутся нерелевантными запросу
-3. Если есть сомнение — ОСТАВЬ категорию
+2. НЕ удаляй категории бизнеса, даже если они кажутся нерелевантными
+3. Если есть сомнение — ОСТАВЬ
 4. Лучше оставить лишнее, чем удалить нужное
-5. Сохрани РАЗНООБРАЗИЕ — не сужай список слишком сильно
 
 ВАЖНО:
-- Верни НЕ МЕНЕЕ 5 категорий
-- Верни НЕ БОЛЕЕ 20 категорий
+- Верни НЕ МЕНЕЕ 10 категорий
+- Верни НЕ БОЛЕЕ 30 категорий
 - Если все категории — бизнес, верни ВСЕ
 
 ПРИМЕР:
-Запрос: "продуктовые магазины"
+"продуктовые магазины"
 ❌ удалить: Продукты питания, Напитки, Мясо
-✅ оставить: Магазин продуктов, Супермаркет, Торговые комплексы, Общепит, и т.д.
+✅ оставить: Магазин продуктов, Супермаркет, Торговые комплексы, Ресторан, и т.д.
 
 Список категорий:
 {names_str}
@@ -191,7 +172,7 @@ def _llm_filter_categories(client, query: str, categories: List[Dict], step: str
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0,
-            max_tokens=1000
+            max_tokens=2000
         )
         content = response.choices[0].message.content.strip()
         parsed = json.loads(content)
@@ -199,16 +180,15 @@ def _llm_filter_categories(client, query: str, categories: List[Dict], step: str
 
         filtered = [c for c in categories if c["name"].strip().lower() in filtered_names]
 
-        log.info(f"[SEARCH] {step} filter: {len(categories)} → {len(filtered)}")
+        log.info(f"[SEARCH] Filter: {len(categories)} → {len(filtered)}")
 
-        # Fail-safe: если отфильтровано слишком агрессивно — вернуть исходный
-        if len(filtered) < 5:
-            log.warning(f"[SEARCH] {step} filter слишком агрессивный ({len(filtered)} < 5), используем исходный список")
+        if len(filtered) < 10:
+            log.warning(f"[SEARCH] Filter слишком агрессивный ({len(filtered)} < 10), используем исходный список")
             return categories
 
         return filtered
     except Exception as e:
-        log.error(f"[SEARCH] Ошибка LLM filter ({step}): {e}")
+        log.error(f"[SEARCH] Ошибка LLM filter: {e}")
         return categories
 
 
@@ -240,10 +220,8 @@ def _llm_normalize_query(client, query: str) -> str:
             temperature=0,
             max_tokens=100
         )
-        result = response.choices[0].message.content.strip().strip('"\'')
-        return result
+        return response.choices[0].message.content.strip().strip('"\'')
     except Exception:
-        # Fallback: вернуть исходный запрос
         return query
 
 
@@ -276,20 +254,16 @@ def _llm_parse_filters(client, query: str) -> Dict:
 
 
 # ============================================================
-# ОСНОВНАЯ ФУНКЦИЯ — ДВУХШАГОВАЯ КАТЕГОРИЗАЦИЯ
+# ОСНОВНАЯ ФУНКЦИЯ — ПРЯМАЯ КАТЕГОРИЗАЦИЯ (FLAT)
 # ============================================================
 
 def resolve_category_with_ai(query: str, conn) -> Dict:
-    """Двухшаговая категоризация запроса через LLM.
+    """Прямая категоризация: запрос → одна leaf-категория из БД.
 
-    Шаг 1: Выбор ROOT категории из БД
-    Шаг 2: Выбор CHILD категории из БД
-    + нормализация запроса
-    + извлечение города/фильтров
+    Без ROOT→CHILD. LLM сразу выбирает из бизнес-категорий (leaf).
 
     Returns:
         {
-            "root_category": {"id": ..., "name": ...} или None,
             "final_category": {"id": ..., "name": ...} или None,
             "normalized_query": "...",
             "city": "..." или None,
@@ -300,7 +274,6 @@ def resolve_category_with_ai(query: str, conn) -> Dict:
         }
     """
     result = {
-        "root_category": None,
         "final_category": None,
         "normalized_query": query,
         "city": None,
@@ -315,10 +288,9 @@ def resolve_category_with_ai(query: str, conn) -> Dict:
     client = _get_openai_client()
     if not client:
         log.warning("[SEARCH] OpenAI недоступен, используем fallback")
-        result["normalized_query"] = query
         return result
 
-    # --- Параллельно: нормализация + фильтры ---
+    # --- Нормализация + фильтры ---
     normalized = _llm_normalize_query(client, query)
     result["normalized_query"] = normalized
     log.info(f"[SEARCH] NORMALIZED: {normalized}")
@@ -329,65 +301,34 @@ def resolve_category_with_ai(query: str, conn) -> Dict:
     result["has_website"] = filters.get("has_website", False)
     result["has_email"] = filters.get("has_email", False)
 
-    # --- ШАГ 1: Выбор ROOT категории ---
-    root_categories = get_root_categories(conn)
-    if not root_categories:
-        log.warning("[SEARCH] Нет ROOT категорий в БД!")
+    # --- Получаем ВСЕ leaf-категории ---
+    leaf_categories = get_leaf_categories(conn)
+    if not leaf_categories:
+        log.warning("[SEARCH] Нет leaf-категорий в БД!")
         return result
 
-    # Фильтрация ROOT: убираем товарные категории
-    root_categories = _llm_filter_categories(client, query, root_categories, "ROOT")
+    log.info(f"[SEARCH] Всего leaf-категорий: {len(leaf_categories)}")
 
-    root_name = _llm_select_category(client, query, root_categories, "ROOT")
-    root_cat = validate_category(root_name, root_categories) if root_name else None
+    # --- Мягкая фильтрация (убираем только товары) ---
+    filtered = _llm_filter_categories(client, query, leaf_categories)
 
-    # RETRY для ROOT
-    if not root_cat:
-        log.warning(f"[SEARCH] VALIDATION FAIL ROOT: '{root_name}' не найден в списке. RETRY...")
-        root_name = _llm_select_category(client, query, root_categories, "ROOT", strict=True)
-        root_cat = validate_category(root_name, root_categories) if root_name else None
+    # --- Выбор финальной категории ---
+    selected_name = _llm_select_category(client, query, filtered)
+    final_cat = validate_category(selected_name, filtered) if selected_name else None
 
-    if not root_cat:
-        log.warning(f"[SEARCH] ROOT RETRY FAILED. Используем fallback с normalized_query: '{normalized}'")
+    # RETRY с strict-промптом
+    if not final_cat:
+        log.warning(f"[SEARCH] VALIDATION FAIL: '{selected_name}' не найден в списке. RETRY...")
+        selected_name = _llm_select_category(client, query, filtered, strict=True)
+        final_cat = validate_category(selected_name, filtered) if selected_name else None
+
+    if not final_cat:
+        log.warning(f"[SEARCH] RETRY FAILED. Используем fallback с normalized_query: '{normalized}'")
         return result
 
-    result["root_category"] = root_cat
-    log.info(f"[SEARCH] STEP 1 ROOT: {root_cat['name']} (id={root_cat['id']})")
-
-    # --- ШАГ 2: Выбор CHILD категории ---
-    child_categories = get_child_categories(conn, root_cat["id"])
-
-    if not child_categories:
-        # Нет дочерних — root IS финальная категория
-        log.info(f"[SEARCH] Нет CHILD для root '{root_cat['name']}', используем root как финальную")
-        result["final_category"] = root_cat
-        result["method"] = "exact"
-        log.info(f"[SEARCH] FINAL CATEGORY: {root_cat['name']} (id={root_cat['id']}) [exact]")
-        return result
-
-    # Фильтрация CHILD: убираем товарные категории
-    child_categories = _llm_filter_categories(client, query, child_categories, "CHILD")
-
-    child_name = _llm_select_category(client, query, child_categories, "CHILD")
-    child_cat = validate_category(child_name, child_categories) if child_name else None
-
-    # RETRY для CHILD
-    if not child_cat:
-        log.warning(f"[SEARCH] VALIDATION FAIL CHILD: '{child_name}' не найден в списке. RETRY...")
-        child_name = _llm_select_category(client, query, child_categories, "CHILD", strict=True)
-        child_cat = validate_category(child_name, child_categories) if child_name else None
-
-    if not child_cat:
-        # Fallback: используем root как финальную категорию
-        log.warning(f"[SEARCH] CHILD RETRY FAILED. Используем root '{root_cat['name']}' как финальную")
-        result["final_category"] = root_cat
-        result["method"] = "exact"
-        return result
-
-    result["final_category"] = child_cat
+    result["final_category"] = final_cat
     result["method"] = "exact"
-    log.info(f"[SEARCH] STEP 2 CHILD: {child_cat['name']} (id={child_cat['id']})")
-    log.info(f"[SEARCH] FINAL CATEGORY: {child_cat['name']} (id={child_cat['id']}) [exact]")
+    log.info(f"[SEARCH] FINAL CATEGORY: {final_cat['name']} (id={final_cat['id']}) [exact]")
 
     return result
 
