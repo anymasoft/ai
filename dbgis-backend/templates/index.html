@@ -51,9 +51,13 @@
         .expand-arrow {
             display: inline-block;
             width: 16px;
-            color: #9ca3af;
+            height: 16px;
+            color: #6b7280;
             margin-right: 8px;
-            transition: transform 0.2s;
+            margin-top: -2px;
+            vertical-align: middle;
+            transition: transform 0.2s ease;
+            flex-shrink: 0;
         }
         .company-row.expanded .expand-arrow {
             transform: rotate(90deg);
@@ -416,7 +420,7 @@
 
                 row.innerHTML = `
                     <td class="px-4 py-3 text-gray-500 font-mono text-sm w-12">${rowNumber}</td>
-                    <td class="px-4 py-3 font-medium text-blue-600"><span class="expand-arrow">▶</span>${escapeHtml(company.name)}</td>
+                    <td class="px-4 py-3 font-medium text-blue-600"><svg class="expand-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>${escapeHtml(company.name)}</td>
                     <td class="px-4 py-3">${escapeHtml(company.city || '—')}</td>
                     <td class="px-4 py-3">${company.domain ? `<a href="http://${escapeHtml(company.domain)}" target="_blank" onclick="event.stopPropagation()">${escapeHtml(company.domain)}</a>` : '—'}</td>
                     <td class="px-4 py-3 text-xs">${escapeHtml(firstPhone)}</td>
