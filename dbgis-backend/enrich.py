@@ -305,6 +305,13 @@ def enrich_one(company_id: int, domain: str) -> dict:
     conn = None
     try:
         conn = get_connection()
+
+        # Проверяем флаг остановки перед началом обработки
+        if is_stop_requested():
+            log.info(f"[{company_id}] Обработка отменена (флаг остановки)")
+            mark_failed(conn, company_id, "Обработка отменена пользователем")
+            return {"success": False, "emails": [], "phones": [], "pages": 0}
+
         mark_processing(conn, company_id)
 
         # Получаем релевантные ссылки
@@ -322,6 +329,12 @@ def enrich_one(company_id: int, domain: str) -> dict:
         pages_crawled = 0
 
         for url in links:
+            # Проверяем флаг остановки перед каждой страницей
+            if is_stop_requested():
+                log.info(f"[{company_id}] Остановка во время обработки (на странице {url})")
+                mark_failed(conn, company_id, "Остановлено пользователем")
+                return {"success": False, "emails": all_emails, "phones": all_phones, "pages": pages_crawled}
+
             try:
                 html = fetch_url(url)
                 if not html:
