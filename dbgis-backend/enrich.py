@@ -305,13 +305,6 @@ def enrich_one(company_id: int, domain: str) -> dict:
     conn = None
     try:
         conn = get_connection()
-
-        # Проверяем флаг остановки перед началом обработки
-        if is_stop_requested():
-            log.info(f"[{company_id}] Обработка отменена (флаг остановки)")
-            mark_failed(conn, company_id, "Обработка отменена пользователем")
-            return {"success": False, "emails": [], "phones": [], "pages": 0}
-
         mark_processing(conn, company_id)
 
         # Получаем релевантные ссылки
