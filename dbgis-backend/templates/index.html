@@ -42,9 +42,20 @@
         }
         .company-row {
             cursor: pointer;
+            user-select: none;
         }
         .company-row:hover {
             background-color: #f9fafb;
+        }
+        .expand-arrow {
+            display: inline-block;
+            width: 16px;
+            color: #9ca3af;
+            margin-right: 8px;
+            transition: transform 0.2s;
+        }
+        .company-row.expanded .expand-arrow {
+            transform: rotate(90deg);
         }
         .details-row {
             display: none;
@@ -523,6 +534,14 @@
 
         function displayResults(data) {
             const tbody = document.getElementById('results-table');
+
+            // Сохраняем какие строки были открыты
+            const openedIds = new Set();
+            tbody.querySelectorAll('.company-row.expanded').forEach(row => {
+                const id = row.id.replace('row-', '');
+                openedIds.add(parseInt(id));
+            });
+
             tbody.innerHTML = '';
 
             data.data.forEach(company => {
@@ -532,11 +551,15 @@
 
                 // Основная строка (кликабельная)
                 const row = document.createElement('tr');
+                row.id = `row-${company.id}`;
                 row.className = 'company-row border-b border-gray-200';
+                if (openedIds.has(company.id)) {
+                    row.classList.add('expanded');
+                }
                 row.onclick = () => toggleRow(company.id);
 
                 row.innerHTML = `
-                    <td class="px-4 py-3 font-medium text-blue-600">${escapeHtml(company.name)}</td>
+                    <td class="px-4 py-3 font-medium text-blue-600"><span class="expand-arrow">▶</span>${escapeHtml(company.name)}</td>
                     <td class="px-4 py-3">${escapeHtml(company.city || '—')}</td>
                     <td class="px-4 py-3">${company.domain ? `<a href="http://${escapeHtml(company.domain)}" target="_blank" onclick="event.stopPropagation()">${escapeHtml(company.domain)}</a>` : '—'}</td>
                     <td class="px-4 py-3 text-xs">${escapeHtml(firstPhone)}</td>
@@ -548,6 +571,9 @@
                 const detailsRow = document.createElement('tr');
                 detailsRow.id = `details-${company.id}`;
                 detailsRow.className = 'details-row border-b border-gray-100';
+                if (openedIds.has(company.id)) {
+                    detailsRow.classList.add('open');
+                }
                 detailsRow.innerHTML = `
                     <td colspan="5">
                         <div class="details-content">
@@ -556,6 +582,15 @@
                     </td>
                 `;
                 tbody.appendChild(detailsRow);
+
+                // Если строка была открыта — загружаем детали повторно
+                if (openedIds.has(company.id)) {
+                    if (detailsCache[company.id]) {
+                        renderDetails(company.id, detailsCache[company.id]);
+                    } else {
+                        loadDetailsForRow(company.id);
+                    }
+                }
             });
 
             document.getElementById('result-count').textContent =
@@ -568,17 +603,20 @@
         const detailsCache = {};
 
         async function toggleRow(id) {
-            const row = document.getElementById(`details-${id}`);
-            if (!row) return;
+            const companyRow = document.getElementById(`row-${id}`);
+            const detailsRow = document.getElementById(`details-${id}`);
+            if (!detailsRow) return;
 
             // Закрываем если открыта
-            if (row.classList.contains('open')) {
-                row.classList.remove('open');
+            if (detailsRow.classList.contains('open')) {
+                detailsRow.classList.remove('open');
+                companyRow.classList.remove('expanded');
                 return;
             }
 
             // Открываем
-            row.classList.add('open');
+            detailsRow.classList.add('open');
+            companyRow.classList.add('expanded');
 
             // Если уже загружено — не грузим повторно
             if (detailsCache[id]) {
@@ -587,6 +625,13 @@
             }
 
             // Загружаем через API
+            await loadDetailsForRow(id);
+        }
+
+        async function loadDetailsForRow(id) {
+            const detailsRow = document.getElementById(`details-${id}`);
+            if (!detailsRow) return;
+
             try {
                 const resp = await fetch(`/api/companies/${id}`);
                 if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -594,7 +639,7 @@
                 detailsCache[id] = data;
                 renderDetails(id, data);
             } catch (e) {
-                const container = row.querySelector('.details-content');
+                const container = detailsRow.querySelector('.details-content');
                 container.innerHTML = `<span style="color:#ef4444">Ошибка загрузки: ${e.message}</span>`;
             }
         }
