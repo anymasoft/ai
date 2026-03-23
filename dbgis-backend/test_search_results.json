@@ -1,0 +1,767 @@
+[
+  {
+    "query": "где поесть",
+    "root": "Досуг",
+    "final": "Развлечения",
+    "normalized": "ресторан кафе",
+    "method": "exact",
+    "elapsed": 13.03048825263977,
+    "error": null
+  },
+  {
+    "query": "где покушать",
+    "root": "Досуг",
+    "final": "Развлечения",
+    "normalized": "кафе ресторан",
+    "method": "exact",
+    "elapsed": 5.935080289840698,
+    "error": null
+  },
+  {
+    "query": "где можно нормально поесть вечером",
+    "root": "Досуг",
+    "final": "Развлечения",
+    "normalized": "ресторан кафе",
+    "method": "exact",
+    "elapsed": 5.111984968185425,
+    "error": null
+  },
+  {
+    "query": "еда рядом",
+    "root": "Город",
+    "final": "Власть",
+    "normalized": "ресторан кафе",
+    "method": "exact",
+    "elapsed": 6.808595180511475,
+    "error": null
+  },
+  {
+    "query": "хочу поесть вкусно",
+    "root": "Досуг",
+    "final": "Развлечения",
+    "normalized": "ресторан кафе",
+    "method": "exact",
+    "elapsed": 5.700771331787109,
+    "error": null
+  },
+  {
+    "query": "food near me",
+    "root": "Город",
+    "final": "Власть",
+    "normalized": "ресторан кафе",
+    "method": "exact",
+    "elapsed": 5.595102071762085,
+    "error": null
+  },
+  {
+    "query": "где купить еду",
+    "root": "Город",
+    "final": "Власть",
+    "normalized": "магазин продуктов",
+    "method": "exact",
+    "elapsed": 5.933847188949585,
+    "error": null
+  },
+  {
+    "query": "купить продукты",
+    "root": "Торговые комплексы",
+    "final": "Спецмагазины",
+    "normalized": "продуктовый магазин",
+    "method": "exact",
+    "elapsed": 5.5426926612854,
+    "error": null
+  },
+  {
+    "query": "продукты рядом",
+    "root": "Город",
+    "final": "Власть",
+    "normalized": "продуктовый магазин",
+    "method": "exact",
+    "elapsed": 5.330930948257446,
+    "error": null
+  },
+  {
+    "query": "магазины еды",
+    "root": "Торговые комплексы",
+    "final": "Спецмагазины",
+    "normalized": "магазин еды",
+    "method": "exact",
+    "elapsed": 5.406975269317627,
+    "error": null
+  },
+  {
+    "query": "починить айфон",
+    "root": "Электроника",
+    "final": "Электротехника",
+    "normalized": "ремонт айфонов",
+    "method": "exact",
+    "elapsed": 5.666532278060913,
+    "error": null
+  },
+  {
+    "query": "где ремонтируют телефоны",
+    "root": "Электроника",
+    "final": "Электротехника",
+    "normalized": "ремонт телефонов",
+    "method": "exact",
+    "elapsed": 6.591161012649536,
+    "error": null
+  },
+  {
+    "query": "разбил экран куда идти",
+    "root": "Электроника",
+    "final": "Электротехника",
+    "normalized": "сервис ремонта телефонов",
+    "method": "exact",
+    "elapsed": 5.619467258453369,
+    "error": null
+  },
+  {
+    "query": "ремонт техники срочно",
+    "root": "Электроника",
+    "final": "Электротехника",
+    "normalized": "ремонт техники",
+    "method": "exact",
+    "elapsed": 5.193160772323608,
+    "error": null
+  },
+  {
+    "query": "fix iphone near me",
+    "root": "Электроника",
+    "final": "Электротехника",
+    "normalized": "ремонт айфонов",
+    "method": "exact",
+    "elapsed": 5.483602046966553,
+    "error": null
+  },
+  {
+    "query": "помыть машину",
+    "root": "Автосервис",
+    "final": "Автотовары",
+    "normalized": "автомойка",
+    "method": "exact",
+    "elapsed": 4.986670255661011,
+    "error": null
+  },
+  {
+    "query": "где помыть авто",
+    "root": "Автосервис",
+    "final": "Автотовары",
+    "normalized": "автомойка",
+    "method": "exact",
+    "elapsed": 5.2492218017578125,
+    "error": null
+  },
+  {
+    "query": "автомойка рядом",
+    "root": "Автосервис",
+    "final": "Автотовары",
+    "normalized": "автомойка",
+    "method": "exact",
+    "elapsed": 5.593332529067993,
+    "error": null
+  },
+  {
+    "query": "помыть машину быстро",
+    "root": "Автосервис",
+    "final": "Автотовары",
+    "normalized": "автомойка",
+    "method": "exact",
+    "elapsed": 4.499078750610352,
+    "error": null
+  },
+  {
+    "query": "car wash",
+    "root": "Автосервис",
+    "final": "Автотовары",
+    "normalized": "автомойка",
+    "method": "exact",
+    "elapsed": 6.928659677505493,
+    "error": null
+  },
+  {
+    "query": "подстричься",
+    "root": "Город",
+    "final": "Власть",
+    "normalized": "парикмахерская",
+    "method": "exact",
+    "elapsed": 6.503638505935669,
+    "error": null
+  },
+  {
+    "query": "где сделать стрижку",
+    "root": "Город",
+    "final": "Власть",
+    "normalized": "парикмахерская",
+    "method": "exact",
+    "elapsed": 6.929641246795654,
+    "error": null
+  },
+  {
+    "query": "барбершоп рядом",
+    "root": "Город",
+    "final": "Власть",
+    "normalized": "барбершоп",
+    "method": "exact",
+    "elapsed": 8.216927528381348,
+    "error": null
+  },
+  {
+    "query": "haircut near me",
+    "root": "Город",
+    "final": "Власть",
+    "normalized": "парикмахерская",
+    "method": "exact",
+    "elapsed": 6.556236267089844,
+    "error": null
+  },
+  {
+    "query": "салон красоты недорого",
+    "root": "Город",
+    "final": "Власть",
+    "normalized": "салон красоты",
+    "method": "exact",
+    "elapsed": 6.276413440704346,
+    "error": null
+  },
+  {
+    "query": "врач рядом",
+    "root": "Медицина",
+    "final": "Здоровье",
+    "normalized": "врачебная практика",
+    "method": "exact",
+    "elapsed": 4.286460638046265,
+    "error": null
+  },
+  {
+    "query": "где лечат зубы",
+    "root": "Медицина",
+    "final": "Здоровье",
+    "normalized": "стоматологическая клиника",
+    "method": "exact",
+    "elapsed": 7.527685165405273,
+    "error": null
+  },
+  {
+    "query": "болит зуб куда идти",
+    "root": "Медицина",
+    "final": "Здоровье",
+    "normalized": "стоматологическая клиника",
+    "method": "exact",
+    "elapsed": 7.372452020645142,
+    "error": null
+  },
+  {
+    "query": "стоматология срочно",
+    "root": "Медицина",
+    "final": "Здоровье",
+    "normalized": "стоматология",
+    "method": "exact",
+    "elapsed": 9.878235101699829,
+    "error": null
+  },
+  {
+    "query": "dentist near me",
+    "root": "Медицина",
+    "final": "Здоровье",
+    "normalized": "стоматологическая клиника",
+    "method": "exact",
+    "elapsed": 5.186340808868408,
+    "error": null
+  },
+  {
+    "query": "где купить лекарства",
+    "root": "Медицина",
+    "final": "Здоровье",
+    "normalized": "аптека",
+    "method": "exact",
+    "elapsed": 5.907323598861694,
+    "error": null
+  },
+  {
+    "query": "аптека рядом",
+    "root": "Медицина",
+    "final": "Здоровье",
+    "normalized": "аптека",
+    "method": "exact",
+    "elapsed": 7.948854207992554,
+    "error": null
+  },
+  {
+    "query": "нужны таблетки срочно",
+    "root": "Медицина",
+    "final": "Здоровье",
+    "normalized": "аптека",
+    "method": "exact",
+    "elapsed": 5.349606990814209,
+    "error": null
+  },
+  {
+    "query": "pharmacy near me",
+    "root": "Медицина",
+    "final": "Здоровье",
+    "normalized": "аптека",
+    "method": "exact",
+    "elapsed": 5.998557806015015,
+    "error": null
+  },
+  {
+    "query": "где купить цветы",
+    "root": "Город",
+    "final": "Власть",
+    "normalized": "цветочный магазин",
+    "method": "exact",
+    "elapsed": 5.799454689025879,
+    "error": null
+  },
+  {
+    "query": "цветы рядом",
+    "root": "Город",
+    "final": "Власть",
+    "normalized": "цветочный магазин",
+    "method": "exact",
+    "elapsed": 7.58467960357666,
+    "error": null
+  },
+  {
+    "query": "flower shop",
+    "root": "Город",
+    "final": "Власть",
+    "normalized": "цветочный магазин",
+    "method": "exact",
+    "elapsed": 5.912948131561279,
+    "error": null
+  },
+  {
+    "query": "букет срочно",
+    "root": "Город",
+    "final": "Власть",
+    "normalized": "цветочный магазин",
+    "method": "exact",
+    "elapsed": 6.517266511917114,
+    "error": null
+  },
+  {
+    "query": "где купить одежду",
+    "root": "Торговые комплексы",
+    "final": "Спецмагазины",
+    "normalized": "магазин одежды",
+    "method": "exact",
+    "elapsed": 5.736642837524414,
+    "error": null
+  },
+  {
+    "query": "одежда недорого",
+    "root": "Торговые комплексы",
+    "final": "Спецмагазины",
+    "normalized": "магазин одежды",
+    "method": "exact",
+    "elapsed": 5.967699289321899,
+    "error": null
+  },
+  {
+    "query": "магазин вещей",
+    "root": "Город",
+    "final": "Власть",
+    "normalized": "магазин одежды",
+    "method": "exact",
+    "elapsed": 5.272586822509766,
+    "error": null
+  },
+  {
+    "query": "clothes shop",
+    "root": "Одежда",
+    "final": "Обувь",
+    "normalized": "магазин одежды",
+    "method": "exact",
+    "elapsed": 5.908566236495972,
+    "error": null
+  },
+  {
+    "query": "где провести время",
+    "root": "Досуг",
+    "final": "Развлечения",
+    "normalized": "развлекательный центр",
+    "method": "exact",
+    "elapsed": 5.377137899398804,
+    "error": null
+  },
+  {
+    "query": "куда сходить вечером",
+    "root": "Досуг",
+    "final": "Развлечения",
+    "normalized": "развлекательный центр",
+    "method": "exact",
+    "elapsed": 5.627975940704346,
+    "error": null
+  },
+  {
+    "query": "развлечения рядом",
+    "root": "Досуг",
+    "final": "Развлечения",
+    "normalized": "развлекательный центр",
+    "method": "exact",
+    "elapsed": 4.7722039222717285,
+    "error": null
+  },
+  {
+    "query": "куда пойти",
+    "root": "Досуг",
+    "final": "Развлечения",
+    "normalized": "развлекательный центр",
+    "method": "exact",
+    "elapsed": 5.1622796058654785,
+    "error": null
+  },
+  {
+    "query": "fun near me",
+    "root": "Досуг",
+    "final": "Развлечения",
+    "normalized": "развлекательный центр",
+    "method": "exact",
+    "elapsed": 5.308862924575806,
+    "error": null
+  },
+  {
+    "query": "где выпить",
+    "root": "Досуг",
+    "final": "Развлечения",
+    "normalized": "бар ресторан",
+    "method": "exact",
+    "elapsed": 5.990481376647949,
+    "error": null
+  },
+  {
+    "query": "бар рядом",
+    "root": "Досуг",
+    "final": "Развлечения",
+    "normalized": "бар",
+    "method": "exact",
+    "elapsed": 5.91237211227417,
+    "error": null
+  },
+  {
+    "query": "алкоголь где купить",
+    "root": "Город",
+    "final": "Власть",
+    "normalized": "магазин алкоголя",
+    "method": "exact",
+    "elapsed": 6.494079351425171,
+    "error": null
+  },
+  {
+    "query": "wine shop",
+    "root": "Город",
+    "final": "Власть",
+    "normalized": "винный магазин",
+    "method": "exact",
+    "elapsed": 5.282387971878052,
+    "error": null
+  },
+  {
+    "query": "где переночевать",
+    "root": "Город",
+    "final": "Власть",
+    "normalized": "гостиница хостел",
+    "method": "exact",
+    "elapsed": 5.215979337692261,
+    "error": null
+  },
+  {
+    "query": "гостиница рядом",
+    "root": "Город",
+    "final": "Власть",
+    "normalized": "гостиница",
+    "method": "exact",
+    "elapsed": 6.3827080726623535,
+    "error": null
+  },
+  {
+    "query": "отель недорого",
+    "root": "Город",
+    "final": "Власть",
+    "normalized": "отель",
+    "method": "exact",
+    "elapsed": 5.417579889297485,
+    "error": null
+  },
+  {
+    "query": "hotel near me",
+    "root": "Город",
+    "final": "Власть",
+    "normalized": "отель",
+    "method": "exact",
+    "elapsed": 6.108339786529541,
+    "error": null
+  },
+  {
+    "query": "где поесть суши",
+    "root": "Досуг",
+    "final": "Развлечения",
+    "normalized": "суши-бар",
+    "method": "exact",
+    "elapsed": 5.389855623245239,
+    "error": null
+  },
+  {
+    "query": "суши рядом",
+    "root": "Город",
+    "final": "Власть",
+    "normalized": "суши-бар",
+    "method": "exact",
+    "elapsed": 5.53619647026062,
+    "error": null
+  },
+  {
+    "query": "роллы заказать",
+    "root": "Город",
+    "final": "Власть",
+    "normalized": "суши-бар",
+    "method": "exact",
+    "elapsed": 5.536675691604614,
+    "error": null
+  },
+  {
+    "query": "sushi near me",
+    "root": "Досуг",
+    "final": "Развлечения",
+    "normalized": "суши-бар",
+    "method": "exact",
+    "elapsed": 6.021734952926636,
+    "error": null
+  },
+  {
+    "query": "где купить мебель",
+    "root": "Мебель",
+    "final": "Материалы",
+    "normalized": "магазин мебели",
+    "method": "exact",
+    "elapsed": 6.072388172149658,
+    "error": null
+  },
+  {
+    "query": "мебельный магазин",
+    "root": "Мебель",
+    "final": "Материалы",
+    "normalized": "мебельный магазин",
+    "method": "exact",
+    "elapsed": 5.133139133453369,
+    "error": null
+  },
+  {
+    "query": "диван купить",
+    "root": "Мебель",
+    "final": "Материалы",
+    "normalized": "магазин мебели",
+    "method": "exact",
+    "elapsed": 5.222251653671265,
+    "error": null
+  },
+  {
+    "query": "furniture shop",
+    "root": "Мебель",
+    "final": "Материалы",
+    "normalized": "магазин мебели",
+    "method": "exact",
+    "elapsed": 6.975223541259766,
+    "error": null
+  },
+  {
+    "query": "где сделать ремонт квартиры",
+    "root": "Строительные",
+    "final": "отделочные материалы",
+    "normalized": "ремонт квартир",
+    "method": "exact",
+    "elapsed": 5.677671909332275,
+    "error": null
+  },
+  {
+    "query": "строительные услуги",
+    "root": "Строительные",
+    "final": "отделочные материалы",
+    "normalized": "строительная компания",
+    "method": "exact",
+    "elapsed": 8.545840501785278,
+    "error": null
+  },
+  {
+    "query": "ремонт дома",
+    "root": "Строительные",
+    "final": "отделочные материалы",
+    "normalized": "ремонт домов",
+    "method": "exact",
+    "elapsed": 7.537522315979004,
+    "error": null
+  },
+  {
+    "query": "renovation services",
+    "root": "Строительные",
+    "final": "отделочные материалы",
+    "normalized": "услуги по ремонту",
+    "method": "exact",
+    "elapsed": 6.690037250518799,
+    "error": null
+  },
+  {
+    "query": "где купить запчасти",
+    "root": "Автосервис",
+    "final": "Автотовары",
+    "normalized": "магазин запчастей",
+    "method": "exact",
+    "elapsed": 8.385803699493408,
+    "error": null
+  },
+  {
+    "query": "автозапчасти",
+    "root": "Автосервис",
+    "final": "Автотовары",
+    "normalized": "магазин автозапчастей",
+    "method": "exact",
+    "elapsed": 5.709505081176758,
+    "error": null
+  },
+  {
+    "query": "parts for car",
+    "root": "Автосервис",
+    "final": "Автотовары",
+    "normalized": "автозапчасти магазин",
+    "method": "exact",
+    "elapsed": 4.941833972930908,
+    "error": null
+  },
+  {
+    "query": "где распечатать документы",
+    "root": "Интернет",
+    "final": "Связь",
+    "normalized": "типография",
+    "method": "exact",
+    "elapsed": 5.436873435974121,
+    "error": null
+  },
+  {
+    "query": "печать рядом",
+    "root": "Город",
+    "final": "Власть",
+    "normalized": "типография",
+    "method": "exact",
+    "elapsed": 5.744982957839966,
+    "error": null
+  },
+  {
+    "query": "копицентр",
+    "root": "Интернет",
+    "final": "Связь",
+    "normalized": "копицентр",
+    "method": "exact",
+    "elapsed": 5.67348313331604,
+    "error": null
+  },
+  {
+    "query": "где сделать фото",
+    "root": "Досуг",
+    "final": "Развлечения",
+    "normalized": "фотоателье",
+    "method": "exact",
+    "elapsed": 5.564089775085449,
+    "error": null
+  },
+  {
+    "query": "фото на документы",
+    "root": "Реклама",
+    "final": "Полиграфия",
+    "normalized": "фотоателье",
+    "method": "exact",
+    "elapsed": 6.654527425765991,
+    "error": null
+  },
+  {
+    "query": "photo studio",
+    "root": "Досуг",
+    "final": "Развлечения",
+    "normalized": "фото студия",
+    "method": "exact",
+    "elapsed": 5.230315685272217,
+    "error": null
+  },
+  {
+    "query": "где заняться спортом",
+    "root": "Спорт",
+    "final": "Отдых",
+    "normalized": "спортзал фитнес-клуб",
+    "method": "exact",
+    "elapsed": 5.171072959899902,
+    "error": null
+  },
+  {
+    "query": "зал рядом",
+    "root": "Спорт",
+    "final": "Отдых",
+    "normalized": "зал",
+    "method": "exact",
+    "elapsed": 5.701260805130005,
+    "error": null
+  },
+  {
+    "query": "gym near me",
+    "root": "Спорт",
+    "final": "Отдых",
+    "normalized": "фитнес-центр",
+    "method": "exact",
+    "elapsed": 4.865563154220581,
+    "error": null
+  },
+  {
+    "query": "где отдохнуть",
+    "root": "Досуг",
+    "final": "Развлечения",
+    "normalized": "туристическое агентство",
+    "method": "exact",
+    "elapsed": 6.278857707977295,
+    "error": null
+  },
+  {
+    "query": "отдых рядом",
+    "root": "Досуг",
+    "final": "Развлечения",
+    "normalized": "туристическое агентство",
+    "method": "exact",
+    "elapsed": 5.816956281661987,
+    "error": null
+  },
+  {
+    "query": "релакс",
+    "root": "Досуг",
+    "final": "Развлечения",
+    "normalized": "спа-салон",
+    "method": "exact",
+    "elapsed": 5.583878040313721,
+    "error": null
+  },
+  {
+    "query": "где купить технику",
+    "root": "Электроника",
+    "final": "Электротехника",
+    "normalized": "магазин техники",
+    "method": "exact",
+    "elapsed": 5.050827980041504,
+    "error": null
+  },
+  {
+    "query": "электроника магазин",
+    "root": "Торговые комплексы",
+    "final": "Спецмагазины",
+    "normalized": "магазин электроники",
+    "method": "exact",
+    "elapsed": 6.713812351226807,
+    "error": null
+  },
+  {
+    "query": "electronics shop",
+    "root": "Электроника",
+    "final": "Электротехника",
+    "normalized": "магазин электроники",
+    "method": "exact",
+    "elapsed": 7.498488664627075,
+    "error": null
+  }
+]
