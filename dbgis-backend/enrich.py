@@ -43,6 +43,33 @@ from enrichment.crawler import get_relevant_links, fetch_url
 from enrichment.extractor import extract_contacts
 
 # ============================================================
+# ВАЛИДАЦИЯ ДОМЕНОВ
+# ============================================================
+
+def is_valid_domain(domain: str) -> bool:
+    """Проверяет, что домен валиден для обогащения.
+
+    Пропускает только домены 2-го уровня (example.com)
+    и www-субдомены (www.example.com).
+    Отбрасывает поддомены 3+ уровня, домены с пробелами,
+    домены без точки.
+    """
+    if not domain:
+        return False
+    domain = domain.strip().lower()
+    if ' ' in domain:
+        return False
+    parts = domain.split('.')
+    if len(parts) < 2:
+        return False
+    if len(parts) == 2:
+        return True
+    if len(parts) == 3 and parts[0] == "www":
+        return True
+    return False
+
+
+# ============================================================
 # КОНФИГУРАЦИЯ
 # ============================================================
 
@@ -475,8 +502,28 @@ def main():
             show_status(conn)
             return
 
-        log.info(f"Получено {len(batch)} компаний для обогащения")
-        process_batch(batch)
+        # Фильтруем невалидные домены (поддомены, мусор)
+        valid_batch = []
+        for c in batch:
+            if is_valid_domain(c["domain"]):
+                valid_batch.append(c)
+            else:
+                log.debug(f"[{c['id']}] Пропуск невалидного домена: {c['domain']}")
+                # Помечаем как done — нечего обогащать
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "UPDATE companies SET enrichment_status = 'done' WHERE id = %s",
+                        (c["id"],)
+                    )
+                conn.commit()
+
+        if not valid_batch:
+            log.info("Нет компаний с валидными доменами для обогащения")
+            show_status(conn)
+            return
+
+        log.info(f"Получено {len(valid_batch)} компаний для обогащения (отфильтровано {len(batch) - len(valid_batch)} невалидных доменов)")
+        process_batch(valid_batch)
         show_status(conn)
 
     finally:

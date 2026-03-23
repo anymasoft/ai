@@ -206,6 +206,7 @@ COMPANIES_LIST_SQL = """
         FROM branches b
         WHERE b.company_id = c.id
           AND b.address IS NOT NULL AND b.address != ''
+          AND b.address != 'enriched'
     ) addr ON TRUE
     LEFT JOIN LATERAL (
         SELECT STRING_AGG(s.type || ':' || s.url, ', ') as socials
