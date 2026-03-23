@@ -73,18 +73,43 @@ def is_junk_label(text: str) -> bool:
     return text.strip().lower() in JUNK_LABELS
 
 
+def unwrap_2gis_redirect(url: str) -> str:
+    """Извлекает реальный URL из обёртки link.2gis.ru.
+
+    Пример: link.2gis.ru/669603A0/.../f8b0a14bcf15f9?http://t.me/asvaya → http://t.me/asvaya
+    Если URL не обёрнут — возвращает как есть.
+    """
+    if not url:
+        return url
+    if 'link.2gis' not in url.lower():
+        return url
+    # Ищем ?http:// или ?https:// — это целевой URL после редиректа
+    idx = url.find('?http://')
+    if idx == -1:
+        idx = url.find('?https://')
+    if idx != -1:
+        return url[idx + 1:]
+    return url
+
+
 def extract_contact_url(eaddr: str, eaddr_name: str) -> str:
     """Извлекает URL контакта, предпочитая eaddr (реальный URL) перед eaddr_name (подпись).
 
-    Возвращает URL или пустую строку.
+    Разворачивает обёртки link.2gis.ru. Возвращает URL или пустую строку.
     """
+    # Разворачиваем обёртки link.2gis.ru
+    if eaddr:
+        eaddr = unwrap_2gis_redirect(str(eaddr).strip())
+    if eaddr_name:
+        eaddr_name = unwrap_2gis_redirect(str(eaddr_name).strip())
+
     # Сначала пробуем eaddr (реальный URL)
-    if eaddr and is_url_like(str(eaddr)):
-        return str(eaddr).strip()
+    if eaddr and is_url_like(eaddr):
+        return eaddr
 
     # Затем eaddr_name, но только если выглядит как URL и не мусор
-    if eaddr_name and not is_junk_label(str(eaddr_name)) and is_url_like(str(eaddr_name)):
-        return str(eaddr_name).strip()
+    if eaddr_name and not is_junk_label(eaddr_name) and is_url_like(eaddr_name):
+        return eaddr_name
 
     # eaddr_name может содержать URL без http:// (например "sportmaxx.ru")
     if eaddr_name and not is_junk_label(str(eaddr_name)):
@@ -804,13 +829,16 @@ def build_all_rows(dump: dict, default_city: str = "") -> list:
                 eaddr_name = str(dump.get("fil_contact_eaddr_name", {}).get(crow, "")) if dump.get("fil_contact_eaddr_name", {}).get(crow) else ""
 
                 # Telegram: ищем URL вида t.me/... в eaddr или eaddr_name
-                eaddr_lower = eaddr.lower()
-                eaddr_name_lower = eaddr_name.lower()
+                # Сначала разворачиваем обёртку link.2gis.ru
+                eaddr_unwrapped = unwrap_2gis_redirect(eaddr)
+                eaddr_name_unwrapped = unwrap_2gis_redirect(eaddr_name)
+                eaddr_lower = eaddr_unwrapped.lower()
+                eaddr_name_lower = eaddr_name_unwrapped.lower()
                 tg_url = ""
                 if eaddr_lower and ('t.me/' in eaddr_lower or 'telegram.me/' in eaddr_lower):
-                    tg_url = eaddr
+                    tg_url = eaddr_unwrapped
                 elif eaddr_name_lower and ('t.me/' in eaddr_name_lower or 'telegram.me/' in eaddr_name_lower):
-                    tg_url = eaddr_name
+                    tg_url = eaddr_name_unwrapped
 
                 if tg_url:
                     if 'g' not in links:
