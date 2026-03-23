@@ -24,12 +24,12 @@ from openpyxl.styles import Font, Alignment, PatternFill, Protection
 # ============================================================
 
 # Папка с входными .dgdat файлами
-# DGDAT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'download')
-DGDAT_DIR = 'C:\\Program Files (x86)\\2gis\\3.0'
+DGDAT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'download')
+# DGDAT_DIR = 'C:\\Program Files (x86)\\2gis\\3.0'
 
 # Папка для выходных .xlsx файлов
-# XLSX_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'output')
-XLSX_DIR = 'D:\\2GIS'
+XLSX_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'output')
+# XLSX_DIR = 'D:\\2GIS'
 
 # Паттерн для удаления недопустимых символов XML (управляющие символы кроме \t, \n, \r)
 ILLEGAL_CHARS_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f]')
