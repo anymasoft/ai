@@ -182,12 +182,12 @@ def migrate_phones(sqlite_conn, postgres_cur):
 
     rows = []
     for row in sqlite_cur.fetchall():
-        rows.append((row['id'], row['branch_id'], row['phone']))
+        rows.append((row['id'], row['branch_id'], row['phone'], '2gis'))
 
     count = batch_insert(
         postgres_cur,
-        """INSERT INTO phones (id, branch_id, phone)
-           VALUES (%s, %s, %s)
+        """INSERT INTO phones (id, branch_id, phone, source)
+           VALUES (%s, %s, %s, %s)
            ON CONFLICT(branch_id, phone) DO NOTHING""",
         rows,
         "phones"
@@ -203,12 +203,12 @@ def migrate_emails(sqlite_conn, postgres_cur):
 
     rows = []
     for row in sqlite_cur.fetchall():
-        rows.append((row['id'], row['company_id'], row['email'].lower()))
+        rows.append((row['id'], row['company_id'], row['email'].lower(), '2gis'))
 
     count = batch_insert(
         postgres_cur,
-        """INSERT INTO emails (id, company_id, email)
-           VALUES (%s, %s, %s)
+        """INSERT INTO emails (id, company_id, email, source)
+           VALUES (%s, %s, %s, %s)
            ON CONFLICT(company_id, email) DO NOTHING""",
         rows,
         "emails"

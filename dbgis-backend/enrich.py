@@ -238,7 +238,7 @@ def get_or_create_enrichment_branch(cur, company_id: int) -> int:
 
 def save_contacts(conn, company_id: int, emails: list[str], phones: list[str]) -> dict:
     """
-    Сохраняет emails и phones в БД.
+    Сохраняет emails и phones в БД с источником 'enrichment'.
     Возвращает {"emails_added": N, "phones_added": N}.
     """
     emails_added = 0
@@ -248,8 +248,8 @@ def save_contacts(conn, company_id: int, emails: list[str], phones: list[str]) -
         # Emails (привязаны к company_id)
         for email in emails:
             cur.execute("""
-                INSERT INTO emails (company_id, email)
-                VALUES (%s, %s)
+                INSERT INTO emails (company_id, email, source)
+                VALUES (%s, %s, 'enrichment')
                 ON CONFLICT DO NOTHING
             """, (company_id, email))
             if cur.rowcount:
@@ -260,8 +260,8 @@ def save_contacts(conn, company_id: int, emails: list[str], phones: list[str]) -
             branch_id = get_or_create_enrichment_branch(cur, company_id)
             for phone in phones:
                 cur.execute("""
-                    INSERT INTO phones (branch_id, phone)
-                    VALUES (%s, %s)
+                    INSERT INTO phones (branch_id, phone, source)
+                    VALUES (%s, %s, 'enrichment')
                     ON CONFLICT DO NOTHING
                 """, (branch_id, phone))
                 if cur.rowcount:
