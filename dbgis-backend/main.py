@@ -15,7 +15,9 @@ PostgreSQL + HTML5 + Vanilla JS.
 import os
 import csv
 import io
+import sys
 import hashlib
+import subprocess
 import time
 from typing import Optional
 from datetime import datetime
@@ -547,6 +549,125 @@ async def explain_query(
 
         cur.close()
         return {"plan": plan}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        release_db_connection(conn)
+
+
+# ============================================================
+# ENRICHMENT API
+# ============================================================
+
+@app.post("/api/enrich/start")
+async def start_enrichment(
+    batch_size: int = Query(100, ge=1, le=1000, description="Размер батча"),
+    reset: bool = Query(False, description="Сбросить все в pending перед запуском"),
+):
+    """
+    Запуск обогащения контактов (фоновый subprocess).
+
+    - batch_size: сколько компаний обработать за один запуск
+    - reset=true: сбросить все компании в pending (начать заново)
+
+    Если нет компаний со статусом pending/failed — автоматически сбрасывает все в pending.
+    """
+    conn = get_db_connection()
+    if conn is None:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+
+    try:
+        cur = conn.cursor()
+
+        # Проверяем, идёт ли уже обогащение
+        cur.execute(
+            "SELECT COUNT(*) as cnt FROM companies WHERE enrichment_status = 'processing'"
+        )
+        processing = cur.fetchone()["cnt"]
+        if processing > 0:
+            cur.close()
+            return {"status": "already_running", "processing": processing}
+
+        # Считаем pending компании
+        cur.execute("""
+            SELECT COUNT(*) as cnt FROM companies
+            WHERE domain IS NOT NULL AND domain != ''
+              AND (enrichment_status IS NULL OR enrichment_status IN ('pending', 'failed'))
+        """)
+        pending = cur.fetchone()["cnt"]
+        cur.close()
+
+        # Если нет pending — автосброс или явный reset
+        args = [sys.executable, os.path.join(os.path.dirname(__file__), "enrich.py")]
+        if reset or pending == 0:
+            args.append("--start")
+        args += ["--batch-size", str(batch_size)]
+
+    finally:
+        release_db_connection(conn)
+
+    # Запускаем как независимый фоновый процесс
+    logs_dir = os.path.join(os.path.dirname(__file__), "logs")
+    os.makedirs(logs_dir, exist_ok=True)
+    log_file = open(os.path.join(logs_dir, "enrich.log"), "a")
+
+    proc = subprocess.Popen(
+        args,
+        stdout=log_file,
+        stderr=subprocess.STDOUT,
+        start_new_session=True,
+        cwd=os.path.dirname(__file__),
+    )
+
+    return {
+        "status": "started",
+        "pid": proc.pid,
+        "batch_size": batch_size,
+        "reset": reset or pending == 0,
+    }
+
+
+@app.get("/api/enrich/status")
+async def enrichment_status():
+    """
+    Статистика обогащения контактов.
+
+    Возвращает счётчики по статусам и процент прогресса.
+    Используется UI для обновления прогресс-бара каждые 2 секунды.
+    """
+    conn = get_db_connection()
+    if conn is None:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT
+                COUNT(*) FILTER (WHERE domain IS NOT NULL AND domain != '') AS total,
+                COUNT(*) FILTER (WHERE enrichment_status = 'pending'
+                    AND domain IS NOT NULL AND domain != '') AS pending,
+                COUNT(*) FILTER (WHERE enrichment_status = 'processing') AS processing,
+                COUNT(*) FILTER (WHERE enrichment_status = 'done') AS done,
+                COUNT(*) FILTER (WHERE enrichment_status = 'failed') AS failed
+            FROM companies
+        """)
+        row = dict(cur.fetchone())
+        cur.close()
+
+        total = row["total"] or 0
+        done = row["done"] or 0
+        progress_pct = round(done / total * 100, 2) if total > 0 else 0.0
+
+        return {
+            "total": total,
+            "pending": row["pending"] or 0,
+            "processing": row["processing"] or 0,
+            "done": done,
+            "failed": row["failed"] or 0,
+            "progress_percent": progress_pct,
+            "is_running": (row["processing"] or 0) > 0,
+        }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -441,6 +441,51 @@ for url in filtered:
 
 ---
 
-**Последнее обновление:** 2025-03-21
+---
+
+## Интеграция с dbgis-backend (ПЛАН)
+
+### Роль EXTRACTOR в системе
+EXTRACTOR используется как **библиотека** (import) из `dbgis-backend/enrich.py`.
+Никакого рефакторинга extractor_final.py и crawler_filter.py — они импортируются как есть.
+
+### Полный pipeline системы
+```
+2GIS (.dgdat) → dgdat2xlsx/ → SQLite → dbgis-backend/ → PostgreSQL
+                                                              │
+                                                              ▼
+                                              enrich.py (dbgis-backend/)
+                                                │
+                                                ├── import crawler_filter (EXTRACTOR/)
+                                                │   domain → top-5 URLs
+                                                │
+                                                ├── import extractor_final (EXTRACTOR/)
+                                                │   HTML → phones + emails
+                                                │
+                                                └── INSERT в PostgreSQL
+```
+
+### Какие модули используются
+| Модуль | Импортируемые функции | Назначение |
+|--------|----------------------|------------|
+| `extractor_final.py` | `clean_html`, `extract_emails`, `extract_emails_from_hrefs`, `extract_emails_from_data_attrs`, `extract_phones`, `extract_phones_from_hrefs`, `extract_structured_phones` | Извлечение контактов из HTML |
+| `crawler_filter.py` | `filter_links`, `extract_links_with_anchors` | Фильтрация и ранжирование ссылок |
+
+### Связанные проекты
+| Проект | Путь | Назначение |
+|--------|------|------------|
+| dgdat2xlsx | `../dgdat2xlsx/` | Парсинг 2ГИС .dgdat → XLSX → SQLite |
+| dbgis-backend | `../dbgis-backend/` | FastAPI API + PostgreSQL + enrich.py |
+| EXTRACTOR | `.` (текущий) | Извлечение контактов с сайтов |
+
+### Правила для Claude Code
+- **Не рефакторить** extractor_final.py ради интеграции — enrich.py делает тонкую обёртку
+- **extractor_final.py** — единственный production extractor (остальные — для тестов)
+- **crawler_filter.py** — единственный production link filter
+- Все остальные версии (opus.py, qwen.py, deepseek2.py, grok.py) — архивные
+
+---
+
+**Последнее обновление:** 2026-03-23
 **Разработчик:** Senior Python Developer
 **Статус:** Production-ready ✅

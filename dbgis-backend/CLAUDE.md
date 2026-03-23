@@ -130,3 +130,190 @@ companies ──< branches ──< phones
 - SQL-шаблоны в константах (`COMPANIES_LIST_SQL`, `COMPANIES_COUNT_SQL`)
 - Утилиты (`decode_rows`, `decode_punycode_domain`) переиспользовать
 - Не создавать отдельные файлы для роутов/моделей — всё в `main.py` (монолит)
+
+---
+
+## Полный pipeline системы
+
+```
+2GIS (.dgdat) → dgdat2xlsx/convert.py → XLSX
+  → dgdat2xlsx/import_db.py → SQLite (data/local.db)
+    → dbgis-backend/migrate_sqlite_to_postgres.py → PostgreSQL
+      → dbgis-backend/main.py (FastAPI API + Web UI)
+        → dbgis-backend/enrich.py (обогащение контактов)
+```
+
+### Связанные проекты
+| Проект | Путь | Назначение |
+|--------|------|------------|
+| dgdat2xlsx | `../dgdat2xlsx/` | Парсинг 2ГИС .dgdat → XLSX → SQLite |
+| EXTRACTOR | `../EXTRACTOR/` | Исходный код extractor (только для ознакомления) |
+| dbgis-backend | `.` (текущий) | FastAPI API + PostgreSQL + Web UI + enrich |
+
+---
+
+## Enrichment — система обогащения контактов
+
+### Структура
+```
+dbgis-backend/
+  enrichment/
+    __init__.py
+    crawler.py      # get_relevant_links(domain) → list[str]
+    extractor.py    # extract_contacts(html) → {"emails": [], "phones": []}
+  enrich.py         # CLI orchestrator (cron/ручной запуск)
+  logs/
+    enrich.log      # лог работы enrichment
+  migrations/
+    001_enrichment.sql  # ALTER TABLE companies ADD enrichment_status, enriched_at
+```
+
+### Поля БД (добавлены миграцией 001)
+```sql
+companies.enrichment_status  TEXT DEFAULT 'pending'
+  -- pending | processing | done | failed
+
+companies.enriched_at        TIMESTAMP
+  -- дата успешного обогащения
+```
+
+### Pipeline обогащения одной компании
+```
+SELECT companies WHERE enrichment_status IN ('pending','failed') AND domain IS NOT NULL
+  → UPDATE enrichment_status = 'processing'
+    → crawler.py: domain → top-5 URLs (homepage + контактные страницы)
+      → fetch_url каждой страницы (urllib, timeout=15, max 5MB)
+        → extractor.py: HTML → {"emails": [], "phones": []}
+          → INSERT INTO emails (ON CONFLICT DO NOTHING)
+          → INSERT INTO phones → первый branch или виртуальный 'enriched'
+            → UPDATE enrichment_status = 'done' / 'failed'
+```
+
+### Resume-логика (перезапуск после сбоя)
+1. При старте: зависшие `processing` → `failed` (crash recovery)
+2. SELECT только `pending` и `failed` — уже `done` не трогаются
+3. `--start` флаг: сброс всех в `pending` (начать заново)
+
+### Запуск enrich.py
+```bash
+python enrich.py                     # батч 100 компаний
+python enrich.py --batch-size 500    # другой размер батча
+python enrich.py --company-id 12345  # одна компания
+python enrich.py --status            # статистика
+python enrich.py --start             # сброс в pending + запуск
+
+# Cron (каждые 30 минут):
+*/30 * * * * cd /path/to/dbgis-backend && python enrich.py --batch-size 200 >> logs/enrich.log 2>&1
+```
+
+### API endpoints обогащения
+| Метод | Путь | Описание |
+|-------|------|----------|
+| POST | `/api/enrich/start` | Запустить enrich.py (background subprocess) |
+| GET | `/api/enrich/status` | Статистика: total/pending/processing/done/failed/progress_percent |
+
+`POST /api/enrich/start` параметры:
+- `batch_size` (int, default 100) — размер батча
+- `reset` (bool, default false) — сбросить все в pending перед запуском
+
+### UI: прогресс-бар и auto-refresh
+- **Прогресс-бар**: polling `/api/enrich/status` каждые **2 сек**
+- **Таблица**: polling `/api/companies` каждые **5 сек** (если был активный поиск)
+- **Кнопка "Обогатить"**: `POST /api/enrich/start`
+- **Кнопка "Заново"**: `POST /api/enrich/start?reset=true`
+- Кнопка блокируется пока `is_running=true` (processing > 0)
+
+### Виртуальный филиал для enriched телефонов
+Телефоны в БД привязаны к `branch_id`. Enrichment:
+1. Ищет первый существующий `branch` для компании
+2. Если нет ни одного — создаёт виртуальный: `address='enriched'`, `branch_hash=MD5('enriched_{id}')`
+3. `INSERT INTO phones ON CONFLICT DO NOTHING`
+
+### Идемпотентность
+- `INSERT INTO emails ... ON CONFLICT DO NOTHING`
+- `INSERT INTO phones ... ON CONFLICT DO NOTHING`
+- `INSERT INTO branches ... ON CONFLICT (branch_hash) DO NOTHING`
+- Повторный запуск не создаёт дублей
+
+### Производительность
+- `ThreadPoolExecutor(max_workers=5)` — параллельный обход
+- `DELAY_BETWEEN_SITES = 0.5 сек` — пауза между сайтами
+- Расчётная скорость: ~14,000 компаний/день
+- Timeout HTTP: 15 сек, лимит ответа: 5 МБ
+
+### Применить миграцию
+```bash
+psql -d dbgis -f migrations/001_enrichment.sql
+```
+
+---
+
+## Полный pipeline системы
+
+```
+2GIS (.dgdat) → dgdat2xlsx/convert.py → XLSX
+  → dgdat2xlsx/import_db.py → SQLite (data/local.db)
+    → dbgis-backend/migrate_sqlite_to_postgres.py → PostgreSQL
+      → dbgis-backend/main.py (FastAPI API + Web UI)
+        → dbgis-backend/enrich.py (ПЛАНИРУЕТСЯ: обогащение контактов)
+```
+
+### Связанные проекты
+| Проект | Путь | Назначение |
+|--------|------|------------|
+| dgdat2xlsx | `../dgdat2xlsx/` | Парсинг 2ГИС .dgdat → XLSX → SQLite |
+| EXTRACTOR | `../EXTRACTOR/` | Извлечение контактов с сайтов (email, phone) |
+| dbgis-backend | `.` (текущий) | FastAPI API + PostgreSQL + Web UI |
+
+## Enrichment (обогащение) — ПЛАН ИНТЕГРАЦИИ
+
+### Архитектура
+`enrich.py` — CLI-скрипт (cron/ручной запуск), НЕ сервис.
+Импортирует `extractor_final.py` и `crawler_filter.py` из `../EXTRACTOR/`.
+
+### Pipeline обогащения
+```
+PostgreSQL: SELECT companies WHERE enrichment_status='pending' AND domain IS NOT NULL
+  → crawler_filter: domain → top-5 relevant URLs (contacts, about, homepage)
+    → extractor_final: HTML → phones + emails
+      → INSERT INTO emails/phones (ON CONFLICT DO NOTHING)
+        → UPDATE companies SET enrichment_status='done'
+```
+
+### Новые поля в companies
+```sql
+enrichment_status TEXT DEFAULT 'pending'  -- pending|processing|done|failed|skip
+enriched_at TIMESTAMP
+enrichment_attempts INTEGER DEFAULT 0
+```
+
+### Новая таблица enrichment_log
+```sql
+CREATE TABLE enrichment_log (
+    id SERIAL PRIMARY KEY,
+    company_id INTEGER REFERENCES companies(id),
+    started_at TIMESTAMP, finished_at TIMESTAMP,
+    status TEXT,  -- ok|error|timeout|blocked
+    pages_crawled INTEGER, emails_found INTEGER, phones_found INTEGER,
+    error_message TEXT, source TEXT DEFAULT 'website'
+);
+```
+
+### Ключевые решения
+- **domain** (не website) — точка входа для crawler (чистый, нормализованный)
+- **Виртуальный филиал** для enriched phones: `branches(address='enriched')`
+- **FOR UPDATE SKIP LOCKED** — безопасный параллельный запуск
+- **ThreadPoolExecutor(5)** — ~14,400 компаний/день
+- **Max 3 попытки** на компанию, таймаут 15 сек на HTTP
+- **HTML НЕ хранить** (только tmp-кеш для debug)
+
+### API endpoints (планируются)
+```
+POST /api/enrich/start    — запуск subprocess enrich.py
+GET  /api/enrich/status   — статистика по enrichment_status
+```
+
+### Cron
+```bash
+*/30 * * * * cd /path/to/dbgis-backend && python enrich.py --batch-size 200 >> logs/enrich.log 2>&1
+```
