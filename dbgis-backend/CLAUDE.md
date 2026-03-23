@@ -1,355 +1,474 @@
-# CLAUDE.md — dbgis-backend
+# CLAUDE.md
 
-## Проект
-FastAPI backend для поиска и фильтрации компаний из 2ГИС.
-PostgreSQL + psycopg2 + Jinja2 + Vanilla JS.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Структура
-```
-dbgis-backend/
-├── main.py                    # FastAPI-приложение (все эндпоинты)
-├── schema.sql                 # DDL: таблицы + индексы (включая pg_trgm)
-├── migrate_sqlite_to_postgres.py  # Миграция из SQLite → PostgreSQL
-├── migrations/                # SQL-миграции
-├── templates/                 # Jinja2 HTML-шаблоны
-├── requirements.txt
-├── setup.sh / setup.bat
-└── CLAUDE.md
-```
+---
 
-## Команды
+# dbgis-backend — FastAPI поиск компаний из 2ГИС
+
+**Стек**: FastAPI + PostgreSQL + Vanilla JS (Tailwind) + Jinja2
+**Минимум зависимостей**, синхронный код, простая архитектура.
+
+## 🚀 Команды для разработки
+
+### Установка и первый запуск
 ```bash
-# Запуск
-python main.py                  # uvicorn на API_HOST:API_PORT
-# или
-uvicorn main:app --reload       # dev-режим
-
-# Зависимости
+# 1. Установить зависимости
 pip install -r requirements.txt
 
-# Миграция БД
-psql -d dbgis -f schema.sql
+# 2. Создать и настроить БД
+psql -U postgres -f schema.sql
+# или для существующей БД:
 python migrate_sqlite_to_postgres.py
+
+# 3. Создать .env (на основе примера)
+cp .env.example .env
+# Отредактировать .env с параметрами PostgreSQL
+
+# 4. Запустить сервер
+python main.py
+# или с автоперезагрузкой:
+uvicorn main:app --reload
 ```
 
-## Архитектура API
+### Development
+```bash
+# Запуск с DEBUG=True для логирования ошибок
+DEBUG=True python main.py
 
-### Эндпоинты
-| Метод | Путь | Описание |
-|-------|------|----------|
-| GET | `/api/companies` | Список компаний (фильтры, пагинация) |
-| GET | `/api/companies/{id}` | Детали компании |
-| GET | `/api/export` | CSV-экспорт |
-| GET | `/api/debug/explain` | EXPLAIN ANALYZE (только DEBUG) |
-| GET | `/health` | Healthcheck |
-| GET | `/` | Web UI |
+# Проверка здоровья API
+curl http://localhost:8000/health
 
-### Лимиты
-- `/api/companies`: max limit = **1000**
-- `/api/export`: max limit = **50000**
+# Тестировать эндпоинты (примеры)
+curl "http://localhost:8000/api/companies?limit=5"
+curl "http://localhost:8000/api/companies/1"
 
-## Схема БД
+# Скачать CSV (первые 100 компаний)
+curl "http://localhost:8000/api/export?limit=100" > export.csv
+```
+
+### Обогащение контактов (enrichment)
+```bash
+# Один батч 100 компаний
+python enrich.py
+
+# Непрерывный режим до конца всех pending
+python enrich.py --continuous
+
+# Другой размер батча
+python enrich.py --batch-size 500 --continuous
+
+# Один конкретный company
+python enrich.py --company-id 12345
+
+# Статистика обогащения
+python enrich.py --status
+
+# Сброс всех в pending + запуск
+python enrich.py --start --continuous
+
+# Cron (каждые 30 минут)
+*/30 * * * * cd /path/to/dbgis-backend && python enrich.py --batch-size 200 >> logs/enrich.log 2>&1
+```
+
+### PostgreSQL операции
+```bash
+# Подключиться к БД
+psql -U postgres -d dbgis
+
+# Основные проверки (в psql):
+SELECT COUNT(*) FROM companies;
+SELECT COUNT(*) FROM categories;
+SELECT COUNT(*) FROM phones WHERE source = 'enrichment';
+
+# Проверить индексы
+\d companies
+
+# Проверить миграции (если есть table)
+SELECT * FROM schema_migrations;
+```
+
+---
+
+## 📐 Архитектура проекта
+
+### Файловая структура
+```
+dbgis-backend/
+├── main.py                        # FastAPI приложение (614 строк)
+│   ├── GET /health               # Healthcheck
+│   ├── GET / (Web UI)             # Jinja2 шаблон index.html
+│   ├── GET /api/companies         # Список (фильтры + пагинация)
+│   ├── GET /api/companies/{id}    # Детали компании
+│   ├── GET /api/export            # CSV экспорт
+│   ├── POST /api/enrich/start     # Запуск обогащения
+│   ├── GET /api/enrich/status     # Статус обогащения
+│   └── POST /api/enrich/stop      # Остановка обогащения
+│
+├── enrich.py                      # CLI для обогащения контактов (22 KБ)
+│   ├── Парсинг аргументов (--batch-size, --continuous, --start)
+│   ├── Управление батчами
+│   ├── Логирование в logs/enrich.log
+│   └── Статус обогащения
+│
+├── enrichment/                    # Подмодуль обогащения
+│   ├── __init__.py
+│   ├── crawler.py                 # get_relevant_links(domain) → URL[]
+│   └── extractor.py               # extract_contacts(html) → {emails, phones}
+│
+├── templates/
+│   └── index.html                 # SaaS UI (LeadExtractor)
+│
+├── schema.sql                     # DDL (таблицы + индексы)
+├── migrate_sqlite_to_postgres.py  # Миграция из SQLite
+├── requirements.txt               # Зависимости (15 пакетов)
+│
+├── README.md                      # Полная документация
+├── CLAUDE.md                      # Этот файл
+├── CRITICAL_FIXES.md              # История критических исправлений
+├── MIGRATION_GUIDE.md             # Как мигрировать данные
+└── UI_IMPROVEMENTS.md             # История улучшений интерфейса
+```
+
+### Схема БД (8 таблиц)
 ```
 companies ──< branches ──< phones
     │
     ├──< emails
     ├──< socials
+    ├──< company_aliases
     └──< company_categories >── categories
 ```
 
-## Критические решения (performance)
+**Ключевые поля в companies:**
+- `id`, `name`, `city`, `domain`, `website`
+- `enrichment_status` (pending|processing|done|failed)
+- `enriched_at` (TIMESTAMP)
+- `created_at`
+
+### Pipeline данных
+```
+2GIS .dgdat → dgdat2xlsx/convert.py → XLSX
+  → dgdat2xlsx/import_db.py → SQLite
+    → dbgis-backend/migrate_sqlite_to_postgres.py → PostgreSQL
+      → main.py (Web + API)
+        → enrich.py (обогащение контактов)
+```
+
+---
+
+## 🎯 Текущее состояние (Mars 2026)
+
+### ✅ Реализовано
+- ✅ FastAPI backend с REST API (все эндпоинты работают)
+- ✅ PostgreSQL с оптимизированными запросами (LATERAL JOIN, GIN индексы)
+- ✅ Web UI переделан в SaaS стиль (**LeadExtractor**)
+- ✅ AI-парсер поискового запроса (распознаёт фильтры из текста)
+- ✅ CSV экспорт (до 50k записей)
+- ✅ Обогащение контактов (enrich.py)
+- ✅ Декодирование кириллических доменов (punycode → русский)
+- ✅ Исправлены все JS ошибки в UI
+
+### 🔄 В разработке
+- 🔄 Фронтенд продолжает развиваться (улучшения UX, анимации)
+
+### 📋 Идеи для будущего
+- [ ] Redis кеширование
+- [ ] JWT аутентификация
+- [ ] История поисков
+- [ ] Сохранённые фильтры
+- [ ] Телеграм интеграция
+
+---
+
+## 🔥 Критические архитектурные решения
 
 ### 1. LATERAL JOIN вместо коррелированных подзапросов
-**Проблема**: 4 подзапроса в SELECT = O(N) дополнительных запросов.
-**Решение**: `LEFT JOIN LATERAL (...) ON TRUE` — PostgreSQL оптимизирует как обычный JOIN.
-**Файл**: `main.py`, константа `COMPANIES_LIST_SQL`.
+**Где**: `main.py`, константа `COMPANIES_LIST_SQL`
+**Проблема**: 4 подзапроса в SELECT = O(N) доп. запросов к БД
+**Решение**: `LEFT JOIN LATERAL (...) ON TRUE`
+**Результат**: PostgreSQL оптимизирует как обычный JOIN, 10-50x быстрее
 
-### 2. DISTINCT убран
-**Проблема**: LEFT JOIN categories умножает строки → нужен DISTINCT (сортировка + dedup).
-**Решение**: GROUP BY включает все LATERAL-поля → строки уникальны без DISTINCT.
-
-### 3. GIN pg_trgm индексы для ILIKE
-**Проблема**: `WHERE city ILIKE '%москва%'` = Seq Scan 100k строк.
-**Решение**: `CREATE INDEX ... USING GIN (city gin_trgm_ops)` — Bitmap Index Scan, 10-50x быстрее.
-**Файл**: `schema.sql`, строки 97-101.
-**Требует**: `CREATE EXTENSION IF NOT EXISTS pg_trgm;`
-
-### 4. Connection Pool
-**Проблема**: `psycopg2.connect()` = новое TCP-соединение (~5ms) на каждый запрос.
-**Решение**: `psycopg2.pool.SimpleConnectionPool(2, 10)` — переиспользование соединений.
-**Конфиг**: env `DB_POOL_MIN` (default 2), `DB_POOL_MAX` (default 10).
-
-### 5. In-memory кеш
-**Класс**: `SimpleCache` в `main.py`.
-**TTL**: 60 секунд (без Redis, без зависимостей).
-**Ключ**: MD5 от отсортированных query params.
-**Покрытие**: `/api/companies` (самый частый запрос).
-
-### 6. Фильтры вынесены в `build_filter_clause()`
-**Зачем**: один источник правды для WHERE-условий (data + count).
-**Было**: дублирование фильтров в 2 местах → рассинхрон и баги.
-
-## Индексы (schema.sql)
-
-### B-tree (FK/JOIN)
-- `companies(name)`, `companies(domain)`
-- `branches(company_id)`, `phones(branch_id)`
-- `emails(company_id)`, `socials(company_id)`
-- `company_categories(company_id)`, `company_categories(category_id)`
-- `categories(parent_id)`, `categories(name)`
-
-### GIN триграммные (ILIKE)
-- `companies(city gin_trgm_ops)`
-- `categories(name gin_trgm_ops)`
-
-## Env-переменные
-| Переменная | Default | Описание |
-|------------|---------|----------|
-| DB_HOST | localhost | Хост PostgreSQL |
-| DB_PORT | 5432 | Порт PostgreSQL |
-| DB_NAME | dbgis | Имя БД |
-| DB_USER | postgres | Пользователь |
-| DB_PASSWORD | postgres | Пароль |
-| DB_POOL_MIN | 2 | Мин. соединений в пуле |
-| DB_POOL_MAX | 10 | Макс. соединений в пуле |
-| API_HOST | 0.0.0.0 | Хост API |
-| API_PORT | 8000 | Порт API |
-| DEBUG | False | Режим отладки (включает /api/debug/explain) |
-
-## Правила для Claude Code
-
-### Качество кода
-- Не добавлять Redis, очереди, async магию — проект намеренно простой
-- psycopg2 (синхронный) — осознанный выбор, не менять на asyncpg
-- Все SQL-запросы — параметризованные (%s), никогда f-string
-- Connection pool обязателен — не возвращаться к `psycopg2.connect()` напрямую
-- LATERAL JOIN — не менять обратно на коррелированные подзапросы
-
-### Экономия токенов
-- Фильтры строятся через `build_filter_clause()` — не дублировать
-- SQL-шаблоны в константах (`COMPANIES_LIST_SQL`, `COMPANIES_COUNT_SQL`)
-- Утилиты (`decode_rows`, `decode_punycode_domain`) переиспользовать
-- Не создавать отдельные файлы для роутов/моделей — всё в `main.py` (монолит)
-
----
-
-## Полный pipeline системы
-
-```
-2GIS (.dgdat) → dgdat2xlsx/convert.py → XLSX
-  → dgdat2xlsx/import_db.py → SQLite (data/local.db)
-    → dbgis-backend/migrate_sqlite_to_postgres.py → PostgreSQL
-      → dbgis-backend/main.py (FastAPI API + Web UI)
-        → dbgis-backend/enrich.py (обогащение контактов)
-```
-
-### Связанные проекты
-| Проект | Путь | Назначение |
-|--------|------|------------|
-| dgdat2xlsx | `../dgdat2xlsx/` | Парсинг 2ГИС .dgdat → XLSX → SQLite |
-| EXTRACTOR | `../EXTRACTOR/` | Исходный код extractor (только для ознакомления) |
-| dbgis-backend | `.` (текущий) | FastAPI API + PostgreSQL + Web UI + enrich |
-
----
-
-## Enrichment — система обогащения контактов
-
-### Структура
-```
-dbgis-backend/
-  enrichment/
-    __init__.py
-    crawler.py      # get_relevant_links(domain) → list[str]
-    extractor.py    # extract_contacts(html) → {"emails": [], "phones": []}
-  enrich.py         # CLI orchestrator (cron/ручной запуск)
-  logs/
-    enrich.log      # лог работы enrichment
-  migrations/
-    001_enrichment.sql  # ALTER TABLE companies ADD enrichment_status, enriched_at
-```
-
-### Поля БД (добавлены миграцией 001)
 ```sql
-companies.enrichment_status  TEXT DEFAULT 'pending'
-  -- pending | processing | done | failed
-
-companies.enriched_at        TIMESTAMP
-  -- дата успешного обогащения
+LEFT JOIN LATERAL (
+    SELECT STRING_AGG(...) as phones
+    FROM phones WHERE branch_id = b.id
+) ph ON TRUE
 ```
 
-### Pipeline обогащения одной компании
-```
-SELECT companies WHERE enrichment_status IN ('pending','failed') AND domain IS NOT NULL
-  → UPDATE enrichment_status = 'processing'
-    → crawler.py: domain → top-5 URLs (homepage + контактные страницы)
-      → fetch_url каждой страницы (urllib, timeout=15, max 5MB)
-        → extractor.py: HTML → {"emails": [], "phones": []}
-          → INSERT INTO emails (ON CONFLICT DO NOTHING)
-          → INSERT INTO phones → первый branch или виртуальный 'enriched'
-            → UPDATE enrichment_status = 'done' / 'failed'
-```
+**⚠️ Не менять обратно на коррелированные подзапросы!**
 
-### Resume-логика (перезапуск после сбоя)
-1. При старте: зависшие `processing` → `failed` (crash recovery)
-2. SELECT только `pending` и `failed` — уже `done` не трогаются
-3. `--start` флаг: сброс всех в `pending` (начать заново)
+### 2. GIN триграммные индексы для ILIKE
+**Где**: `schema.sql`
+**Проблема**: `WHERE city ILIKE '%москва%'` = Seq Scan 100k строк
+**Решение**: `CREATE INDEX ... USING GIN (city gin_trgm_ops)`
+**Результат**: Bitmap Index Scan вместо Seq Scan
 
-### Валидация доменов перед обогащением
-- **Функция**: `is_valid_domain(domain: str) -> bool` в `enrich.py`
-- **Принимает**: домены 2-го уровня (`example.com`) и `www.*` субдомены (`www.example.com`)
-- **Отбрасывает**: поддомены 3+ уровня (кроме www), домены с пробелами, домены без точки
-- **Применение**: при обработке батча невалидные домены помечаются как `done` и пропускаются
-- **Причина**: избежать обогащения поддоменов, которые часто редиректят на основной домен или не имеют контактной информации
+**Требует**: `CREATE EXTENSION IF NOT EXISTS pg_trgm;` перед запуском schema.sql
 
-### Запуск enrich.py
-```bash
-python enrich.py                              # один батч 100 компаний, затем выход
-python enrich.py --continuous                # крутить цикл до конца всех pending
-python enrich.py --batch-size 500            # другой размер батча
-python enrich.py --batch-size 200 --continuous  # цикл с батчами по 200
-python enrich.py --company-id 12345          # одна компания
-python enrich.py --status                    # статистика
-python enrich.py --start                     # сброс всех в pending + запуск
-python enrich.py --start --continuous        # сброс + цикл до конца
+### 3. Connection Pool (psycopg2.SimpleConnectionPool)
+**Конфиг**: env `DB_POOL_MIN=2`, `DB_POOL_MAX=10`
+**Проблема**: Без пула каждый запрос = новое TCP соединение (~5ms)
+**Решение**: Переиспользование соединений
+**Где**: `main.py`, функция `get_db_connection()`
 
-# Cron (каждые 30 минут, один батч):
-*/30 * * * * cd /path/to/dbgis-backend && python enrich.py --batch-size 200 >> logs/enrich.log 2>&1
+**⚠️ Всегда возвращайте соединение в пул через `release_db_connection(conn)`!**
 
-# Для непрерывного обогащения (например, ночное время):
-0 2 * * * cd /path/to/dbgis-backend && python enrich.py --batch-size 500 --continuous >> logs/enrich.log 2>&1
-```
+### 4. In-memory кеш (60 секунд TTL)
+**Класс**: `SimpleCache` в `main.py`
+**Применение**: `/api/companies` запросы
+**TTL**: 60 секунд без Redis
+**Ключ**: MD5 от отсортированных параметров
 
-### API endpoints обогащения
-| Метод | Путь | Описание |
-|-------|------|----------|
-| POST | `/api/enrich/start` | Запустить enrich.py в режиме непрерывного цикла |
-| GET | `/api/enrich/status` | Статистика: total/pending/processing/done/failed/progress_percent/is_running |
-
-`POST /api/enrich/start` параметры:
-- `batch_size` (int, default 100) — размер одного батча
-- `reset` (bool, default false) — сбросить все в pending перед запуском
-
-Поведение:
-- Запускает `enrich.py --continuous`, который крутит цикл до обогащения всех pending компаний
-- Если pending = 0, автоматически сбрасывает все в 'pending' и начинает цикл
-- Батчи обрабатываются по очереди, между ними паузы для снижения нагрузки
-
-### UI: прогресс-бар и auto-refresh
-- **Прогресс-бар**: polling `/api/enrich/status` каждые **2 сек**
-- **Кнопка "Обогатить"**: `POST /api/enrich/start`
-- **Кнопка "Заново"**: `POST /api/enrich/start?reset=true`
-- Кнопка блокируется пока `is_running=true` (processing > 0)
-
-### UI: таблица компаний с раскрываемыми строками
-- **5 компактных колонок**: Название, Город, Домен, Телефон, Email
-- **Стрелка-индикатор**: `▶` перед названием (поворачивается при раскрытии)
-- **Клик по строке**: раскрывает детали компании
-- **Ленивая загрузка**: детали загружаются через `/api/companies/{id}` только при открытии
-- **Кеш деталей**: `detailsCache` сохраняет загруженные данные во время сессии
-- **Сохранение состояния**: открытые строки остаются открытыми при auto-refresh таблицы (каждые 5 сек)
-- **Детали включают**: адреса (без 'enriched'), все телефоны, все email, категории, соцсети, сайт
-- **Интерактивные ссылки**: в деталях телефоны как `tel:`, email как `mailto:`, соцсети открываются в новой вкладке
-
-### UI: обогащение работает непрерывно
-- **Прогресс-бар**: обновляется каждые 2 сек (polling `/api/enrich/status`)
-- **Кнопка "Обогатить"** запускает цикл до конца всех pending компаний (флаг `--continuous`)
-- **Кнопка не блокируется**: остается крутящейся пока идет обогащение
-- **Таблица обновляется**: каждые 5 сек, показывая новые контакты в реальном времени
-- **Статус**: pending → processing → done/failed, счетчики обновляются при каждом завершении обогащения компании
-
-### Виртуальный филиал для enriched телефонов
-Телефоны в БД привязаны к `branch_id`. Enrichment:
-1. Ищет первый существующий `branch` для компании
-2. Если нет ни одного — создаёт виртуальный: `address='enriched'`, `branch_hash=MD5('enriched_{id}')`
-3. `INSERT INTO phones ON CONFLICT DO NOTHING`
-4. В SQL-запросах (`/api/companies`, `/api/export`) виртуальные филиалы исключаются из `address` колонки через `AND b.address != 'enriched'` в LATERAL JOIN
-   - Это нужно чтобы пользователи видели только реальные адреса, но при этом имели доступ к обогащённым телефонам
-
-### Идемпотентность
-- `INSERT INTO emails ... ON CONFLICT DO NOTHING`
-- `INSERT INTO phones ... ON CONFLICT DO NOTHING`
-- `INSERT INTO branches ... ON CONFLICT (branch_hash) DO NOTHING`
-- Повторный запуск не создаёт дублей
-
-### Производительность
-- `ThreadPoolExecutor(max_workers=5)` — параллельный обход
-- `DELAY_BETWEEN_SITES = 0.5 сек` — пауза между сайтами
-- Расчётная скорость: ~14,000 компаний/день
-- Timeout HTTP: 15 сек, лимит ответа: 5 МБ
-
-### Применить миграцию
-```bash
-psql -d dbgis -f migrations/001_enrichment.sql
-```
+### 5. Фильтры в `build_filter_clause()`
+**Принцип**: Один источник правды для WHERE-условий
+**Используется в**: `/api/companies` и `/api/export`
+**⚠️ Не дублировать фильтры!**
 
 ---
 
-## Полный pipeline системы
+## 📝 Правила для разработки
 
-```
-2GIS (.dgdat) → dgdat2xlsx/convert.py → XLSX
-  → dgdat2xlsx/import_db.py → SQLite (data/local.db)
-    → dbgis-backend/migrate_sqlite_to_postgres.py → PostgreSQL
-      → dbgis-backend/main.py (FastAPI API + Web UI)
-        → dbgis-backend/enrich.py (ПЛАНИРУЕТСЯ: обогащение контактов)
-```
+### SQL
+- ✅ **Всегда параметризованные запросы**: `cur.execute(query, (param,))`
+- ❌ **Никогда f-string**: `cur.execute(f"SELECT * FROM ... WHERE id={id}")` — SQL injection!
+- ✅ **LATERAL JOIN** для подзапросов в SELECT
+- ✅ **GROUP BY** вместо DISTINCT (более эффективно)
 
-### Связанные проекты
-| Проект | Путь | Назначение |
-|--------|------|------------|
-| dgdat2xlsx | `../dgdat2xlsx/` | Парсинг 2ГИС .dgdat → XLSX → SQLite |
-| EXTRACTOR | `../EXTRACTOR/` | Извлечение контактов с сайтов (email, phone) |
-| dbgis-backend | `.` (текущий) | FastAPI API + PostgreSQL + Web UI |
+### Python
+- ✅ psycopg2 синхронный (проект намеренно простой)
+- ❌ Не менять на asyncpg без веских причин
+- ✅ Переиспользовать `build_filter_clause()` для фильтров
+- ✅ Переиспользовать `decode_punycode_domain()` для кириллических доменов
+- ✅ Логирование через стандартный `print()` или import `logging`
 
-## Enrichment (обогащение) — ПЛАН ИНТЕГРАЦИИ
+### HTML/JS/CSS
+- ✅ Vanilla JS (без React/Vue)
+- ✅ Tailwind CSS только для базовых стилей
+- ✅ Встроенный CSS для кастомных компонентов
+- ❌ Не подключать lucide.js отдельно (используйте встроенные SVG)
+- ✅ Escape HTML через `escapeHtml()` функцию
 
 ### Архитектура
-`enrich.py` — CLI-скрипт (cron/ручной запуск), НЕ сервис.
-Импортирует `extractor_final.py` и `crawler_filter.py` из `../EXTRACTOR/`.
+- ✅ Монолит `main.py` (все эндпоинты в одном файле)
+- ✅ Минимум зависимостей (requirements.txt: 15 пакетов)
+- ✅ Нет очередей, асинхронности, микросервисов
+- ❌ Не создавайте отдельные файлы для маршрутов/моделей
 
-### Pipeline обогащения
-```
-PostgreSQL: SELECT companies WHERE enrichment_status='pending' AND domain IS NOT NULL
-  → crawler_filter: domain → top-5 relevant URLs (contacts, about, homepage)
-    → extractor_final: HTML → phones + emails
-      → INSERT INTO emails/phones (ON CONFLICT DO NOTHING)
-        → UPDATE companies SET enrichment_status='done'
-```
+---
 
-### Новые поля в companies
-```sql
-enrichment_status TEXT DEFAULT 'pending'  -- pending|processing|done|failed|skip
-enriched_at TIMESTAMP
-enrichment_attempts INTEGER DEFAULT 0
-```
+## 🧪 Кириллические домены (Recent Fix)
 
-### Новая таблица enrichment_log
-```sql
-CREATE TABLE enrichment_log (
-    id SERIAL PRIMARY KEY,
-    company_id INTEGER REFERENCES companies(id),
-    started_at TIMESTAMP, finished_at TIMESTAMP,
-    status TEXT,  -- ok|error|timeout|blocked
-    pages_crawled INTEGER, emails_found INTEGER, phones_found INTEGER,
-    error_message TEXT, source TEXT DEFAULT 'website'
-);
+**Проблема**: Домены из 2ГИС хранятся в punycode (xn--...), но нужно отображать по-русски.
+
+**Решение**: Функция `decode_punycode_domain()` в `main.py`
+```python
+def decode_punycode_domain(domain: str) -> str:
+    """Декодирует xn--19-6kcajn3bks3n.xn--p1ai → аквалэнд19.рф"""
+    # ... реализация
 ```
 
-### Ключевые решения
-- **domain** (не website) — точка входа для crawler (чистый, нормализованный)
-- **Виртуальный филиал** для enriched phones: `branches(address='enriched')`
-- **FOR UPDATE SKIP LOCKED** — безопасный параллельный запуск
-- **ThreadPoolExecutor(5)** — ~14,400 компаний/день
-- **Max 3 попытки** на компанию, таймаут 15 сек на HTTP
-- **HTML НЕ хранить** (только tmp-кеш для debug)
+**Применяется в:**
+- ✅ `/api/companies` → поле `domain`
+- ✅ `/api/companies/{id}` → поле `domain` и `website`
+- ✅ `/api/export` → CSV колонки Domain и Сайт
 
-### API endpoints (планируются)
+**⚠️ Обновите декодирование во всех трёх местах, если меняете логику!**
+
+---
+
+## 🎨 UI: LeadExtractor (SaaS redesign)
+
+**Файл**: `templates/index.html` (1251 строк)
+
+### Компоненты
+- **Header**: Sticky с logo "LeadExtractor"
+- **Hero**: Центральный блок с заголовком + поле ввода
+- **Search Input**: 600-700px, border-radius 14px, встроенная кнопка "Найти лиды"
+- **Suggestions**: 3 кликабельных примера поисков
+- **Filters**: Collapsible блок "Дополнительные фильтры" (скрыт по умолчанию)
+- **Table**: Результаты в таблице с раскрываемыми деталями
+- **Pagination**: Пагинация по 100 результатов на странице
+
+### AI-парсер запроса
+Автоматически распознаёт фильтры из текста:
 ```
-POST /api/enrich/start    — запуск subprocess enrich.py
-GET  /api/enrich/status   — статистика по enrichment_status
+"кафе в Москве с телефоном"
+  → category: кафе
+  → city: Москве
+  → has_phone: true
 ```
 
-### Cron
+### Ключевые JS функции
+- `handleSearch()` — основная функция поиска (вызывается кнопкой + Enter)
+- `renderTable()` — отрисовка результатов в таблице
+- `toggleRow(id)` — раскрытие детальной информации
+- `loadDetails(id)` — загрузка деталей через API
+- `exportCSV()` — скачивание CSV файла
+- `resetFilters()` — очистка всех фильтров
+
+### Стиль
+- Светлый фон с градиентом
+- Минимализм (как Stripe/Notion/Linear)
+- Smooth анимации (fade-in, slide-down)
+- Responsive дизайн (мобильный + десктоп)
+
+---
+
+## 📊 API Endpoints
+
+### GET /api/companies
+Список компаний с фильтрацией и пагинацией.
+
+**Query params:**
+- `city` (str) — фильтр по городу (ILIKE)
+- `category` (str) — фильтр по категории
+- `has_email` (bool) — только с email
+- `has_phone` (bool) — только с телефоном
+- `has_website` (bool) — только с сайтом
+- `limit` (int, max 1000, default 50)
+- `offset` (int, default 0)
+
+**Response**: `{ "total": N, "limit": 50, "offset": 0, "data": [...] }`
+
+### GET /api/companies/{id}
+Детали одной компании (филиалы, контакты, категории, соцсети).
+
+**Response**: `{ "company": {...}, "branches": [...], "emails": [...], "categories": [...], "socials": {...} }`
+
+### GET /api/export
+CSV экспорт с тем же фильтрацией что и `/api/companies`.
+
+**Query params**: Те же что в `/api/companies`, но max limit = 50000
+**Response**: CSV файл `leadextractor_export_YYYYMMDD_HHMMSS.csv`
+
+**CSV Columns**: `ID, Название, Город, Домен, Сайт, Телефоны, Email, Адрес, Соцсети, Категории`
+
+### POST /api/enrich/start
+Запустить обогащение контактов (subprocess enrich.py в фоне).
+
+**Query params:**
+- `batch_size` (int, default 100) — размер батча
+- `reset` (bool, default false) — сбросить все в pending перед запуском
+
+**Response**: `{ "status": "started|already_running", ... }`
+
+### GET /api/enrich/status
+Текущий статус обогащения.
+
+**Response**: `{ "total": N, "pending": N, "processing": N, "done": N, "failed": N, "progress_percent": 50, "is_running": true }`
+
+### POST /api/enrich/stop
+Остановить обогащение.
+
+**Response**: `{ "status": "stopping", ... }`
+
+### GET /health
+Healthcheck API и БД.
+
+**Response**: `{ "status": "ok", "message": "API и БД работают" }`
+
+---
+
+## 🔧 Переменные окружения (.env)
+
+| Переменная | Default | Описание |
+|------------|---------|----------|
+| DB_HOST | localhost | PostgreSQL хост |
+| DB_PORT | 5432 | PostgreSQL порт |
+| DB_NAME | dbgis | Имя БД |
+| DB_USER | postgres | Пользователь БД |
+| DB_PASSWORD | postgres | Пароль БД |
+| DB_POOL_MIN | 2 | Мин. соединений в пуле |
+| DB_POOL_MAX | 10 | Макс. соединений в пуле |
+| API_HOST | 0.0.0.0 | Хост для прослушивания |
+| API_PORT | 8000 | Порт API |
+| DEBUG | False | Подробные логи ошибок |
+| SQLITE_PATH | ../dgdat2xlsx/data/local.db | Путь для миграции |
+
+---
+
+## 🐛 Частые проблемы и решения
+
+### API возвращает 500 ошибку
+- **Проверить логи**: `DEBUG=True python main.py`
+- **Проверить БД**: `psql -d dbgis -c "SELECT 1"`
+- **Проверить .env параметры**: `cat .env | grep DB_`
+
+### Таблица не заполняется при поиске
+- Очистить кэш браузера: Ctrl+Shift+R
+- Проверить консоль браузера (F12) на JS ошибки
+- Проверить сетевой запрос в DevTools (Network)
+
+### Обогащение зависло
 ```bash
-*/30 * * * * cd /path/to/dbgis-backend && python enrich.py --batch-size 200 >> logs/enrich.log 2>&1
+# Посмотреть статус
+python enrich.py --status
+
+# Остановить через API
+curl -X POST http://localhost:8000/api/enrich/stop
+
+# Или вручную
+rm .enrichment_stop  # если зависло без флага
+python enrich.py --start --continuous  # перезапустить
+```
+
+### Кириллические домены отображаются как xn--...
+- **Проверить**: функция `decode_punycode_domain()` вызывается везде?
+- **Fix**: Обновить в 3 местах: `/api/companies`, `/api/companies/{id}`, `/api/export`
+
+---
+
+## 📚 Дополнительные файлы
+
+- **INSTALL.md** — Подробная инструкция установки PostgreSQL
+- **README.md** — Полная документация проекта
+- **CRITICAL_FIXES.md** — История критических проблем и их решений
+- **MIGRATION_GUIDE.md** — Как мигрировать из SQLite в PostgreSQL
+- **UI_IMPROVEMENTS.md** — История улучшений интерфейса
+- **IMPLEMENTATION_NOTES.md** — Технические заметки при разработке
+
+---
+
+## 🚀 Развертывание на Production
+
+### Gunicorn + Nginx
+```bash
+pip install gunicorn
+gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+```
+
+### Systemd сервис
+```ini
+[Unit]
+Description=dbgis API Server
+After=network.target postgresql.service
+
+[Service]
+Type=notify
+User=www-data
+WorkingDirectory=/path/to/dbgis-backend
+Environment="PATH=/path/to/dbgis-backend/venv/bin"
+ExecStart=/path/to/dbgis-backend/venv/bin/gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl enable dbgis
+sudo systemctl start dbgis
+sudo systemctl status dbgis
+```
+
+### Мониторинг
+```bash
+# Логи
+journalctl -u dbgis -f
+
+# Статус БД
+curl http://localhost:8000/health
+
+# Статус обогащения
+curl http://localhost:8000/api/enrich/status
 ```
