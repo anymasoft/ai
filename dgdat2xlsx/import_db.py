@@ -137,23 +137,47 @@ CREATE TABLE IF NOT EXISTS company_categories (
 # ============================================================
 
 
+def is_valid(value) -> bool:
+    """Проверяет, является ли значение валидным (не None и не пустой текст)."""
+    if value is None:
+        return False
+    value_str = str(value).strip()
+    return value_str != ""
+
+
+def clean_text(value: str) -> str | None:
+    """Очищает текст: удаляет переводы строк, нормализует пробелы."""
+    if not value:
+        return None
+    text = str(value).replace("\n", " ").strip()
+    # Нормализуем множественные пробелы
+    text = re.sub(r'\s+', ' ', text)
+    return text if text else None
+
+
 def extract_domain(website: str) -> str | None:
-    """Извлекает домен из URL: убирает http(s), www, приводит к lowercase."""
+    """Извлекает домен из URL: убирает http(s), www, приводит к lowercase.
+
+    Сначала очищает текст от переводов строк, затем извлекает домен с помощью regex.
+    """
     if not website:
         return None
-    url = website.strip()
-    if not url.startswith(("http://", "https://")):
-        url = "http://" + url
-    try:
-        host = urlparse(url).hostname
-        if not host:
-            return None
-        host = host.lower()
-        if host.startswith("www."):
-            host = host[4:]
-        return host or None
-    except Exception:
+
+    # Очищаем текст от переводов строк
+    text = str(website).replace("\n", " ").lower().strip()
+    if not text:
         return None
+
+    # Пытаемся найти домен используя regex: domain.tld
+    match = re.search(r'(?:https?://)?(?:www\.)?([a-z0-9.-]+\.[a-z]{2,})', text)
+    if match:
+        domain = match.group(1)
+        # Убираем www. если осталось
+        if domain.startswith("www."):
+            domain = domain[4:]
+        return domain if domain else None
+
+    return None
 
 
 def split_values(text: str) -> list[str]:
@@ -272,7 +296,7 @@ def process_categories(cur: sqlite3.Cursor, company_id: int, section: str, subse
 
     for cat_id in leaf_ids:
         cur.execute(
-            "INSERT OR IGNORE INTO company_categories (company_id, category_id) VALUES (?, ?)",
+            "INSERT INTO company_categories (company_id, category_id) VALUES (?, ?) ON CONFLICT(company_id, category_id) DO NOTHING",
             (company_id, cat_id),
         )
 
@@ -283,7 +307,13 @@ def process_categories(cur: sqlite3.Cursor, company_id: int, section: str, subse
 
 
 def process_row(cur: sqlite3.Cursor, values: list, stats: dict):
-    """Обрабатывает одну строку XLSX."""
+    """Обрабатывает одну строку XLSX.
+
+    Логика:
+    1. Вставляем компанию если её нет (INSERT ON CONFLICT DO NOTHING)
+    2. Обновляем только валидные значения (не NULL, не пустые)
+    3. Используем CASE WHEN для условного обновления
+    """
     company_id = values[COL["id"]]
     if not company_id:
         return
@@ -291,36 +321,55 @@ def process_row(cur: sqlite3.Cursor, values: list, stats: dict):
     company_id = int(company_id)
     name = cell_str(values[COL["name"]])
     city = cell_str(values[COL["city"]]) or None
-    website = cell_str(values[COL["website"]]) or None
-    domain = extract_domain(website)
+    website_raw = cell_str(values[COL["website"]]) or None
 
-    # --- Company ---
-    cur.execute("SELECT name FROM companies WHERE id = ?", (company_id,))
-    existing = cur.fetchone()
+    # Очищаем website и извлекаем домен
+    website = clean_text(website_raw) if website_raw else None
+    domain = extract_domain(website) if website else None
 
-    if existing is None:
+    # --- Company: INSERT ON CONFLICT DO NOTHING ---
+    # Сначала проверяем, существует ли уже компания
+    cur.execute("SELECT 1 FROM companies WHERE id = ?", (company_id,))
+    is_existing = cur.fetchone() is not None
+
+    if not is_existing:
+        # Вставляем новую компанию
         cur.execute(
-            "INSERT INTO companies (id, name, city, website, domain) VALUES (?, ?, ?, ?, ?)",
+            """INSERT INTO companies (id, name, city, website, domain, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)""",
             (company_id, name, city, website, domain),
         )
         stats["companies_new"] += 1
     else:
-        old_name = existing[0]
-        if name and name != old_name:
+        # Компания уже существовала, проверяем если изменилось имя
+        cur.execute("SELECT name FROM companies WHERE id = ?", (company_id,))
+        row = cur.fetchone()
+        existing_name = row[0] if row else None
+
+        if name and existing_name and name != existing_name:
             cur.execute(
-                "INSERT OR IGNORE INTO company_aliases (company_id, name) VALUES (?, ?)",
+                "INSERT INTO company_aliases (company_id, name) VALUES (?, ?) ON CONFLICT(company_id, name) DO NOTHING",
                 (company_id, name),
             )
-        # Обновляем city/website/domain если были пустые
-        cur.execute(
-            """UPDATE companies
-               SET city = COALESCE(city, ?),
-                   website = COALESCE(website, ?),
-                   domain = COALESCE(domain, ?),
-                   updated_at = datetime('now')
-               WHERE id = ?""",
-            (city, website, domain, company_id),
-        )
+
+    # --- Company: UPDATE с условиями (только валидные значения) ---
+    # Используем CASE WHEN чтобы обновить только если новое значение валидно
+    cur.execute(
+        """UPDATE companies
+           SET name = CASE WHEN ? IS NOT NULL AND ? != '' THEN ? ELSE name END,
+               city = CASE WHEN ? IS NOT NULL AND ? != '' THEN ? ELSE city END,
+               website = CASE WHEN ? IS NOT NULL AND ? != '' THEN ? ELSE website END,
+               domain = CASE WHEN ? IS NOT NULL AND ? != '' THEN ? ELSE domain END,
+               updated_at = CURRENT_TIMESTAMP
+           WHERE id = ?""",
+        (
+            name, name, name,
+            city, city, city,
+            website, website, website,
+            domain, domain, domain,
+            company_id
+        ),
+    )
 
     # --- Branch ---
     address = cell_str(values[COL["address"]]) or None
@@ -335,14 +384,26 @@ def process_row(cur: sqlite3.Cursor, values: list, stats: dict):
 
     if branch_row:
         branch_id = branch_row[0]
+        # UPDATE ветки с условиями для валидности
         cur.execute(
             """UPDATE branches
-               SET address = ?, postal_code = ?, working_hours = ?,
-                   building_name = ?, building_type = ?
+               SET address = CASE WHEN ? IS NOT NULL AND ? != '' THEN ? ELSE address END,
+                   postal_code = CASE WHEN ? IS NOT NULL AND ? != '' THEN ? ELSE postal_code END,
+                   working_hours = CASE WHEN ? IS NOT NULL AND ? != '' THEN ? ELSE working_hours END,
+                   building_name = CASE WHEN ? IS NOT NULL AND ? != '' THEN ? ELSE building_name END,
+                   building_type = CASE WHEN ? IS NOT NULL AND ? != '' THEN ? ELSE building_type END
                WHERE id = ?""",
-            (address, postal_code, working_hours, building_name, building_type, branch_id),
+            (
+                address, address, address,
+                postal_code, postal_code, postal_code,
+                working_hours, working_hours, working_hours,
+                building_name, building_name, building_name,
+                building_type, building_type, building_type,
+                branch_id
+            ),
         )
     else:
+        # Новая ветка
         cur.execute(
             """INSERT INTO branches (company_id, address, postal_code, working_hours,
                                      building_name, building_type, branch_hash)
@@ -356,23 +417,24 @@ def process_row(cur: sqlite3.Cursor, values: list, stats: dict):
     for col_key in ("phones", "faxes"):
         for phone in split_values(cell_str(values[COL[col_key]])):
             cur.execute(
-                "INSERT OR IGNORE INTO phones (branch_id, phone) VALUES (?, ?)",
+                "INSERT INTO phones (branch_id, phone) VALUES (?, ?) ON CONFLICT(branch_id, phone) DO NOTHING",
                 (branch_id, phone),
             )
 
     # --- Emails ---
     for email in split_values(cell_str(values[COL["email"]])):
+        email_lower = email.lower()
         cur.execute(
-            "INSERT OR IGNORE INTO emails (company_id, email) VALUES (?, ?)",
-            (company_id, email.lower()),
+            "INSERT INTO emails (company_id, email) VALUES (?, ?) ON CONFLICT(company_id, email) DO NOTHING",
+            (company_id, email_lower),
         )
 
     # --- Socials ---
     for social_type, col_idx in SOCIAL_COLS:
         url = cell_str(values[col_idx])
-        if url:
+        if is_valid(url):
             cur.execute(
-                "INSERT OR IGNORE INTO socials (company_id, type, url) VALUES (?, ?, ?)",
+                "INSERT INTO socials (company_id, type, url) VALUES (?, ?, ?) ON CONFLICT(company_id, type, url) DO NOTHING",
                 (company_id, social_type, url),
             )
 
