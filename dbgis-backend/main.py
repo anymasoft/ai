@@ -21,6 +21,7 @@ import subprocess
 import time
 from typing import Optional
 from datetime import datetime
+from pathlib import Path
 
 import psycopg2
 import psycopg2.pool
@@ -31,8 +32,23 @@ from jinja2 import Environment, FileSystemLoader
 from dotenv import load_dotenv
 
 # ============================================================
-# УТИЛИТЫ
+# ГЛОБАЛЬНОЕ СОСТОЯНИЕ ОБОГАЩЕНИЯ
 # ============================================================
+
+# Флаг-файл для остановки обогащения (нужен т.к. enrich.py работает в отдельном процессе)
+ENRICHMENT_STOP_FLAG = Path(__file__).parent / ".enrichment_stop"
+
+def set_enrichment_stop():
+    """Устанавливает флаг для остановки обогащения."""
+    ENRICHMENT_STOP_FLAG.touch()
+
+def clear_enrichment_stop():
+    """Очищает флаг остановки обогащения."""
+    ENRICHMENT_STOP_FLAG.unlink(missing_ok=True)
+
+def is_enrichment_stop_requested():
+    """Проверяет, запрошена ли остановка обогащения."""
+    return ENRICHMENT_STOP_FLAG.exists()
 
 def _decode_one_domain(d: str) -> str:
     """Декодирует один Punycode-домен в Unicode."""
@@ -346,7 +362,11 @@ async def get_companies(
         return result
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Логируем ошибку
+        import traceback
+        error_msg = f"{str(e)}\n{traceback.format_exc()}"
+        print(f"❌ ОШИБКА в /api/companies: {error_msg}", file=sys.stderr)
+        raise HTTPException(status_code=500, detail=f"Ошибка при получении компаний: {str(e)[:200]}")
     finally:
         release_db_connection(conn)
 
@@ -434,7 +454,11 @@ async def get_company_detail(company_id: int):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Логируем ошибку
+        import traceback
+        error_msg = f"{str(e)}\n{traceback.format_exc()}"
+        print(f"❌ ОШИБКА в /api/companies/{company_id}: {error_msg}", file=sys.stderr)
+        raise HTTPException(status_code=500, detail=f"Ошибка при получении деталей компании: {str(e)[:200]}")
     finally:
         release_db_connection(conn)
 
@@ -600,6 +624,9 @@ async def start_enrichment(
         pending = cur.fetchone()["cnt"]
         cur.close()
 
+        # Очищаем флаг остановки перед запуском
+        clear_enrichment_stop()
+
         # Если нет pending — автосброс или явный reset
         args = [sys.executable, os.path.join(os.path.dirname(__file__), "enrich.py")]
         if reset or pending == 0:
@@ -630,6 +657,24 @@ async def start_enrichment(
         "batch_size": batch_size,
         "reset": reset or pending == 0,
     }
+
+
+@app.post("/api/enrich/stop")
+async def stop_enrichment():
+    """
+    Остановить обогащение контактов.
+
+    Устанавливает флаг-файл, который проверяет enrich.py
+    и прерывает текущий цикл обработки.
+    """
+    try:
+        set_enrichment_stop()
+        return {
+            "status": "stopping",
+            "message": "Процесс обогащения будет остановлен"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка остановки: {str(e)}")
 
 
 @app.get("/api/enrich/status")

@@ -35,6 +35,7 @@ import hashlib
 import logging
 import argparse
 from datetime import datetime
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import psycopg2
@@ -43,6 +44,21 @@ from dotenv import load_dotenv
 
 from enrichment.crawler import get_relevant_links, fetch_url
 from enrichment.extractor import extract_contacts
+
+# Флаг для остановки обогащения (устанавливается из API)
+ENRICHMENT_STOP_FLAG = Path(__file__).parent / ".enrichment_stop"
+
+# ============================================================
+# ПРОВЕРКА ОСТАНОВКИ
+# ============================================================
+
+def is_stop_requested() -> bool:
+    """Проверяет, была ли запрошена остановка обогащения."""
+    return ENRICHMENT_STOP_FLAG.exists()
+
+def clear_stop_flag():
+    """Очищает флаг остановки."""
+    ENRICHMENT_STOP_FLAG.unlink(missing_ok=True)
 
 # ============================================================
 # ВАЛИДАЦИЯ ДОМЕНОВ
@@ -186,19 +202,21 @@ def mark_done(conn, company_id: int):
     with conn.cursor() as cur:
         cur.execute("""
             UPDATE companies
-            SET enrichment_status = 'done', enriched_at = CURRENT_TIMESTAMP
+            SET enrichment_status = 'done', enriched_at = CURRENT_TIMESTAMP,
+                enrichment_error = NULL
             WHERE id = %s
         """, (company_id,))
         conn.commit()
 
 
-def mark_failed(conn, company_id: int):
-    """Отмечает компанию как неудачную."""
+def mark_failed(conn, company_id: int, error_msg: str = None):
+    """Отмечает компанию как неудачную и сохраняет сообщение об ошибке."""
     with conn.cursor() as cur:
-        cur.execute(
-            "UPDATE companies SET enrichment_status = 'failed' WHERE id = %s",
-            (company_id,)
-        )
+        cur.execute("""
+            UPDATE companies
+            SET enrichment_status = 'failed', enrichment_error = %s
+            WHERE id = %s
+        """, (error_msg[:500] if error_msg else None, company_id))
         conn.commit()
 
 
@@ -292,8 +310,9 @@ def enrich_one(company_id: int, domain: str) -> dict:
         # Получаем релевантные ссылки
         links = get_relevant_links(domain)
         if not links:
-            log.warning(f"[{company_id}] {domain}: сайт недоступен")
-            mark_failed(conn, company_id)
+            error_msg = f"Сайт недоступен или не найдены контактные страницы"
+            log.warning(f"[{company_id}] {domain}: {error_msg}")
+            mark_failed(conn, company_id, error_msg)
             return {"success": False, "emails": [], "phones": [], "pages": 0}
 
         all_emails: list[str] = []
@@ -344,11 +363,12 @@ def enrich_one(company_id: int, domain: str) -> dict:
         }
 
     except Exception as e:
-        log.error(f"[{company_id}] {domain}: критическая ошибка — {e}")
+        error_msg = f"Критическая ошибка: {str(e)[:300]}"
+        log.error(f"[{company_id}] {domain}: {error_msg}")
         if conn:
             try:
                 conn.rollback()
-                mark_failed(conn, company_id)
+                mark_failed(conn, company_id, error_msg)
             except Exception:
                 pass
         return {"success": False, "emails": [], "phones": [], "pages": 0}
@@ -504,10 +524,18 @@ def main():
         total_processed = 0
 
         while True:
+            # Проверяем флаг остановки
+            if is_stop_requested():
+                log.info(f"🛑 Остановка запрошена пользователем (обработано: {total_processed})")
+                clear_stop_flag()
+                show_status(conn)
+                return
+
             batch = get_pending_batch(conn, args.batch_size)
 
             if not batch:
                 log.info(f"Нет компаний для обогащения (обработано всего: {total_processed})")
+                clear_stop_flag()
                 show_status(conn)
                 return
 
@@ -521,13 +549,14 @@ def main():
                     # Помечаем как done — нечего обогащать
                     with conn.cursor() as cur:
                         cur.execute(
-                            "UPDATE companies SET enrichment_status = 'done' WHERE id = %s",
+                            "UPDATE companies SET enrichment_status = 'done', enrichment_error = NULL WHERE id = %s",
                             (c["id"],)
                         )
                     conn.commit()
 
             if not valid_batch:
                 log.info(f"Нет компаний с валидными доменами для обогащения (обработано всего: {total_processed})")
+                clear_stop_flag()
                 show_status(conn)
                 return
 
@@ -538,6 +567,7 @@ def main():
             # Если не крутим цикл — выходим после первого батча
             if not args.continuous:
                 log.info(f"Батч завершен. Запустите снова для следующего батча или используйте --continuous")
+                clear_stop_flag()
                 show_status(conn)
                 return
 

@@ -145,6 +145,14 @@
                     >
                         Заново
                     </button>
+                    <button
+                        id="enrich-stop-btn"
+                        onclick="stopEnrichment()"
+                        title="Остановить процесс обогащения"
+                        class="px-3 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 transition hidden"
+                    >
+                        Остановить
+                    </button>
                 </div>
             </div>
 
@@ -372,6 +380,26 @@
             }
         }
 
+        async function stopEnrichment() {
+            const stopBtn = document.getElementById('enrich-stop-btn');
+            stopBtn.disabled = true;
+
+            try {
+                const resp = await fetch('/api/enrich/stop', { method: 'POST' });
+                const data = await resp.json();
+
+                if (data.status === 'stopping') {
+                    showEnrichMsg('Процесс обогащения останавливается…', 'text-orange-600');
+                } else {
+                    showEnrichMsg(`Ошибка при остановке: ${data.message}`, 'text-red-600');
+                }
+            } catch (e) {
+                showEnrichMsg(`Ошибка остановки: ${e.message}`, 'text-red-600');
+            } finally {
+                stopBtn.disabled = false;
+            }
+        }
+
         function showEnrichMsg(text, colorClass) {
             const el = document.getElementById('enrich-status-msg');
             el.className = `mt-3 text-sm ${colorClass}`;
@@ -389,9 +417,13 @@
                 const btn = document.getElementById('enrich-btn');
                 const btnText = document.getElementById('enrich-btn-text');
 
+                const stopBtn = document.getElementById('enrich-stop-btn');
+
                 if (data.is_running) {
                     btnText.textContent = 'Работает…';
                     btn.disabled = true;
+                    stopBtn.classList.remove('hidden');
+                    stopBtn.disabled = false;
                     // Спиннер внутри кнопки
                     if (!document.getElementById('enrich-inner-spinner')) {
                         const spinner = document.createElement('span');
@@ -402,6 +434,7 @@
                 } else {
                     btn.disabled = false;
                     btnText.textContent = 'Обогатить';
+                    stopBtn.classList.add('hidden');
                     const s = document.getElementById('enrich-inner-spinner');
                     if (s) s.remove();
 
