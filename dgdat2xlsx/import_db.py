@@ -13,7 +13,6 @@ import re
 import sqlite3
 import sys
 import time
-from urllib.parse import urlparse
 
 from openpyxl import load_workbook
 

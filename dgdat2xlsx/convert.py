@@ -658,9 +658,12 @@ COLUMNS = [
 ]
 
 
-def build_all_rows(dump: dict) -> list:
+def build_all_rows(dump: dict, default_city: str = "") -> list:
     """Формирует список строк (list of lists) из распарсенных данных dgdat.
-    Каждая строка — список из 23 значений, соответствующих COLUMNS."""
+    Каждая строка — список из 23 значений, соответствующих COLUMNS.
+
+    default_city — название города из заголовка dgdat (fallback, если город
+    не удалось определить через цепочку адрес → улица → город)."""
 
     fil_address_fil2, fil_contact_fil2, orgrub_org2, filrub_fil2 = build_inverse_maps(dump)
 
@@ -689,6 +692,11 @@ def build_all_rows(dump: dict) -> list:
         street_name = dump.get("street", {}).get(street_row, "") if street_row else ""
         street_city_id = dump.get("street_city", {}).get(street_row) if street_row else None
         cityname = dump.get("city", {}).get(street_city_id, "") if street_city_id else ""
+
+        # Fallback: если город не определён через цепочку адресов,
+        # используем название города из заголовка dgdat-файла
+        if not cityname and default_city:
+            cityname = default_city
 
         # Контакты
         phones = []
@@ -969,7 +977,7 @@ def convert_file(input_file: str, output_file: str):
     dump, prop = parse_dgdat(input_file)
     print(f"  Город: {prop.get('name', '?')}")
     print("  Формирование данных...")
-    rows = build_all_rows(dump)
+    rows = build_all_rows(dump, default_city=prop.get("name", ""))
     print(f"  Записей в dgdat: {len(rows)}")
 
     if os.path.exists(output_file):
