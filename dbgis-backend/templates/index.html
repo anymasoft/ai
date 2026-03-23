@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>dbgis — Поиск компаний</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest"></script>
     <style>
         .fade-in {
             animation: fadeIn 0.3s ease-in;
@@ -294,6 +295,7 @@
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="border-b-2 border-gray-200">
+                            <th class="text-left px-4 py-3 font-semibold text-gray-900 w-12 text-gray-500">№</th>
                             <th class="text-left px-4 py-3 font-semibold text-gray-900">Название</th>
                             <th class="text-left px-4 py-3 font-semibold text-gray-900">Город</th>
                             <th class="text-left px-4 py-3 font-semibold text-gray-900">Домен</th>
@@ -334,6 +336,9 @@
         let enrichPollingInterval = null;
         let dataPollingInterval = null;
         let lastSearchActive = false;
+        let allCompaniesData = [];
+        let currentPage = 1;
+        const ITEMS_PER_PAGE = 100;
 
         async function startEnrichment(reset) {
             const batchSize = parseInt(document.getElementById('enrich-batch-size').value) || 100;
@@ -352,10 +357,10 @@
                 const data = await resp.json();
 
                 if (data.status === 'already_running') {
-                    showEnrichMsg('⏳ Обогащение уже запущено…', 'text-yellow-600');
+                    showEnrichMsg('Обогащение уже запущено…', 'text-yellow-600');
                 } else if (data.status === 'started') {
                     const resetMsg = data.reset ? ' (сброс в начало)' : '';
-                    showEnrichMsg(`✅ Запущено (PID ${data.pid}, батч ${data.batch_size})${resetMsg}`, 'text-green-600');
+                    showEnrichMsg(`Запущено (PID ${data.pid}, батч ${data.batch_size})${resetMsg}`, 'text-green-600');
                     startEnrichPolling();
                 } else {
                     showEnrichMsg(`Статус: ${JSON.stringify(data)}`, 'text-gray-600');
@@ -533,6 +538,15 @@
         }
 
         function displayResults(data) {
+            allCompaniesData = data.data;
+            currentPage = 1;
+            renderTablePage();
+
+            document.getElementById('result-count').textContent =
+                `Найдено компаний: ${data.total}`;
+        }
+
+        function renderTablePage() {
             const tbody = document.getElementById('results-table');
 
             // Сохраняем какие строки были открыты
@@ -544,7 +558,14 @@
 
             tbody.innerHTML = '';
 
-            data.data.forEach(company => {
+            // Вычисляем диапазон для текущей страницы
+            const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+            const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, allCompaniesData.length);
+            const pageData = allCompaniesData.slice(startIndex, endIndex);
+
+            pageData.forEach((company, idx) => {
+                const rowNumber = startIndex + idx + 1;
+
                 // Первый телефон и первый email для компактного отображения
                 const firstPhone = company.phones ? company.phones.split(',')[0].trim() : '—';
                 const firstEmail = company.emails ? company.emails.split(',')[0].trim() : '—';
@@ -559,6 +580,7 @@
                 row.onclick = () => toggleRow(company.id);
 
                 row.innerHTML = `
+                    <td class="px-4 py-3 text-gray-500 font-mono text-sm w-12">${rowNumber}</td>
                     <td class="px-4 py-3 font-medium text-blue-600"><span class="expand-arrow">▶</span>${escapeHtml(company.name)}</td>
                     <td class="px-4 py-3">${escapeHtml(company.city || '—')}</td>
                     <td class="px-4 py-3">${company.domain ? `<a href="http://${escapeHtml(company.domain)}" target="_blank" onclick="event.stopPropagation()">${escapeHtml(company.domain)}</a>` : '—'}</td>
@@ -575,7 +597,7 @@
                     detailsRow.classList.add('open');
                 }
                 detailsRow.innerHTML = `
-                    <td colspan="5">
+                    <td colspan="6">
                         <div class="details-content">
                             <span class="details-loading">Загрузка...</span>
                         </div>
@@ -593,10 +615,48 @@
                 }
             });
 
-            document.getElementById('result-count').textContent =
-                `Найдено компаний: ${data.total}`;
-            document.getElementById('pagination-info').textContent =
-                `${data.data.length} из ${data.total}`;
+            updatePaginationInfo();
+        }
+
+        function updatePaginationInfo() {
+            const total = allCompaniesData.length;
+            const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
+            const startIndex = (currentPage - 1) * ITEMS_PER_PAGE + 1;
+            const endIndex = Math.min(currentPage * ITEMS_PER_PAGE, total);
+
+            let paginationHtml = `<div class="flex justify-between items-center">
+                <span class="text-gray-600">Показано ${startIndex} – ${endIndex} из ${total}</span>
+                <div class="flex gap-2">`;
+
+            if (currentPage > 1) {
+                paginationHtml += `<button onclick="goToPage(${currentPage - 1})" class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">Пред</button>`;
+            }
+
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === currentPage) {
+                    paginationHtml += `<button class="px-3 py-1 bg-blue-600 text-white rounded">${i}</button>`;
+                } else if (i <= 3 || i > totalPages - 3 || (i >= currentPage - 1 && i <= currentPage + 1)) {
+                    paginationHtml += `<button onclick="goToPage(${i})" class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">${i}</button>`;
+                } else if (i === 4 && currentPage > 5) {
+                    paginationHtml += `<span class="px-2">...</span>`;
+                }
+            }
+
+            if (currentPage < totalPages) {
+                paginationHtml += `<button onclick="goToPage(${currentPage + 1})" class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">След</button>`;
+            }
+
+            paginationHtml += `</div></div>`;
+            document.getElementById('pagination-info').innerHTML = paginationHtml;
+        }
+
+        function goToPage(page) {
+            const totalPages = Math.ceil(allCompaniesData.length / ITEMS_PER_PAGE);
+            if (page >= 1 && page <= totalPages) {
+                currentPage = page;
+                renderTablePage();
+                document.getElementById('results-table').scrollIntoView({ behavior: 'smooth' });
+            }
         }
 
         // Кеш загруженных деталей
@@ -703,7 +763,8 @@
                 html += '<h4>Соцсети</h4><ul>';
                 for (const [type, urls] of Object.entries(data.socials)) {
                     urls.forEach(url => {
-                        html += `<li>${escapeHtml(type)}: <a href="${escapeHtml(url)}" target="_blank" style="color:#2563eb">${escapeHtml(url)}</a></li>`;
+                        const fixedUrl = fixSocialUrl(type, url);
+                        html += `<li>${escapeHtml(type)}: <a href="${fixedUrl}" target="_blank" style="color:#2563eb">${escapeHtml(url)}</a></li>`;
                     });
                 }
                 html += '</ul>';
@@ -770,6 +831,57 @@
                 "'": '&#039;'
             };
             return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        function renderIcon(iconName) {
+            const icons = {
+                'check': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>',
+                'clock': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>',
+                'search': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>',
+                'download': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>',
+                'refresh': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2-8.83"></path></svg>'
+            };
+            return icons[iconName] || '';
+        }
+
+        function fixSocialUrl(type, url) {
+            if (!url) return '#';
+
+            // Если уже есть протокол http/https
+            if (url.startsWith('http://') || url.startsWith('https://')) {
+                return url;
+            }
+
+            // Нормализуем тип
+            const typeNorm = type ? type.toLowerCase().trim() : '';
+
+            // Если это просто юзернейм (без /) или юзернейм.что-то
+            if (!url.includes('/')) {
+                // Для instagram, facebook, twitter и т.д.
+                if (typeNorm === 'instagram') {
+                    return `https://instagram.com/${url}`;
+                } else if (typeNorm === 'facebook' || typeNorm === 'fb') {
+                    return `https://facebook.com/${url}`;
+                } else if (typeNorm === 'twitter' || typeNorm === 'x') {
+                    return `https://twitter.com/${url}`;
+                } else if (typeNorm === 'telegram' || typeNorm === 'tg') {
+                    return `https://t.me/${url}`;
+                } else if (typeNorm === 'vk' || typeNorm === 'vkontakte') {
+                    return `https://vk.com/${url}`;
+                } else if (typeNorm === 'youtube') {
+                    return `https://youtube.com/${url}`;
+                } else if (typeNorm === 'tiktok') {
+                    return `https://tiktok.com/@${url}`;
+                } else if (typeNorm === 'linkedin') {
+                    return `https://linkedin.com/in/${url}`;
+                } else {
+                    // По умолчанию добавляем https://
+                    return `https://${url}`;
+                }
+            }
+
+            // Если есть / но нет протокола
+            return `https://${url}`;
         }
 
         // ====================================================
