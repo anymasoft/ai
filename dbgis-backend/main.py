@@ -429,14 +429,13 @@ async def get_companies(
         cur.execute(count_query, params)
         total = cur.fetchone()["total"]
 
-        # Если exact дал 0 результатов — fallback на ILIKE
+        # Если exact дал 0 результатов — fallback на ILIKE по категории
         if total == 0 and search_method == "exact" and normalized_query:
-            log.warning(f"[SEARCH] Exact дал 0 результатов, fallback ILIKE по: '{normalized_query}'")
+            log.warning(f"[SEARCH] Exact дал 0 результатов, fallback ILIKE категория: '{normalized_query}'")
             where, params = build_filter_clause(
                 city, None, has_email, has_phone, has_website,
                 category_id=None, category_exact=None
             )
-            # Добавляем ILIKE по normalized_query
             if where:
                 where += " AND cat.name ILIKE %s"
             else:
@@ -455,8 +454,66 @@ async def get_companies(
             count_query = COMPANIES_COUNT_SQL + where
             cur.execute(count_query, params)
             total = cur.fetchone()["total"]
-            search_method = "fallback_ilike"
-            log.info(f"[SEARCH] Fallback ILIKE результат: {total} компаний")
+            search_method = "fallback_ilike_cat"
+            log.info(f"[SEARCH] Fallback ILIKE категория: {total} компаний")
+
+        # Если ILIKE по категории тоже дал 0 — fallback по имени компании
+        if total == 0 and normalized_query:
+            log.warning(f"[SEARCH] ILIKE категория дал 0, fallback по имени компании: '{normalized_query}'")
+            where, params = build_filter_clause(
+                city, None, has_email, has_phone, has_website,
+                category_id=None, category_exact=None
+            )
+            if where:
+                where += " AND c.name ILIKE %s"
+            else:
+                where = " WHERE c.name ILIKE %s"
+            params.append(f"%{normalized_query}%")
+
+            sql_query = (
+                COMPANIES_LIST_SQL + where +
+                " GROUP BY c.id, c.name, c.city, c.domain, c.website, c.created_at,"
+                " ph.phones, em.emails, addr.address, soc.socials"
+                " ORDER BY c.name LIMIT %s OFFSET %s"
+            )
+            cur.execute(sql_query, params + [limit, offset])
+            rows = cur.fetchall()
+
+            count_query = COMPANIES_COUNT_SQL + where
+            cur.execute(count_query, params)
+            total = cur.fetchone()["total"]
+            search_method = "fallback_name"
+            log.info(f"[SEARCH] Fallback имя компании: {total} компаний")
+
+        # Последний рубеж — поиск по исходному query (без нормализации)
+        if total == 0 and query:
+            original_query = query.strip()
+            log.warning(f"[SEARCH] Все fallback дали 0, поиск по оригинальному запросу: '{original_query}'")
+            where, params = build_filter_clause(
+                city, None, has_email, has_phone, has_website,
+                category_id=None, category_exact=None
+            )
+            # Ищем по имени компании ИЛИ по категории
+            if where:
+                where += " AND (c.name ILIKE %s OR cat.name ILIKE %s)"
+            else:
+                where = " WHERE (c.name ILIKE %s OR cat.name ILIKE %s)"
+            params.extend([f"%{original_query}%", f"%{original_query}%"])
+
+            sql_query = (
+                COMPANIES_LIST_SQL + where +
+                " GROUP BY c.id, c.name, c.city, c.domain, c.website, c.created_at,"
+                " ph.phones, em.emails, addr.address, soc.socials"
+                " ORDER BY c.name LIMIT %s OFFSET %s"
+            )
+            cur.execute(sql_query, params + [limit, offset])
+            rows = cur.fetchall()
+
+            count_query = COMPANIES_COUNT_SQL + where
+            cur.execute(count_query, params)
+            total = cur.fetchone()["total"]
+            search_method = "fallback_original"
+            log.info(f"[SEARCH] Fallback оригинальный запрос: {total} компаний")
 
         cur.close()
 
