@@ -3,6 +3,11 @@
 """
 Миграция данных из SQLite (dgdat2xlsx/data/local.db) в PostgreSQL.
 
+АВТОМАТИЧЕСКИ:
+1. Создаёт базу PostgreSQL если не существует
+2. Применяет schema.sql для инициализации таблиц
+3. Мигрирует данные из SQLite
+
 ВАЖНО: сохраняет оригинальные id из SQLite, чтобы не нарушить
 связи между таблицами (branches → phones, categories → company_categories).
 После миграции обновляет SERIAL sequences.
@@ -11,8 +16,10 @@
 import os
 import sqlite3
 import psycopg2
+from psycopg2 import sql
 from dotenv import load_dotenv
 from datetime import datetime
+from pathlib import Path
 
 # ============================================================
 # КОНФИГУРАЦИЯ
@@ -28,6 +35,8 @@ DB_USER = os.getenv("DB_USER", "postgres")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "postgres")
 
 BATCH_SIZE = 1000
+SCRIPT_DIR = Path(__file__).parent
+SCHEMA_FILE = SCRIPT_DIR / "schema.sql"
 
 # ============================================================
 # ПОДКЛЮЧЕНИЯ
@@ -41,16 +50,83 @@ def get_sqlite_connection(path):
     conn.row_factory = sqlite3.Row
     return conn
 
-def get_postgres_connection():
-    """Подключение к PostgreSQL."""
+def get_postgres_connection(database=None):
+    """Подключение к PostgreSQL.
+
+    Если database=None, подключается к системной БД 'postgres'.
+    Иначе подключается к указанной БД.
+    """
+    db = database or "postgres"
     conn = psycopg2.connect(
         host=DB_HOST,
         port=DB_PORT,
-        database=DB_NAME,
+        database=db,
         user=DB_USER,
         password=DB_PASSWORD
     )
     return conn
+
+def create_database_if_not_exists():
+    """Создаёт базу данных если не существует."""
+    print(f"Проверка наличия базы {DB_NAME}...")
+
+    try:
+        # Подключаемся к системной БД postgres
+        conn = get_postgres_connection(database="postgres")
+        conn.autocommit = True
+        cur = conn.cursor()
+
+        # Проверяем существование БД
+        cur.execute(
+            "SELECT 1 FROM pg_database WHERE datname = %s",
+            (DB_NAME,)
+        )
+
+        if cur.fetchone():
+            print(f"  ✓ База {DB_NAME} уже существует")
+        else:
+            print(f"  Создание базы {DB_NAME}...")
+            cur.execute(sql.SQL("CREATE DATABASE {}").format(
+                sql.Identifier(DB_NAME)
+            ))
+            print(f"  ✓ База {DB_NAME} создана")
+
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f"❌ Ошибка при создании БД: {e}")
+        raise
+
+def apply_schema():
+    """Применяет schema.sql к базе."""
+    if not SCHEMA_FILE.exists():
+        raise FileNotFoundError(f"schema.sql не найден: {SCHEMA_FILE}")
+
+    print(f"\nПрименение schema.sql...")
+
+    try:
+        with open(SCHEMA_FILE, "r", encoding="utf-8") as f:
+            schema_sql = f.read()
+
+        conn = get_postgres_connection(database=DB_NAME)
+        conn.autocommit = False
+        cur = conn.cursor()
+
+        # Выполняем schema.sql целиком
+        cur.execute(schema_sql)
+        conn.commit()
+
+        print("  ✓ Schema применена успешно")
+
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f"❌ Ошибка при применении schema: {e}")
+        raise
+
+def get_postgres_connection_for_migration():
+    """Подключение к целевой БД для миграции."""
+    return get_postgres_connection(database=DB_NAME)
 
 # ============================================================
 # УТИЛИТЫ
@@ -313,11 +389,17 @@ def migrate_data():
     и заливает данные заново из SQLite (TRUNCATE CASCADE).
     """
 
-    print(f"Подключение к SQLite: {SQLITE_PATH}")
+    # Создаём БД если не существует
+    create_database_if_not_exists()
+
+    # Применяем schema
+    apply_schema()
+
+    print(f"\nПодключение к SQLite: {SQLITE_PATH}")
     sqlite_conn = get_sqlite_connection(SQLITE_PATH)
 
     print(f"Подключение к PostgreSQL: {DB_HOST}:{DB_PORT}/{DB_NAME}")
-    postgres_conn = get_postgres_connection()
+    postgres_conn = get_postgres_connection_for_migration()
     postgres_cur = postgres_conn.cursor()
 
     try:
