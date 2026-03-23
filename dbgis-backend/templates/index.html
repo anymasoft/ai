@@ -763,24 +763,35 @@
             showLoading();
 
             const searchQuery = document.getElementById('search-input').value;
-            const parsed = parseSearch(searchQuery);
-
-            if (parsed.category) document.getElementById('category').value = parsed.category;
-            if (parsed.city) document.getElementById('city').value = parsed.city;
-            if (parsed.has_phone) document.getElementById('has_phone').checked = true;
-            if (parsed.has_email) document.getElementById('has_email').checked = true;
-            if (parsed.has_website) document.getElementById('has_website').checked = true;
-
             const filters = getFilters();
-            const params = buildParams(filters);
+
+            // Строим параметры запроса
+            const params = new URLSearchParams();
+
+            // Если есть текстовый поиск — отправляем query на backend (AI-парсинг)
+            if (searchQuery && searchQuery.trim()) {
+                params.append('query', searchQuery.trim());
+            } else {
+                // Иначе используем явные фильтры
+                if (filters.city) params.append('city', filters.city);
+                if (filters.category) params.append('category', filters.category);
+                if (filters.has_email) params.append('has_email', 'true');
+                if (filters.has_phone) params.append('has_phone', 'true');
+                if (filters.has_website) params.append('has_website', 'true');
+            }
+
+            params.append('limit', filters.limit);
 
             try {
-                const response = await fetch(`/api/companies?${params}`);
+                const response = await fetch(`/api/companies?${params.toString()}`);
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
                 const data = await response.json();
 
-                if (!data.data || data.data.length === 0) {
+                // Проверяем данные (может быть data.data или просто data)
+                const companies = data.data || data.companies || data;
+
+                if (!companies || companies.length === 0) {
                     document.getElementById('empty-state').innerHTML = `
                         <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -789,21 +800,21 @@
                         <p>Попробуйте изменить запрос или фильтры</p>
                     `;
                     document.getElementById('empty-state').classList.remove('hidden');
-                    document.getElementById('results-section').classList.remove('active');
+                    document.getElementById('results-section').classList.add('hidden');
                     hideLoading();
                     return;
                 }
 
-                allCompaniesData = data.data;
+                allCompaniesData = companies;
                 currentPage = 1;
                 renderTable();
 
-                document.getElementById('result-count').textContent = `Найдено: ${data.total}`;
+                document.getElementById('result-count').textContent = `Найдено: ${data.total || companies.length}`;
                 document.getElementById('empty-state').classList.add('hidden');
-                document.getElementById('results-section').classList.add('active');
+                document.getElementById('results-section').classList.remove('hidden');
 
             } catch (error) {
-                console.error('Ошибка:', error);
+                console.error('Ошибка при загрузке:', error);
                 document.getElementById('empty-state').innerHTML = `
                     <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4v2m0 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -812,7 +823,7 @@
                     <p>${error.message}</p>
                 `;
                 document.getElementById('empty-state').classList.remove('hidden');
-                document.getElementById('results-section').classList.remove('active');
+                document.getElementById('results-section').classList.add('hidden');
             } finally {
                 hideLoading();
             }

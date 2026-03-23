@@ -31,6 +31,13 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from jinja2 import Environment, FileSystemLoader
 from dotenv import load_dotenv
 
+# AI-парсер запросов
+try:
+    from ai_parser import parse_query_with_ai, parse_query_fallback
+    AI_PARSER_AVAILABLE = True
+except ImportError:
+    AI_PARSER_AVAILABLE = False
+
 # ============================================================
 # ГЛОБАЛЬНОЕ СОСТОЯНИЕ ОБОГАЩЕНИЯ (ОТКЛЮЧЕНО)
 # ============================================================
@@ -292,6 +299,7 @@ async def health():
 
 @app.get("/api/companies")
 async def get_companies(
+    query: Optional[str] = Query(None, description="Текстовый поиск (AI-парсинг)"),
     city: Optional[str] = Query(None, description="Фильтр по городу (ILIKE)"),
     category: Optional[str] = Query(None, description="Фильтр по категории (ILIKE)"),
     has_email: Optional[bool] = Query(None, description="Только с email"),
@@ -300,7 +308,27 @@ async def get_companies(
     limit: int = Query(50, ge=1, le=1000, description="Лимит результатов"),
     offset: int = Query(0, ge=0, description="Смещение")
 ):
-    """Получить список компаний с фильтрами."""
+    """Получить список компаний с фильтрами или AI-парсингом запроса."""
+
+    # AI-парсинг если передан query параметр
+    if query and AI_PARSER_AVAILABLE:
+        ai_filters = parse_query_with_ai(query)
+        # Переопределяем фильтры из AI (если они не пустые)
+        if ai_filters:
+            city = ai_filters.get("city") or city
+            category = ai_filters.get("category") or category
+            has_phone = ai_filters.get("has_phone") or has_phone
+            has_email = ai_filters.get("has_email") or has_email
+            has_website = ai_filters.get("has_website") or has_website
+    elif query:
+        # Fallback на локальный парсер если OpenAI недоступна
+        ai_filters = parse_query_fallback(query)
+        if ai_filters:
+            city = ai_filters.get("city") or city
+            category = ai_filters.get("category") or category
+            has_phone = ai_filters.get("has_phone") or has_phone
+            has_email = ai_filters.get("has_email") or has_email
+            has_website = ai_filters.get("has_website") or has_website
 
     # Проверяем кеш
     cache_params = {
