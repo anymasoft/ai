@@ -31,11 +31,11 @@ dgdat2xlsx/
 - Идемпотентность: INSERT OR IGNORE / ON CONFLICT, проверка перед записью
 - Никаких ORM — чистый sqlite3
 
-### Колонки XLSX (23 шт., порядок фиксирован)
+### Колонки XLSX (24 шт., порядок фиксирован)
 ID, Название организации, Населенный пункт, Раздел, Подраздел, Рубрика,
 Телефоны, Факсы, Email, Сайт, Адрес, Почтовый индекс, Типы платежей,
 Время работы, Собственное название строения, Назначение строения,
-Vkontakte, Facebook, Skype, Twitter, Instagram, ICQ, Jabber
+Vkontakte, Facebook, Skype, Twitter, Instagram, ICQ, Jabber, Telegram
 
 ### Схема БД (8 таблиц)
 companies, company_aliases, branches, phones, emails, socials, categories, company_categories
