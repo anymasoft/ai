@@ -1,9 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-2gis_categories_faiss_e5.py — СУПЕР-ТОЧНЫЙ поиск по categories.json (E5 model)
+2gis_categories_faiss_e5.py — Построение FAISS-индекса по categories.json (E5 model)
 
-Модель: intfloat/multilingual-e5-base (лучшая для русского в 2026)
+Модель: intfloat/multilingual-e5-base
+
+Формат categories.json:
+[
+  {"name": "Кафе", "ids": [127, 4821, 9932]},
+  {"name": "Автосервис", "ids": [6, 77]}
+]
+
+Формат category_mapping_e5.json (выходной):
+{
+  "0": {"name": "Кафе", "ids": [127, 4821, 9932]},
+  "1": {"name": "Автосервис", "ids": [6, 77]}
+}
 """
 
 import json
@@ -48,7 +60,11 @@ def build_index():
     index.add(embeddings)
     faiss.write_index(index, str(INDEX_FILE))
 
-    mapping = {str(i): cat for i, cat in enumerate(categories)}
+    # Mapping: индекс FAISS → {"name": ..., "ids": [...]}
+    mapping = {
+        str(i): {"name": cat["name"], "ids": cat["ids"]}
+        for i, cat in enumerate(categories)
+    }
     with open(MAPPING_FILE, "w", encoding="utf-8") as f:
         json.dump(mapping, f, ensure_ascii=False, indent=2)
 
@@ -73,14 +89,13 @@ def query_to_category(query: str):
     cat = mapping[best_idx]
 
     return {
-        "category_id"  : cat["id"],
         "category_name": cat["name"],
-        "alias"        : cat.get("alias", "")
+        "category_ids":  cat["ids"]
     }
 
 def main():
     print("=" * 70)
-    print("2GIS CATEGORIES → E5 SEMANTIC SEARCH (лучшая модель 2026)")
+    print("2GIS CATEGORIES → E5 SEMANTIC SEARCH")
     print("=" * 70)
 
     if not INDEX_FILE.exists():
@@ -98,7 +113,7 @@ def main():
 
         print(f"\n✅ Лучшая категория:")
         print(f"   {res['category_name']}")
-        print(f"   ID: {res['category_id']}")
+        print(f"   IDs: {res['category_ids']}")
         print(f"   Время: {elapsed:.1f} мс")
 
 if __name__ == "__main__":
