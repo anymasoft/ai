@@ -36,7 +36,7 @@ from dotenv import load_dotenv
 
 # FAISS семантический поиск категорий
 try:
-    from faiss_service import find_category
+    from faiss_service import find_category, find_top_categories
     FAISS_AVAILABLE = True
 except ImportError:
     FAISS_AVAILABLE = False
@@ -340,14 +340,20 @@ async def get_companies(
     normalized_query = None
     search_method = None
 
-    # FAISS семантический поиск категории
+    # FAISS семантический поиск категорий (top-3)
     if query and FAISS_AVAILABLE:
         try:
-            cat = find_category(query)
-            category_ids = cat["ids"]
-            normalized_query = cat["name"]
+            top_categories = find_top_categories(query, k=3)
+            # Объединяем ids из всех top-3 категорий (без дубликатов)
+            all_ids = set()
+            for cat in top_categories:
+                all_ids.update(cat["ids"])
+            category_ids = list(all_ids)
+            normalized_query = top_categories[0]["name"] if top_categories else None
             search_method = "faiss"
-            log.info(f"[SEARCH] FAISS category: {cat['name']} (ids={cat['ids']})")
+            print("FAISS TOP CATEGORIES:", [c["name"] for c in top_categories])
+            print("TOTAL IDS:", len(category_ids))
+            log.info(f"[SEARCH] FAISS top-3: {[c['name'] for c in top_categories]}, total ids={len(category_ids)}")
         except Exception as e:
             log.error(f"[SEARCH] Ошибка FAISS: {e}")
             search_method = "fallback"

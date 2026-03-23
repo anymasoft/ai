@@ -82,3 +82,39 @@ def find_category(query: str) -> dict:
              [c["name"] for c in candidates])
 
     return best
+
+
+def find_top_categories(query: str, k: int = 3) -> list[dict]:
+    """Находит top-k наиболее подходящих категорий для запроса через FAISS.
+
+    Returns:
+        [{"name": str, "ids": list[int]}, ...]
+    """
+    normalized = normalize_query(query)
+    query_text = f"query: {normalized}"
+    emb = model.encode([query_text], normalize_embeddings=True)
+
+    # Берём top-5 кандидатов из FAISS, затем возвращаем top-k
+    D, I = index.search(emb, max(k, 5))
+
+    candidates = [mapping[str(i)] for i in I[0]]
+
+    # Приоритет точному вхождению имени в запрос — ставим его первым
+    result = []
+    used = set()
+    q = normalized.lower()
+    for c in candidates:
+        if c["name"].lower() in q and c["name"] not in used:
+            result.append(c)
+            used.add(c["name"])
+    for c in candidates:
+        if c["name"] not in used:
+            result.append(c)
+            used.add(c["name"])
+        if len(result) >= k:
+            break
+
+    log.info("[FAISS] '%s' → top-%d: %s", query, k,
+             [c["name"] for c in result])
+
+    return result[:k]
