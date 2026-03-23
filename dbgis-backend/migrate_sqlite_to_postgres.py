@@ -307,7 +307,11 @@ TABLES_WITH_TRIGGERS = [
 
 
 def migrate_data():
-    """Выполняет полную миграцию данных."""
+    """Выполняет полную миграцию данных.
+
+    ВАЖНО: при повторном запуске полностью очищает PostgreSQL
+    и заливает данные заново из SQLite (TRUNCATE CASCADE).
+    """
 
     print(f"Подключение к SQLite: {SQLITE_PATH}")
     sqlite_conn = get_sqlite_connection(SQLITE_PATH)
@@ -320,6 +324,16 @@ def migrate_data():
         # Отключаем триггеры (FK constraints) для скорости
         for table in TABLES_WITH_TRIGGERS:
             postgres_cur.execute(f"ALTER TABLE {table} DISABLE TRIGGER ALL")
+
+        # Очищаем все таблицы перед миграцией (идемпотентность)
+        print("\nОчистка таблиц PostgreSQL...")
+        truncate_order = [
+            "company_categories", "phones", "emails", "socials",
+            "company_aliases", "branches", "categories", "companies"
+        ]
+        for table in truncate_order:
+            postgres_cur.execute(f"TRUNCATE TABLE {table} CASCADE")
+            print(f"  {table} — очищена")
 
         # Статистика
         total = 0
