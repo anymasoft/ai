@@ -800,7 +800,7 @@
                         <p>Попробуйте изменить запрос или фильтры</p>
                     `;
                     document.getElementById('empty-state').classList.remove('hidden');
-                    document.getElementById('results-section').classList.add('hidden');
+                    document.getElementById('results-section').classList.remove('active');
                     hideLoading();
                     return;
                 }
@@ -811,7 +811,7 @@
 
                 document.getElementById('result-count').textContent = `Найдено: ${data.total || companies.length}`;
                 document.getElementById('empty-state').classList.add('hidden');
-                document.getElementById('results-section').classList.remove('hidden');
+                document.getElementById('results-section').classList.add('active');
 
             } catch (error) {
                 console.error('Ошибка при загрузке:', error);
@@ -823,7 +823,7 @@
                     <p>${error.message}</p>
                 `;
                 document.getElementById('empty-state').classList.remove('hidden');
-                document.getElementById('results-section').classList.add('hidden');
+                document.getElementById('results-section').classList.remove('active');
             } finally {
                 hideLoading();
             }
