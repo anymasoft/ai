@@ -34,6 +34,66 @@ XLSX_DIR = 'D:\\2GIS'
 # Паттерн для удаления недопустимых символов XML (управляющие символы кроме \t, \n, \r)
 ILLEGAL_CHARS_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f]')
 
+# Паттерн для определения URL-подобных строк
+URL_LIKE_RE = re.compile(r'^(?:https?://|www\.)', re.IGNORECASE)
+DOMAIN_LIKE_RE = re.compile(r'^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$', re.IGNORECASE)
+
+# Мусорные подписи контактов (eaddr_name), которые не являются URL
+JUNK_LABELS = {
+    "перейти на сайт", "перейти в telegram-канал", "перейти в telegram",
+    "перейти на страницу", "написать", "позвонить",
+    "перейти в vk", "перейти в вк", "перейти в instagram",
+    "перейти в facebook", "перейти на facebook",
+    "сайт", "website", "telegram", "вконтакте",
+}
+
+# Типы контактов, которые обрабатываются как соцсети/мессенджеры
+# (не должны попадать в колонку "Сайт")
+SOCIAL_CONTACT_TYPES = {'v', 'a', 't', 'n', 's', 'i', 'j'}
+
+
+def is_url_like(text: str) -> bool:
+    """Проверяет, выглядит ли строка как URL или домен."""
+    if not text:
+        return False
+    text = text.strip()
+    # Очевидные URL
+    if URL_LIKE_RE.match(text):
+        return True
+    # Доменное имя (example.com, sub.example.com)
+    if DOMAIN_LIKE_RE.match(text):
+        return True
+    return False
+
+
+def is_junk_label(text: str) -> bool:
+    """Проверяет, является ли текст мусорной подписью."""
+    if not text:
+        return True
+    return text.strip().lower() in JUNK_LABELS
+
+
+def extract_contact_url(eaddr: str, eaddr_name: str) -> str:
+    """Извлекает URL контакта, предпочитая eaddr (реальный URL) перед eaddr_name (подпись).
+
+    Возвращает URL или пустую строку.
+    """
+    # Сначала пробуем eaddr (реальный URL)
+    if eaddr and is_url_like(str(eaddr)):
+        return str(eaddr).strip()
+
+    # Затем eaddr_name, но только если выглядит как URL и не мусор
+    if eaddr_name and not is_junk_label(str(eaddr_name)) and is_url_like(str(eaddr_name)):
+        return str(eaddr_name).strip()
+
+    # eaddr_name может содержать URL без http:// (например "sportmaxx.ru")
+    if eaddr_name and not is_junk_label(str(eaddr_name)):
+        name = str(eaddr_name).strip()
+        if '.' in name and ' ' not in name and len(name) > 3:
+            return name
+
+    return ""
+
 
 # ============================================================
 # Низкоуровневое чтение бинарных данных
@@ -655,12 +715,13 @@ COLUMNS = [
     ("Instagram", 20),
     ("ICQ", 20),
     ("Jabber", 20),
+    ("Telegram", 20),
 ]
 
 
 def build_all_rows(dump: dict, default_city: str = "") -> list:
     """Формирует список строк (list of lists) из распарсенных данных dgdat.
-    Каждая строка — список из 23 значений, соответствующих COLUMNS.
+    Каждая строка — список из 24 значений, соответствующих COLUMNS.
 
     default_city — название города из заголовка dgdat (fallback, если город
     не удалось определить через цепочку адрес → улица → город)."""
@@ -712,32 +773,55 @@ def build_all_rows(dump: dict, default_city: str = "") -> list:
                 continue
             ctype = chr(ctype_val)
 
+            # Телефоны и факсы
             if ctype == 'p':
                 phone = dump.get("fil_contact_phone", {}).get(crow, "")
                 if phone:
                     phones.append(phone)
-            if ctype == 'f':
+            elif ctype == 'f':
                 phone = dump.get("fil_contact_phone", {}).get(crow, "")
                 if phone:
                     faxes.append(phone)
 
-            www = dump.get("fil_contact_eaddr_name", {}).get(crow, "")
-            if www:
-                wwws.append(www.lower() if isinstance(www, str) else www)
+            # Email
+            elif ctype == 'm':
+                eaddr = dump.get("fil_contact_eaddr", {}).get(crow, "")
+                if eaddr and isinstance(eaddr, str):
+                    emails.append(eaddr.lower())
 
-            eaddr = dump.get("fil_contact_eaddr", {}).get(crow, "")
-            if isinstance(eaddr, str):
-                eaddr = eaddr.lower()
-
-            if ctype == 'm' and eaddr:
-                emails.append(eaddr)
-
-            if ctype in ('t', 'v', 'a', 'n', 's', 'i', 'j'):
+            # Соцсети и мессенджеры (VK, Facebook, Twitter, Instagram, Skype, ICQ, Jabber)
+            elif ctype in SOCIAL_CONTACT_TYPES:
                 raw_eaddr = dump.get("fil_contact_eaddr", {}).get(crow, "")
                 if raw_eaddr:
                     if ctype not in links:
                         links[ctype] = []
                     links[ctype].append(raw_eaddr)
+
+            # Все остальные типы (сайты, Telegram и пр.)
+            # Извлекаем URL из eaddr/eaddr_name, фильтруем мусор
+            else:
+                eaddr = str(dump.get("fil_contact_eaddr", {}).get(crow, "")) if dump.get("fil_contact_eaddr", {}).get(crow) else ""
+                eaddr_name = str(dump.get("fil_contact_eaddr_name", {}).get(crow, "")) if dump.get("fil_contact_eaddr_name", {}).get(crow) else ""
+
+                # Telegram: ищем URL вида t.me/... в eaddr или eaddr_name
+                eaddr_lower = eaddr.lower()
+                eaddr_name_lower = eaddr_name.lower()
+                tg_url = ""
+                if eaddr_lower and ('t.me/' in eaddr_lower or 'telegram.me/' in eaddr_lower):
+                    tg_url = eaddr
+                elif eaddr_name_lower and ('t.me/' in eaddr_name_lower or 'telegram.me/' in eaddr_name_lower):
+                    tg_url = eaddr_name
+
+                if tg_url:
+                    if 'g' not in links:
+                        links['g'] = []
+                    links['g'].append(tg_url)
+                    continue
+
+                # Сайт: извлекаем URL, фильтруем мусор
+                url = extract_contact_url(eaddr, eaddr_name)
+                if url:
+                    wwws.append(url.lower())
 
         # Рубрики
         rubs3 = []
@@ -784,6 +868,7 @@ def build_all_rows(dump: dict, default_city: str = "") -> list:
         insta = "\n".join(links.get('n', []))
         icq = "\n".join(links.get('i', []))
         jabber = "\n".join(links.get('j', []))
+        telegram = "\n".join(links.get('g', []))
 
         # Время работы
         wt_id = dump.get("fil_wrk_time", {}).get(key)
@@ -808,6 +893,8 @@ def build_all_rows(dump: dict, default_city: str = "") -> list:
                 skype = prev_data.get('skype', '')
             if not icq:
                 icq = prev_data.get('icq', '')
+            if not telegram:
+                telegram = prev_data.get('telegram', '')
 
         address = street_name
         if building:
@@ -825,7 +912,7 @@ def build_all_rows(dump: dict, default_city: str = "") -> list:
             org_id, name, cityname, rubs1_str, rubs2_str, rubs3_str,
             phones_str, faxes_str, emails_str, wwws_str, address,
             post_index, payments, wrk, bld_name, bld_purpose,
-            vk, fb, skype, twitter, insta, icq, jabber
+            vk, fb, skype, twitter, insta, icq, jabber, telegram
         ]
 
         # Очистка управляющих символов
@@ -838,6 +925,7 @@ def build_all_rows(dump: dict, default_city: str = "") -> list:
             'emails': emails_str, 'wwws': wwws_str, 'vk': vk,
             'twitter': twitter, 'fb': fb, 'insta': insta,
             'skype': skype, 'icq': icq, 'jabber': jabber,
+            'telegram': telegram,
         }
 
     return rows
