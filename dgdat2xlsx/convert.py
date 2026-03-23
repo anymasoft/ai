@@ -15,6 +15,7 @@ import xml.etree.ElementTree as ET
 from io import BytesIO
 
 import re
+from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
 
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Protection
@@ -37,6 +38,13 @@ ILLEGAL_CHARS_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f]')
 # Паттерн для определения URL-подобных строк
 URL_LIKE_RE = re.compile(r'^(?:https?://|www\.)', re.IGNORECASE)
 DOMAIN_LIKE_RE = re.compile(r'^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$', re.IGNORECASE)
+
+# Домены-редиректы 2GIS — содержат трекинг-ссылки, а не реальные сайты
+REDIRECT_DOMAINS = {'link.2gis.ru', 'max.ru', 'go.2gis.com', 'go.2gis.ru'}
+
+# UTM и другие трекинговые параметры, которые нужно убирать из URL
+TRACKING_PARAMS = {'utm_source', 'utm_medium', 'utm_campaign', 'utm_term',
+                   'utm_content', 'utm_referrer', 'yclid', 'gclid', 'fbclid'}
 
 # Мусорные подписи контактов (eaddr_name), которые не являются URL
 JUNK_LABELS = {
@@ -71,6 +79,73 @@ def is_junk_label(text: str) -> bool:
     if not text:
         return True
     return text.strip().lower() in JUNK_LABELS
+
+
+def is_2gis_redirect(url: str) -> bool:
+    """Проверяет, является ли URL трекинг-редиректом 2GIS (max.ru/u/..., link.2gis.ru/...)."""
+    if not url:
+        return False
+    try:
+        parsed = urlparse(url if '://' in url else 'http://' + url)
+        host = (parsed.hostname or '').lower()
+        return host in REDIRECT_DOMAINS
+    except Exception:
+        return False
+
+
+def strip_tracking_params(url: str) -> str:
+    """Убирает UTM и другие трекинговые параметры из URL.
+
+    http://abakanauto.ru/?utm_source=2gis_abakan → http://abakanauto.ru/
+    """
+    if not url or '?' not in url:
+        return url
+    try:
+        parsed = urlparse(url if '://' in url else 'http://' + url)
+        params = parse_qs(parsed.query, keep_blank_values=True)
+        # Убираем трекинговые параметры
+        clean_params = {k: v for k, v in params.items()
+                        if k.lower() not in TRACKING_PARAMS}
+        clean_query = urlencode(clean_params, doseq=True)
+        cleaned = parsed._replace(query=clean_query)
+        result = urlunparse(cleaned)
+        # Убираем висячий ? если параметров не осталось
+        if result.endswith('?'):
+            result = result[:-1]
+        return result
+    except Exception:
+        return url
+
+
+def normalize_website_url(url: str) -> str:
+    """Полная нормализация URL сайта: разворот редиректов, очистка трекинга."""
+    if not url:
+        return url
+    url = unwrap_2gis_redirect(url.strip())
+    # Отбрасываем URL-редиректы 2GIS, которые не содержат целевого URL
+    if is_2gis_redirect(url):
+        return ""
+    url = strip_tracking_params(url)
+    return url
+
+
+def deduplicate_urls(urls: list[str]) -> list[str]:
+    """Дедупликация URL по домену: оставляет первый URL для каждого домена."""
+    seen_domains = set()
+    result = []
+    for url in urls:
+        try:
+            parsed = urlparse(url if '://' in url else 'http://' + url)
+            host = (parsed.hostname or '').lower()
+            # Убираем www. для сравнения
+            if host.startswith('www.'):
+                host = host[4:]
+            if host and host not in seen_domains:
+                seen_domains.add(host)
+                result.append(url)
+        except Exception:
+            result.append(url)
+    return result
 
 
 def unwrap_2gis_redirect(url: str) -> str:
@@ -887,6 +962,10 @@ def build_all_rows(dump: dict, default_city: str = "") -> list:
 
         phones_str = "\n".join(phones)
         faxes_str = "\n".join(faxes)
+        # Нормализация URL сайтов: очистка трекинга + дедупликация по домену
+        wwws = [normalize_website_url(u) for u in wwws]
+        wwws = [u for u in wwws if u]  # убираем пустые (отфильтрованные редиректы)
+        wwws = deduplicate_urls(wwws)
         wwws_str = "\n".join(wwws)
         emails_str = "\n".join(emails)
         vk = "\n".join(links.get('v', []))
