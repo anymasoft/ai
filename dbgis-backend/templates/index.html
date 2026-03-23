@@ -133,7 +133,7 @@
                     </div>
                     <button
                         id="enrich-btn"
-                        onclick="startEnrichment(false)"
+                        onclick="handleEnrichClick()"
                         class="px-5 py-2 bg-green-600 text-white font-medium rounded-md hover:bg-green-700 transition flex items-center gap-2"
                     >
                         <span id="enrich-btn-text">Обогатить</span>
@@ -144,14 +144,6 @@
                         class="px-3 py-2 bg-gray-200 text-gray-700 text-sm rounded-md hover:bg-gray-300 transition"
                     >
                         Заново
-                    </button>
-                    <button
-                        id="enrich-stop-btn"
-                        onclick="stopEnrichment()"
-                        title="Остановить процесс обогащения"
-                        class="px-3 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 transition hidden"
-                    >
-                        Остановить
                     </button>
                 </div>
             </div>
@@ -347,6 +339,16 @@
         let allCompaniesData = [];
         let currentPage = 1;
         const ITEMS_PER_PAGE = 100;
+        let isEnrichmentRunning = false;
+
+        // Единая функция для нажатия на кнопку "Обогатить / Остановить"
+        async function handleEnrichClick() {
+            if (isEnrichmentRunning) {
+                await stopEnrichment();
+            } else {
+                await startEnrichment(false);
+            }
+        }
 
         async function startEnrichment(reset) {
             const batchSize = parseInt(document.getElementById('enrich-batch-size').value) || 100;
@@ -381,8 +383,8 @@
         }
 
         async function stopEnrichment() {
-            const stopBtn = document.getElementById('enrich-stop-btn');
-            stopBtn.disabled = true;
+            const btn = document.getElementById('enrich-btn');
+            btn.disabled = true;
 
             try {
                 const resp = await fetch('/api/enrich/stop', { method: 'POST' });
@@ -396,7 +398,7 @@
             } catch (e) {
                 showEnrichMsg(`Ошибка остановки: ${e.message}`, 'text-red-600');
             } finally {
-                stopBtn.disabled = false;
+                btn.disabled = false;
             }
         }
 
@@ -417,13 +419,11 @@
                 const btn = document.getElementById('enrich-btn');
                 const btnText = document.getElementById('enrich-btn-text');
 
-                const stopBtn = document.getElementById('enrich-stop-btn');
-
                 if (data.is_running) {
-                    btnText.textContent = 'Работает…';
-                    btn.disabled = true;
-                    stopBtn.classList.remove('hidden');
-                    stopBtn.disabled = false;
+                    isEnrichmentRunning = true;
+                    btnText.textContent = 'Остановить';
+                    btn.disabled = false;
+                    btn.className = 'px-5 py-2 bg-red-600 text-white font-medium rounded-md hover:bg-red-700 transition flex items-center gap-2';
                     // Спиннер внутри кнопки
                     if (!document.getElementById('enrich-inner-spinner')) {
                         const spinner = document.createElement('span');
@@ -432,9 +432,10 @@
                         btn.insertBefore(spinner, btn.firstChild);
                     }
                 } else {
+                    isEnrichmentRunning = false;
                     btn.disabled = false;
                     btnText.textContent = 'Обогатить';
-                    stopBtn.classList.add('hidden');
+                    btn.className = 'px-5 py-2 bg-green-600 text-white font-medium rounded-md hover:bg-green-700 transition flex items-center gap-2';
                     const s = document.getElementById('enrich-inner-spinner');
                     if (s) s.remove();
 
