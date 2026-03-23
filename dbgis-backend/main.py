@@ -109,16 +109,27 @@ async def get_companies(
                 c.website,
                 c.created_at,
                 COALESCE(
-                    (SELECT phone FROM phones p
+                    (SELECT STRING_AGG(p.phone, ', ')
+                     FROM phones p
                      JOIN branches b ON p.branch_id = b.id
-                     WHERE b.company_id = c.id
-                     LIMIT 1), ''
-                ) as phone,
+                     WHERE b.company_id = c.id), ''
+                ) as phones,
                 COALESCE(
-                    (SELECT email FROM emails e
-                     WHERE e.company_id = c.id
-                     LIMIT 1), ''
-                ) as email,
+                    (SELECT STRING_AGG(e.email, ', ')
+                     FROM emails e
+                     WHERE e.company_id = c.id), ''
+                ) as emails,
+                COALESCE(
+                    (SELECT STRING_AGG(DISTINCT b.address, '; ')
+                     FROM branches b
+                     WHERE b.company_id = c.id
+                       AND b.address IS NOT NULL AND b.address != ''), ''
+                ) as address,
+                COALESCE(
+                    (SELECT STRING_AGG(s.type || ':' || s.url, ', ')
+                     FROM socials s
+                     WHERE s.company_id = c.id), ''
+                ) as socials,
                 STRING_AGG(DISTINCT cat.name, ', ') as categories
             FROM companies c
             LEFT JOIN company_categories cc ON c.id = cc.company_id
@@ -256,12 +267,17 @@ async def get_company_detail(company_id: int):
         """, (company_id,))
         categories = [dict(row) for row in cur.fetchall()]
 
-        # Соцсети
+        # Соцсети (группируем по типу, у одного типа может быть несколько URL)
         cur.execute(
-            "SELECT type, url FROM socials WHERE company_id = %s",
+            "SELECT type, url FROM socials WHERE company_id = %s ORDER BY type",
             (company_id,)
         )
-        socials = {row["type"]: row["url"] for row in cur.fetchall()}
+        socials = {}
+        for row in cur.fetchall():
+            stype = row["type"]
+            if stype not in socials:
+                socials[stype] = []
+            socials[stype].append(row["url"])
 
         cur.close()
         conn.close()
@@ -304,16 +320,27 @@ async def export_csv(
                 c.domain,
                 c.website,
                 COALESCE(
-                    (SELECT phone FROM phones p
+                    (SELECT STRING_AGG(p.phone, ', ')
+                     FROM phones p
                      JOIN branches b ON p.branch_id = b.id
-                     WHERE b.company_id = c.id
-                     LIMIT 1), ''
-                ) as phone,
+                     WHERE b.company_id = c.id), ''
+                ) as phones,
                 COALESCE(
-                    (SELECT email FROM emails e
-                     WHERE e.company_id = c.id
-                     LIMIT 1), ''
-                ) as email,
+                    (SELECT STRING_AGG(e.email, ', ')
+                     FROM emails e
+                     WHERE e.company_id = c.id), ''
+                ) as emails,
+                COALESCE(
+                    (SELECT STRING_AGG(DISTINCT b.address, '; ')
+                     FROM branches b
+                     WHERE b.company_id = c.id
+                       AND b.address IS NOT NULL AND b.address != ''), ''
+                ) as address,
+                COALESCE(
+                    (SELECT STRING_AGG(s.type || ':' || s.url, ', ')
+                     FROM socials s
+                     WHERE s.company_id = c.id), ''
+                ) as socials,
                 STRING_AGG(DISTINCT cat.name, ', ') as categories
             FROM companies c
             LEFT JOIN company_categories cc ON c.id = cc.company_id
@@ -353,7 +380,8 @@ async def export_csv(
         writer = csv.writer(output)
 
         # Заголовки
-        writer.writerow(["ID", "Название", "Город", "Домен", "Сайт", "Телефон", "Email", "Категории"])
+        writer.writerow(["ID", "Название", "Город", "Домен", "Сайт",
+                         "Телефоны", "Email", "Адрес", "Соцсети", "Категории"])
 
         # Данные
         for row in rows:
@@ -363,8 +391,10 @@ async def export_csv(
                 row["city"] or "",
                 row["domain"] or "",
                 row["website"] or "",
-                row["phone"] or "",
-                row["email"] or "",
+                row["phones"] or "",
+                row["emails"] or "",
+                row["address"] or "",
+                row["socials"] or "",
                 row["categories"] or ""
             ])
 
