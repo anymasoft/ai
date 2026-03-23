@@ -20,6 +20,26 @@ from jinja2 import Environment, FileSystemLoader
 from dotenv import load_dotenv
 
 # ============================================================
+# УТИЛИТЫ
+# ============================================================
+
+def decode_punycode_domain(domain: str) -> str:
+    """Декодирует Punycode-доменами в Unicode кириллицу.
+
+    xn--80aebkobnwfcnsfk1e0h.xn--p1ai → госавтоинспекция.рф
+    Если домен не Punycode или ошибка — возвращает как есть.
+    """
+    if not domain:
+        return domain
+    try:
+        # IDNA декодирование (Punycode → Unicode)
+        decoded = domain.encode('ascii').decode('idna')
+        return decoded
+    except Exception:
+        # Если ошибка (не Punycode или невалидный домен) — возвращаем как есть
+        return domain
+
+# ============================================================
 # ИНИЦИАЛИЗАЦИЯ
 # ============================================================
 
@@ -202,11 +222,19 @@ async def get_companies(
         cur.close()
         conn.close()
 
+        # Декодируем Punycode в доменах для читаемости
+        data = []
+        for row in rows:
+            row_dict = dict(row)
+            if row_dict.get("domain"):
+                row_dict["domain"] = decode_punycode_domain(row_dict["domain"])
+            data.append(row_dict)
+
         return {
             "total": total,
             "limit": limit,
             "offset": offset,
-            "data": [dict(row) for row in rows]
+            "data": data
         }
 
     except Exception as e:
@@ -281,6 +309,10 @@ async def get_company_detail(company_id: int):
 
         cur.close()
         conn.close()
+
+        # Декодируем Punycode в доменах для читаемости
+        if company_dict.get("domain"):
+            company_dict["domain"] = decode_punycode_domain(company_dict["domain"])
 
         return {
             "company": company_dict,
@@ -383,13 +415,16 @@ async def export_csv(
         writer.writerow(["ID", "Название", "Город", "Домен", "Сайт",
                          "Телефоны", "Email", "Адрес", "Соцсети", "Категории"])
 
-        # Данные
+        # Данные (декодируем Punycode в доменах)
         for row in rows:
+            domain = row["domain"] or ""
+            if domain:
+                domain = decode_punycode_domain(domain)
             writer.writerow([
                 row["id"],
                 row["name"],
                 row["city"] or "",
-                row["domain"] or "",
+                domain,
                 row["website"] or "",
                 row["phones"] or "",
                 row["emails"] or "",
