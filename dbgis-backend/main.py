@@ -23,21 +23,26 @@ from dotenv import load_dotenv
 # УТИЛИТЫ
 # ============================================================
 
-def decode_punycode_domain(domain: str) -> str:
-    """Декодирует Punycode-доменами в Unicode кириллицу.
+def _decode_one_domain(d: str) -> str:
+    """Декодирует один Punycode-домен в Unicode."""
+    try:
+        return d.encode('ascii').decode('idna')
+    except Exception:
+        return d
 
-    xn--80aebkobnwfcnsfk1e0h.xn--p1ai → госавтоинспекция.рф
-    Если домен не Punycode или ошибка — возвращает как есть.
+
+def decode_punycode_domain(domain: str) -> str:
+    """Декодирует Punycode-домены в Unicode кириллицу.
+
+    Поддерживает несколько доменов через запятую:
+    'stoautomaster.business.site, xn----ctbholqj.xn--p1ai'
+    → 'stoautomaster.business.site, вин-код.рф'
     """
     if not domain:
         return domain
-    try:
-        # IDNA декодирование (Punycode → Unicode)
-        decoded = domain.encode('ascii').decode('idna')
-        return decoded
-    except Exception:
-        # Если ошибка (не Punycode или невалидный домен) — возвращаем как есть
-        return domain
+    parts = [p.strip() for p in domain.split(",")]
+    decoded = [_decode_one_domain(p) for p in parts]
+    return ", ".join(decoded)
 
 # ============================================================
 # ИНИЦИАЛИЗАЦИЯ
