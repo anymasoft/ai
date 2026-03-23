@@ -247,11 +247,11 @@ COMPANIES_COUNT_SQL = """
 
 
 def build_filter_clause(city, category, has_email, has_phone, has_website,
-                        category_id=None, category_exact=None):
+                        category_ids=None, category_exact=None):
     """Строит WHERE-условия и параметры для фильтрации компаний.
 
     Приоритет фильтрации по категории:
-    1. category_id — точный ID категории из БД (наивысший приоритет)
+    1. category_ids — список ID категорий из FAISS (наивысший приоритет)
     2. category_exact — точное совпадение имени (cat.name = ...)
     3. category — ILIKE поиск (fallback)
     """
@@ -262,12 +262,13 @@ def build_filter_clause(city, category, has_email, has_phone, has_website,
         clauses.append("c.city ILIKE %s")
         params.append(f"%{city}%")
 
-    if category_id:
-        # Точный поиск по ID категории (включая дочерние)
+    if category_ids:
+        # Поиск по списку ID категорий (включая дочерние для каждого)
+        placeholders = ", ".join(["%s"] * len(category_ids))
         clauses.append(
-            "(cat.id = %s OR cat.parent_id = %s)"
+            f"(cat.id IN ({placeholders}) OR cat.parent_id IN ({placeholders}))"
         )
-        params.extend([category_id, category_id])
+        params.extend(category_ids + category_ids)
     elif category_exact:
         clauses.append("cat.name = %s")
         params.append(category_exact)
@@ -337,7 +338,7 @@ async def get_companies(
 ):
     """Получить список компаний с фильтрами или AI-парсингом запроса."""
 
-    category_id = None
+    category_ids = None
     category_exact = None
     normalized_query = None
     search_method = None
@@ -346,10 +347,10 @@ async def get_companies(
     if query and FAISS_AVAILABLE:
         try:
             cat = find_category(query)
-            category_id = cat["id"]
+            category_ids = cat["ids"]
             normalized_query = cat["name"]
             search_method = "faiss"
-            log.info(f"[SEARCH] FAISS category: {cat['name']} (id={cat['id']})")
+            log.info(f"[SEARCH] FAISS category: {cat['name']} (ids={cat['ids']})")
         except Exception as e:
             log.error(f"[SEARCH] Ошибка FAISS: {e}")
             search_method = "fallback"
@@ -375,7 +376,8 @@ async def get_companies(
 
     # Проверяем кеш
     cache_params = {
-        "city": city, "category": category, "category_id": category_id,
+        "city": city, "category": category,
+        "category_ids": tuple(category_ids) if category_ids else None,
         "has_email": has_email, "has_phone": has_phone,
         "has_website": has_website, "limit": limit, "offset": offset
     }
@@ -391,7 +393,7 @@ async def get_companies(
         cur = conn.cursor()
         where, params = build_filter_clause(
             city, category, has_email, has_phone, has_website,
-            category_id=category_id, category_exact=category_exact
+            category_ids=category_ids, category_exact=category_exact
         )
 
         # Основной запрос
@@ -409,12 +411,12 @@ async def get_companies(
         cur.execute(count_query, params)
         total = cur.fetchone()["total"]
 
-        # Если exact дал 0 результатов — fallback на ILIKE по категории
-        if total == 0 and search_method == "exact" and normalized_query:
-            log.warning(f"[SEARCH] Exact дал 0 результатов, fallback ILIKE категория: '{normalized_query}'")
+        # Если FAISS/exact дал 0 результатов — fallback на ILIKE по категории
+        if total == 0 and search_method in ("faiss", "exact") and normalized_query:
+            log.warning(f"[SEARCH] {search_method} дал 0 результатов, fallback ILIKE категория: '{normalized_query}'")
             where, params = build_filter_clause(
                 city, None, has_email, has_phone, has_website,
-                category_id=None, category_exact=None
+                category_ids=None, category_exact=None
             )
             if where:
                 where += " AND cat.name ILIKE %s"
@@ -442,7 +444,7 @@ async def get_companies(
             log.warning(f"[SEARCH] ILIKE категория дал 0, fallback по имени компании: '{normalized_query}'")
             where, params = build_filter_clause(
                 city, None, has_email, has_phone, has_website,
-                category_id=None, category_exact=None
+                category_ids=None, category_exact=None
             )
             if where:
                 where += " AND c.name ILIKE %s"
@@ -471,7 +473,7 @@ async def get_companies(
             log.warning(f"[SEARCH] Все fallback дали 0, поиск по оригинальному запросу: '{original_query}'")
             where, params = build_filter_clause(
                 city, None, has_email, has_phone, has_website,
-                category_id=None, category_exact=None
+                category_ids=None, category_exact=None
             )
             # Ищем по имени компании ИЛИ по категории
             if where:
