@@ -2,7 +2,10 @@
 # -*- coding: utf-8 -*-
 """
 Миграция данных из SQLite (dgdat2xlsx/data/local.db) в PostgreSQL.
-Batch insert для оптимальной скорости.
+
+ВАЖНО: сохраняет оригинальные id из SQLite, чтобы не нарушить
+связи между таблицами (branches → phones, categories → company_categories).
+После миграции обновляет SERIAL sequences.
 """
 
 import os
@@ -24,7 +27,7 @@ DB_NAME = os.getenv("DB_NAME", "dbgis")
 DB_USER = os.getenv("DB_USER", "postgres")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "postgres")
 
-BATCH_SIZE = 1000  # размер батча для инсертов
+BATCH_SIZE = 1000
 
 # ============================================================
 # ПОДКЛЮЧЕНИЯ
@@ -40,108 +43,64 @@ def get_sqlite_connection(path):
 
 def get_postgres_connection():
     """Подключение к PostgreSQL."""
-    try:
-        conn = psycopg2.connect(
-            host=DB_HOST,
-            port=DB_PORT,
-            database=DB_NAME,
-            user=DB_USER,
-            password=DB_PASSWORD
+    conn = psycopg2.connect(
+        host=DB_HOST,
+        port=DB_PORT,
+        database=DB_NAME,
+        user=DB_USER,
+        password=DB_PASSWORD
+    )
+    return conn
+
+# ============================================================
+# УТИЛИТЫ
+# ============================================================
+
+def batch_insert(postgres_cur, query, rows, table_name):
+    """Вставляет записи батчами, выводит прогресс."""
+    batch = []
+    count = 0
+
+    for row in rows:
+        batch.append(row)
+        if len(batch) >= BATCH_SIZE:
+            postgres_cur.executemany(query, batch)
+            count += len(batch)
+            print(f"  {count} записей...")
+            batch = []
+
+    if batch:
+        postgres_cur.executemany(query, batch)
+        count += len(batch)
+
+    print(f"  {count} записей всего")
+    return count
+
+
+def reset_serial_sequence(postgres_cur, table_name, column="id"):
+    """Обновляет SERIAL sequence, чтобы следующий id был больше максимального."""
+    postgres_cur.execute(f"""
+        SELECT setval(
+            pg_get_serial_sequence('{table_name}', '{column}'),
+            COALESCE((SELECT MAX({column}) FROM {table_name}), 0) + 1,
+            false
         )
-        return conn
-    except psycopg2.OperationalError as e:
-        raise Exception(f"Ошибка подключения к PostgreSQL: {e}")
-
-# ============================================================
-# МИГРАЦИЯ
-# ============================================================
-
-def migrate_data():
-    """Выполняет полную миграцию данных."""
-
-    print(f"🔍 Подключение к SQLite: {SQLITE_PATH}")
-    sqlite_conn = get_sqlite_connection(SQLITE_PATH)
-
-    print(f"🔍 Подключение к PostgreSQL: {DB_HOST}:{DB_PORT}/{DB_NAME}")
-    postgres_conn = get_postgres_connection()
-    postgres_cur = postgres_conn.cursor()
-
-    try:
-        # Отключаем внешние ключи для скорости
-        postgres_cur.execute("ALTER TABLE company_categories DISABLE TRIGGER ALL")
-        postgres_cur.execute("ALTER TABLE branches DISABLE TRIGGER ALL")
-        postgres_cur.execute("ALTER TABLE phones DISABLE TRIGGER ALL")
-        postgres_cur.execute("ALTER TABLE emails DISABLE TRIGGER ALL")
-        postgres_cur.execute("ALTER TABLE socials DISABLE TRIGGER ALL")
-        postgres_cur.execute("ALTER TABLE company_aliases DISABLE TRIGGER ALL")
-
-        # 1. Миграция companies
-        print("\n📦 Миграция companies...")
-        migrate_companies(sqlite_conn, postgres_cur)
-
-        # 2. Миграция company_aliases
-        print("📦 Миграция company_aliases...")
-        migrate_company_aliases(sqlite_conn, postgres_cur)
-
-        # 3. Миграция branches
-        print("📦 Миграция branches...")
-        migrate_branches(sqlite_conn, postgres_cur)
-
-        # 4. Миграция phones
-        print("📦 Миграция phones...")
-        migrate_phones(sqlite_conn, postgres_cur)
-
-        # 5. Миграция emails
-        print("📦 Миграция emails...")
-        migrate_emails(sqlite_conn, postgres_cur)
-
-        # 6. Миграция socials
-        print("📦 Миграция socials...")
-        migrate_socials(sqlite_conn, postgres_cur)
-
-        # 7. Миграция categories
-        print("📦 Миграция categories...")
-        migrate_categories(sqlite_conn, postgres_cur)
-
-        # 8. Миграция company_categories
-        print("📦 Миграция company_categories...")
-        migrate_company_categories(sqlite_conn, postgres_cur)
-
-        # Включаем внешние ключи обратно
-        print("\n✅ Восстановление триггеров...")
-        postgres_cur.execute("ALTER TABLE company_categories ENABLE TRIGGER ALL")
-        postgres_cur.execute("ALTER TABLE branches ENABLE TRIGGER ALL")
-        postgres_cur.execute("ALTER TABLE phones ENABLE TRIGGER ALL")
-        postgres_cur.execute("ALTER TABLE emails ENABLE TRIGGER ALL")
-        postgres_cur.execute("ALTER TABLE socials ENABLE TRIGGER ALL")
-        postgres_cur.execute("ALTER TABLE company_aliases ENABLE TRIGGER ALL")
-
-        postgres_conn.commit()
-        print("✅ Миграция успешно завершена!")
-
-    except Exception as e:
-        postgres_conn.rollback()
-        print(f"❌ Ошибка при миграции: {e}")
-        raise
-    finally:
-        postgres_cur.close()
-        postgres_conn.close()
-        sqlite_conn.close()
+    """)
 
 # ============================================================
 # ФУНКЦИИ МИГРАЦИИ
 # ============================================================
 
 def migrate_companies(sqlite_conn, postgres_cur):
-    """Миграция таблицы companies."""
+    """Миграция companies. id сохраняется (PRIMARY KEY, не SERIAL)."""
     sqlite_cur = sqlite_conn.cursor()
-    sqlite_cur.execute("SELECT id, name, city, website, domain, created_at, updated_at FROM companies")
+    sqlite_cur.execute(
+        "SELECT id, name, city, website, domain, created_at, updated_at FROM companies"
+    )
 
-    batch = []
-    count = 0
-
+    rows = []
     for row in sqlite_cur.fetchall():
-        batch.append((
+        rows.append((
             row['id'],
             row['name'],
             row['city'],
@@ -151,72 +110,49 @@ def migrate_companies(sqlite_conn, postgres_cur):
             row['updated_at'] or datetime.now().isoformat()
         ))
 
-        if len(batch) >= BATCH_SIZE:
-            postgres_cur.executemany(
-                """INSERT INTO companies (id, name, city, website, domain, created_at, updated_at)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s)
-                   ON CONFLICT(id) DO NOTHING""",
-                batch
-            )
-            count += len(batch)
-            print(f"  ✓ {count} записей")
-            batch = []
+    return batch_insert(
+        postgres_cur,
+        """INSERT INTO companies (id, name, city, website, domain, created_at, updated_at)
+           VALUES (%s, %s, %s, %s, %s, %s, %s)
+           ON CONFLICT(id) DO NOTHING""",
+        rows,
+        "companies"
+    )
 
-    if batch:
-        postgres_cur.executemany(
-            """INSERT INTO companies (id, name, city, website, domain, created_at, updated_at)
-               VALUES (%s, %s, %s, %s, %s, %s, %s)
-               ON CONFLICT(id) DO NOTHING""",
-            batch
-        )
-        count += len(batch)
-        print(f"  ✓ {count} записей всего")
 
 def migrate_company_aliases(sqlite_conn, postgres_cur):
-    """Миграция таблицы company_aliases."""
+    """Миграция company_aliases. id сохраняется для консистентности."""
     sqlite_cur = sqlite_conn.cursor()
     sqlite_cur.execute("SELECT id, company_id, name FROM company_aliases")
 
-    batch = []
-    count = 0
-
+    rows = []
     for row in sqlite_cur.fetchall():
-        batch.append((row['company_id'], row['name']))
+        rows.append((row['id'], row['company_id'], row['name']))
 
-        if len(batch) >= BATCH_SIZE:
-            postgres_cur.executemany(
-                """INSERT INTO company_aliases (company_id, name)
-                   VALUES (%s, %s)
-                   ON CONFLICT(company_id, name) DO NOTHING""",
-                batch
-            )
-            count += len(batch)
-            print(f"  ✓ {count} записей")
-            batch = []
+    count = batch_insert(
+        postgres_cur,
+        """INSERT INTO company_aliases (id, company_id, name)
+           VALUES (%s, %s, %s)
+           ON CONFLICT(company_id, name) DO NOTHING""",
+        rows,
+        "company_aliases"
+    )
+    reset_serial_sequence(postgres_cur, "company_aliases")
+    return count
 
-    if batch:
-        postgres_cur.executemany(
-            """INSERT INTO company_aliases (company_id, name)
-               VALUES (%s, %s)
-               ON CONFLICT(company_id, name) DO NOTHING""",
-            batch
-        )
-        count += len(batch)
-        print(f"  ✓ {count} записей всего")
 
 def migrate_branches(sqlite_conn, postgres_cur):
-    """Миграция таблицы branches."""
+    """Миграция branches. id СОХРАНЯЕТСЯ — на него ссылаются phones."""
     sqlite_cur = sqlite_conn.cursor()
     sqlite_cur.execute("""
         SELECT id, company_id, address, postal_code, working_hours,
                building_name, building_type, branch_hash FROM branches
     """)
 
-    batch = []
-    count = 0
-
+    rows = []
     for row in sqlite_cur.fetchall():
-        batch.append((
+        rows.append((
+            row['id'],
             row['company_id'],
             row['address'],
             row['postal_code'],
@@ -226,188 +162,190 @@ def migrate_branches(sqlite_conn, postgres_cur):
             row['branch_hash']
         ))
 
-        if len(batch) >= BATCH_SIZE:
-            postgres_cur.executemany(
-                """INSERT INTO branches (company_id, address, postal_code, working_hours,
-                                        building_name, building_type, branch_hash)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s)
-                   ON CONFLICT(branch_hash) DO NOTHING""",
-                batch
-            )
-            count += len(batch)
-            print(f"  ✓ {count} записей")
-            batch = []
+    count = batch_insert(
+        postgres_cur,
+        """INSERT INTO branches (id, company_id, address, postal_code, working_hours,
+                                building_name, building_type, branch_hash)
+           VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+           ON CONFLICT(branch_hash) DO NOTHING""",
+        rows,
+        "branches"
+    )
+    reset_serial_sequence(postgres_cur, "branches")
+    return count
 
-    if batch:
-        postgres_cur.executemany(
-            """INSERT INTO branches (company_id, address, postal_code, working_hours,
-                                    building_name, building_type, branch_hash)
-               VALUES (%s, %s, %s, %s, %s, %s, %s)
-               ON CONFLICT(branch_hash) DO NOTHING""",
-            batch
-        )
-        count += len(batch)
-        print(f"  ✓ {count} записей всего")
 
 def migrate_phones(sqlite_conn, postgres_cur):
-    """Миграция таблицы phones."""
+    """Миграция phones. branch_id ссылается на branches.id (сохранён)."""
     sqlite_cur = sqlite_conn.cursor()
     sqlite_cur.execute("SELECT id, branch_id, phone FROM phones")
 
-    batch = []
-    count = 0
-
+    rows = []
     for row in sqlite_cur.fetchall():
-        batch.append((row['branch_id'], row['phone']))
+        rows.append((row['id'], row['branch_id'], row['phone']))
 
-        if len(batch) >= BATCH_SIZE:
-            postgres_cur.executemany(
-                """INSERT INTO phones (branch_id, phone)
-                   VALUES (%s, %s)
-                   ON CONFLICT(branch_id, phone) DO NOTHING""",
-                batch
-            )
-            count += len(batch)
-            print(f"  ✓ {count} записей")
-            batch = []
+    count = batch_insert(
+        postgres_cur,
+        """INSERT INTO phones (id, branch_id, phone)
+           VALUES (%s, %s, %s)
+           ON CONFLICT(branch_id, phone) DO NOTHING""",
+        rows,
+        "phones"
+    )
+    reset_serial_sequence(postgres_cur, "phones")
+    return count
 
-    if batch:
-        postgres_cur.executemany(
-            """INSERT INTO phones (branch_id, phone)
-               VALUES (%s, %s)
-               ON CONFLICT(branch_id, phone) DO NOTHING""",
-            batch
-        )
-        count += len(batch)
-        print(f"  ✓ {count} записей всего")
 
 def migrate_emails(sqlite_conn, postgres_cur):
-    """Миграция таблицы emails."""
+    """Миграция emails."""
     sqlite_cur = sqlite_conn.cursor()
     sqlite_cur.execute("SELECT id, company_id, email FROM emails")
 
-    batch = []
-    count = 0
-
+    rows = []
     for row in sqlite_cur.fetchall():
-        batch.append((row['company_id'], row['email'].lower()))
+        rows.append((row['id'], row['company_id'], row['email'].lower()))
 
-        if len(batch) >= BATCH_SIZE:
-            postgres_cur.executemany(
-                """INSERT INTO emails (company_id, email)
-                   VALUES (%s, %s)
-                   ON CONFLICT(company_id, email) DO NOTHING""",
-                batch
-            )
-            count += len(batch)
-            print(f"  ✓ {count} записей")
-            batch = []
+    count = batch_insert(
+        postgres_cur,
+        """INSERT INTO emails (id, company_id, email)
+           VALUES (%s, %s, %s)
+           ON CONFLICT(company_id, email) DO NOTHING""",
+        rows,
+        "emails"
+    )
+    reset_serial_sequence(postgres_cur, "emails")
+    return count
 
-    if batch:
-        postgres_cur.executemany(
-            """INSERT INTO emails (company_id, email)
-               VALUES (%s, %s)
-               ON CONFLICT(company_id, email) DO NOTHING""",
-            batch
-        )
-        count += len(batch)
-        print(f"  ✓ {count} записей всего")
 
 def migrate_socials(sqlite_conn, postgres_cur):
-    """Миграция таблицы socials."""
+    """Миграция socials (VK, Facebook, Twitter, Telegram и др.)."""
     sqlite_cur = sqlite_conn.cursor()
     sqlite_cur.execute("SELECT id, company_id, type, url FROM socials")
 
-    batch = []
-    count = 0
-
+    rows = []
     for row in sqlite_cur.fetchall():
-        batch.append((row['company_id'], row['type'], row['url']))
+        rows.append((row['id'], row['company_id'], row['type'], row['url']))
 
-        if len(batch) >= BATCH_SIZE:
-            postgres_cur.executemany(
-                """INSERT INTO socials (company_id, type, url)
-                   VALUES (%s, %s, %s)
-                   ON CONFLICT(company_id, type, url) DO NOTHING""",
-                batch
-            )
-            count += len(batch)
-            print(f"  ✓ {count} записей")
-            batch = []
+    count = batch_insert(
+        postgres_cur,
+        """INSERT INTO socials (id, company_id, type, url)
+           VALUES (%s, %s, %s, %s)
+           ON CONFLICT(company_id, type, url) DO NOTHING""",
+        rows,
+        "socials"
+    )
+    reset_serial_sequence(postgres_cur, "socials")
+    return count
 
-    if batch:
-        postgres_cur.executemany(
-            """INSERT INTO socials (company_id, type, url)
-               VALUES (%s, %s, %s)
-               ON CONFLICT(company_id, type, url) DO NOTHING""",
-            batch
-        )
-        count += len(batch)
-        print(f"  ✓ {count} записей всего")
 
 def migrate_categories(sqlite_conn, postgres_cur):
-    """Миграция таблицы categories."""
+    """Миграция categories. id СОХРАНЯЕТСЯ — на него ссылаются
+    parent_id и company_categories.category_id.
+
+    Порядок вставки: сначала корневые (parent_id IS NULL),
+    затем дочерние (ORDER BY id гарантирует правильную очерёдность).
+    """
     sqlite_cur = sqlite_conn.cursor()
-    sqlite_cur.execute("SELECT id, name, parent_id FROM categories")
+    sqlite_cur.execute("SELECT id, name, parent_id FROM categories ORDER BY id")
 
-    batch = []
-    count = 0
-
+    rows = []
     for row in sqlite_cur.fetchall():
-        batch.append((row['name'], row['parent_id']))
+        rows.append((row['id'], row['name'], row['parent_id']))
 
-        if len(batch) >= BATCH_SIZE:
-            postgres_cur.executemany(
-                """INSERT INTO categories (name, parent_id)
-                   VALUES (%s, %s)
-                   ON CONFLICT(name, parent_id) DO NOTHING""",
-                batch
-            )
-            count += len(batch)
-            print(f"  ✓ {count} записей")
-            batch = []
+    count = batch_insert(
+        postgres_cur,
+        """INSERT INTO categories (id, name, parent_id)
+           VALUES (%s, %s, %s)
+           ON CONFLICT(name, parent_id) DO NOTHING""",
+        rows,
+        "categories"
+    )
+    reset_serial_sequence(postgres_cur, "categories")
+    return count
 
-    if batch:
-        postgres_cur.executemany(
-            """INSERT INTO categories (name, parent_id)
-               VALUES (%s, %s)
-               ON CONFLICT(name, parent_id) DO NOTHING""",
-            batch
-        )
-        count += len(batch)
-        print(f"  ✓ {count} записей всего")
 
 def migrate_company_categories(sqlite_conn, postgres_cur):
-    """Миграция таблицы company_categories."""
+    """Миграция company_categories. category_id ссылается на categories.id (сохранён)."""
     sqlite_cur = sqlite_conn.cursor()
     sqlite_cur.execute("SELECT company_id, category_id FROM company_categories")
 
-    batch = []
-    count = 0
-
+    rows = []
     for row in sqlite_cur.fetchall():
-        batch.append((row['company_id'], row['category_id']))
+        rows.append((row['company_id'], row['category_id']))
 
-        if len(batch) >= BATCH_SIZE:
-            postgres_cur.executemany(
-                """INSERT INTO company_categories (company_id, category_id)
-                   VALUES (%s, %s)
-                   ON CONFLICT(company_id, category_id) DO NOTHING""",
-                batch
-            )
-            count += len(batch)
-            print(f"  ✓ {count} записей")
-            batch = []
+    return batch_insert(
+        postgres_cur,
+        """INSERT INTO company_categories (company_id, category_id)
+           VALUES (%s, %s)
+           ON CONFLICT(company_id, category_id) DO NOTHING""",
+        rows,
+        "company_categories"
+    )
 
-    if batch:
-        postgres_cur.executemany(
-            """INSERT INTO company_categories (company_id, category_id)
-               VALUES (%s, %s)
-               ON CONFLICT(company_id, category_id) DO NOTHING""",
-            batch
-        )
-        count += len(batch)
-        print(f"  ✓ {count} записей всего")
+
+# ============================================================
+# ОРКЕСТРАЦИЯ
+# ============================================================
+
+# Порядок миграции: сначала таблицы без зависимостей, потом зависимые
+MIGRATION_STEPS = [
+    ("companies",          migrate_companies),
+    ("company_aliases",    migrate_company_aliases),
+    ("branches",           migrate_branches),
+    ("phones",             migrate_phones),
+    ("emails",             migrate_emails),
+    ("socials",            migrate_socials),
+    ("categories",         migrate_categories),
+    ("company_categories", migrate_company_categories),
+]
+
+# Таблицы с триггерами, которые нужно отключить на время миграции
+TABLES_WITH_TRIGGERS = [
+    "company_categories", "branches", "phones",
+    "emails", "socials", "company_aliases", "categories",
+]
+
+
+def migrate_data():
+    """Выполняет полную миграцию данных."""
+
+    print(f"Подключение к SQLite: {SQLITE_PATH}")
+    sqlite_conn = get_sqlite_connection(SQLITE_PATH)
+
+    print(f"Подключение к PostgreSQL: {DB_HOST}:{DB_PORT}/{DB_NAME}")
+    postgres_conn = get_postgres_connection()
+    postgres_cur = postgres_conn.cursor()
+
+    try:
+        # Отключаем триггеры (FK constraints) для скорости
+        for table in TABLES_WITH_TRIGGERS:
+            postgres_cur.execute(f"ALTER TABLE {table} DISABLE TRIGGER ALL")
+
+        # Статистика
+        total = 0
+        for table_name, migrate_fn in MIGRATION_STEPS:
+            print(f"\n[{table_name}]")
+            count = migrate_fn(sqlite_conn, postgres_cur)
+            total += count
+
+        # Восстанавливаем триггеры
+        print("\nВосстановление триггеров...")
+        for table in TABLES_WITH_TRIGGERS:
+            postgres_cur.execute(f"ALTER TABLE {table} ENABLE TRIGGER ALL")
+
+        postgres_conn.commit()
+
+        print(f"\nМиграция завершена. Всего записей: {total}")
+
+    except Exception as e:
+        postgres_conn.rollback()
+        print(f"\nОшибка при миграции: {e}")
+        raise
+    finally:
+        postgres_cur.close()
+        postgres_conn.close()
+        sqlite_conn.close()
+
 
 # ============================================================
 # MAIN
@@ -417,5 +355,5 @@ if __name__ == "__main__":
     try:
         migrate_data()
     except Exception as e:
-        print(f"\n❌ Ошибка: {e}")
+        print(f"\nОшибка: {e}")
         exit(1)
