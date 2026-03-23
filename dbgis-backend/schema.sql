@@ -82,9 +82,9 @@ CREATE TABLE company_categories (
 -- ИНДЕКСЫ (ускорение поиска)
 -- ============================================================
 
-CREATE INDEX idx_companies_city ON companies(city);
-CREATE INDEX idx_companies_domain ON companies(domain);
+-- B-tree индексы для FK и точных совпадений
 CREATE INDEX idx_companies_name ON companies(name);
+CREATE INDEX idx_companies_domain ON companies(domain);
 CREATE INDEX idx_branches_company_id ON branches(company_id);
 CREATE INDEX idx_phones_branch_id ON phones(branch_id);
 CREATE INDEX idx_emails_company_id ON emails(company_id);
@@ -92,6 +92,13 @@ CREATE INDEX idx_socials_company_id ON socials(company_id);
 CREATE INDEX idx_company_categories_company_id ON company_categories(company_id);
 CREATE INDEX idx_company_categories_category_id ON company_categories(category_id);
 CREATE INDEX idx_categories_parent_id ON categories(parent_id);
+CREATE INDEX idx_categories_name ON categories(name);
+
+-- GIN триграммные индексы для ILIKE '%...%' (требует pg_trgm)
+-- Без них ILIKE делает полный seq scan таблицы
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX idx_companies_city_trgm ON companies USING GIN (city gin_trgm_ops);
+CREATE INDEX idx_categories_name_trgm ON categories USING GIN (name gin_trgm_ops);
 
 -- ============================================================
 -- КОММЕНТАРИИ

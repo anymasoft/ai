@@ -3,19 +3,28 @@
 """
 FastAPI backend для dbgis — поиск и фильтрация компаний из 2ГИС.
 PostgreSQL + HTML5 + Vanilla JS.
+
+Оптимизация:
+- LATERAL JOIN вместо коррелированных подзапросов
+- Без DISTINCT (GROUP BY на PK)
+- Connection pool (psycopg2.pool)
+- In-memory кеш с TTL
+- Индексы pg_trgm для ILIKE
 """
 
 import os
 import csv
 import io
+import hashlib
+import time
 from typing import Optional
 from datetime import datetime
 
 import psycopg2
+import psycopg2.pool
 from psycopg2.extras import RealDictCursor
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.responses import HTMLResponse, StreamingResponse
-from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader
 from dotenv import load_dotenv
 
@@ -23,21 +32,74 @@ from dotenv import load_dotenv
 # УТИЛИТЫ
 # ============================================================
 
-def decode_punycode_domain(domain: str) -> str:
-    """Декодирует Punycode-доменами в Unicode кириллицу.
+def _decode_one_domain(d: str) -> str:
+    """Декодирует один Punycode-домен в Unicode."""
+    try:
+        return d.encode('ascii').decode('idna')
+    except Exception:
+        return d
 
-    xn--80aebkobnwfcnsfk1e0h.xn--p1ai → госавтоинспекция.рф
-    Если домен не Punycode или ошибка — возвращает как есть.
+
+def decode_punycode_domain(domain: str) -> str:
+    """Декодирует Punycode-домены в Unicode кириллицу.
+
+    Поддерживает несколько доменов через запятую:
+    'stoautomaster.business.site, xn----ctbholqj.xn--p1ai'
+    → 'stoautomaster.business.site, вин-код.рф'
     """
     if not domain:
         return domain
-    try:
-        # IDNA декодирование (Punycode → Unicode)
-        decoded = domain.encode('ascii').decode('idna')
-        return decoded
-    except Exception:
-        # Если ошибка (не Punycode или невалидный домен) — возвращаем как есть
-        return domain
+    parts = [p.strip() for p in domain.split(",")]
+    decoded = [_decode_one_domain(p) for p in parts]
+    return ", ".join(decoded)
+
+
+# ============================================================
+# IN-MEMORY КЕШ (TTL)
+# ============================================================
+
+class SimpleCache:
+    """Простой in-memory кеш с TTL. Без Redis, без зависимостей."""
+
+    def __init__(self, ttl: int = 60):
+        self._store: dict = {}
+        self._ttl = ttl
+
+    def _make_key(self, prefix: str, params: dict) -> str:
+        """Хеш-ключ из параметров запроса."""
+        raw = f"{prefix}:{sorted(params.items())}"
+        return hashlib.md5(raw.encode()).hexdigest()
+
+    def get(self, prefix: str, params: dict):
+        """Возвращает кешированное значение или None."""
+        key = self._make_key(prefix, params)
+        entry = self._store.get(key)
+        if entry is None:
+            return None
+        value, ts = entry
+        if time.time() - ts > self._ttl:
+            del self._store[key]
+            return None
+        return value
+
+    def set(self, prefix: str, params: dict, value):
+        """Сохраняет значение в кеш."""
+        key = self._make_key(prefix, params)
+        self._store[key] = (value, time.time())
+        # Периодическая очистка устаревших записей (каждые 100 вставок)
+        if len(self._store) % 100 == 0:
+            self._cleanup()
+
+    def _cleanup(self):
+        """Удаляет устаревшие записи."""
+        now = time.time()
+        expired = [k for k, (_, ts) in self._store.items()
+                   if now - ts > self._ttl]
+        for k in expired:
+            del self._store[k]
+
+
+cache = SimpleCache(ttl=60)
 
 # ============================================================
 # ИНИЦИАЛИЗАЦИЯ
@@ -55,6 +117,9 @@ API_HOST = os.getenv("API_HOST", "0.0.0.0")
 API_PORT = int(os.getenv("API_PORT", 8000))
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
+POOL_MIN = int(os.getenv("DB_POOL_MIN", 2))
+POOL_MAX = int(os.getenv("DB_POOL_MAX", 10))
+
 app = FastAPI(title="dbgis API", debug=DEBUG)
 
 # Jinja2 для шаблонов
@@ -62,13 +127,18 @@ templates_dir = os.path.join(os.path.dirname(__file__), "templates")
 jinja_env = Environment(loader=FileSystemLoader(templates_dir))
 
 # ============================================================
-# DATABASE CONNECTION
+# CONNECTION POOL
 # ============================================================
 
-def get_db_connection():
-    """Возвращает соединение с PostgreSQL."""
-    try:
-        conn = psycopg2.connect(
+_pool: psycopg2.pool.SimpleConnectionPool | None = None
+
+
+def get_pool() -> psycopg2.pool.SimpleConnectionPool:
+    """Ленивая инициализация пула соединений."""
+    global _pool
+    if _pool is None or _pool.closed:
+        _pool = psycopg2.pool.SimpleConnectionPool(
+            POOL_MIN, POOL_MAX,
             host=DB_HOST,
             port=DB_PORT,
             database=DB_NAME,
@@ -76,10 +146,123 @@ def get_db_connection():
             password=DB_PASSWORD,
             cursor_factory=RealDictCursor
         )
-        return conn
-    except psycopg2.OperationalError as e:
+    return _pool
+
+
+def get_db_connection():
+    """Получает соединение из пула."""
+    try:
+        return get_pool().getconn()
+    except Exception as e:
         print(f"Ошибка подключения к БД: {e}")
         return None
+
+
+def release_db_connection(conn):
+    """Возвращает соединение в пул."""
+    try:
+        get_pool().putconn(conn)
+    except Exception:
+        pass
+
+
+# ============================================================
+# SQL-ЗАПРОСЫ (ОПТИМИЗИРОВАННЫЕ)
+# ============================================================
+
+# Основной запрос /api/companies: LATERAL JOIN вместо коррелированных подзапросов.
+# PostgreSQL выполняет LATERAL один раз на строку (как JOIN),
+# а не как подзапрос в SELECT (который планировщик может не оптимизировать).
+# GROUP BY c.id без DISTINCT — categories агрегируются через STRING_AGG.
+COMPANIES_LIST_SQL = """
+    SELECT
+        c.id,
+        c.name,
+        c.city,
+        c.domain,
+        c.website,
+        c.created_at,
+        COALESCE(ph.phones, '') as phones,
+        COALESCE(em.emails, '') as emails,
+        COALESCE(addr.address, '') as address,
+        COALESCE(soc.socials, '') as socials,
+        STRING_AGG(DISTINCT cat.name, ', ') as categories
+    FROM companies c
+    LEFT JOIN LATERAL (
+        SELECT STRING_AGG(p.phone, ', ') as phones
+        FROM phones p
+        JOIN branches b ON p.branch_id = b.id
+        WHERE b.company_id = c.id
+    ) ph ON TRUE
+    LEFT JOIN LATERAL (
+        SELECT STRING_AGG(e.email, ', ') as emails
+        FROM emails e
+        WHERE e.company_id = c.id
+    ) em ON TRUE
+    LEFT JOIN LATERAL (
+        SELECT STRING_AGG(DISTINCT b.address, '; ') as address
+        FROM branches b
+        WHERE b.company_id = c.id
+          AND b.address IS NOT NULL AND b.address != ''
+    ) addr ON TRUE
+    LEFT JOIN LATERAL (
+        SELECT STRING_AGG(s.type || ':' || s.url, ', ') as socials
+        FROM socials s
+        WHERE s.company_id = c.id
+    ) soc ON TRUE
+    LEFT JOIN company_categories cc ON c.id = cc.company_id
+    LEFT JOIN categories cat ON cc.category_id = cat.id
+"""
+
+# COUNT использует ту же фильтрацию, но без LATERAL (не нужны данные контактов)
+COMPANIES_COUNT_SQL = """
+    SELECT COUNT(DISTINCT c.id) as total
+    FROM companies c
+    LEFT JOIN company_categories cc ON c.id = cc.company_id
+    LEFT JOIN categories cat ON cc.category_id = cat.id
+"""
+
+
+def build_filter_clause(city, category, has_email, has_phone, has_website):
+    """Строит WHERE-условия и параметры для фильтрации компаний."""
+    clauses = []
+    params = []
+
+    if city:
+        clauses.append("c.city ILIKE %s")
+        params.append(f"%{city}%")
+
+    if category:
+        clauses.append("cat.name ILIKE %s")
+        params.append(f"%{category}%")
+
+    if has_email:
+        clauses.append("EXISTS (SELECT 1 FROM emails WHERE company_id = c.id)")
+
+    if has_phone:
+        clauses.append(
+            "EXISTS (SELECT 1 FROM phones p "
+            "JOIN branches b ON p.branch_id = b.id "
+            "WHERE b.company_id = c.id)"
+        )
+
+    if has_website:
+        clauses.append("c.domain IS NOT NULL AND c.domain != ''")
+
+    where = " WHERE " + " AND ".join(clauses) if clauses else ""
+    return where, params
+
+
+def decode_rows(rows):
+    """Декодирует Punycode во всех строках."""
+    result = []
+    for row in rows:
+        d = dict(row)
+        if d.get("domain"):
+            d["domain"] = decode_punycode_domain(d["domain"])
+        result.append(d)
+    return result
+
 
 # ============================================================
 # API ENDPOINTS
@@ -91,15 +274,14 @@ async def health():
     conn = get_db_connection()
     if conn is None:
         return {"status": "error", "message": "Database connection failed"}
-
     try:
         cur = conn.cursor()
         cur.execute("SELECT 1")
         cur.close()
-        conn.close()
         return {"status": "ok", "message": "API и БД работают"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+    finally:
+        release_db_connection(conn)
+
 
 @app.get("/api/companies")
 async def get_companies(
@@ -112,135 +294,59 @@ async def get_companies(
     offset: int = Query(0, ge=0, description="Смещение")
 ):
     """Получить список компаний с фильтрами."""
+
+    # Проверяем кеш
+    cache_params = {
+        "city": city, "category": category,
+        "has_email": has_email, "has_phone": has_phone,
+        "has_website": has_website, "limit": limit, "offset": offset
+    }
+    cached = cache.get("companies", cache_params)
+    if cached is not None:
+        return cached
+
     conn = get_db_connection()
     if conn is None:
         raise HTTPException(status_code=503, detail="Database unavailable")
 
     try:
         cur = conn.cursor()
+        where, params = build_filter_clause(
+            city, category, has_email, has_phone, has_website
+        )
 
-        # Базовый SELECT с JOIN для категорий
-        query = """
-            SELECT DISTINCT
-                c.id,
-                c.name,
-                c.city,
-                c.domain,
-                c.website,
-                c.created_at,
-                COALESCE(
-                    (SELECT STRING_AGG(p.phone, ', ')
-                     FROM phones p
-                     JOIN branches b ON p.branch_id = b.id
-                     WHERE b.company_id = c.id), ''
-                ) as phones,
-                COALESCE(
-                    (SELECT STRING_AGG(e.email, ', ')
-                     FROM emails e
-                     WHERE e.company_id = c.id), ''
-                ) as emails,
-                COALESCE(
-                    (SELECT STRING_AGG(DISTINCT b.address, '; ')
-                     FROM branches b
-                     WHERE b.company_id = c.id
-                       AND b.address IS NOT NULL AND b.address != ''), ''
-                ) as address,
-                COALESCE(
-                    (SELECT STRING_AGG(s.type || ':' || s.url, ', ')
-                     FROM socials s
-                     WHERE s.company_id = c.id), ''
-                ) as socials,
-                STRING_AGG(DISTINCT cat.name, ', ') as categories
-            FROM companies c
-            LEFT JOIN company_categories cc ON c.id = cc.company_id
-            LEFT JOIN categories cat ON cc.category_id = cat.id
-            WHERE 1=1
-        """
-
-        params = []
-
-        # Фильтры
-        if city:
-            query += " AND c.city ILIKE %s"
-            params.append(f"%{city}%")
-
-        if category:
-            query += " AND cat.name ILIKE %s"
-            params.append(f"%{category}%")
-
-        if has_email:
-            query += " AND EXISTS (SELECT 1 FROM emails WHERE company_id = c.id)"
-
-        if has_phone:
-            query += " AND EXISTS (SELECT 1 FROM phones p JOIN branches b ON p.branch_id = b.id WHERE b.company_id = c.id)"
-
-        if has_website:
-            query += " AND c.domain IS NOT NULL AND c.domain != ''"
-
-        # Группировка и сортировка
-        query += """
-            GROUP BY c.id, c.name, c.city, c.domain, c.website, c.created_at
-            ORDER BY c.name
-            LIMIT %s OFFSET %s
-        """
-        params.append(limit)
-        params.append(offset)
-
-        cur.execute(query, params)
+        # Основной запрос
+        query = (
+            COMPANIES_LIST_SQL + where +
+            " GROUP BY c.id, c.name, c.city, c.domain, c.website, c.created_at,"
+            " ph.phones, em.emails, addr.address, soc.socials"
+            " ORDER BY c.name LIMIT %s OFFSET %s"
+        )
+        cur.execute(query, params + [limit, offset])
         rows = cur.fetchall()
 
-        # Подсчёт общего количества
-        count_query = """
-            SELECT COUNT(DISTINCT c.id) as total
-            FROM companies c
-            LEFT JOIN company_categories cc ON c.id = cc.company_id
-            LEFT JOIN categories cat ON cc.category_id = cat.id
-            WHERE 1=1
-        """
-
-        count_params = []
-        if city:
-            count_query += " AND c.city ILIKE %s"
-            count_params.append(f"%{city}%")
-
-        if category:
-            count_query += " AND cat.name ILIKE %s"
-            count_params.append(f"%{category}%")
-
-        if has_email:
-            count_query += " AND EXISTS (SELECT 1 FROM emails WHERE company_id = c.id)"
-
-        if has_phone:
-            count_query += " AND EXISTS (SELECT 1 FROM phones p JOIN branches b ON p.branch_id = b.id WHERE b.company_id = c.id)"
-
-        if has_website:
-            count_query += " AND c.domain IS NOT NULL AND c.domain != ''"
-
-        cur.execute(count_query, count_params)
+        # COUNT (тот же WHERE, но без LATERAL)
+        count_query = COMPANIES_COUNT_SQL + where
+        cur.execute(count_query, params)
         total = cur.fetchone()["total"]
 
         cur.close()
-        conn.close()
 
-        # Декодируем Punycode в доменах для читаемости
-        data = []
-        for row in rows:
-            row_dict = dict(row)
-            if row_dict.get("domain"):
-                row_dict["domain"] = decode_punycode_domain(row_dict["domain"])
-            data.append(row_dict)
-
-        return {
+        result = {
             "total": total,
             "limit": limit,
             "offset": offset,
-            "data": data
+            "data": decode_rows(rows)
         }
 
+        cache.set("companies", cache_params, result)
+        return result
+
     except Exception as e:
-        if conn:
-            conn.close()
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        release_db_connection(conn)
+
 
 @app.get("/api/companies/{company_id}")
 async def get_company_detail(company_id: int):
@@ -252,32 +358,34 @@ async def get_company_detail(company_id: int):
     try:
         cur = conn.cursor()
 
-        # Информация о компании
+        # Компания
         cur.execute(
-            "SELECT * FROM companies WHERE id = %s",
-            (company_id,)
+            "SELECT * FROM companies WHERE id = %s", (company_id,)
         )
         company = cur.fetchone()
-
         if not company:
             raise HTTPException(status_code=404, detail="Компания не найдена")
 
         company_dict = dict(company)
 
-        # Филиалы
-        cur.execute(
-            "SELECT * FROM branches WHERE company_id = %s ORDER BY address",
-            (company_id,)
-        )
-        branches = [dict(row) for row in cur.fetchall()]
-
-        # Телефоны для каждого филиала
-        for branch in branches:
-            cur.execute(
-                "SELECT phone FROM phones WHERE branch_id = %s",
-                (branch["id"],)
-            )
-            branch["phones"] = [row["phone"] for row in cur.fetchall()]
+        # Филиалы + телефоны одним запросом
+        cur.execute("""
+            SELECT b.id, b.address, b.postal_code, b.working_hours,
+                   b.building_name, b.building_type,
+                   COALESCE(
+                       (SELECT STRING_AGG(p.phone, ', ')
+                        FROM phones p WHERE p.branch_id = b.id), ''
+                   ) as phones
+            FROM branches b
+            WHERE b.company_id = %s
+            ORDER BY b.address
+        """, (company_id,))
+        branches = []
+        for row in cur.fetchall():
+            bd = dict(row)
+            bd["phones"] = [p.strip() for p in bd["phones"].split(",")
+                            if p.strip()] if bd["phones"] else []
+            branches.append(bd)
 
         # Email
         cur.execute(
@@ -295,7 +403,7 @@ async def get_company_detail(company_id: int):
         """, (company_id,))
         categories = [dict(row) for row in cur.fetchall()]
 
-        # Соцсети (группируем по типу, у одного типа может быть несколько URL)
+        # Соцсети (группируем по типу)
         cur.execute(
             "SELECT type, url FROM socials WHERE company_id = %s ORDER BY type",
             (company_id,)
@@ -308,9 +416,7 @@ async def get_company_detail(company_id: int):
             socials[stype].append(row["url"])
 
         cur.close()
-        conn.close()
 
-        # Декодируем Punycode в доменах для читаемости
         if company_dict.get("domain"):
             company_dict["domain"] = decode_punycode_domain(company_dict["domain"])
 
@@ -322,10 +428,13 @@ async def get_company_detail(company_id: int):
             "socials": socials
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
-        if conn:
-            conn.close()
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        release_db_connection(conn)
+
 
 @app.get("/api/export")
 async def export_csv(
@@ -343,79 +452,27 @@ async def export_csv(
 
     try:
         cur = conn.cursor()
+        where, params = build_filter_clause(
+            city, category, has_email, has_phone, has_website
+        )
 
-        query = """
-            SELECT DISTINCT
-                c.id,
-                c.name,
-                c.city,
-                c.domain,
-                c.website,
-                COALESCE(
-                    (SELECT STRING_AGG(p.phone, ', ')
-                     FROM phones p
-                     JOIN branches b ON p.branch_id = b.id
-                     WHERE b.company_id = c.id), ''
-                ) as phones,
-                COALESCE(
-                    (SELECT STRING_AGG(e.email, ', ')
-                     FROM emails e
-                     WHERE e.company_id = c.id), ''
-                ) as emails,
-                COALESCE(
-                    (SELECT STRING_AGG(DISTINCT b.address, '; ')
-                     FROM branches b
-                     WHERE b.company_id = c.id
-                       AND b.address IS NOT NULL AND b.address != ''), ''
-                ) as address,
-                COALESCE(
-                    (SELECT STRING_AGG(s.type || ':' || s.url, ', ')
-                     FROM socials s
-                     WHERE s.company_id = c.id), ''
-                ) as socials,
-                STRING_AGG(DISTINCT cat.name, ', ') as categories
-            FROM companies c
-            LEFT JOIN company_categories cc ON c.id = cc.company_id
-            LEFT JOIN categories cat ON cc.category_id = cat.id
-            WHERE 1=1
-        """
-
-        params = []
-
-        if city:
-            query += " AND c.city ILIKE %s"
-            params.append(f"%{city}%")
-
-        if category:
-            query += " AND cat.name ILIKE %s"
-            params.append(f"%{category}%")
-
-        if has_email:
-            query += " AND EXISTS (SELECT 1 FROM emails WHERE company_id = c.id)"
-
-        if has_phone:
-            query += " AND EXISTS (SELECT 1 FROM phones p JOIN branches b ON p.branch_id = b.id WHERE b.company_id = c.id)"
-
-        if has_website:
-            query += " AND c.domain IS NOT NULL AND c.domain != ''"
-
-        query += " GROUP BY c.id, c.name, c.city, c.domain, c.website ORDER BY c.name LIMIT %s"
-        params.append(limit)
-
-        cur.execute(query, params)
+        query = (
+            COMPANIES_LIST_SQL + where +
+            " GROUP BY c.id, c.name, c.city, c.domain, c.website, c.created_at,"
+            " ph.phones, em.emails, addr.address, soc.socials"
+            " ORDER BY c.name LIMIT %s"
+        )
+        cur.execute(query, params + [limit])
         rows = cur.fetchall()
         cur.close()
-        conn.close()
 
         # Формирование CSV
         output = io.StringIO()
         writer = csv.writer(output)
 
-        # Заголовки
         writer.writerow(["ID", "Название", "Город", "Домен", "Сайт",
                          "Телефоны", "Email", "Адрес", "Соцсети", "Категории"])
 
-        # Данные (декодируем Punycode в доменах)
         for row in rows:
             domain = row["domain"] or ""
             if domain:
@@ -433,7 +490,6 @@ async def export_csv(
                 row["categories"] or ""
             ])
 
-        # Возврат как файл
         output.seek(0)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"dbgis_export_{timestamp}.csv"
@@ -445,9 +501,58 @@ async def export_csv(
         )
 
     except Exception as e:
-        if conn:
-            conn.close()
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        release_db_connection(conn)
+
+
+# ============================================================
+# EXPLAIN ANALYZE (DEBUG)
+# ============================================================
+
+@app.get("/api/debug/explain")
+async def explain_query(
+    city: Optional[str] = Query(None),
+    category: Optional[str] = Query(None),
+    has_email: Optional[bool] = Query(None),
+    has_phone: Optional[bool] = Query(None),
+    has_website: Optional[bool] = Query(None),
+    limit: int = Query(50, ge=1, le=1000),
+    offset: int = Query(0, ge=0)
+):
+    """EXPLAIN ANALYZE для отладки производительности запроса.
+    Доступен только при DEBUG=true."""
+    if not DEBUG:
+        raise HTTPException(status_code=403, detail="Только в режиме DEBUG")
+
+    conn = get_db_connection()
+    if conn is None:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+
+    try:
+        cur = conn.cursor()
+        where, params = build_filter_clause(
+            city, category, has_email, has_phone, has_website
+        )
+
+        query = (
+            "EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT) " +
+            COMPANIES_LIST_SQL + where +
+            " GROUP BY c.id, c.name, c.city, c.domain, c.website, c.created_at,"
+            " ph.phones, em.emails, addr.address, soc.socials"
+            " ORDER BY c.name LIMIT %s OFFSET %s"
+        )
+        cur.execute(query, params + [limit, offset])
+        plan = [row["QUERY PLAN"] for row in cur.fetchall()]
+
+        cur.close()
+        return {"plan": plan}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        release_db_connection(conn)
+
 
 # ============================================================
 # WEB UI
@@ -461,6 +566,7 @@ async def index():
         return template.render()
     except Exception as e:
         return f"<h1>Ошибка загрузки шаблона:</h1><p>{e}</p>"
+
 
 # ============================================================
 # MAIN
