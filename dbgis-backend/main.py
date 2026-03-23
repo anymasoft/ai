@@ -265,6 +265,8 @@ def decode_rows(rows):
         d = dict(row)
         if d.get("domain"):
             d["domain"] = decode_punycode_domain(d["domain"])
+        if d.get("website"):
+            d["website"] = decode_punycode_domain(d["website"])
         result.append(d)
     return result
 
@@ -428,6 +430,8 @@ async def get_company_detail(company_id: int):
 
         if company_dict.get("domain"):
             company_dict["domain"] = decode_punycode_domain(company_dict["domain"])
+        if company_dict.get("website"):
+            company_dict["website"] = decode_punycode_domain(company_dict["website"])
 
         return {
             "company": company_dict,
@@ -490,12 +494,15 @@ async def export_csv(
             domain = row["domain"] or ""
             if domain:
                 domain = decode_punycode_domain(domain)
+            website = row["website"] or ""
+            if website:
+                website = decode_punycode_domain(website)
             writer.writerow([
                 row["id"],
                 row["name"],
                 row["city"] or "",
                 domain,
-                row["website"] or "",
+                website,
                 row["phones"] or "",
                 row["emails"] or "",
                 row["address"] or "",
