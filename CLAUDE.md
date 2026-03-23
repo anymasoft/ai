@@ -108,10 +108,11 @@ companies ──< branches ──< phones
 - `build_filter_clause()` — единственный источник WHERE-условий (используется в `/api/companies` и `/api/export`)
 
 **AI-категоризация запросов (ai_parser.py):**
-- Двухшаговая: ROOT категория → CHILD категория (обе из БД, не генерируются)
+- Flat-архитектура: запрос → сразу leaf-категория из БД (parent_id IS NOT NULL)
 - LLM используется как **классификатор по списку**, не генератор
-- Retry со strict-промптом при невалидном выборе
-- Fallback: normalized_query через ILIKE
+- Мягкая фильтрация (убрать товарные категории) → LLM выбирает одну → retry со strict-промптом
+- Каскадный fallback: exact ID → ILIKE по категории → ILIKE по имени компании → ILIKE по оригинальному запросу
+- Тестирование: `python test_search.py` (88 запросов)
 
 **Эндпоинты:**
 - `GET /api/companies` — список с фильтрами + AI-парсинг query
