@@ -92,3 +92,27 @@ companies, company_aliases, branches, phones, emails, socials, categories, compa
 - Не хранить data/ и output/ в git
 - Не применять .lower() к полным URL (только к доменам и email)
 - Не склеивать несколько URL в одну строку через пробел (использовать \n)
+
+---
+
+## Полный pipeline системы
+
+```
+2GIS (.dgdat) → convert.py → XLSX (24 колонки)
+  → import_db.py → SQLite (data/local.db)
+    → dbgis-backend/migrate_sqlite_to_postgres.py → PostgreSQL
+      → dbgis-backend/main.py (FastAPI API + Web UI)
+        → dbgis-backend/enrich.py (обогащение через EXTRACTOR)
+```
+
+### Связанные проекты
+| Проект | Путь | Назначение |
+|--------|------|------------|
+| dgdat2xlsx | `.` (текущий) | Парсинг 2ГИС .dgdat → XLSX → SQLite |
+| dbgis-backend | `../dbgis-backend/` | FastAPI API + PostgreSQL + Web UI + enrich |
+| EXTRACTOR | `../EXTRACTOR/` | Извлечение контактов с сайтов (email, phone) |
+
+### Критичные зависимости
+- `data/local.db` — SQLite БД, используется `dbgis-backend/migrate_sqlite_to_postgres.py`
+- Путь конфигурируется через env `SQLITE_PATH` (default: `../dgdat2xlsx/data/local.db`)
+- **Сохранение id**: PostgreSQL использует те же id что и SQLite (не автогенерация)

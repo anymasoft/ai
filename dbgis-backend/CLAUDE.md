@@ -130,3 +130,75 @@ companies ──< branches ──< phones
 - SQL-шаблоны в константах (`COMPANIES_LIST_SQL`, `COMPANIES_COUNT_SQL`)
 - Утилиты (`decode_rows`, `decode_punycode_domain`) переиспользовать
 - Не создавать отдельные файлы для роутов/моделей — всё в `main.py` (монолит)
+
+---
+
+## Полный pipeline системы
+
+```
+2GIS (.dgdat) → dgdat2xlsx/convert.py → XLSX
+  → dgdat2xlsx/import_db.py → SQLite (data/local.db)
+    → dbgis-backend/migrate_sqlite_to_postgres.py → PostgreSQL
+      → dbgis-backend/main.py (FastAPI API + Web UI)
+        → dbgis-backend/enrich.py (ПЛАНИРУЕТСЯ: обогащение контактов)
+```
+
+### Связанные проекты
+| Проект | Путь | Назначение |
+|--------|------|------------|
+| dgdat2xlsx | `../dgdat2xlsx/` | Парсинг 2ГИС .dgdat → XLSX → SQLite |
+| EXTRACTOR | `../EXTRACTOR/` | Извлечение контактов с сайтов (email, phone) |
+| dbgis-backend | `.` (текущий) | FastAPI API + PostgreSQL + Web UI |
+
+## Enrichment (обогащение) — ПЛАН ИНТЕГРАЦИИ
+
+### Архитектура
+`enrich.py` — CLI-скрипт (cron/ручной запуск), НЕ сервис.
+Импортирует `extractor_final.py` и `crawler_filter.py` из `../EXTRACTOR/`.
+
+### Pipeline обогащения
+```
+PostgreSQL: SELECT companies WHERE enrichment_status='pending' AND domain IS NOT NULL
+  → crawler_filter: domain → top-5 relevant URLs (contacts, about, homepage)
+    → extractor_final: HTML → phones + emails
+      → INSERT INTO emails/phones (ON CONFLICT DO NOTHING)
+        → UPDATE companies SET enrichment_status='done'
+```
+
+### Новые поля в companies
+```sql
+enrichment_status TEXT DEFAULT 'pending'  -- pending|processing|done|failed|skip
+enriched_at TIMESTAMP
+enrichment_attempts INTEGER DEFAULT 0
+```
+
+### Новая таблица enrichment_log
+```sql
+CREATE TABLE enrichment_log (
+    id SERIAL PRIMARY KEY,
+    company_id INTEGER REFERENCES companies(id),
+    started_at TIMESTAMP, finished_at TIMESTAMP,
+    status TEXT,  -- ok|error|timeout|blocked
+    pages_crawled INTEGER, emails_found INTEGER, phones_found INTEGER,
+    error_message TEXT, source TEXT DEFAULT 'website'
+);
+```
+
+### Ключевые решения
+- **domain** (не website) — точка входа для crawler (чистый, нормализованный)
+- **Виртуальный филиал** для enriched phones: `branches(address='enriched')`
+- **FOR UPDATE SKIP LOCKED** — безопасный параллельный запуск
+- **ThreadPoolExecutor(5)** — ~14,400 компаний/день
+- **Max 3 попытки** на компанию, таймаут 15 сек на HTTP
+- **HTML НЕ хранить** (только tmp-кеш для debug)
+
+### API endpoints (планируются)
+```
+POST /api/enrich/start    — запуск subprocess enrich.py
+GET  /api/enrich/status   — статистика по enrichment_status
+```
+
+### Cron
+```bash
+*/30 * * * * cd /path/to/dbgis-backend && python enrich.py --batch-size 200 >> logs/enrich.log 2>&1
+```
