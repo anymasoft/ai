@@ -17,11 +17,14 @@ import csv
 import io
 import sys
 import hashlib
+import logging
 import subprocess
 import time
 from typing import Optional
 from datetime import datetime
 from pathlib import Path
+
+log = logging.getLogger(__name__)
 
 import psycopg2
 import psycopg2.pool
@@ -33,7 +36,7 @@ from dotenv import load_dotenv
 
 # AI-парсер запросов
 try:
-    from ai_parser import parse_query_with_ai, parse_query_fallback
+    from ai_parser import parse_query_with_ai, parse_query_fallback, resolve_category_with_ai
     AI_PARSER_AVAILABLE = True
 except ImportError:
     AI_PARSER_AVAILABLE = False
@@ -235,8 +238,15 @@ COMPANIES_COUNT_SQL = """
 """
 
 
-def build_filter_clause(city, category, has_email, has_phone, has_website):
-    """Строит WHERE-условия и параметры для фильтрации компаний."""
+def build_filter_clause(city, category, has_email, has_phone, has_website,
+                        category_id=None, category_exact=None):
+    """Строит WHERE-условия и параметры для фильтрации компаний.
+
+    Приоритет фильтрации по категории:
+    1. category_id — точный ID категории из БД (наивысший приоритет)
+    2. category_exact — точное совпадение имени (cat.name = ...)
+    3. category — ILIKE поиск (fallback)
+    """
     clauses = []
     params = []
 
@@ -244,7 +254,16 @@ def build_filter_clause(city, category, has_email, has_phone, has_website):
         clauses.append("c.city ILIKE %s")
         params.append(f"%{city}%")
 
-    if category:
+    if category_id:
+        # Точный поиск по ID категории (включая дочерние)
+        clauses.append(
+            "(cat.id = %s OR cat.parent_id = %s)"
+        )
+        params.extend([category_id, category_id])
+    elif category_exact:
+        clauses.append("cat.name = %s")
+        params.append(category_exact)
+    elif category:
         clauses.append("cat.name ILIKE %s")
         params.append(f"%{category}%")
 
@@ -310,16 +329,59 @@ async def get_companies(
 ):
     """Получить список компаний с фильтрами или AI-парсингом запроса."""
 
-    # AI-парсинг если передан query параметр
+    category_id = None
+    category_exact = None
+    normalized_query = None
+    search_method = None
+
+    # Двухшаговая AI-категоризация если передан query
     if query and AI_PARSER_AVAILABLE:
-        ai_filters = parse_query_with_ai(query)
-        # Переопределяем фильтры из AI (если они не пустые)
-        if ai_filters:
-            city = ai_filters.get("city") or city
-            category = ai_filters.get("category") or category
-            has_phone = ai_filters.get("has_phone") or has_phone
-            has_email = ai_filters.get("has_email") or has_email
-            has_website = ai_filters.get("has_website") or has_website
+        conn_for_ai = get_db_connection()
+        if conn_for_ai:
+            try:
+                ai_result = resolve_category_with_ai(query, conn_for_ai)
+
+                # Город и фильтры из AI
+                city = ai_result.get("city") or city
+                has_phone = ai_result.get("has_phone") or has_phone
+                has_email = ai_result.get("has_email") or has_email
+                has_website = ai_result.get("has_website") or has_website
+                normalized_query = ai_result.get("normalized_query")
+
+                if ai_result.get("final_category") and ai_result.get("method") == "exact":
+                    # Точное совпадение — используем ID категории
+                    category_id = ai_result["final_category"]["id"]
+                    search_method = "exact"
+                    log.info(f"[SEARCH] Используем точную категорию: id={category_id}, "
+                             f"name='{ai_result['final_category']['name']}'")
+                else:
+                    # Fallback — ILIKE по normalized_query
+                    category = normalized_query or category or query
+                    search_method = "fallback"
+                    log.info(f"[SEARCH] Fallback ILIKE по: '{category}'")
+            except Exception as e:
+                log.error(f"[SEARCH] Ошибка AI-категоризации: {e}")
+                # При ошибке используем legacy парсер
+                ai_filters = parse_query_with_ai(query)
+                if ai_filters:
+                    city = ai_filters.get("city") or city
+                    category = ai_filters.get("category") or category
+                    has_phone = ai_filters.get("has_phone") or has_phone
+                    has_email = ai_filters.get("has_email") or has_email
+                    has_website = ai_filters.get("has_website") or has_website
+                search_method = "legacy"
+            finally:
+                release_db_connection(conn_for_ai)
+        else:
+            # Не удалось получить соединение для AI — legacy
+            ai_filters = parse_query_with_ai(query)
+            if ai_filters:
+                city = ai_filters.get("city") or city
+                category = ai_filters.get("category") or category
+                has_phone = ai_filters.get("has_phone") or has_phone
+                has_email = ai_filters.get("has_email") or has_email
+                has_website = ai_filters.get("has_website") or has_website
+            search_method = "legacy"
     elif query:
         # Fallback на локальный парсер если OpenAI недоступна
         ai_filters = parse_query_fallback(query)
@@ -329,10 +391,11 @@ async def get_companies(
             has_phone = ai_filters.get("has_phone") or has_phone
             has_email = ai_filters.get("has_email") or has_email
             has_website = ai_filters.get("has_website") or has_website
+        search_method = "regex"
 
     # Проверяем кеш
     cache_params = {
-        "city": city, "category": category,
+        "city": city, "category": category, "category_id": category_id,
         "has_email": has_email, "has_phone": has_phone,
         "has_website": has_website, "limit": limit, "offset": offset
     }
@@ -347,17 +410,18 @@ async def get_companies(
     try:
         cur = conn.cursor()
         where, params = build_filter_clause(
-            city, category, has_email, has_phone, has_website
+            city, category, has_email, has_phone, has_website,
+            category_id=category_id, category_exact=category_exact
         )
 
         # Основной запрос
-        query = (
+        sql_query = (
             COMPANIES_LIST_SQL + where +
             " GROUP BY c.id, c.name, c.city, c.domain, c.website, c.created_at,"
             " ph.phones, em.emails, addr.address, soc.socials"
             " ORDER BY c.name LIMIT %s OFFSET %s"
         )
-        cur.execute(query, params + [limit, offset])
+        cur.execute(sql_query, params + [limit, offset])
         rows = cur.fetchall()
 
         # COUNT (тот же WHERE, но без LATERAL)
@@ -365,7 +429,38 @@ async def get_companies(
         cur.execute(count_query, params)
         total = cur.fetchone()["total"]
 
+        # Если exact дал 0 результатов — fallback на ILIKE
+        if total == 0 and search_method == "exact" and normalized_query:
+            log.warning(f"[SEARCH] Exact дал 0 результатов, fallback ILIKE по: '{normalized_query}'")
+            where, params = build_filter_clause(
+                city, None, has_email, has_phone, has_website,
+                category_id=None, category_exact=None
+            )
+            # Добавляем ILIKE по normalized_query
+            if where:
+                where += " AND cat.name ILIKE %s"
+            else:
+                where = " WHERE cat.name ILIKE %s"
+            params.append(f"%{normalized_query}%")
+
+            sql_query = (
+                COMPANIES_LIST_SQL + where +
+                " GROUP BY c.id, c.name, c.city, c.domain, c.website, c.created_at,"
+                " ph.phones, em.emails, addr.address, soc.socials"
+                " ORDER BY c.name LIMIT %s OFFSET %s"
+            )
+            cur.execute(sql_query, params + [limit, offset])
+            rows = cur.fetchall()
+
+            count_query = COMPANIES_COUNT_SQL + where
+            cur.execute(count_query, params)
+            total = cur.fetchone()["total"]
+            search_method = "fallback_ilike"
+            log.info(f"[SEARCH] Fallback ILIKE результат: {total} компаний")
+
         cur.close()
+
+        log.info(f"[SEARCH] RESULT COUNT: {total}, METHOD: {search_method}")
 
         result = {
             "total": total,
