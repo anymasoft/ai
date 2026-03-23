@@ -144,6 +144,76 @@ def _llm_select_category(client, query: str, categories: List[Dict], step: str, 
         return None
 
 
+def _llm_filter_categories(client, query: str, categories: List[Dict], step: str) -> List[Dict]:
+    """Отфильтровать список категорий через LLM — оставить только бизнес-категории.
+
+    Args:
+        client: OpenAI клиент
+        query: поисковый запрос пользователя
+        categories: список {id, name} из БД
+        step: "ROOT" или "CHILD" — для логирования
+
+    Returns:
+        Отфильтрованный список {id, name}. Если LLM вернул пустой — исходный список (fail-safe).
+    """
+    if len(categories) <= 3:
+        # Слишком мало категорий — фильтрация не нужна
+        return categories
+
+    names = [c["name"] for c in categories]
+    names_str = "\n".join(f"- {n}" for n in names)
+
+    prompt = f"""Пользователь ищет: "{query}"
+
+Ниже список категорий из справочника 2ГИС. Пользователь ищет КОМПАНИИ (места, сервисы, организации).
+
+Твоя задача: убрать из списка категории, которые являются ТОВАРАМИ или ПРОДУКЦИЕЙ, и оставить только те, которые описывают ТИП БИЗНЕСА.
+
+Как определить:
+- "кто это?" (магазин, ресторан, мастерская, салон) → ОСТАВИТЬ
+- "что это?" (еда, напитки, мясо, одежда, мебель) → УБРАТЬ
+
+Примеры:
+- "Магазин продуктов" → ОСТАВИТЬ (это бизнес)
+- "Продукты питания" → УБРАТЬ (это товар)
+- "Ресторан" → ОСТАВИТЬ (это бизнес)
+- "Напитки" → УБРАТЬ (это товар)
+
+Из списка ниже оставь ТОЛЬКО бизнес-категории, релевантные запросу "{query}".
+Верни JSON: {{"categories": ["название1", "название2", ...]}}
+
+Список категорий:
+{names_str}
+
+ТОЛЬКО JSON, ничего больше."""
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0,
+            max_tokens=1000
+        )
+        content = response.choices[0].message.content.strip()
+        parsed = json.loads(content)
+        filtered_names = set(n.strip().lower() for n in parsed.get("categories", []))
+
+        # Сопоставляем обратно с id
+        filtered = [c for c in categories if c["name"].strip().lower() in filtered_names]
+
+        log.info(f"[SEARCH] {step} filter: {len(categories)} → {len(filtered)}")
+
+        # Fail-safe: если LLM убрал всё — вернуть исходный список
+        if not filtered:
+            log.warning(f"[SEARCH] {step} filter вернул пустой список, используем исходный")
+            return categories
+
+        return filtered
+    except Exception as e:
+        log.error(f"[SEARCH] Ошибка LLM filter ({step}): {e}")
+        return categories
+
+
 def _llm_normalize_query(client, query: str) -> str:
     """Нормализовать запрос: убрать мусор, оставить суть."""
     prompt = f"""Нормализуй поисковый запрос. Убери слова-мусор (срочно, дешево, рядом, быстро, недорого, сегодня, где, как найти и т.д.).
@@ -255,6 +325,9 @@ def resolve_category_with_ai(query: str, conn) -> Dict:
         log.warning("[SEARCH] Нет ROOT категорий в БД!")
         return result
 
+    # Фильтрация ROOT: убираем товарные категории
+    root_categories = _llm_filter_categories(client, query, root_categories, "ROOT")
+
     root_name = _llm_select_category(client, query, root_categories, "ROOT")
     root_cat = validate_category(root_name, root_categories) if root_name else None
 
@@ -281,6 +354,9 @@ def resolve_category_with_ai(query: str, conn) -> Dict:
         result["method"] = "exact"
         log.info(f"[SEARCH] FINAL CATEGORY: {root_cat['name']} (id={root_cat['id']}) [exact]")
         return result
+
+    # Фильтрация CHILD: убираем товарные категории
+    child_categories = _llm_filter_categories(client, query, child_categories, "CHILD")
 
     child_name = _llm_select_category(client, query, child_categories, "CHILD")
     child_cat = validate_category(child_name, child_categories) if child_name else None
