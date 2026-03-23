@@ -924,7 +924,7 @@ def build_all_rows(dump: dict, default_city: str = "") -> list:
                 # Сайт: извлекаем URL, фильтруем мусор
                 url = extract_contact_url(eaddr, eaddr_name)
                 if url:
-                    wwws.append(url.lower())
+                    wwws.append(url)
 
         # Рубрики
         rubs3 = []
