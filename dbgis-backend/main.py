@@ -567,12 +567,13 @@ async def start_enrichment(
     reset: bool = Query(False, description="Сбросить все в pending перед запуском"),
 ):
     """
-    Запуск обогащения контактов (фоновый subprocess).
+    Запуск обогащения контактов (фоновый subprocess с непрерывным циклом).
 
-    - batch_size: сколько компаний обработать за один запуск
+    - batch_size: размер одного батча (default 100)
     - reset=true: сбросить все компании в pending (начать заново)
 
-    Если нет компаний со статусом pending/failed — автоматически сбрасывает все в pending.
+    Процесс крутится в цикле до обогащения всех pending компаний.
+    Если нет pending — автоматически сбрасывает все в pending.
     """
     conn = get_db_connection()
     if conn is None:
@@ -603,6 +604,8 @@ async def start_enrichment(
         args = [sys.executable, os.path.join(os.path.dirname(__file__), "enrich.py")]
         if reset or pending == 0:
             args.append("--start")
+        # Всегда крутим цикл до конца (при запуске с кнопки)
+        args.append("--continuous")
         args += ["--batch-size", str(batch_size)]
 
     finally:

@@ -194,40 +194,76 @@ SELECT companies WHERE enrichment_status IN ('pending','failed') AND domain IS N
 2. SELECT только `pending` и `failed` — уже `done` не трогаются
 3. `--start` флаг: сброс всех в `pending` (начать заново)
 
+### Валидация доменов перед обогащением
+- **Функция**: `is_valid_domain(domain: str) -> bool` в `enrich.py`
+- **Принимает**: домены 2-го уровня (`example.com`) и `www.*` субдомены (`www.example.com`)
+- **Отбрасывает**: поддомены 3+ уровня (кроме www), домены с пробелами, домены без точки
+- **Применение**: при обработке батча невалидные домены помечаются как `done` и пропускаются
+- **Причина**: избежать обогащения поддоменов, которые часто редиректят на основной домен или не имеют контактной информации
+
 ### Запуск enrich.py
 ```bash
-python enrich.py                     # батч 100 компаний
-python enrich.py --batch-size 500    # другой размер батча
-python enrich.py --company-id 12345  # одна компания
-python enrich.py --status            # статистика
-python enrich.py --start             # сброс в pending + запуск
+python enrich.py                              # один батч 100 компаний, затем выход
+python enrich.py --continuous                # крутить цикл до конца всех pending
+python enrich.py --batch-size 500            # другой размер батча
+python enrich.py --batch-size 200 --continuous  # цикл с батчами по 200
+python enrich.py --company-id 12345          # одна компания
+python enrich.py --status                    # статистика
+python enrich.py --start                     # сброс всех в pending + запуск
+python enrich.py --start --continuous        # сброс + цикл до конца
 
-# Cron (каждые 30 минут):
+# Cron (каждые 30 минут, один батч):
 */30 * * * * cd /path/to/dbgis-backend && python enrich.py --batch-size 200 >> logs/enrich.log 2>&1
+
+# Для непрерывного обогащения (например, ночное время):
+0 2 * * * cd /path/to/dbgis-backend && python enrich.py --batch-size 500 --continuous >> logs/enrich.log 2>&1
 ```
 
 ### API endpoints обогащения
 | Метод | Путь | Описание |
 |-------|------|----------|
-| POST | `/api/enrich/start` | Запустить enrich.py (background subprocess) |
-| GET | `/api/enrich/status` | Статистика: total/pending/processing/done/failed/progress_percent |
+| POST | `/api/enrich/start` | Запустить enrich.py в режиме непрерывного цикла |
+| GET | `/api/enrich/status` | Статистика: total/pending/processing/done/failed/progress_percent/is_running |
 
 `POST /api/enrich/start` параметры:
-- `batch_size` (int, default 100) — размер батча
+- `batch_size` (int, default 100) — размер одного батча
 - `reset` (bool, default false) — сбросить все в pending перед запуском
+
+Поведение:
+- Запускает `enrich.py --continuous`, который крутит цикл до обогащения всех pending компаний
+- Если pending = 0, автоматически сбрасывает все в 'pending' и начинает цикл
+- Батчи обрабатываются по очереди, между ними паузы для снижения нагрузки
 
 ### UI: прогресс-бар и auto-refresh
 - **Прогресс-бар**: polling `/api/enrich/status` каждые **2 сек**
-- **Таблица**: polling `/api/companies` каждые **5 сек** (если был активный поиск)
 - **Кнопка "Обогатить"**: `POST /api/enrich/start`
 - **Кнопка "Заново"**: `POST /api/enrich/start?reset=true`
 - Кнопка блокируется пока `is_running=true` (processing > 0)
+
+### UI: таблица компаний с раскрываемыми строками
+- **5 компактных колонок**: Название, Город, Домен, Телефон, Email
+- **Стрелка-индикатор**: `▶` перед названием (поворачивается при раскрытии)
+- **Клик по строке**: раскрывает детали компании
+- **Ленивая загрузка**: детали загружаются через `/api/companies/{id}` только при открытии
+- **Кеш деталей**: `detailsCache` сохраняет загруженные данные во время сессии
+- **Сохранение состояния**: открытые строки остаются открытыми при auto-refresh таблицы (каждые 5 сек)
+- **Детали включают**: адреса (без 'enriched'), все телефоны, все email, категории, соцсети, сайт
+- **Интерактивные ссылки**: в деталях телефоны как `tel:`, email как `mailto:`, соцсети открываются в новой вкладке
+
+### UI: обогащение работает непрерывно
+- **Прогресс-бар**: обновляется каждые 2 сек (polling `/api/enrich/status`)
+- **Кнопка "Обогатить"** запускает цикл до конца всех pending компаний (флаг `--continuous`)
+- **Кнопка не блокируется**: остается крутящейся пока идет обогащение
+- **Таблица обновляется**: каждые 5 сек, показывая новые контакты в реальном времени
+- **Статус**: pending → processing → done/failed, счетчики обновляются при каждом завершении обогащения компании
 
 ### Виртуальный филиал для enriched телефонов
 Телефоны в БД привязаны к `branch_id`. Enrichment:
 1. Ищет первый существующий `branch` для компании
 2. Если нет ни одного — создаёт виртуальный: `address='enriched'`, `branch_hash=MD5('enriched_{id}')`
 3. `INSERT INTO phones ON CONFLICT DO NOTHING`
+4. В SQL-запросах (`/api/companies`, `/api/export`) виртуальные филиалы исключаются из `address` колонки через `AND b.address != 'enriched'` в LATERAL JOIN
+   - Это нужно чтобы пользователи видели только реальные адреса, но при этом имели доступ к обогащённым телефонам
 
 ### Идемпотентность
 - `INSERT INTO emails ... ON CONFLICT DO NOTHING`
