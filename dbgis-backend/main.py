@@ -34,12 +34,20 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from jinja2 import Environment, FileSystemLoader
 from dotenv import load_dotenv
 
-# AI-парсер запросов
+# FAISS семантический поиск категорий
 try:
-    from ai_parser import parse_query_with_ai, parse_query_fallback, resolve_category_with_ai
-    AI_PARSER_AVAILABLE = True
+    from faiss_service import find_category
+    FAISS_AVAILABLE = True
 except ImportError:
-    AI_PARSER_AVAILABLE = False
+    FAISS_AVAILABLE = False
+    log.warning("faiss_service недоступен. Семантический поиск категорий отключён.")
+
+# AI-парсер запросов (legacy — используется только parse_query_fallback для извлечения города/фильтров)
+try:
+    from ai_parser import parse_query_fallback
+    FALLBACK_PARSER_AVAILABLE = True
+except ImportError:
+    FALLBACK_PARSER_AVAILABLE = False
 
 # ============================================================
 # ГЛОБАЛЬНОЕ СОСТОЯНИЕ ОБОГАЩЕНИЯ (ОТКЛЮЧЕНО)
@@ -334,63 +342,35 @@ async def get_companies(
     normalized_query = None
     search_method = None
 
-    # Двухшаговая AI-категоризация если передан query
-    if query and AI_PARSER_AVAILABLE:
-        conn_for_ai = get_db_connection()
-        if conn_for_ai:
-            try:
-                ai_result = resolve_category_with_ai(query, conn_for_ai)
+    # FAISS семантический поиск категории
+    if query and FAISS_AVAILABLE:
+        try:
+            cat = find_category(query)
+            category_id = cat["id"]
+            normalized_query = cat["name"]
+            search_method = "faiss"
+            log.info(f"[SEARCH] FAISS category: {cat['name']} (id={cat['id']})")
+        except Exception as e:
+            log.error(f"[SEARCH] Ошибка FAISS: {e}")
+            search_method = "fallback"
 
-                # Город и фильтры из AI
-                city = ai_result.get("city") or city
-                has_phone = ai_result.get("has_phone") or has_phone
-                has_email = ai_result.get("has_email") or has_email
-                has_website = ai_result.get("has_website") or has_website
-                normalized_query = ai_result.get("normalized_query")
-
-                if ai_result.get("final_category") and ai_result.get("method") == "exact":
-                    # Точное совпадение — используем ID категории
-                    category_id = ai_result["final_category"]["id"]
-                    search_method = "exact"
-                    log.info(f"[SEARCH] Используем точную категорию: id={category_id}, "
-                             f"name='{ai_result['final_category']['name']}'")
-                else:
-                    # Fallback — ILIKE по normalized_query
-                    category = normalized_query or category or query
-                    search_method = "fallback"
-                    log.info(f"[SEARCH] Fallback ILIKE по: '{category}'")
-            except Exception as e:
-                log.error(f"[SEARCH] Ошибка AI-категоризации: {e}")
-                # При ошибке используем legacy парсер
-                ai_filters = parse_query_with_ai(query)
-                if ai_filters:
-                    city = ai_filters.get("city") or city
-                    category = ai_filters.get("category") or category
-                    has_phone = ai_filters.get("has_phone") or has_phone
-                    has_email = ai_filters.get("has_email") or has_email
-                    has_website = ai_filters.get("has_website") or has_website
-                search_method = "legacy"
-            finally:
-                release_db_connection(conn_for_ai)
-        else:
-            # Не удалось получить соединение для AI — legacy
-            ai_filters = parse_query_with_ai(query)
-            if ai_filters:
-                city = ai_filters.get("city") or city
-                category = ai_filters.get("category") or category
-                has_phone = ai_filters.get("has_phone") or has_phone
-                has_email = ai_filters.get("has_email") or has_email
-                has_website = ai_filters.get("has_website") or has_website
-            search_method = "legacy"
-    elif query:
-        # Fallback на локальный парсер если OpenAI недоступна
-        ai_filters = parse_query_fallback(query)
-        if ai_filters:
-            city = ai_filters.get("city") or city
-            category = ai_filters.get("category") or category
-            has_phone = ai_filters.get("has_phone") or has_phone
-            has_email = ai_filters.get("has_email") or has_email
-            has_website = ai_filters.get("has_website") or has_website
+        # Извлекаем город и фильтры контактов из запроса (простой парсер)
+        if FALLBACK_PARSER_AVAILABLE:
+            filters = parse_query_fallback(query)
+            if filters:
+                city = filters.get("city") or city
+                has_phone = filters.get("has_phone") or has_phone
+                has_email = filters.get("has_email") or has_email
+                has_website = filters.get("has_website") or has_website
+    elif query and FALLBACK_PARSER_AVAILABLE:
+        # FAISS недоступен — fallback парсер
+        filters = parse_query_fallback(query)
+        if filters:
+            city = filters.get("city") or city
+            category = filters.get("category") or category
+            has_phone = filters.get("has_phone") or has_phone
+            has_email = filters.get("has_email") or has_email
+            has_website = filters.get("has_website") or has_website
         search_method = "regex"
 
     # Проверяем кеш
