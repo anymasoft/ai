@@ -5,6 +5,12 @@ faiss_service.py — Семантический поиск категорий ч
 Заменяет LLM-логику выбора категорий.
 Модель и индекс загружаются ОДИН РАЗ при импорте модуля.
 Latency: < 50 мс на запрос.
+
+Формат mapping:
+  {"0": {"name": "Кафе", "ids": [127, 4821, 9932]}, ...}
+
+find_category() возвращает:
+  {"name": "Кафе", "ids": [127, 4821, 9932]}
 """
 
 import json
@@ -58,7 +64,7 @@ def find_category(query: str) -> dict:
     """Находит наиболее подходящую категорию для запроса через FAISS.
 
     Returns:
-        {"id": int, "name": str}
+        {"name": str, "ids": list[int]}
     """
     normalized = normalize_query(query)
     # E5 требует префикс "query:" для запросов
@@ -71,8 +77,8 @@ def find_category(query: str) -> dict:
     candidates = [mapping[str(i)] for i in I[0]]
     best = pick_best(normalized, candidates)
 
-    log.info("[FAISS] '%s' → '%s' (id=%d), top-5: %s",
-             query, best["name"], best["id"],
+    log.info("[FAISS] '%s' → '%s' (ids=%s), top-5: %s",
+             query, best["name"], best["ids"],
              [c["name"] for c in candidates])
 
     return best
