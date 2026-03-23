@@ -50,6 +50,7 @@ COL = {
     "instagram": 20,
     "icq": 21,
     "jabber": 22,
+    "telegram": 23,
 }
 
 SOCIAL_COLS = [
@@ -60,6 +61,7 @@ SOCIAL_COLS = [
     ("instagram", 20),
     ("icq", 21),
     ("jabber", 22),
+    ("telegram", 23),
 ]
 
 # ============================================================
