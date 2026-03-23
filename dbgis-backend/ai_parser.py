@@ -83,10 +83,28 @@ def _llm_select_category(client, query: str, categories: List[Dict], step: str, 
     names = [c["name"] for c in categories]
     names_str = "\n".join(f"- {n}" for n in names)
 
+    # Правило выбора бизнес-категорий (общее для обоих режимов)
+    business_rule = """ПРАВИЛО ВЫБОРА КАТЕГОРИИ:
+Пользователь ищет КОМПАНИИ, а не товары.
+Категории бывают двух типов:
+1. Тип бизнеса (компания, сервис, место) — отвечает на вопрос "кто это?"
+2. Тип товара (еда, продукция, вещи) — отвечает на вопрос "что это?"
+
+Выбирай ТОЛЬКО тип бизнеса. Товарные категории ЗАПРЕЩЕНЫ.
+
+Примеры:
+- "продуктовые магазины" → выбери категорию про магазины, НЕ про продукты питания
+- "где поесть" → выбери категорию про рестораны/кафе, НЕ про еду/блюда
+- "купить цветы" → выбери категорию про цветочные магазины, НЕ про растения
+
+Если есть выбор между товаром и бизнесом — ВСЕГДА выбирай бизнес."""
+
     if strict:
         prompt = f"""КРИТИЧЕСКАЯ ЗАДАЧА. Ошибка недопустима.
 
 Пользователь ищет: "{query}"
+
+{business_rule}
 
 Выбери СТРОГО ОДНУ категорию из списка ниже. ЗАПРЕЩЕНО изменять текст, добавлять слова или придумывать новые категории.
 Верни ТОЛЬКО название категории из списка — ничего больше.
@@ -94,10 +112,12 @@ def _llm_select_category(client, query: str, categories: List[Dict], step: str, 
 Список категорий:
 {names_str}
 
-Если ни одна не подходит — выбери НАИБОЛЕЕ БЛИЗКУЮ.
+Если ни одна не подходит — выбери НАИБОЛЕЕ БЛИЗКУЮ категорию бизнеса.
 Ответ — ТОЛЬКО название категории, без кавычек, без пояснений."""
     else:
         prompt = f"""Пользователь ищет: "{query}"
+
+{business_rule}
 
 Выбери ОДНУ наиболее подходящую категорию из списка ниже.
 Верни ТОЛЬКО название категории из списка — ничего больше.
@@ -122,6 +142,96 @@ def _llm_select_category(client, query: str, categories: List[Dict], step: str, 
     except Exception as e:
         log.error(f"[SEARCH] Ошибка LLM на шаге {step}: {e}")
         return None
+
+
+def _llm_filter_categories(client, query: str, categories: List[Dict], step: str) -> List[Dict]:
+    """Отфильтровать список категорий через LLM — оставить только бизнес-категории.
+
+    Args:
+        client: OpenAI клиент
+        query: поисковый запрос пользователя
+        categories: список {id, name} из БД
+        step: "ROOT" или "CHILD" — для логирования
+
+    Returns:
+        Отфильтрованный список {id, name}. Если LLM вернул пустой — исходный список (fail-safe).
+    """
+    if len(categories) <= 3:
+        # Слишком мало категорий — фильтрация не нужна
+        return categories
+
+    names = [c["name"] for c in categories]
+    names_str = "\n".join(f"- {n}" for n in names)
+
+    prompt = f"""Пользователь вводит поисковый запрос: "{query}"
+Пользователь ищет КОМПАНИИ (места, сервисы, организации).
+
+Твоя задача — отфильтровать список категорий.
+
+ПРАВИЛА:
+1. Оставь только категории, которые являются ТИПОМ БИЗНЕСА (место, компания, сервис)
+2. УДАЛИ категории, которые являются:
+   - товарами
+   - продуктами
+   - видами еды
+   - материалами
+3. Оставь только категории, которые ЛОГИЧЕСКИ СООТВЕТСТВУЮТ запросу пользователя
+4. УДАЛИ категории, которые не связаны с запросом
+
+ПРИМЕР:
+Запрос: "продуктовые магазины"
+Список:
+- Продукты питания ❌ (товар)
+- Напитки ❌ (товар)
+- Магазин продуктов ✅ (бизнес + релевантно)
+- Супермаркет ✅ (бизнес + релевантно)
+- Автосервис ❌ (бизнес, но НЕ релевантно)
+Результат: ["Магазин продуктов", "Супермаркет"]
+
+ПРИМЕР:
+Запрос: "где поесть"
+Результат: ["Ресторан", "Кафе", "Бар"]
+
+ВАЖНО:
+- Верни НЕ БОЛЕЕ 10 категорий
+- Если подходящих мало — верни сколько есть
+- Если не уверен — оставь категорию (лучше лишнее, чем пусто)
+- НЕ придумывай новые категории — используй ТОЛЬКО из списка
+- НЕДОПУСТИМО ничего не возвращать — хоть что-то ОБЯЗАТЕЛЬНО должно быть!
+
+Список категорий:
+{names_str}
+
+ФОРМАТ ОТВЕТА:
+{{"categories": ["название1", "название2"]}}
+
+ТОЛЬКО JSON, ничего больше."""
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0,
+            max_tokens=1000
+        )
+        content = response.choices[0].message.content.strip()
+        parsed = json.loads(content)
+        filtered_names = set(n.strip().lower() for n in parsed.get("categories", []))
+
+        # Сопоставляем обратно с id
+        filtered = [c for c in categories if c["name"].strip().lower() in filtered_names]
+
+        log.info(f"[SEARCH] {step} filter: {len(categories)} → {len(filtered)}")
+
+        # Fail-safe: если LLM убрал всё — вернуть исходный список
+        if not filtered:
+            log.warning(f"[SEARCH] {step} filter вернул пустой список, используем исходный")
+            return categories
+
+        return filtered
+    except Exception as e:
+        log.error(f"[SEARCH] Ошибка LLM filter ({step}): {e}")
+        return categories
 
 
 def _llm_normalize_query(client, query: str) -> str:
@@ -235,6 +345,9 @@ def resolve_category_with_ai(query: str, conn) -> Dict:
         log.warning("[SEARCH] Нет ROOT категорий в БД!")
         return result
 
+    # Фильтрация ROOT: убираем товарные категории
+    root_categories = _llm_filter_categories(client, query, root_categories, "ROOT")
+
     root_name = _llm_select_category(client, query, root_categories, "ROOT")
     root_cat = validate_category(root_name, root_categories) if root_name else None
 
@@ -261,6 +374,9 @@ def resolve_category_with_ai(query: str, conn) -> Dict:
         result["method"] = "exact"
         log.info(f"[SEARCH] FINAL CATEGORY: {root_cat['name']} (id={root_cat['id']}) [exact]")
         return result
+
+    # Фильтрация CHILD: убираем товарные категории
+    child_categories = _llm_filter_categories(client, query, child_categories, "CHILD")
 
     child_name = _llm_select_category(client, query, child_categories, "CHILD")
     child_cat = validate_category(child_name, child_categories) if child_name else None
