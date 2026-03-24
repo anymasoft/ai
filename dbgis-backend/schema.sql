@@ -101,6 +101,11 @@ CREATE INDEX idx_emails_company_id ON emails(company_id);
 CREATE INDEX idx_socials_company_id ON socials(company_id);
 CREATE INDEX idx_company_categories_company_id ON company_categories(company_id);
 CREATE INDEX idx_company_categories_category_id ON company_categories(category_id);
+
+-- Covering index для оптимизации WHERE cc.category_id = ANY(%s) → Index-Only Scan
+-- Обратный порядок (category_id, company_id) покрывает запрос без heap fetch.
+-- PK(company_id, category_id) не подходит: B-tree ищет по первому столбцу.
+CREATE INDEX idx_cc_category_company ON company_categories(category_id, company_id);
 CREATE INDEX idx_categories_parent_id ON categories(parent_id);
 CREATE INDEX idx_categories_name ON categories(name);
 
