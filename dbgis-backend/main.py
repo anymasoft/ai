@@ -537,17 +537,17 @@ async def get_companies(
         category_ids = parsed_filter_ids
         print(f"CATEGORY FILTER OVERRIDE (no query): {parsed_filter_ids}")
 
-    # Детекция города в запросе → suggested_city (НЕ применяется автоматически)
-    suggested_city = None
+    # Детекция города в запросе → жёсткий фильтр (пользователь явно указал город)
     if query and not parsed_city_ids:
         detected = detect_city_in_query(query)
         if detected:
-            suggested_city = detected
-            print(f"DETECTED CITY: {detected['name']} (id={detected['id']})")
+            parsed_city_ids = [detected["id"]]
+            print(f"DETECTED CITY: {detected['name']} (id={detected['id']}) → APPLIED AS FILTER")
 
-    # Если city_ids выбраны в UI — НЕ использовать город из текста
+    # Если city_ids заданы (из UI или из детекции) — НЕ использовать текстовый city
+    suggested_city = None
     if parsed_city_ids:
-        city = None  # UI-фильтр имеет приоритет
+        city = None
         print(f"CITY_IDS FILTER: {parsed_city_ids}")
 
     # ORDER BY — relevance сортировка всегда (контакты наверх)
@@ -625,7 +625,7 @@ async def get_companies(
             "data": decode_rows(rows)
         }
 
-        # Подсказка города (не применяется автоматически)
+        # Подсказка города (только если город НЕ был автоматически определён из текста)
         if suggested_city:
             result["suggested_city"] = suggested_city
 
@@ -751,10 +751,6 @@ async def export_csv(
         except ValueError:
             pass
 
-    # Если city_ids — не использовать город из текста
-    if parsed_city_ids:
-        city = None
-
     # FAISS-поиск для экспорта (аналогично /api/companies)
     category_ids = None
     if query and FAISS_AVAILABLE:
@@ -799,6 +795,17 @@ async def export_csv(
                 has_phone = filters.get("has_phone") or has_phone
                 has_email = filters.get("has_email") or has_email
                 has_website = filters.get("has_website") or has_website
+
+    # Детекция города в запросе → жёсткий фильтр (аналогично /api/companies)
+    if query and not parsed_city_ids:
+        detected = detect_city_in_query(query)
+        if detected:
+            parsed_city_ids = [detected["id"]]
+            print(f"[EXPORT] DETECTED CITY: {detected['name']} (id={detected['id']}) → APPLIED AS FILTER")
+
+    # Если city_ids заданы — не использовать текстовый city
+    if parsed_city_ids:
+        city = None
 
     conn = get_db_connection()
     if conn is None:
