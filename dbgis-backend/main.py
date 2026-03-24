@@ -196,6 +196,95 @@ def release_db_connection(conn):
 # PostgreSQL выполняет LATERAL один раз на строку (как JOIN),
 # а не как подзапрос в SELECT (который планировщик может не оптимизировать).
 # GROUP BY c.id без DISTINCT — categories агрегируются через STRING_AGG.
+#
+# ОПТИМИЗАЦИЯ: двухфазный запрос.
+# Фаза 1 (CTE filtered): фильтрация + сортировка + LIMIT/OFFSET без LATERAL.
+#   EXISTS вместо STRING_AGG для определения has_phones/has_emails (тот же boolean).
+# Фаза 2: LATERAL только для отобранных строк (≤ LIMIT, обычно 100).
+#   Без двухфазности LATERAL выполняется для ВСЕХ строк WHERE (тысячи в coverage mode).
+
+# --- Фаза 1: фильтрация company_id (без LATERAL — быстро) ---
+# {where} и {having} подставляются из build_filter_clause()
+# {order_by}, LIMIT, OFFSET подставляются из вызывающего кода
+COMPANIES_FILTER_SQL = """
+    SELECT c.id,
+           (EXISTS (
+               SELECT 1 FROM phones p
+               JOIN branches b ON p.branch_id = b.id
+               WHERE b.company_id = c.id
+           )) as has_phones,
+           (EXISTS (
+               SELECT 1 FROM emails e WHERE e.company_id = c.id
+           )) as has_emails,
+           (c.domain IS NOT NULL AND c.domain != '') as has_domain
+    FROM companies c
+    LEFT JOIN company_categories cc ON c.id = cc.company_id
+    LEFT JOIN categories cat ON cc.category_id = cat.id
+"""
+
+# --- Фаза 2: подгрузка данных для отобранных id (LATERAL только здесь) ---
+COMPANIES_ENRICH_SQL = """
+    SELECT
+        c.id,
+        c.name,
+        c.city,
+        c.domain,
+        c.website,
+        c.created_at,
+        COALESCE(ph.phones, '') as phones,
+        COALESCE(em.emails, '') as emails,
+        COALESCE(addr.address, '') as address,
+        COALESCE(soc.socials, '') as socials,
+        STRING_AGG(DISTINCT cat.name, ', ') as categories
+    FROM filtered f
+    JOIN companies c ON c.id = f.id
+    LEFT JOIN LATERAL (
+        SELECT STRING_AGG(p.phone, ', ' ORDER BY CASE WHEN p.source = 'enrichment' THEN 1 ELSE 2 END) as phones
+        FROM phones p
+        JOIN branches b ON p.branch_id = b.id
+        WHERE b.company_id = c.id
+    ) ph ON TRUE
+    LEFT JOIN LATERAL (
+        SELECT STRING_AGG(e.email, ', ' ORDER BY CASE WHEN e.source = 'enrichment' THEN 1 ELSE 2 END) as emails
+        FROM emails e
+        WHERE e.company_id = c.id
+    ) em ON TRUE
+    LEFT JOIN LATERAL (
+        SELECT STRING_AGG(DISTINCT b.address, '; ') as address
+        FROM branches b
+        WHERE b.company_id = c.id
+          AND b.address IS NOT NULL AND b.address != ''
+          AND b.address != 'enriched'
+    ) addr ON TRUE
+    LEFT JOIN LATERAL (
+        SELECT STRING_AGG(s.type || ':' || s.url, ', ') as socials
+        FROM socials s
+        WHERE s.company_id = c.id
+    ) soc ON TRUE
+    LEFT JOIN company_categories cc ON c.id = cc.company_id
+    LEFT JOIN categories cat ON cc.category_id = cat.id
+    GROUP BY c.id, c.name, c.city, c.domain, c.website, c.created_at,
+             ph.phones, em.emails, addr.address, soc.socials,
+             f.has_phones, f.has_emails, f.has_domain
+"""
+
+# --- Старый монолитный запрос (закомментирован, сохранён для сравнения) ---
+# COMPANIES_LIST_SQL_OLD = """
+#     SELECT
+#         c.id, c.name, c.city, c.domain, c.website, c.created_at,
+#         COALESCE(ph.phones, '') as phones,
+#         COALESCE(em.emails, '') as emails,
+#         COALESCE(addr.address, '') as address,
+#         COALESCE(soc.socials, '') as socials,
+#         STRING_AGG(DISTINCT cat.name, ', ') as categories
+#     FROM companies c
+#     LEFT JOIN LATERAL (...phones...) ph ON TRUE
+#     LEFT JOIN LATERAL (...emails...) em ON TRUE
+#     LEFT JOIN LATERAL (...address...) addr ON TRUE
+#     LEFT JOIN LATERAL (...socials...) soc ON TRUE
+#     LEFT JOIN company_categories cc ON c.id = cc.company_id
+#     LEFT JOIN categories cat ON cc.category_id = cat.id
+# """
 COMPANIES_LIST_SQL = """
     SELECT
         c.id,
@@ -237,8 +326,17 @@ COMPANIES_LIST_SQL = """
     LEFT JOIN categories cat ON cc.category_id = cat.id
 """
 
-# COUNT использует ту же фильтрацию, но без LATERAL (не нужны данные контактов)
+# COUNT: без LATERAL (не нужны данные контактов).
+# Оптимизация: LEFT JOIN categories убран (не нужен для подсчёта, кроме ILIKE по cat.name).
+# Когда фильтр по cat.name ILIKE — используется COMPANIES_COUNT_SQL_WITH_CAT.
 COMPANIES_COUNT_SQL = """
+    SELECT COUNT(DISTINCT c.id) as total
+    FROM companies c
+    LEFT JOIN company_categories cc ON c.id = cc.company_id
+"""
+
+# COUNT с JOIN categories — только для фильтра cat.name ILIKE
+COMPANIES_COUNT_SQL_WITH_CAT = """
     SELECT COUNT(DISTINCT c.id) as total
     FROM companies c
     LEFT JOIN company_categories cc ON c.id = cc.company_id
@@ -476,7 +574,9 @@ async def get_companies(
         print(f"FAISS CATEGORY_IDS: {len(faiss_ids)} (тип: category_id)")
 
         if mode == "coverage":
-            # Recursive CTE — все дочерние категории через parent_id
+            # Recursive CTE — все дочерние категории через parent_id.
+            # Используем отдельный коннект из пула (основной conn создаётся позже
+            # после определения всех параметров фильтрации).
             expand_conn = get_db_connection()
             if expand_conn is None:
                 raise HTTPException(status_code=503, detail="Database unavailable (expand)")
@@ -550,15 +650,6 @@ async def get_companies(
         city = None
         print(f"CITY_IDS FILTER: {parsed_city_ids}")
 
-    # ORDER BY — relevance сортировка всегда (контакты наверх)
-    order_clause = (
-        " ORDER BY"
-        " (COALESCE(ph.phones, '') != '') DESC,"
-        " (COALESCE(em.emails, '') != '') DESC,"
-        " (c.domain IS NOT NULL AND c.domain != '') DESC,"
-        " c.name ASC"
-    )
-
     # Проверяем кеш
     cache_params = {
         "city": city, "category": category,
@@ -586,30 +677,61 @@ async def get_companies(
             city_ids=parsed_city_ids
         )
 
-        # Основной запрос
+        # --- Двухфазный запрос (оптимизация: LATERAL только для LIMIT строк) ---
+        # Фаза 1: CTE filtered — фильтрация + сортировка + LIMIT (без LATERAL)
+        # Фаза 2: LATERAL подгрузка данных только для отобранных company_id
+        #
+        # EXISTS в фазе 1 эквивалентен (COALESCE(STRING_AGG(...), '') != '') из старого запроса:
+        #   STRING_AGG по пустому набору → NULL → COALESCE(NULL, '') → '' → ('' != '') = false
+        #   EXISTS по пустому набору → false
+        # Результат идентичен.
         sql_query = (
-            COMPANIES_LIST_SQL + where +
-            " GROUP BY c.id, c.name, c.city, c.domain, c.website, c.created_at,"
-            " ph.phones, em.emails, addr.address, soc.socials"
-            + having + order_clause + " LIMIT %s OFFSET %s"
+            "WITH filtered AS ("
+            + COMPANIES_FILTER_SQL + where
+            + " GROUP BY c.id" + having
+            + " ORDER BY has_phones DESC, has_emails DESC, has_domain DESC, c.name ASC"
+            + " LIMIT %s OFFSET %s"
+            + ")"
+            + COMPANIES_ENRICH_SQL
+            + " ORDER BY f.has_phones DESC, f.has_emails DESC, f.has_domain DESC, c.name ASC"
         )
         cur.execute(sql_query, params + having_params + [limit, offset])
         rows = cur.fetchall()
 
+        # --- Старый монолитный запрос (закомментирован для сравнения) ---
+        # order_clause = (
+        #     " ORDER BY"
+        #     " (COALESCE(ph.phones, '') != '') DESC,"
+        #     " (COALESCE(em.emails, '') != '') DESC,"
+        #     " (c.domain IS NOT NULL AND c.domain != '') DESC,"
+        #     " c.name ASC"
+        # )
+        # sql_query = (
+        #     COMPANIES_LIST_SQL + where +
+        #     " GROUP BY c.id, c.name, c.city, c.domain, c.website, c.created_at,"
+        #     " ph.phones, em.emails, addr.address, soc.socials"
+        #     + having + order_clause + " LIMIT %s OFFSET %s"
+        # )
+        # cur.execute(sql_query, params + having_params + [limit, offset])
+        # rows = cur.fetchall()
+
         # COUNT (с HAVING для AND-пересечения)
+        # Оптимизация: JOIN categories убран, если фильтр не по cat.name ILIKE
+        needs_cat_join = bool(category)
         if having:
             count_query = (
                 "SELECT COUNT(*) as total FROM ("
                 "  SELECT c.id FROM companies c"
                 "  LEFT JOIN company_categories cc ON c.id = cc.company_id"
-                "  LEFT JOIN categories cat ON cc.category_id = cat.id"
-                + where +
-                "  GROUP BY c.id" + having +
-                ") sub"
+                + ("  LEFT JOIN categories cat ON cc.category_id = cat.id" if needs_cat_join else "")
+                + where
+                + "  GROUP BY c.id" + having
+                + ") sub"
             )
             cur.execute(count_query, params + having_params)
         else:
-            count_query = COMPANIES_COUNT_SQL + where
+            count_base = COMPANIES_COUNT_SQL_WITH_CAT if needs_cat_join else COMPANIES_COUNT_SQL
+            count_query = count_base + where
             cur.execute(count_query, params)
         total = cur.fetchone()["total"]
 
@@ -819,14 +941,31 @@ async def export_csv(
             city_ids=parsed_city_ids
         )
 
-        query = (
-            COMPANIES_LIST_SQL + where +
-            " GROUP BY c.id, c.name, c.city, c.domain, c.website, c.created_at,"
-            " ph.phones, em.emails, addr.address, soc.socials"
-            + having + " ORDER BY c.name LIMIT %s"
+        # Двухфазный запрос (аналогично /api/companies)
+        # Export сортирует по c.name, не по has_phones/has_emails
+        export_query = (
+            "WITH filtered AS ("
+            + COMPANIES_FILTER_SQL + where
+            + " GROUP BY c.id" + having
+            + " ORDER BY c.name ASC"
+            + " LIMIT %s"
+            + ")"
+            + COMPANIES_ENRICH_SQL
+            + " ORDER BY c.name ASC"
         )
-        cur.execute(query, params + having_params + [limit])
+        cur.execute(export_query, params + having_params + [limit])
         rows = cur.fetchall()
+
+        # --- Старый монолитный запрос (закомментирован для сравнения) ---
+        # query = (
+        #     COMPANIES_LIST_SQL + where +
+        #     " GROUP BY c.id, c.name, c.city, c.domain, c.website, c.created_at,"
+        #     " ph.phones, em.emails, addr.address, soc.socials"
+        #     + having + " ORDER BY c.name LIMIT %s"
+        # )
+        # cur.execute(query, params + having_params + [limit])
+        # rows = cur.fetchall()
+
         cur.close()
 
         # Формирование CSV
