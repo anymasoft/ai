@@ -109,8 +109,12 @@ def step2_truncate_tables(conn):
     cur = conn.cursor()
 
     for table in TRUNCATE_ORDER:
-        cur.execute(f"TRUNCATE TABLE {table} CASCADE")
-        print(f"  TRUNCATE {table} — OK")
+        try:
+            cur.execute(f"TRUNCATE TABLE {table} CASCADE")
+            print(f"  TRUNCATE {table} — OK")
+        except Exception:
+            conn.rollback()
+            print(f"  TRUNCATE {table} — пропуск (таблица не существует)")
 
     conn.commit()
     cur.close()
@@ -134,14 +138,18 @@ def step3_reset_sequences(conn):
     ]
 
     for table, col in tables_with_serial:
-        cur.execute(f"""
-            SELECT setval(
-                pg_get_serial_sequence('{table}', '{col}'),
-                1,
-                false
-            )
-        """)
-        print(f"  setval({table}.{col}) → 1")
+        try:
+            cur.execute(f"""
+                SELECT setval(
+                    pg_get_serial_sequence('{table}', '{col}'),
+                    1,
+                    false
+                )
+            """)
+            print(f"  setval({table}.{col}) → 1")
+        except Exception:
+            conn.rollback()
+            print(f"  setval({table}.{col}) — пропуск (таблица не существует)")
 
     conn.commit()
     cur.close()
@@ -166,8 +174,11 @@ def step4_vacuum_analyze():
     cur.execute("VACUUM FULL")
 
     for table in VACUUM_TABLES:
-        print(f"  ANALYZE {table}...")
-        cur.execute(f"ANALYZE {table}")
+        try:
+            cur.execute(f"ANALYZE {table}")
+            print(f"  ANALYZE {table} — OK")
+        except Exception:
+            print(f"  ANALYZE {table} — пропуск (таблица не существует)")
 
     cur.close()
     vac_conn.close()
