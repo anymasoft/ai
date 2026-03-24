@@ -247,15 +247,12 @@ COMPANIES_COUNT_SQL = """
 
 
 def build_filter_clause(city, category, has_email, has_phone, has_website,
-                        category_ids=None, category_filter_id=None):
+                        category_ids=None):
     """Строит WHERE-условия и параметры для фильтрации компаний.
 
     Приоритет фильтрации по категории:
     1. category_ids — список ID категорий из FAISS + recursive потомки
     2. category — ILIKE поиск (ручной фильтр пользователя)
-
-    category_filter_id — дополнительный фильтр по одной категории (UI клик).
-    Сужает результат поверх FAISS, НЕ заменяет его.
     """
     clauses = []
     params = []
@@ -270,11 +267,6 @@ def build_filter_clause(city, category, has_email, has_phone, has_website,
     elif category:
         clauses.append("cat.name ILIKE %s")
         params.append(f"%{category}%")
-
-    # Дополнительный фильтр по конкретной категории (клик в UI)
-    if category_filter_id:
-        clauses.append("cc.category_id = %s")
-        params.append(category_filter_id)
 
     if has_email:
         clauses.append("EXISTS (SELECT 1 FROM emails WHERE company_id = c.id)")
@@ -340,9 +332,6 @@ async def get_companies(
 ):
     """Получить список компаний с фильтрами или AI-парсингом запроса."""
 
-    if category_filter_id:
-        print(f"CATEGORY FILTER: {category_filter_id}")
-
     category_ids = None
     search_method = None
 
@@ -390,6 +379,11 @@ async def get_companies(
         print(f"IDS COUNT: {len(category_ids)}")
         log.info(f"[SEARCH] mode={mode}, FAISS: {[c['name'] for c in top_categories]}, ids={len(category_ids)}")
 
+        # category_filter_id OVERRIDE: клик по категории заменяет FAISS-результат
+        if category_filter_id:
+            category_ids = [category_filter_id]
+            print(f"CATEGORY FILTER OVERRIDE: {category_filter_id}")
+
         # Извлекаем город и фильтры контактов из запроса (простой парсер)
         if FALLBACK_PARSER_AVAILABLE:
             filters = parse_query_fallback(query)
@@ -409,6 +403,11 @@ async def get_companies(
             has_email = filters.get("has_email") or has_email
             has_website = filters.get("has_website") or has_website
         search_method = "regex"
+
+    # category_filter_id OVERRIDE без query (клик по категории без текстового поиска)
+    if category_filter_id and not category_ids:
+        category_ids = [category_filter_id]
+        print(f"CATEGORY FILTER OVERRIDE (no query): {category_filter_id}")
 
     # ORDER BY — relevance сортировка всегда (контакты наверх)
     order_clause = (
@@ -440,8 +439,7 @@ async def get_companies(
         cur = conn.cursor()
         where, params = build_filter_clause(
             city, category, has_email, has_phone, has_website,
-            category_ids=category_ids,
-            category_filter_id=category_filter_id
+            category_ids=category_ids
         )
 
         # Основной запрос
