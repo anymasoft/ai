@@ -158,9 +158,28 @@ def reset_serial_sequence(pg_cur, table_name, column="id"):
 
 def sync_companies(sqlite_conn, pg_cur):
     print("--- SYNC companies START ---")
-    rows = sqlite_conn.execute(
-        "SELECT id, name, city, website, domain, created_at, updated_at FROM companies"
-    ).fetchall()
+
+    # Убеждаемся, что колонка city_id существует
+    pg_cur.execute("""
+        DO $$ BEGIN
+            ALTER TABLE companies ADD COLUMN city_id INTEGER REFERENCES cities(id);
+        EXCEPTION
+            WHEN duplicate_column THEN NULL;
+        END $$
+    """)
+
+    # Проверяем наличие city_id в SQLite (для совместимости со старыми БД)
+    sqlite_columns = [col[1] for col in sqlite_conn.execute("PRAGMA table_info(companies)").fetchall()]
+    has_city_id = "city_id" in sqlite_columns
+
+    if has_city_id:
+        rows = sqlite_conn.execute(
+            "SELECT id, name, city, city_id, website, domain, created_at, updated_at FROM companies"
+        ).fetchall()
+    else:
+        rows = sqlite_conn.execute(
+            "SELECT id, name, city, website, domain, created_at, updated_at FROM companies"
+        ).fetchall()
 
     data = []
     ids = []
@@ -168,22 +187,26 @@ def sync_companies(sqlite_conn, pg_cur):
     for r in rows:
         ids.append(r["id"])
         data.append((
-            r["id"], r["name"], r["city"], r["website"], r["domain"],
+            r["id"], r["name"], r["city"],
+            r["city_id"] if has_city_id else None,
+            r["website"], r["domain"],
             r["created_at"] or now, r["updated_at"] or now
         ))
 
     upserted = batch_execute(pg_cur, """
-        INSERT INTO companies (id, name, city, website, domain, created_at, updated_at)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO companies (id, name, city, city_id, website, domain, created_at, updated_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (id) DO UPDATE SET
             name = EXCLUDED.name,
             city = EXCLUDED.city,
+            city_id = EXCLUDED.city_id,
             website = EXCLUDED.website,
             domain = EXCLUDED.domain,
             updated_at = EXCLUDED.updated_at
         WHERE
             companies.name IS DISTINCT FROM EXCLUDED.name OR
             companies.city IS DISTINCT FROM EXCLUDED.city OR
+            companies.city_id IS DISTINCT FROM EXCLUDED.city_id OR
             companies.website IS DISTINCT FROM EXCLUDED.website OR
             companies.domain IS DISTINCT FROM EXCLUDED.domain OR
             companies.updated_at IS DISTINCT FROM EXCLUDED.updated_at
@@ -390,15 +413,11 @@ def sync_company_categories(sqlite_conn, pg_cur):
 # ГОРОДА (нормализация)
 # ============================================================
 
-def sync_cities(pg_cur):
-    """Заполняет таблицу cities из уникальных значений companies.city.
-
-    Вызывается ПОСЛЕ sync_companies, чтобы данные уже были в PostgreSQL.
-    Затем обновляет city_id в companies.
-    """
+def sync_cities(sqlite_conn, pg_cur):
+    """Синхронизация таблицы cities из SQLite → PostgreSQL (UPSERT)."""
     print("--- SYNC cities START ---")
 
-    # 1. Убеждаемся, что таблица cities существует
+    # Убеждаемся, что таблица и колонка существуют
     pg_cur.execute("""
         CREATE TABLE IF NOT EXISTS cities (
             id SERIAL PRIMARY KEY,
@@ -406,8 +425,6 @@ def sync_cities(pg_cur):
             normalized_name TEXT NOT NULL
         )
     """)
-
-    # 2. Убеждаемся, что колонка city_id существует
     pg_cur.execute("""
         DO $$ BEGIN
             ALTER TABLE companies ADD COLUMN city_id INTEGER REFERENCES cities(id);
@@ -415,54 +432,47 @@ def sync_cities(pg_cur):
             WHEN duplicate_column THEN NULL;
         END $$
     """)
-
-    # 3. Вставляем уникальные города из companies (UPSERT)
-    pg_cur.execute("""
-        INSERT INTO cities (name, normalized_name)
-        SELECT DISTINCT city, LOWER(city)
-        FROM companies
-        WHERE city IS NOT NULL AND city != ''
-        ON CONFLICT (name) DO NOTHING
-    """)
-    inserted = pg_cur.rowcount
-    print(f"    [cities] новых городов: {inserted}")
-
-    # 4. Обновляем city_id в companies
-    pg_cur.execute("""
-        UPDATE companies
-        SET city_id = ci.id
-        FROM cities ci
-        WHERE companies.city = ci.name
-          AND (companies.city_id IS NULL OR companies.city_id IS DISTINCT FROM ci.id)
-    """)
-    updated = pg_cur.rowcount
-    print(f"    [cities] обновлено city_id: {updated}")
-
-    # 5. Удаляем города, которых больше нет в companies
-    pg_cur.execute("""
-        DELETE FROM cities
-        WHERE NOT EXISTS (
-            SELECT 1 FROM companies WHERE companies.city = cities.name
-        )
-    """)
-    deleted = pg_cur.rowcount
-    if deleted:
-        print(f"    [cities] удалено городов без компаний: {deleted}")
-
-    # 6. Индекс на city_id (если ещё нет)
-    pg_cur.execute("""
-        CREATE INDEX IF NOT EXISTS idx_companies_city_id ON companies(city_id)
-    """)
+    pg_cur.execute("CREATE INDEX IF NOT EXISTS idx_companies_city_id ON companies(city_id)")
     pg_cur.execute("""
         CREATE INDEX IF NOT EXISTS idx_cities_normalized_name_trgm
         ON cities USING GIN (normalized_name gin_trgm_ops)
     """)
 
-    # Статистика
-    pg_cur.execute("SELECT COUNT(*) FROM cities")
-    total = pg_cur.fetchone()[0]
-    print(f"    [cities] итого городов: {total}")
-    return total
+    # Проверяем наличие таблицы cities в SQLite
+    has_cities_table = sqlite_conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='cities'"
+    ).fetchone() is not None
+
+    if not has_cities_table:
+        print("    [cities] таблица cities отсутствует в SQLite — пропуск")
+        return 0, 0
+
+    rows = sqlite_conn.execute(
+        "SELECT id, name, normalized_name FROM cities ORDER BY id"
+    ).fetchall()
+
+    data = []
+    ids = []
+    for r in rows:
+        ids.append(r["id"])
+        data.append((r["id"], r["name"], r["normalized_name"]))
+
+    upserted = batch_execute(pg_cur, """
+        INSERT INTO cities (id, name, normalized_name)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (id) DO UPDATE SET
+            name = EXCLUDED.name,
+            normalized_name = EXCLUDED.normalized_name
+        WHERE
+            cities.name IS DISTINCT FROM EXCLUDED.name OR
+            cities.normalized_name IS DISTINCT FROM EXCLUDED.normalized_name
+    """, data, "cities")
+
+    deleted = delete_removed(pg_cur, "cities", ids) if ids else 0
+    reset_serial_sequence(pg_cur, "cities")
+
+    print(f"  [cities] UPSERT: {upserted}, DELETE: {deleted}")
+    return upserted, deleted
 
 
 # ============================================================
@@ -501,16 +511,18 @@ def sync_data():
         total_upserted = 0
         total_deleted = 0
 
+        # cities СНАЧАЛА (companies.city_id ссылается на cities.id)
+        print(f"  [cities] синхронизация городов...")
+        cities_upserted, cities_deleted = sync_cities(sqlite_conn, pg_cur)
+        total_upserted += cities_upserted
+        total_deleted += cities_deleted
+
         for table_name, sync_fn in SYNC_STEPS:
             print(f"  [{table_name}] синхронизация...")
             upserted, deleted = sync_fn(sqlite_conn, pg_cur)
             total_upserted += upserted
             total_deleted += deleted
             print(f"  [{table_name}] UPSERT: {upserted}, DELETE: {deleted}")
-
-        # Нормализация городов (после sync_companies)
-        print(f"  [cities] нормализация городов...")
-        sync_cities(pg_cur)
 
         pg_conn.commit()
         print("=" * 60)

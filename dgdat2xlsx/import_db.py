@@ -69,10 +69,17 @@ SOCIAL_COLS = [
 # ============================================================
 
 SCHEMA = """
+CREATE TABLE IF NOT EXISTS cities (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    normalized_name TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS companies (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
     city TEXT,
+    city_id INTEGER REFERENCES cities(id),
     website TEXT,
     domain TEXT,
     created_at TEXT DEFAULT (datetime('now')),
@@ -235,6 +242,31 @@ def init_db(db_path: str) -> sqlite3.Connection:
 
 
 # ============================================================
+# ОБРАБОТКА ГОРОДОВ
+# ============================================================
+
+
+def get_or_create_city(cur: sqlite3.Cursor, city_name: str) -> int | None:
+    """Возвращает id города, создавая при необходимости. None если город пустой."""
+    if not city_name or not city_name.strip():
+        return None
+
+    city_name = city_name.strip()
+    normalized = city_name.lower()
+
+    cur.execute("SELECT id FROM cities WHERE name = ?", (city_name,))
+    row = cur.fetchone()
+    if row:
+        return row[0]
+
+    cur.execute(
+        "INSERT INTO cities (name, normalized_name) VALUES (?, ?)",
+        (city_name, normalized),
+    )
+    return cur.lastrowid
+
+
+# ============================================================
 # ОБРАБОТКА КАТЕГОРИЙ
 # ============================================================
 
@@ -332,6 +364,7 @@ def process_row(cur: sqlite3.Cursor, values: list, stats: dict):
     company_id = int(company_id)
     name = cell_str(values[COL["name"]])
     city = cell_str(values[COL["city"]]) or None
+    city_id = get_or_create_city(cur, city)
     website_raw = cell_str(values[COL["website"]]) or None
 
     # website храним как есть (с \n), домены извлекаем из всех URL
@@ -346,9 +379,9 @@ def process_row(cur: sqlite3.Cursor, values: list, stats: dict):
     if not is_existing:
         # Вставляем новую компанию
         cur.execute(
-            """INSERT INTO companies (id, name, city, website, domain, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)""",
-            (company_id, name, city, website, domain),
+            """INSERT INTO companies (id, name, city, city_id, website, domain, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)""",
+            (company_id, name, city, city_id, website, domain),
         )
         stats["companies_new"] += 1
     else:
@@ -369,6 +402,7 @@ def process_row(cur: sqlite3.Cursor, values: list, stats: dict):
         """UPDATE companies
            SET name = CASE WHEN ? IS NOT NULL AND ? != '' THEN ? ELSE name END,
                city = CASE WHEN ? IS NOT NULL AND ? != '' THEN ? ELSE city END,
+               city_id = CASE WHEN ? IS NOT NULL THEN ? ELSE city_id END,
                website = CASE WHEN ? IS NOT NULL AND ? != '' THEN ? ELSE website END,
                domain = CASE WHEN ? IS NOT NULL AND ? != '' THEN ? ELSE domain END,
                updated_at = CURRENT_TIMESTAMP
@@ -376,6 +410,7 @@ def process_row(cur: sqlite3.Cursor, values: list, stats: dict):
         (
             name, name, name,
             city, city, city,
+            city_id, city_id,
             website, website, website,
             domain, domain, domain,
             company_id
