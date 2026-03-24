@@ -103,17 +103,25 @@ def step1_show_current_state(conn):
     return total
 
 
+def _table_exists(cur, table_name: str) -> bool:
+    """Проверяет существование таблицы в PostgreSQL."""
+    cur.execute(
+        "SELECT 1 FROM information_schema.tables WHERE table_name = %s AND table_schema = 'public'",
+        (table_name,)
+    )
+    return cur.fetchone() is not None
+
+
 def step2_truncate_tables(conn):
     """Удаляет все данные из таблиц."""
     header("ШАГ 2: УДАЛЕНИЕ ДАННЫХ")
     cur = conn.cursor()
 
     for table in TRUNCATE_ORDER:
-        try:
+        if _table_exists(cur, table):
             cur.execute(f"TRUNCATE TABLE {table} CASCADE")
             print(f"  TRUNCATE {table} — OK")
-        except Exception:
-            conn.rollback()
+        else:
             print(f"  TRUNCATE {table} — пропуск (таблица не существует)")
 
     conn.commit()
@@ -138,7 +146,7 @@ def step3_reset_sequences(conn):
     ]
 
     for table, col in tables_with_serial:
-        try:
+        if _table_exists(cur, table):
             cur.execute(f"""
                 SELECT setval(
                     pg_get_serial_sequence('{table}', '{col}'),
@@ -147,8 +155,7 @@ def step3_reset_sequences(conn):
                 )
             """)
             print(f"  setval({table}.{col}) → 1")
-        except Exception:
-            conn.rollback()
+        else:
             print(f"  setval({table}.{col}) — пропуск (таблица не существует)")
 
     conn.commit()
@@ -174,6 +181,7 @@ def step4_vacuum_analyze():
     cur.execute("VACUUM FULL")
 
     for table in VACUUM_TABLES:
+        # autocommit=True, нельзя использовать _table_exists в той же транзакции
         try:
             cur.execute(f"ANALYZE {table}")
             print(f"  ANALYZE {table} — OK")
