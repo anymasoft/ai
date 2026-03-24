@@ -346,37 +346,51 @@ async def get_companies(
               [c["name"] for c in top_categories])
         print(f"FAISS IDS: {len(faiss_ids)}")
 
-        # Расширяем через parent_id (recursive CTE — все потомки)
-        expand_conn = get_db_connection()
-        if expand_conn is None:
-            raise HTTPException(status_code=503, detail="Database unavailable (expand)")
-        try:
-            expand_cur = expand_conn.cursor()
-            expand_cur.execute("""
-                WITH RECURSIVE subcategories AS (
-                    SELECT id FROM categories WHERE id = ANY(%s)
-                    UNION ALL
-                    SELECT c.id FROM categories c
-                    JOIN subcategories s ON c.parent_id = s.id
-                )
-                SELECT id FROM subcategories
-            """, (list(faiss_ids),))
-            expanded_ids = [row["id"] for row in expand_cur.fetchall()]
-            expand_cur.close()
-        finally:
-            release_db_connection(expand_conn)
+        # Расширение category_ids зависит от depth:
+        # depth=1 → только faiss_ids (точный поиск, без рекурсии)
+        # depth=3 → recursive CTE только для первой (лучшей) категории
+        # depth>=5 → recursive CTE для ВСЕХ faiss_ids (максимальный охват)
+        if depth == 1:
+            category_ids = list(faiss_ids)
+            print(f"DEPTH=1: только faiss_ids, без recursive CTE")
+        else:
+            if depth <= 3:
+                # Рекурсия только для лучшей категории
+                root_ids = list(top_categories[0]["ids"])
+            else:
+                # Рекурсия для всех FAISS-категорий
+                root_ids = list(faiss_ids)
 
-        all_ids = set(faiss_ids)
-        all_ids.update(expanded_ids)
-        category_ids = list(all_ids)
+            expand_conn = get_db_connection()
+            if expand_conn is None:
+                raise HTTPException(status_code=503, detail="Database unavailable (expand)")
+            try:
+                expand_cur = expand_conn.cursor()
+                expand_cur.execute("""
+                    WITH RECURSIVE subcategories AS (
+                        SELECT id FROM categories WHERE id = ANY(%s)
+                        UNION ALL
+                        SELECT c.id FROM categories c
+                        JOIN subcategories s ON c.parent_id = s.id
+                    )
+                    SELECT id FROM subcategories
+                """, (root_ids,))
+                expanded_ids = [row["id"] for row in expand_cur.fetchall()]
+                expand_cur.close()
+            finally:
+                release_db_connection(expand_conn)
+
+            all_ids = set(faiss_ids)
+            all_ids.update(expanded_ids)
+            category_ids = list(all_ids)
+            print(f"DEPTH={depth}: recursive root_ids={len(root_ids)}, expanded={len(expanded_ids)}")
 
         assert isinstance(category_ids, list)
-        assert len(category_ids) > 0, f"FAISS вернул категории, но recursive expansion дал 0 IDs"
+        assert len(category_ids) > 0, f"FAISS вернул категории, но итоговый category_ids пуст"
 
-        print(f"EXPANDED IDS: {len(expanded_ids)}")
         print(f"TOTAL IDS: {len(category_ids)}")
         log.info(f"[SEARCH] FAISS top-{depth}: {[c['name'] for c in top_categories]}, "
-                 f"faiss_ids={len(faiss_ids)}, expanded={len(expanded_ids)}, total={len(category_ids)}")
+                 f"faiss_ids={len(faiss_ids)}, total={len(category_ids)}")
 
         # Извлекаем город и фильтры контактов из запроса (простой парсер)
         if FALLBACK_PARSER_AVAILABLE:
@@ -568,31 +582,35 @@ async def export_csv(
         for cat in top_categories:
             faiss_ids.update(cat["ids"])
 
-        # Расширяем через parent_id (recursive CTE)
-        expand_conn = get_db_connection()
-        if expand_conn is None:
-            raise HTTPException(status_code=503, detail="Database unavailable (expand)")
-        try:
-            expand_cur = expand_conn.cursor()
-            expand_cur.execute("""
-                WITH RECURSIVE subcategories AS (
-                    SELECT id FROM categories WHERE id = ANY(%s)
-                    UNION ALL
-                    SELECT c.id FROM categories c
-                    JOIN subcategories s ON c.parent_id = s.id
-                )
-                SELECT id FROM subcategories
-            """, (list(faiss_ids),))
-            expanded_ids = [row["id"] for row in expand_cur.fetchall()]
-            expand_cur.close()
-        finally:
-            release_db_connection(expand_conn)
+        # Расширение зависит от depth (аналогично /api/companies)
+        if depth == 1:
+            category_ids = list(faiss_ids)
+        else:
+            root_ids = list(top_categories[0]["ids"]) if depth <= 3 else list(faiss_ids)
+            expand_conn = get_db_connection()
+            if expand_conn is None:
+                raise HTTPException(status_code=503, detail="Database unavailable (expand)")
+            try:
+                expand_cur = expand_conn.cursor()
+                expand_cur.execute("""
+                    WITH RECURSIVE subcategories AS (
+                        SELECT id FROM categories WHERE id = ANY(%s)
+                        UNION ALL
+                        SELECT c.id FROM categories c
+                        JOIN subcategories s ON c.parent_id = s.id
+                    )
+                    SELECT id FROM subcategories
+                """, (root_ids,))
+                expanded_ids = [row["id"] for row in expand_cur.fetchall()]
+                expand_cur.close()
+            finally:
+                release_db_connection(expand_conn)
 
-        all_ids = set(faiss_ids)
-        all_ids.update(expanded_ids)
-        category_ids = list(all_ids)
+            all_ids = set(faiss_ids)
+            all_ids.update(expanded_ids)
+            category_ids = list(all_ids)
 
-        log.info(f"[EXPORT] FAISS top-{depth}: faiss={len(faiss_ids)}, expanded={len(expanded_ids)}, total={len(category_ids)}")
+        log.info(f"[EXPORT] FAISS top-{depth}: faiss={len(faiss_ids)}, total={len(category_ids)}")
 
         # Извлекаем город и фильтры из запроса
         if FALLBACK_PARSER_AVAILABLE:
