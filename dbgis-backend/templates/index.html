@@ -813,6 +813,7 @@
                     `<svg style="display:inline-block;width:12px;height:12px;margin-right:4px;transition:transform .2s;vertical-align:middle;" class="cat-arrow-${id}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>` +
                     `Категории <span style="color:#9ca3af;font-weight:400;">(${data.categories.length})</span></h4>` +
                     `<ul id="${catId}" style="display:none;flex-direction:column;gap:3px;">`;
+                data.categories.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
                 data.categories.forEach(c => html += `<li><span class="category-link" onclick="event.stopPropagation(); applyCategoryFilter(${c.id}, '${escapeHtml(c.name).replace(/'/g, "\\'")}')">${escapeHtml(c.name)}</span></li>`);
                 html += '</ul>';
             }
