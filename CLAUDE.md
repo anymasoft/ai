@@ -11,9 +11,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```
 2GIS (.dgdat) → dgdat2xlsx/convert.py → XLSX (24 колонки)
   → dgdat2xlsx/import_db.py → SQLite (data/local.db)
-    → dbgis-backend/migrate_sqlite_to_postgres.py → PostgreSQL (8 таблиц)
-      → dbgis-backend/main.py (FastAPI API + Web UI "LeadExtractor")
-        → dbgis-backend/enrich.py (обогащение контактов с сайтов)
+    → dbgis-backend/sync_sqlite_to_postgres.py → PostgreSQL (8 таблиц)
+      → dbgis-backend/rebuild_faiss.py → FAISS индекс (category_ids)
+        → dbgis-backend/main.py (FastAPI API + Web UI "LeadExtractor")
+          → dbgis-backend/enrich.py (обогащение контактов с сайтов)
 ```
 
 Каждый подпроект имеет свой `CLAUDE.md` с детальными правилами — **обязательно читай перед работой**.
@@ -59,6 +60,33 @@ python test_search.py
 # Обогащение контактов
 python enrich.py --status
 python enrich.py --continuous --batch-size 200
+
+# Диагностика поиска (5-шаговая проверка pipeline)
+python debug_search.py "кафе в москве"
+python debug_search.py "автосервис" --company-id 12345
+
+# Пересборка FAISS индекса из PostgreSQL
+python rebuild_faiss.py
+python rebuild_faiss.py --test-query "кафе"
+
+# Синхронизация SQLite → PostgreSQL (инкрементальный UPSERT)
+python sync_sqlite_to_postgres.py
+
+# Полная очистка PostgreSQL (TRUNCATE + VACUUM FULL)
+python clean_postgres.py
+python clean_postgres.py --force  # без подтверждения
+```
+
+### Полный rebuild данных (после исправлений в pipeline)
+
+```bash
+cd dgdat2xlsx && python convert.py           # 1. XLSX из 2GIS
+rm -f data/local.db && python import_db.py   # 2. SQLite из XLSX
+cd ../dbgis-backend
+python clean_postgres.py --force             # 3. Очистить PostgreSQL
+python sync_sqlite_to_postgres.py            # 4. Синхронизировать данные
+python rebuild_faiss.py                      # 5. Пересобрать FAISS
+python debug_search.py "автосервис"          # 6. Проверить результат
 ```
 
 ### dgdat2xlsx (конвертер данных)
@@ -119,6 +147,7 @@ companies ──< branches ──< phones
 - `normalize_query()` — маппинг разговорных запросов ("поесть" → "ресторан кафе")
 - Модель и индекс загружаются один раз при импорте модуля (latency < 50ms)
 - Файлы индекса: `categories_faiss_e5.index`, `category_mapping_e5.json`
+- **КРИТИЧНО: ids в mapping = category_id (НЕ company_id!)**. SQL использует `WHERE cc.category_id = ANY(%s)`. При пересборке через `rebuild_faiss.py` используется `ARRAY_AGG(DISTINCT cat.id)`, не `company_id`
 
 **Парсер запросов — fallback (ai_parser.py):**
 - `parse_query_fallback()` — извлекает город и фильтры контактов из текста ("кафе в Москве с телефоном")
@@ -145,6 +174,7 @@ companies ──< branches ──< phones
 - `convert.py` (~1200 строк): бинарный парсинг dgdat, нормализация URL, экспорт XLSX (24 фиксированных колонки)
 - `import_db.py` (~550 строк): идемпотентный импорт XLSX → SQLite (INSERT OR IGNORE / ON CONFLICT)
 - PostgreSQL использует оригинальные ID из SQLite (не автогенерация)
+- **Категории хранятся как полные цепи (section→subsection→rubric)**, обрабатываются row-by-row через zip. НЕ через вложенные циклы — иначе Декартово произведение (3×5×10=150 вместо 10 категорий)
 
 **Нормализация URL:** развёртывание обёрток 2GIS, удаление UTM, дедупликация по домену. `.lower()` только для доменов и email, НЕ для полных URL.
 
@@ -180,6 +210,22 @@ LobeChat — форк AI-чата. Монорепо с pnpm workspaces.
 - **UI:** Ant Design + @lobehub/ui + antd-style (CSS-in-JS)
 - **Тесты:** Vitest (unit), Playwright (E2E). Предпочитать `vi.spyOn` вместо `vi.mock`
 - **Ветки:** `canary` (dev) → `main` (release). Git pull через rebase
+
+## Утилиты управления данными (dbgis-backend)
+
+| Скрипт | Назначение |
+|--------|-----------|
+| `sync_sqlite_to_postgres.py` | Инкрементальный UPSERT из SQLite → PostgreSQL. IS DISTINCT FROM для skip-update, VACUUM ANALYZE |
+| `rebuild_faiss.py` | Пересборка FAISS индекса из PostgreSQL. Хранит **category_id** (не company_id!) |
+| `debug_search.py` | 5-шаговая диагностика: FAISS → PostgreSQL categories → companies → реальные категории → детальная проверка |
+| `clean_postgres.py` | TRUNCATE всех таблиц (в порядке FK), сброс sequences, VACUUM FULL + ANALYZE |
+
+**Контракт FAISS ↔ SQL (НЕ НАРУШАТЬ):**
+```
+rebuild_faiss.py: SELECT ARRAY_AGG(DISTINCT cat.id) → mapping.ids = [category_id, ...]
+faiss_service.py: find_top_categories() → {"name": "...", "ids": [category_id, ...]}
+main.py:          WHERE cc.category_id = ANY(%s)  ← ids из FAISS
+```
 
 ## Общие правила
 

@@ -10,15 +10,23 @@ DROP TABLE IF EXISTS phones CASCADE;
 DROP TABLE IF EXISTS company_aliases CASCADE;
 DROP TABLE IF EXISTS branches CASCADE;
 DROP TABLE IF EXISTS companies CASCADE;
+DROP TABLE IF EXISTS cities CASCADE;
 
 -- ============================================================
 -- ОСНОВНЫЕ ТАБЛИЦЫ
 -- ============================================================
 
+CREATE TABLE cities (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    normalized_name TEXT NOT NULL
+);
+
 CREATE TABLE companies (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
     city TEXT,
+    city_id INTEGER REFERENCES cities(id),
     website TEXT,
     domain TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -99,13 +107,16 @@ CREATE INDEX idx_categories_name ON categories(name);
 -- GIN триграммные индексы для ILIKE '%...%' (требует pg_trgm)
 -- Без них ILIKE делает полный seq scan таблицы
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX idx_companies_city_id ON companies(city_id);
 CREATE INDEX idx_companies_city_trgm ON companies USING GIN (city gin_trgm_ops);
+CREATE INDEX idx_cities_normalized_name_trgm ON cities USING GIN (normalized_name gin_trgm_ops);
 CREATE INDEX idx_categories_name_trgm ON categories USING GIN (name gin_trgm_ops);
 
 -- ============================================================
 -- КОММЕНТАРИИ
 -- ============================================================
 
+COMMENT ON TABLE cities IS 'Нормализованная таблица городов (для гео-фильтрации)';
 COMMENT ON TABLE companies IS 'Организации из 2ГИС';
 COMMENT ON TABLE branches IS 'Филиалы/подразделения организаций';
 COMMENT ON TABLE phones IS 'Телефоны филиалов';

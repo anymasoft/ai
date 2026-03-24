@@ -338,6 +338,107 @@
         }
         .btn-ghost:hover { color: #374151; }
 
+        /* --- City Filter Badge --- */
+        .city-filter-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #15803d;
+            animation: fadeIn 0.3s ease;
+        }
+        .city-filter-badge button {
+            background: none;
+            border: none;
+            color: #22c55e;
+            cursor: pointer;
+            font-size: 15px;
+            line-height: 1;
+            padding: 0 0 0 2px;
+            transition: color 0.15s;
+        }
+        .city-filter-badge button:hover { color: #15803d; }
+
+        /* --- City Autocomplete --- */
+        .city-autocomplete-wrapper {
+            position: relative;
+        }
+        .city-autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+        }
+        .city-autocomplete-dropdown.open { display: block; }
+        .city-autocomplete-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #374151;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.1s;
+        }
+        .city-autocomplete-item:hover { background: #f3f4f6; }
+        .city-autocomplete-item .count {
+            font-size: 12px;
+            color: #9ca3af;
+        }
+
+        /* --- Suggested City --- */
+        .suggested-city-bar {
+            display: none;
+            max-width: 650px;
+            margin: 0 auto 12px;
+            padding: 8px 14px;
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 10px;
+            font-size: 13px;
+            color: #92400e;
+            animation: slideDown 0.3s ease;
+            align-items: center;
+            gap: 8px;
+        }
+        .suggested-city-bar.visible {
+            display: flex;
+        }
+        .suggested-city-bar .apply-btn {
+            padding: 3px 10px;
+            background: #f59e0b;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .suggested-city-bar .apply-btn:hover { background: #d97706; }
+        .suggested-city-bar .dismiss-btn {
+            background: none;
+            border: none;
+            color: #b45309;
+            cursor: pointer;
+            font-size: 16px;
+            line-height: 1;
+            padding: 0 2px;
+        }
+
         /* --- Category Filter Badge --- */
         .category-filter-badge {
             display: inline-flex;
@@ -429,15 +530,13 @@
 
             <!-- Filters (collapsible) -->
             <div id="filters-section" class="filters-section mb-6">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Город</label>
-                        <input type="text" id="city" class="filter-input" placeholder="Например: Санкт-Петербург">
+                <div class="mb-4">
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">Город</label>
+                    <div class="city-autocomplete-wrapper">
+                        <input type="text" id="city-input" class="filter-input" placeholder="Начните ввод..." autocomplete="off">
+                        <div id="city-dropdown" class="city-autocomplete-dropdown"></div>
                     </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Категория</label>
-                        <input type="text" id="category" class="filter-input" placeholder="Например: Кафе">
-                    </div>
+                    <div id="city-badges" style="display:inline-flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
                 </div>
                 <div class="flex justify-center gap-6">
                     <label class="filter-checkbox"><input type="checkbox" id="has_email"><span>С Email</span></label>
@@ -447,6 +546,14 @@
             </div>
         </section>
 
+        <!-- Suggested City Bar -->
+        <div id="suggested-city-bar" class="suggested-city-bar">
+            <span>&#128205;</span>
+            <span id="suggested-city-text">Возможно, вы ищете в: </span>
+            <button class="apply-btn" id="suggested-city-apply" onclick="applySuggestedCity()">Применить</button>
+            <button class="dismiss-btn" onclick="dismissSuggestedCity()" title="Скрыть">&#10005;</button>
+        </div>
+
         <!-- Empty State -->
         <div id="empty-state" class="text-center py-14 px-5">
             <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -454,6 +561,11 @@
             </svg>
             <h2 class="text-lg font-bold text-gray-700 mb-2">Начните поиск</h2>
             <p class="text-sm text-gray-400">Введите ваш запрос выше, чтобы найти компании</p>
+        </div>
+
+        <!-- City Filter Badges (вне results-section, видны всегда) -->
+        <div id="city-filter-bar" class="max-w-[1000px] mx-auto px-5 mb-3" style="display:none;">
+            <div id="city-filter-badges" style="display:inline-flex;flex-wrap:wrap;gap:6px;"></div>
         </div>
 
         <!-- Category Filter Badges (вне results-section, видны всегда) -->
@@ -515,6 +627,9 @@
         let searchMode = 'precision';
         let isLoading = false;
         let categoryFilterIds = [];   // [{id, name}, ...]
+        let cityFilterIds = [];       // [{id, name}, ...]
+        let suggestedCity = null;     // {id, name} или null
+        let cityDropdownTimer = null;
         const LIMIT = 100;
 
         // Последние параметры поиска (для пагинации)
@@ -570,10 +685,10 @@
 
             if (searchQuery) params.append('query', searchQuery);
 
-            const city = document.getElementById('city').value.trim();
-            const category = document.getElementById('category').value.trim();
-            if (city) params.append('city', city);
-            if (category) params.append('category', category);
+            // city_ids из UI (приоритет над текстовым city)
+            if (cityFilterIds.length > 0) {
+                params.append('city_ids', cityFilterIds.map(c => c.id).join(','));
+            }
             if (document.getElementById('has_email').checked) params.append('has_email', 'true');
             if (document.getElementById('has_phone').checked) params.append('has_phone', 'true');
             if (document.getElementById('has_website').checked) params.append('has_website', 'true');
@@ -605,8 +720,16 @@
                 const companies = data.data || [];
                 totalResults = data.total || 0;
 
-                // Бейджи категорий обновляются независимо от результата
+                // Бейджи обновляются независимо от результата
                 updateCategoryFilterBadge();
+                updateCityFilterBadge();
+
+                // Подсказка города из backend
+                if (data.suggested_city && cityFilterIds.length === 0) {
+                    showSuggestedCity(data.suggested_city);
+                } else {
+                    hideSuggestedCity();
+                }
 
                 if (totalResults === 0) {
                     showEmptyState('Ничего не найдено', 'Попробуйте изменить запрос или фильтры');
@@ -851,13 +974,15 @@
                 params.append('query', searchQuery);
             }
 
-            const city = document.getElementById('city').value.trim();
-            const category = document.getElementById('category').value.trim();
-            if (city) params.append('city', city);
-            if (category) params.append('category', category);
+            if (cityFilterIds.length > 0) {
+                params.append('city_ids', cityFilterIds.map(c => c.id).join(','));
+            }
             if (document.getElementById('has_email').checked) params.append('has_email', 'true');
             if (document.getElementById('has_phone').checked) params.append('has_phone', 'true');
             if (document.getElementById('has_website').checked) params.append('has_website', 'true');
+            if (categoryFilterIds.length > 0) {
+                params.append('category_filter_ids', categoryFilterIds.map(c => c.id).join(','));
+            }
             params.append('limit', '50000');
 
             try {
@@ -879,6 +1004,103 @@
                 btn.innerHTML = origHTML;
                 btn.disabled = false;
             }
+        }
+
+        // ===== City Autocomplete =====
+        async function fetchCities(q) {
+            try {
+                const params = new URLSearchParams();
+                if (q) params.append('q', q);
+                params.append('limit', '15');
+                const resp = await fetch(`/api/cities?${params}`);
+                if (!resp.ok) return [];
+                const data = await resp.json();
+                return data.cities || [];
+            } catch { return []; }
+        }
+
+        function renderCityDropdown(cities) {
+            const dropdown = document.getElementById('city-dropdown');
+            if (!cities.length) {
+                dropdown.classList.remove('open');
+                return;
+            }
+            dropdown.innerHTML = cities
+                .filter(c => !cityFilterIds.some(f => f.id === c.id))
+                .map(c => `<div class="city-autocomplete-item" onclick="addCityFilter(${c.id}, '${escapeHtml(c.name).replace(/'/g, "\\'")}')">
+                    <span>${escapeHtml(c.name)}</span>
+                    <span class="count">${c.company_count.toLocaleString('ru-RU')}</span>
+                </div>`).join('');
+            dropdown.classList.add('open');
+        }
+
+        function onCityInput() {
+            clearTimeout(cityDropdownTimer);
+            const q = document.getElementById('city-input').value.trim();
+            cityDropdownTimer = setTimeout(async () => {
+                const cities = await fetchCities(q);
+                renderCityDropdown(cities);
+            }, 200);
+        }
+
+        function addCityFilter(id, name) {
+            if (cityFilterIds.some(c => c.id === id)) return;
+            cityFilterIds.push({id, name});
+            document.getElementById('city-input').value = '';
+            document.getElementById('city-dropdown').classList.remove('open');
+            updateCityFilterBadge();
+            handleSearch(1);
+        }
+
+        function removeCityFilter(id) {
+            cityFilterIds = cityFilterIds.filter(c => c.id !== id);
+            updateCityFilterBadge();
+            handleSearch(1);
+        }
+
+        function updateCityFilterBadge() {
+            // Бейджи в фильтре
+            const badgesInFilter = document.getElementById('city-badges');
+            // Бейджи над результатами
+            const bar = document.getElementById('city-filter-bar');
+
+            const html = cityFilterIds.map(c =>
+                `<span class="city-filter-badge">${escapeHtml(c.name)}<button onclick="removeCityFilter(${c.id})" title="Убрать город">&#10005;</button></span>`
+            ).join(' ');
+
+            badgesInFilter.innerHTML = html;
+
+            if (cityFilterIds.length > 0) {
+                const barBadges = document.getElementById('city-filter-badges');
+                barBadges.innerHTML = html;
+                bar.style.display = 'block';
+            } else {
+                bar.style.display = 'none';
+            }
+        }
+
+        // ===== Suggested City =====
+        function showSuggestedCity(city) {
+            suggestedCity = city;
+            const bar = document.getElementById('suggested-city-bar');
+            document.getElementById('suggested-city-text').textContent =
+                `Возможно, вы ищете в: ${city.name}`;
+            bar.classList.add('visible');
+        }
+
+        function hideSuggestedCity() {
+            suggestedCity = null;
+            document.getElementById('suggested-city-bar').classList.remove('visible');
+        }
+
+        function applySuggestedCity() {
+            if (!suggestedCity) return;
+            addCityFilter(suggestedCity.id, suggestedCity.name);
+            hideSuggestedCity();
+        }
+
+        function dismissSuggestedCity() {
+            hideSuggestedCity();
         }
 
         // ===== Category Filter (мульти-выбор, AND) =====
@@ -914,13 +1136,16 @@
         // ===== Reset =====
         function resetFilters() {
             document.getElementById('search-input').value = '';
-            document.getElementById('city').value = '';
-            document.getElementById('category').value = '';
+            document.getElementById('city-input').value = '';
             document.getElementById('has_email').checked = false;
             document.getElementById('has_phone').checked = false;
             document.getElementById('has_website').checked = false;
             categoryFilterIds = [];
+            cityFilterIds = [];
+            suggestedCity = null;
             updateCategoryFilterBadge();
+            updateCityFilterBadge();
+            hideSuggestedCity();
             document.getElementById('results-section').style.display = 'none';
             document.getElementById('empty-state').style.display = 'block';
             document.getElementById('empty-state').innerHTML = `
@@ -1083,6 +1308,19 @@
             document.getElementById('search-input').addEventListener('keypress', e => {
                 if (e.key === 'Enter' && !document.getElementById('search-btn').disabled) handleSearch();
             });
+
+            // City autocomplete
+            const cityInput = document.getElementById('city-input');
+            cityInput.addEventListener('input', onCityInput);
+            cityInput.addEventListener('focus', onCityInput);
+            // Закрыть dropdown при клике вне
+            document.addEventListener('click', e => {
+                const wrapper = document.querySelector('.city-autocomplete-wrapper');
+                if (wrapper && !wrapper.contains(e.target)) {
+                    document.getElementById('city-dropdown').classList.remove('open');
+                }
+            });
+
             updateSearchButton();
             animatePlaceholder();
         });
