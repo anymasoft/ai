@@ -141,13 +141,20 @@ def step3_reset_sequences(conn):
     cur.close()
 
 
-def step4_vacuum_analyze(conn):
-    """Выполняет VACUUM ANALYZE для оптимизации."""
-    header("ШАГ 4: VACUUM ANALYZE (ОПТИМИЗАЦИЯ)")
-    cur = conn.cursor()
+def step4_vacuum_analyze():
+    """Выполняет VACUUM ANALYZE для оптимизации.
 
-    # VACUUM нужно запускать вне транзакции
-    conn.set_session(autocommit=True)
+    VACUUM нельзя запускать внутри транзакции,
+    поэтому создаём отдельное соединение с autocommit=True.
+    """
+    header("ШАГ 4: VACUUM ANALYZE (ОПТИМИЗАЦИЯ)")
+
+    vac_conn = psycopg2.connect(
+        host=DB_HOST, port=DB_PORT, database=DB_NAME,
+        user=DB_USER, password=DB_PASSWORD
+    )
+    vac_conn.autocommit = True
+    cur = vac_conn.cursor()
 
     print("\n  VACUUM FULL (сжатие)...")
     cur.execute("VACUUM FULL")
@@ -157,6 +164,7 @@ def step4_vacuum_analyze(conn):
         cur.execute(f"ANALYZE {table}")
 
     cur.close()
+    vac_conn.close()
     print("\n  Оптимизация завершена.")
 
 
@@ -207,8 +215,8 @@ def main():
             # ШАГ 3
             step3_reset_sequences(conn)
 
-        # ШАГ 4
-        step4_vacuum_analyze(conn)
+        # ШАГ 4 (отдельное соединение с autocommit)
+        step4_vacuum_analyze()
 
         # ШАГ 5
         success = step5_final_check(conn)
