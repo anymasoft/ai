@@ -247,12 +247,15 @@ COMPANIES_COUNT_SQL = """
 
 
 def build_filter_clause(city, category, has_email, has_phone, has_website,
-                        category_ids=None):
+                        category_ids=None, category_filter_id=None):
     """Строит WHERE-условия и параметры для фильтрации компаний.
 
     Приоритет фильтрации по категории:
     1. category_ids — список ID категорий из FAISS + recursive потомки
     2. category — ILIKE поиск (ручной фильтр пользователя)
+
+    category_filter_id — дополнительный фильтр по одной категории (UI клик).
+    Сужает результат поверх FAISS, НЕ заменяет его.
     """
     clauses = []
     params = []
@@ -267,6 +270,11 @@ def build_filter_clause(city, category, has_email, has_phone, has_website,
     elif category:
         clauses.append("cat.name ILIKE %s")
         params.append(f"%{category}%")
+
+    # Дополнительный фильтр по конкретной категории (клик в UI)
+    if category_filter_id:
+        clauses.append("cc.category_id = %s")
+        params.append(category_filter_id)
 
     if has_email:
         clauses.append("EXISTS (SELECT 1 FROM emails WHERE company_id = c.id)")
@@ -325,11 +333,15 @@ async def get_companies(
     has_email: Optional[bool] = Query(None, description="Только с email"),
     has_phone: Optional[bool] = Query(None, description="Только с телефоном"),
     has_website: Optional[bool] = Query(None, description="Только с сайтом"),
+    category_filter_id: Optional[int] = Query(None, description="Фильтр по ID конкретной категории (клик в UI)"),
     mode: str = Query("precision", description="Режим: precision | coverage"),
     limit: int = Query(100, ge=1, le=1000, description="Лимит результатов"),
     offset: int = Query(0, ge=0, description="Смещение")
 ):
     """Получить список компаний с фильтрами или AI-парсингом запроса."""
+
+    if category_filter_id:
+        print(f"CATEGORY FILTER: {category_filter_id}")
 
     category_ids = None
     search_method = None
@@ -411,6 +423,7 @@ async def get_companies(
     cache_params = {
         "city": city, "category": category,
         "category_ids": tuple(category_ids) if category_ids else None,
+        "category_filter_id": category_filter_id,
         "has_email": has_email, "has_phone": has_phone,
         "has_website": has_website, "mode": mode,
         "limit": limit, "offset": offset
@@ -427,7 +440,8 @@ async def get_companies(
         cur = conn.cursor()
         where, params = build_filter_clause(
             city, category, has_email, has_phone, has_website,
-            category_ids=category_ids
+            category_ids=category_ids,
+            category_filter_id=category_filter_id
         )
 
         # Основной запрос

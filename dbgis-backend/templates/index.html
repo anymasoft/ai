@@ -338,6 +338,44 @@
         }
         .btn-ghost:hover { color: #374151; }
 
+        /* --- Category Filter Badge --- */
+        .category-filter-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #1d4ed8;
+            animation: fadeIn 0.3s ease;
+        }
+        .category-filter-badge button {
+            background: none;
+            border: none;
+            color: #3b82f6;
+            cursor: pointer;
+            font-size: 15px;
+            line-height: 1;
+            padding: 0 0 0 2px;
+            transition: color 0.15s;
+        }
+        .category-filter-badge button:hover { color: #1d4ed8; }
+
+        /* --- Clickable Category --- */
+        .category-link {
+            cursor: pointer;
+            color: #4b5563;
+            transition: all 0.15s ease;
+            border-bottom: 1px dashed transparent;
+        }
+        .category-link:hover {
+            color: #3b82f6;
+            border-bottom-color: #3b82f6;
+        }
+
         /* --- Empty State --- */
         .empty-icon {
             width: 48px;
@@ -420,6 +458,14 @@
 
         <!-- Results -->
         <section id="results-section" class="mb-10 fade-in" style="display:none;">
+            <!-- Category Filter Badge -->
+            <div id="category-filter-bar" class="max-w-[1000px] mx-auto px-5 mb-3" style="display:none;">
+                <span class="category-filter-badge">
+                    <span id="category-filter-name"></span>
+                    <button onclick="clearCategoryFilter()" title="Сбросить фильтр">✕</button>
+                </span>
+            </div>
+
             <!-- Results Header -->
             <div class="max-w-[1000px] mx-auto px-5 mb-4 flex flex-wrap items-center justify-between gap-3">
                 <span class="text-sm text-gray-500" id="result-count"></span>
@@ -470,6 +516,8 @@
         let detailsCache = {};
         let searchMode = 'precision';
         let isLoading = false;
+        let categoryFilterId = null;
+        let categoryFilterName = null;
         const LIMIT = 100;
 
         // Последние параметры поиска (для пагинации)
@@ -533,6 +581,8 @@
             if (document.getElementById('has_phone').checked) params.append('has_phone', 'true');
             if (document.getElementById('has_website').checked) params.append('has_website', 'true');
 
+            if (categoryFilterId) params.append('category_filter_id', categoryFilterId);
+
             params.append('mode', searchMode);
             params.append('limit', LIMIT);
             params.append('offset', (page - 1) * LIMIT);
@@ -565,6 +615,9 @@
                 document.getElementById('empty-state').style.display = 'none';
                 document.getElementById('results-section').style.display = 'block';
                 document.getElementById('result-count').textContent = `Найдено: ${totalResults.toLocaleString('ru-RU')} компаний`;
+
+                // Бейдж фильтра по категории
+                updateCategoryFilterBadge();
 
                 renderTable(companies);
                 renderPagination();
@@ -761,7 +814,7 @@
                     `<svg style="display:inline-block;width:12px;height:12px;margin-right:4px;transition:transform .2s;vertical-align:middle;" class="cat-arrow-${id}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>` +
                     `Категории <span style="color:#9ca3af;font-weight:400;">(${data.categories.length})</span></h4>` +
                     `<ul id="${catId}" style="display:none;flex-direction:column;gap:3px;">`;
-                data.categories.forEach(c => html += `<li>${escapeHtml(c.name)}</li>`);
+                data.categories.forEach(c => html += `<li><span class="category-link" onclick="event.stopPropagation(); applyCategoryFilter(${c.id}, '${escapeHtml(c.name).replace(/'/g, "\\'")}')">${escapeHtml(c.name)}</span></li>`);
                 html += '</ul>';
             }
 
@@ -828,6 +881,30 @@
             }
         }
 
+        // ===== Category Filter =====
+        function applyCategoryFilter(id, name) {
+            categoryFilterId = id;
+            categoryFilterName = name;
+            handleSearch(1);
+        }
+
+        function clearCategoryFilter() {
+            categoryFilterId = null;
+            categoryFilterName = null;
+            updateCategoryFilterBadge();
+            handleSearch(1);
+        }
+
+        function updateCategoryFilterBadge() {
+            const bar = document.getElementById('category-filter-bar');
+            if (categoryFilterId && categoryFilterName) {
+                document.getElementById('category-filter-name').textContent = categoryFilterName;
+                bar.style.display = 'block';
+            } else {
+                bar.style.display = 'none';
+            }
+        }
+
         // ===== Reset =====
         function resetFilters() {
             document.getElementById('search-input').value = '';
@@ -836,6 +913,9 @@
             document.getElementById('has_email').checked = false;
             document.getElementById('has_phone').checked = false;
             document.getElementById('has_website').checked = false;
+            categoryFilterId = null;
+            categoryFilterName = null;
+            updateCategoryFilterBadge();
             document.getElementById('results-section').style.display = 'none';
             document.getElementById('empty-state').style.display = 'block';
             document.getElementById('empty-state').innerHTML = `
