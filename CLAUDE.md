@@ -180,6 +180,10 @@ cities ──< companies ──< branches ──< phones
 - `GET /api/cities` — автокомплит городов
 - `GET /health` — healthcheck
 - `GET /` — Web UI (Jinja2 шаблон)
+- `GET /auth/yandex/login` — редирект на Yandex OAuth
+- `GET /auth/yandex/callback` — callback, создание пользователя + API key
+- `POST /auth/api-key/regenerate` — перегенерация API ключа (требует X-API-Key)
+- `GET /auth/me` — информация о текущем пользователе (требует X-API-Key)
 
 **Безопасность API (НЕ ОСЛАБЛЯТЬ):**
 - **HMAC-токены**: `/api/companies/{id}` требует `token` — генерируется через `_generate_detail_token(company_id)` при поиске, проверяется через `_verify_detail_token()`. Секрет в `.env` (`DETAIL_TOKEN_SECRET`)
@@ -234,6 +238,32 @@ LobeChat — форк AI-чата. Монорепо с pnpm workspaces.
 - **UI:** Ant Design + @lobehub/ui + antd-style (CSS-in-JS)
 - **Тесты:** Vitest (unit), Playwright (E2E). Предпочитать `vi.spyOn` вместо `vi.mock`
 - **Ветки:** `canary` (dev) → `main` (release). Git pull через rebase
+
+## Авторизация: Yandex OAuth + API keys (auth.py)
+
+**Изоляция через PostgreSQL-схему `auth`** — данные пользователей полностью отделены от бизнес-данных (`public`).
+
+**Почему schema isolation защищает от cleaner/sync:**
+- `clean_postgres.py` — TRUNCATE только по имени таблицы (`TRUNCATE TABLE phones CASCADE`), без указания схемы → default `public`. Проверка `_table_exists()` фильтрует по `table_schema = 'public'`
+- `sync_sqlite_to_postgres.py` — все INSERT/UPSERT по неквалифицированным именам → default `public`
+- `VACUUM FULL` и `ANALYZE` на конкретных таблицах из `TRUNCATE_ORDER` — все в `public`
+- **Ни одна операция не касается схемы `auth`**
+
+**Архитектура:**
+- `auth.py` — отдельный модуль (не в монолите `main.py`): OAuth flow, API key CRUD, middleware
+- Таблицы: `auth.users` (UUID PK, external_id, plan, credits), `auth.api_keys` (key_hash SHA-256, is_active)
+- **Shadow mode**: middleware `AuthMiddleware` читает `X-API-Key` из заголовка. Если ключ отсутствует — запрос пропускается (request.state.user = None). Если ключ невалиден — 401
+- `get_current_user(request)` — helper для чтения пользователя из request.state
+- API key возвращается raw ОДИН раз (при создании), хранится только SHA-256 хэш
+- `init_auth_schema()` — идемпотентное создание таблиц при старте (CREATE IF NOT EXISTS)
+
+**Env vars для auth:**
+
+| Переменная | Default | Описание |
+|------------|---------|----------|
+| `YANDEX_CLIENT_ID` | (пусто) | ID приложения Yandex OAuth |
+| `YANDEX_CLIENT_SECRET` | (пусто) | Секрет приложения Yandex OAuth |
+| `AUTH_CALLBACK_URL` | http://localhost:8000/auth/yandex/callback | URL для OAuth callback |
 
 ## Утилиты управления данными (dbgis-backend)
 
