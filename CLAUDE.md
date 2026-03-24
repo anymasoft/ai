@@ -52,8 +52,8 @@ DEBUG=True python main.py
 # Проверка здоровья
 curl http://localhost:8000/health
 
-# Тест эндпоинтов
-curl "http://localhost:8000/api/companies?limit=5"
+# Тест эндпоинтов (query ≥ 3 символа обязательно)
+curl "http://localhost:8000/api/companies?query=кафе&limit=5"
 curl "http://localhost:8000/api/companies?query=кафе+в+москве"
 
 # Тест качества поиска (88 запросов, выводит метрики)
@@ -124,7 +124,7 @@ pnpm db:migrate                 # Миграции БД (Drizzle)
 
 ## Архитектура: dbgis-backend
 
-Монолит `main.py` (~780 строк). Синхронный код, psycopg2 (не asyncpg).
+Монолит `main.py` (~1000 строк). Синхронный код, psycopg2 (не asyncpg).
 
 **Схема БД (9 таблиц, идентична в SQLite и PostgreSQL):**
 ```
@@ -138,7 +138,7 @@ cities ──< companies ──< branches ──< phones
 **Контракт SQLite ↔ PostgreSQL:** структура таблиц идентична. `sync_sqlite_to_postgres.py` делает простой UPSERT из аналогичных таблиц (cities → cities, companies → companies, и т.д.). Не генерировать данные на стороне PostgreSQL — всё приходит из SQLite.
 
 **Критические архитектурные решения (НЕ МЕНЯТЬ без причины):**
-- LATERAL JOIN в `COMPANIES_LIST_SQL` вместо коррелированных подзапросов (10-50x быстрее)
+- **Двухфазный SQL**: CTE `filtered` (фильтр + сортировка + LIMIT без LATERAL) → ENRICH (LATERAL только для LIMIT строк). 10-50x быстрее старого монолитного запроса
 - GIN триграммные индексы (`pg_trgm`) для ILIKE-поиска
 - Connection pool через `psycopg2.SimpleConnectionPool` (всегда возвращать через `release_db_connection`)
 - In-memory кеш `SimpleCache` с 60с TTL
@@ -146,6 +146,7 @@ cities ──< companies ──< branches ──< phones
   - Города: OR логика (`city_id = ANY(%s)`)
   - Категории (UI мульти-выбор, `category_filter_ids`): AND логика (`ANY + HAVING COUNT(DISTINCT) = N`)
   - Категории (FAISS поиск, `category_ids`): OR логика (`ANY` без HAVING)
+- `_build_enrich_category_filter()` — фильтр категорий в ENRICH-фазе (чтобы STRING_AGG показывал только совпавшие категории)
 
 **Поиск категорий — FAISS (faiss_service.py):**
 - Семантический поиск через FAISS + E5 embeddings (`intfloat/multilingual-e5-base`)
@@ -161,6 +162,11 @@ cities ──< companies ──< branches ──< phones
 - `normalize_city()` — обрезает падежные окончания ("москве" → "москв") для ILIKE-совпадения
 - Используется параллельно с FAISS (FAISS → категория, fallback → город/фильтры)
 
+**Детекция города — `detect_city_in_query()`:**
+- Находит название города в произвольном тексте ("автосервисы братск" → Братск)
+- Результат применяется как **жёсткий фильтр** `parsed_city_ids` (не как подсказка UI)
+- Работает без предлога "в" (в отличие от `parse_query_fallback`)
+
 **Каскадный fallback при 0 результатах:**
 1. FAISS top-3 category_ids → `WHERE cc.category_id = ANY(%s)`
 2. ILIKE по имени категории → `WHERE cat.name ILIKE %s`
@@ -168,11 +174,26 @@ cities ──< companies ──< branches ──< phones
 4. ILIKE по оригинальному запросу → `WHERE c.name ILIKE %s OR cat.name ILIKE %s`
 
 **Эндпоинты:**
-- `GET /api/companies` — список с фильтрами + FAISS-поиск по query
-- `GET /api/companies/{id}` — детали компании
-- `GET /api/export` — CSV экспорт (до 50k)
+- `GET /api/companies` — список с фильтрами + FAISS-поиск по query (rate limited)
+- `GET /api/companies/{id}?token=...` — детали компании (требует HMAC-токен из результатов поиска)
+- `GET /api/export` — CSV экспорт (макс. 5000 записей, rate limited)
+- `GET /api/cities` — автокомплит городов
 - `GET /health` — healthcheck
 - `GET /` — Web UI (Jinja2 шаблон)
+- `GET /auth/yandex/login` — редирект на Yandex OAuth
+- `GET /auth/yandex/callback` — callback, создание пользователя + API key
+- `POST /auth/api-key/regenerate` — перегенерация API ключа (требует X-API-Key)
+- `GET /auth/me` — информация о текущем пользователе (требует X-API-Key)
+
+**Безопасность API (НЕ ОСЛАБЛЯТЬ):**
+- **HMAC-токены**: `/api/companies/{id}` требует `token` — генерируется через `_generate_detail_token(company_id)` при поиске, проверяется через `_verify_detail_token()`. Секрет в `.env` (`DETAIL_TOKEN_SECRET`)
+- **Rate limiting**: 30 req/min на IP (in-memory, `_check_rate_limit()`). Применяется к `/api/companies`, `/api/companies/{id}`, `/api/export`
+- **MIN_QUERY_LENGTH = 3**: query короче 3 символов → пустой результат (защита от `query="а"`)
+- **MAX_OFFSET = 10000**: offset > 10000 → пустой результат (защита от enumeration через пагинацию)
+- **MAX_EXPORT_LIMIT = 5000**: CSV экспорт ограничен 5000 записями
+- **CSV sanitization**: `_sanitize_csv_value()` добавляет апостроф-префикс к строкам на `=`, `+`, `-`, `@` (защита от CSV injection в Excel)
+- **Guard clauses**: пустой запрос без фильтров → пустой результат (frontend + backend)
+- **Фронтенд**: кнопка поиска disabled при < 3 символах, `handleSearch()` и `exportCSV()` имеют guard на длину query, фильтры НЕ триггерят автоматический поиск
 
 ## Архитектура: dgdat2xlsx
 
@@ -218,6 +239,36 @@ LobeChat — форк AI-чата. Монорепо с pnpm workspaces.
 - **Тесты:** Vitest (unit), Playwright (E2E). Предпочитать `vi.spyOn` вместо `vi.mock`
 - **Ветки:** `canary` (dev) → `main` (release). Git pull через rebase
 
+## Авторизация: Yandex OAuth + API keys (auth.py)
+
+**Изоляция через PostgreSQL-схему `auth`** — данные пользователей полностью отделены от бизнес-данных (`public`).
+
+**Почему schema isolation защищает от cleaner/sync:**
+- `clean_postgres.py` — TRUNCATE только по имени таблицы (`TRUNCATE TABLE phones CASCADE`), без указания схемы → default `public`. Проверка `_table_exists()` фильтрует по `table_schema = 'public'`
+- `sync_sqlite_to_postgres.py` — все INSERT/UPSERT по неквалифицированным именам → default `public`
+- `VACUUM FULL` и `ANALYZE` на конкретных таблицах из `TRUNCATE_ORDER` — все в `public`
+- **Ни одна операция не касается схемы `auth`**
+- **ЗАПРЕТ: НИКАКИХ FK между auth.* и public.*** — иначе `TRUNCATE TABLE xxx CASCADE` из clean_postgres.py может удалить auth-данные через FK-цепочку
+
+**Архитектура:**
+- `auth.py` — отдельный модуль (не в монолите `main.py`): OAuth flow, API key CRUD, middleware
+- Таблицы: `auth.users` (UUID PK, external_id, plan, credits), `auth.api_keys` (key_hash SHA-256, is_active)
+- **Shadow mode**: middleware `AuthMiddleware` читает `X-API-Key` из заголовка. Если ключ отсутствует — запрос пропускается (request.state.user = None). Если ключ невалиден — тоже пропускается (логируем, не ломаем UI)
+- `get_current_user(request)` — helper для чтения пользователя из request.state
+- API key возвращается raw ОДИН раз (при создании), хранится только SHA-256 хэш
+- `init_auth_schema()` — проверка наличия схемы при старте (БЕЗ CREATE — структура только через миграции)
+- **Rate limit per API key**: 60 req/min на ключ (in-memory, в дополнение к IP-based из main.py)
+- **OAuth state**: CSRF protection через одноразовый state параметр (TTL 5 минут)
+- **Regenerate**: деактивация старых + создание нового ключа атомарно в одной транзакции
+
+**Env vars для auth:**
+
+| Переменная | Default | Описание |
+|------------|---------|----------|
+| `YANDEX_CLIENT_ID` | (пусто) | ID приложения Yandex OAuth |
+| `YANDEX_CLIENT_SECRET` | (пусто) | Секрет приложения Yandex OAuth |
+| `AUTH_CALLBACK_URL` | http://localhost:8000/auth/yandex/callback | URL для OAuth callback |
+
 ## Утилиты управления данными (dbgis-backend)
 
 | Скрипт | Назначение |
@@ -234,6 +285,22 @@ faiss_service.py: find_top_categories() → {"name": "...", "ids": [category_id,
 main.py:          WHERE cc.category_id = ANY(%s)  ← ids из FAISS
 ```
 
+## Переменные окружения (.env) для dbgis-backend
+
+| Переменная | Default | Описание |
+|------------|---------|----------|
+| `DB_HOST` | localhost | PostgreSQL хост |
+| `DB_PORT` | 5432 | PostgreSQL порт |
+| `DB_NAME` | dbgis | Имя БД |
+| `DB_USER` | postgres | Пользователь БД |
+| `DB_PASSWORD` | postgres | Пароль БД |
+| `DB_POOL_MIN` | 2 | Мин. соединений в пуле |
+| `DB_POOL_MAX` | 10 | Макс. соединений в пуле |
+| `DETAIL_TOKEN_SECRET` | random (при старте) | HMAC-секрет для токенов доступа к деталям. **В production обязателен в .env** |
+| `API_HOST` | 0.0.0.0 | Хост для прослушивания |
+| `API_PORT` | 8000 | Порт API |
+| `DEBUG` | False | Подробные логи + `/api/debug/explain` |
+
 ## Общие правила
 
 - Язык комментариев и вывода: **русский**
@@ -244,3 +311,4 @@ main.py:          WHERE cc.category_id = ANY(%s)  ← ids из FAISS
 - Не создавать отдельные файлы для маршрутов/моделей в dbgis-backend — монолит `main.py`
 - Идемпотентность: INSERT OR IGNORE / ON CONFLICT во всех DB-операциях
 - Контактная информация не должна теряться ни на одном этапе пайплайна
+- Не ослаблять security guard-ы (MIN_QUERY_LENGTH, MAX_OFFSET, HMAC-токены, rate limiting)

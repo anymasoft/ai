@@ -52,6 +52,14 @@ try:
 except ImportError:
     FALLBACK_PARSER_AVAILABLE = False
 
+# Авторизация: Yandex OAuth + API keys (shadow mode)
+try:
+    from auth import auth_router, AuthMiddleware, init_auth_schema
+    AUTH_AVAILABLE = True
+except ImportError:
+    AUTH_AVAILABLE = False
+    log.warning("auth модуль недоступен. Авторизация отключена.")
+
 # ============================================================
 # ГЛОБАЛЬНОЕ СОСТОЯНИЕ ОБОГАЩЕНИЯ (ОТКЛЮЧЕНО)
 # ============================================================
@@ -146,6 +154,15 @@ POOL_MIN = int(os.getenv("DB_POOL_MIN", 2))
 POOL_MAX = int(os.getenv("DB_POOL_MAX", 10))
 
 app = FastAPI(title="dbgis API", debug=DEBUG)
+
+# Авторизация (shadow mode — не блокирует неавторизованные запросы)
+if AUTH_AVAILABLE:
+    app.add_middleware(AuthMiddleware)
+    app.include_router(auth_router)
+    try:
+        init_auth_schema()
+    except Exception as e:
+        log.warning(f"[AUTH] Инициализация auth пропущена: {e}")
 
 # ============================================================
 # БЕЗОПАСНОСТЬ: лимиты, rate limiting, HMAC-токены
