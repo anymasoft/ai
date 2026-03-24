@@ -41,11 +41,17 @@ log = logging.getLogger(__name__)
 # КОНФИГУРАЦИЯ
 # ============================================================
 
-YANDEX_CLIENT_ID = os.getenv("YANDEX_CLIENT_ID", "")
-YANDEX_CLIENT_SECRET = os.getenv("YANDEX_CLIENT_SECRET", "")
-AUTH_CALLBACK_URL = os.getenv(
-    "AUTH_CALLBACK_URL", "http://localhost:8000/auth/yandex/callback"
-)
+# Ленивое чтение — при импорте модуля .env ещё не загружен (load_dotenv в main.py
+# вызывается после import auth), поэтому читаем переменные при первом обращении.
+
+def _get_yandex_client_id() -> str:
+    return os.getenv("YANDEX_CLIENT_ID", "")
+
+def _get_yandex_client_secret() -> str:
+    return os.getenv("YANDEX_CLIENT_SECRET", "")
+
+def _get_auth_callback_url() -> str:
+    return os.getenv("AUTH_CALLBACK_URL", "http://localhost:8000/auth/yandex/callback")
 
 YANDEX_AUTH_URL = "https://oauth.yandex.ru/authorize"
 YANDEX_TOKEN_URL = "https://oauth.yandex.ru/token"
@@ -342,7 +348,8 @@ async def yandex_login():
 
     Генерирует state параметр для CSRF protection.
     """
-    if not YANDEX_CLIENT_ID:
+    client_id = _get_yandex_client_id()
+    if not client_id:
         raise HTTPException(
             status_code=503,
             detail="Yandex OAuth не настроен. Укажите YANDEX_CLIENT_ID в .env"
@@ -351,8 +358,8 @@ async def yandex_login():
     state = _generate_oauth_state()
     params = {
         "response_type": "code",
-        "client_id": YANDEX_CLIENT_ID,
-        "redirect_uri": AUTH_CALLBACK_URL,
+        "client_id": client_id,
+        "redirect_uri": _get_auth_callback_url(),
         "state": state,
     }
     query = "&".join(f"{k}={v}" for k, v in params.items())
@@ -379,7 +386,9 @@ async def yandex_callback(
             detail="Невалидный или истёкший state параметр (возможна CSRF-атака)"
         )
 
-    if not YANDEX_CLIENT_ID or not YANDEX_CLIENT_SECRET:
+    client_id = _get_yandex_client_id()
+    client_secret = _get_yandex_client_secret()
+    if not client_id or not client_secret:
         raise HTTPException(
             status_code=503,
             detail="Yandex OAuth не настроен. Укажите YANDEX_CLIENT_ID и YANDEX_CLIENT_SECRET в .env"
@@ -392,8 +401,8 @@ async def yandex_callback(
             data={
                 "grant_type": "authorization_code",
                 "code": code,
-                "client_id": YANDEX_CLIENT_ID,
-                "client_secret": YANDEX_CLIENT_SECRET,
+                "client_id": client_id,
+                "client_secret": client_secret,
             },
         )
         if token_resp.status_code != 200:
