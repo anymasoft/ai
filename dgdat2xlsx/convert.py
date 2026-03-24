@@ -926,10 +926,11 @@ def build_all_rows(dump: dict, default_city: str = "") -> list:
                 if url:
                     wwws.append(url)
 
-        # Рубрики
-        rubs3 = []
-        rubs2 = []
-        rubs1 = []
+        # Рубрики — собираем ПОЛНЫЕ ЦЕПОЧКИ (rub1, rub2, rub3)
+        # чтобы не терять связь между уровнями иерархии.
+        # Каждая строка в колонках Раздел/Подраздел/Рубрика соответствует
+        # одной цепочке (построчное соответствие).
+        cat_paths = []  # [(rub1_name, rub2_name, rub3_name), ...]
 
         org_rub_rows = orgrub_org2.get(fil, [])
         fil_rub_rows = filrub_fil2.get(key, [])
@@ -937,28 +938,37 @@ def build_all_rows(dump: dict, default_city: str = "") -> list:
         for r in org_rub_rows:
             rubid = dump.get("orgrub_rub", {}).get(r)
             if rubid is not None:
-                rubs3.append(dump.get("rub3_name", {}).get(rubid, ""))
+                rub3_name = dump.get("rub3_name", {}).get(rubid, "")
+                rub2_name = ""
+                rub1_name = ""
                 rub2id = dump.get("rub3_rub2", {}).get(rubid)
                 if rub2id is not None:
-                    rubs2.append(dump.get("rub2_name", {}).get(rub2id, ""))
+                    rub2_name = dump.get("rub2_name", {}).get(rub2id, "")
                     rub1id = dump.get("rub2_rub1", {}).get(rub2id)
                     if rub1id is not None:
-                        rubs1.append(dump.get("rub1_name", {}).get(rub1id, ""))
+                        rub1_name = dump.get("rub1_name", {}).get(rub1id, "")
+                cat_paths.append((rub1_name, rub2_name, rub3_name))
 
         for r in fil_rub_rows:
             rubid = dump.get("filrub_rub", {}).get(r)
             if rubid is not None:
-                rubs3.append(dump.get("rub3_name", {}).get(rubid, ""))
+                rub3_name = dump.get("rub3_name", {}).get(rubid, "")
+                rub2_name = ""
+                rub1_name = ""
                 rub2id = dump.get("rub3_rub2", {}).get(rubid)
                 if rub2id is not None:
-                    rubs2.append(dump.get("rub2_name", {}).get(rub2id, ""))
+                    rub2_name = dump.get("rub2_name", {}).get(rub2id, "")
                     rub1id = dump.get("rub2_rub1", {}).get(rub2id)
                     if rub1id is not None:
-                        rubs1.append(dump.get("rub1_name", {}).get(rub1id, ""))
+                        rub1_name = dump.get("rub1_name", {}).get(rub1id, "")
+                cat_paths.append((rub1_name, rub2_name, rub3_name))
 
-        rubs3_str = "\n".join(sorted(set(rubs3)))
-        rubs2_str = "\n".join(sorted(set(rubs2)))
-        rubs1_str = "\n".join(sorted(set(rubs1)))
+        # Дедупликация по полной цепочке (не по отдельным уровням!)
+        cat_paths = sorted(set(cat_paths))
+
+        rubs1_str = "\n".join(p[0] for p in cat_paths)
+        rubs2_str = "\n".join(p[1] for p in cat_paths)
+        rubs3_str = "\n".join(p[2] for p in cat_paths)
 
         phones_str = "\n".join(phones)
         faxes_str = "\n".join(faxes)
