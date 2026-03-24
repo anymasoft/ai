@@ -23,6 +23,16 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* --- Header --- */
         .header {
             background: rgba(255, 255, 255, 0.8);
             backdrop-filter: blur(10px);
@@ -43,39 +53,10 @@
             background-clip: text;
         }
 
-        .hero {
-            padding: 60px 20px 40px;
-            text-align: center;
-        }
-
-        .hero h1 {
-            font-size: 32px;
-            font-weight: 700;
-            color: #111827;
-            margin-bottom: 12px;
-            letter-spacing: -0.6px;
-        }
-
-        .hero p {
-            font-size: 15px;
-            color: #6b7280;
-            margin-bottom: 40px;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
-            line-height: 1.6;
-        }
-
-        .search-container {
-            max-width: 650px;
-            margin: 0 auto 28px;
-            position: relative;
-        }
-
+        /* --- Search --- */
         .search-input {
             width: 100%;
-            padding: 14px 16px;
-            padding-right: 48px;
+            padding: 14px 140px 14px 16px;
             font-size: 15px;
             border: 1px solid #e5e7eb;
             border-radius: 14px;
@@ -83,7 +64,6 @@
             transition: all 0.2s ease;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
-
         .search-input::placeholder { color: #9ca3af; }
         .search-input:focus {
             outline: none;
@@ -96,7 +76,7 @@
             right: 6px;
             top: 50%;
             transform: translateY(-50%);
-            padding: 6px 12px;
+            padding: 8px 18px;
             background: #3b82f6;
             color: white;
             border: none;
@@ -105,37 +85,56 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
-
-        .search-button:hover {
+        .search-button:hover:not(:disabled) {
             background: #2563eb;
             box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
         }
+        .search-button:disabled {
+            background: #93c5fd;
+            cursor: not-allowed;
+        }
+        .search-button .spinner {
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
 
-        .suggestions {
+        /* --- Depth Toggle --- */
+        .depth-toggle {
+            display: inline-flex;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+        }
+        .depth-option {
+            padding: 5px 0;
+            width: 110px;
             text-align: center;
-            margin-bottom: 50px;
-            padding: 0 20px;
-        }
-
-        .suggestions-title {
             font-size: 12px;
-            color: #9ca3af;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 12px;
-            font-weight: 600;
+            font-weight: 500;
+            color: #6b7280;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            transition: all 0.15s ease;
+            border-right: 1px solid #e5e7eb;
+        }
+        .depth-option:last-child { border-right: none; }
+        .depth-option:hover { background: #f9fafb; color: #374151; }
+        .depth-option.active {
+            background: #18181b;
+            color: white;
         }
 
-        .suggestions-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            justify-content: center;
-            max-width: 700px;
-            margin: 0 auto;
-        }
-
+        /* --- Suggestions --- */
         .suggestion-item {
             padding: 6px 12px;
             background: white;
@@ -145,78 +144,42 @@
             color: #4b5563;
             cursor: pointer;
             transition: all 0.2s ease;
+            text-decoration: none;
         }
-
         .suggestion-item:hover {
             background: #f3f4f6;
             border-color: #d1d5db;
             color: #1f2937;
         }
 
+        /* --- Filters --- */
         .filters-toggle {
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
+            gap: 6px;
+            padding: 6px 12px;
             background: white;
             border: 1px solid #e5e7eb;
             border-radius: 8px;
-            font-size: 13px;
+            font-size: 12px;
             color: #6b7280;
             cursor: pointer;
             transition: all 0.2s ease;
-            width: fit-content;
-            margin: 0 auto 30px;
         }
-
-        .filters-toggle:hover {
-            background: #f9fafb;
-            border-color: #d1d5db;
-        }
-
-        .filters-toggle.active {
-            background: #f0f4ff;
-            border-color: #3b82f6;
-            color: #3b82f6;
-        }
+        .filters-toggle:hover { background: #f9fafb; border-color: #d1d5db; }
+        .filters-toggle.active { background: #f0f4ff; border-color: #3b82f6; color: #3b82f6; }
 
         .filters-section {
             display: none;
             max-width: 650px;
-            margin: 0 auto 40px;
+            margin: 0 auto;
             background: white;
             border: 1px solid #e5e7eb;
             border-radius: 12px;
-            padding: 24px;
+            padding: 20px;
             animation: slideDown 0.3s ease;
         }
-
         .filters-section.active { display: block; }
-
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-8px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .filter-group {
-            margin-bottom: 16px;
-        }
-
-        .filter-group:last-child { margin-bottom: 0; }
-
-        .filter-label {
-            display: block;
-            font-size: 13px;
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 6px;
-        }
 
         .filter-input {
             width: 100%;
@@ -226,67 +189,23 @@
             border-radius: 8px;
             background: white;
         }
-
         .filter-input:focus {
             outline: none;
             border-color: #3b82f6;
             box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
         }
 
-        .filter-checkboxes {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
         .filter-checkbox {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
             cursor: pointer;
             font-size: 13px;
             color: #4b5563;
         }
+        .filter-checkbox input { accent-color: #3b82f6; }
 
-        .filter-checkbox input {
-            accent-color: #3b82f6;
-        }
-
-        .results-section {
-            display: none;
-            margin-bottom: 40px;
-            animation: fadeIn 0.4s ease;
-        }
-
-        .results-section.active { display: block; }
-
-        .results-header {
-            max-width: 1000px;
-            margin: 0 auto 20px;
-            padding: 0 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .results-title {
-            font-size: 16px;
-            font-weight: 700;
-            color: #111827;
-        }
-
-        .results-count {
-            font-size: 13px;
-            color: #6b7280;
-        }
-
-        .table-container {
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 0 20px;
-            overflow-x: auto;
-        }
-
+        /* --- Table --- */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -296,124 +215,77 @@
             overflow: hidden;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
         }
-
-        thead {
-            background: #f9fafb;
-            border-bottom: 1px solid #e5e7eb;
-        }
-
+        thead { background: #f9fafb; border-bottom: 1px solid #e5e7eb; }
         th {
-            padding: 12px 16px;
+            padding: 10px 14px;
             text-align: left;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 700;
             color: #6b7280;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-
         td {
-            padding: 14px 16px;
+            padding: 12px 14px;
             border-bottom: 1px solid #f3f4f6;
             font-size: 13px;
             color: #4b5563;
         }
-
         tr:hover { background: #fafbfc; }
 
         .company-row {
             cursor: pointer;
             transition: background-color 0.15s ease;
         }
-
         .expand-arrow {
             display: inline-block;
             width: 14px;
             height: 14px;
             color: #9ca3af;
-            margin-right: 10px;
+            margin-right: 8px;
             transition: transform 0.2s ease;
         }
-
         .company-row:hover .expand-arrow { color: #6b7280; }
         .company-row.expanded .expand-arrow { transform: rotate(90deg); }
-
         .company-name {
             font-weight: 600;
             color: #1f2937;
             display: flex;
             align-items: center;
         }
+        .domain-link { color: #3b82f6; text-decoration: none; }
+        .domain-link:hover { color: #2563eb; text-decoration: underline; }
 
-        .domain-link {
-            color: #3b82f6;
-            text-decoration: none;
-        }
-
-        .domain-link:hover {
-            color: #2563eb;
-            text-decoration: underline;
-        }
-
-        .details-row {
-            display: none;
-            background: #f8fafc;
-        }
-
+        .details-row { display: none; background: #f8fafc; }
         .details-row.open { display: table-row; }
-
         .details-content {
-            padding: 20px 24px;
+            padding: 16px 20px;
             font-size: 13px;
             color: #4b5563;
         }
-
         .details-content h4 {
             font-weight: 700;
             color: #374151;
-            font-size: 12px;
+            font-size: 11px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin: 16px 0 8px 0;
+            margin: 14px 0 6px 0;
         }
-
         .details-content h4:first-child { margin-top: 0; }
-
         .details-content ul {
             list-style: none;
             padding: 0;
             margin: 0;
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 3px;
         }
-
-        .details-content a {
-            color: #3b82f6;
-            text-decoration: none;
-        }
-
+        .details-content a { color: #3b82f6; text-decoration: none; }
         .details-content a:hover { text-decoration: underline; }
 
-        .pagination {
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 0 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 20px;
-            font-size: 13px;
-            color: #6b7280;
-        }
-
-        .pagination-buttons {
-            display: flex;
-            gap: 6px;
-        }
-
+        /* --- Pagination --- */
         .pagination-btn {
-            padding: 6px 10px;
+            padding: 5px 10px;
             border: 1px solid #e5e7eb;
             background: white;
             border-radius: 6px;
@@ -422,123 +294,48 @@
             transition: all 0.2s ease;
             color: #4b5563;
         }
-
-        .pagination-btn:hover {
-            background: #f3f4f6;
-            border-color: #d1d5db;
-        }
-
+        .pagination-btn:hover { background: #f3f4f6; border-color: #d1d5db; }
         .pagination-btn.active {
             background: #3b82f6;
             color: white;
             border-color: #3b82f6;
         }
-
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
+        .pagination-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
         }
 
-        .empty-state.hidden { display: none; }
-
-        .empty-icon {
-            width: 48px;
-            height: 48px;
-            margin: 0 auto 16px;
-            color: #d1d5db;
-        }
-
-        .empty-state h2 {
-            font-size: 18px;
-            font-weight: 700;
-            color: #374151;
-            margin-bottom: 8px;
-        }
-
-        .empty-state p {
-            font-size: 14px;
-            color: #9ca3af;
-        }
-
-        .loading {
-            display: none;
-        }
-
-        .loading.active {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .spinner {
-            width: 16px;
-            height: 16px;
-            border: 2px solid #e5e7eb;
-            border-top-color: #3b82f6;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
+        /* --- Buttons --- */
         .btn {
-            padding: 8px 16px;
+            padding: 7px 14px;
             border: none;
             border-radius: 8px;
             font-size: 13px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
-
-        .btn-primary {
-            background: #3b82f6;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #2563eb;
-        }
-
         .btn-secondary {
             background: white;
             color: #4b5563;
             border: 1px solid #e5e7eb;
         }
-
-        .btn-secondary:hover {
-            background: #f9fafb;
-            border-color: #d1d5db;
-        }
-
+        .btn-secondary:hover { background: #f9fafb; border-color: #d1d5db; }
         .btn-ghost {
             background: transparent;
             color: #6b7280;
-            padding: 8px 0;
         }
+        .btn-ghost:hover { color: #374151; }
 
-        .btn-ghost:hover {
-            color: #374151;
-        }
-
-        .btn-group {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            max-width: 650px;
-            margin: 0 auto 40px;
-            justify-content: center;
-        }
-
-        .footer {
-            text-align: center;
-            padding: 20px;
-            font-size: 12px;
-            color: #9ca3af;
-            margin-top: 40px;
-            border-top: 1px solid rgba(0, 0, 0, 0.05);
+        /* --- Empty State --- */
+        .empty-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 16px;
+            color: #d1d5db;
         }
     </style>
 </head>
@@ -553,133 +350,137 @@
     <!-- Main -->
     <main>
         <!-- Hero -->
-        <section class="hero">
-            <h1>Найдите компании и контакты за секунды</h1>
-            <p>Мощный поиск по базе организаций. Фильтруйте по городу, категории, наличию контактов.</p>
+        <section class="pt-14 pb-8 text-center px-5">
+            <h1 class="text-3xl font-bold text-gray-900 mb-3" style="letter-spacing: -0.6px;">Найдите компании и контакты за секунды</h1>
+            <p class="text-sm text-gray-500 mb-10 max-w-xl mx-auto leading-relaxed">Мощный поиск по базе организаций. Фильтруйте по городу, категории, наличию контактов.</p>
 
             <!-- Search -->
-            <div class="search-container">
-                <input type="text" id="search-input" class="search-input" placeholder="Например: стоматологии в Москве с телефоном">
-                <button class="search-button" onclick="handleSearch()">Найти лиды</button>
+            <div class="max-w-[650px] mx-auto mb-4 relative">
+                <input type="text" id="search-input" class="search-input" placeholder="Например: стоматологии в Москве с телефоном" oninput="updateSearchButton()">
+                <button id="search-btn" class="search-button" onclick="handleSearch()" disabled>
+                    <span id="search-btn-text">Найти лиды</span>
+                </button>
             </div>
+
+            <!-- Depth Toggle + Filters Toggle row -->
+            <div class="flex items-center justify-center gap-3 mb-1.5">
+                <div class="depth-toggle">
+                    <button class="depth-option" data-depth="1" onclick="setDepth(1)">Точный</button>
+                    <button class="depth-option active" data-depth="3" onclick="setDepth(3)">Сбалансированный</button>
+                    <button class="depth-option" data-depth="5" onclick="setDepth(5)">Широкий</button>
+                </div>
+                <button class="filters-toggle" onclick="toggleFilters()">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M3 12h18"></path></svg>
+                    Фильтры
+                </button>
+            </div>
+            <p class="text-[11px] text-gray-400 mb-4 text-center">Больше режим → больше компаний, но ниже точность</p>
 
             <!-- Suggestions -->
-            <div class="suggestions">
-                <div class="suggestions-title">Попробуйте:</div>
-                <div class="suggestions-list">
-                    <a href="#" class="suggestion-item" onclick="setSuggestion('кафе в Москве'); return false;">кафе в Москве</a>
-                    <a href="#" class="suggestion-item" onclick="setSuggestion('стоматологии в Казани с email'); return false;">стоматологии в Казани с email</a>
-                    <a href="#" class="suggestion-item" onclick="setSuggestion('автосервисы с сайтом'); return false;">автосервисы с сайтом</a>
-                </div>
+            <div class="flex flex-wrap gap-2 justify-center mb-6 max-w-[650px] mx-auto">
+                <span class="text-xs text-gray-400 uppercase tracking-wide font-semibold self-center mr-1">Попробуйте:</span>
+                <a href="#" class="suggestion-item" onclick="setSuggestion('кафе в Москве'); return false;">кафе в Москве</a>
+                <a href="#" class="suggestion-item" onclick="setSuggestion('стоматологии в Казани с email'); return false;">стоматологии в Казани с email</a>
+                <a href="#" class="suggestion-item" onclick="setSuggestion('автосервисы с сайтом'); return false;">автосервисы с сайтом</a>
             </div>
 
-            <!-- Filters Toggle -->
-            <button class="filters-toggle" onclick="toggleFilters()">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M4 6h16M4 12h16M4 18h16"></path>
-                </svg>
-                Дополнительные фильтры
-            </button>
-
-            <!-- Filters -->
-            <div id="filters-section" class="filters-section">
-                <div class="filter-group">
-                    <label class="filter-label">Город</label>
-                    <input type="text" id="city" class="filter-input" placeholder="Например: Санкт-Петербург">
-                </div>
-
-                <div class="filter-group">
-                    <label class="filter-label">Категория</label>
-                    <input type="text" id="category" class="filter-input" placeholder="Например: Кафе">
-                </div>
-
-                <div class="filter-group">
-                    <label class="filter-label">Результатов</label>
-                    <input type="number" id="limit" class="filter-input" value="50" min="1" max="1000">
-                </div>
-
-                <div class="filter-group">
-                    <label class="filter-label">Фильтры</label>
-                    <div class="filter-checkboxes">
-                        <label class="filter-checkbox">
-                            <input type="checkbox" id="has_email">
-                            <span>Только с Email</span>
-                        </label>
-                        <label class="filter-checkbox">
-                            <input type="checkbox" id="has_phone">
-                            <span>Только с телефоном</span>
-                        </label>
-                        <label class="filter-checkbox">
-                            <input type="checkbox" id="has_website">
-                            <span>Только с сайтом</span>
-                        </label>
+            <!-- Filters (collapsible) -->
+            <div id="filters-section" class="filters-section mb-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Город</label>
+                        <input type="text" id="city" class="filter-input" placeholder="Например: Санкт-Петербург">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Категория</label>
+                        <input type="text" id="category" class="filter-input" placeholder="Например: Кафе">
                     </div>
                 </div>
-            </div>
-
-            <!-- Buttons -->
-            <div class="btn-group">
-                <button class="btn btn-secondary" onclick="exportCSV()">Скачать CSV</button>
-                <button class="btn btn-ghost" onclick="resetFilters()">Очистить</button>
-                <span class="loading" id="loading-spinner">
-                    <div class="spinner"></div>
-                    <span id="loading-text">Загрузка…</span>
-                </span>
+                <div class="flex flex-wrap items-center gap-x-5 gap-y-2">
+                    <label class="filter-checkbox"><input type="checkbox" id="has_email"><span>Только с Email</span></label>
+                    <label class="filter-checkbox"><input type="checkbox" id="has_phone"><span>Только с телефоном</span></label>
+                    <label class="filter-checkbox"><input type="checkbox" id="has_website"><span>Только с сайтом</span></label>
+                </div>
             </div>
         </section>
 
         <!-- Empty State -->
-        <div id="empty-state" class="empty-state">
+        <div id="empty-state" class="text-center py-14 px-5">
             <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
             </svg>
-            <h2>Начните поиск</h2>
-            <p>Введите ваш запрос выше, чтобы найти компании</p>
+            <h2 class="text-lg font-bold text-gray-700 mb-2">Начните поиск</h2>
+            <p class="text-sm text-gray-400">Введите ваш запрос выше, чтобы найти компании</p>
         </div>
 
         <!-- Results -->
-        <section id="results-section" class="results-section">
-            <div class="results-header">
-                <h2 class="results-title">Результаты поиска</h2>
-                <span class="results-count" id="result-count">Найдено: 0</span>
+        <section id="results-section" class="mb-10 fade-in" style="display:none;">
+            <!-- Results Header -->
+            <div class="max-w-[1000px] mx-auto px-5 mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <h2 class="text-base font-bold text-gray-900">Результаты</h2>
+                    <span class="text-sm text-gray-500" id="result-count"></span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button class="btn btn-secondary" onclick="exportCSV()" id="export-btn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Скачать CSV
+                    </button>
+                    <button class="btn btn-ghost" onclick="resetFilters()">Очистить</button>
+                </div>
             </div>
 
-            <div class="table-container">
+            <!-- Table -->
+            <div class="max-w-[1000px] mx-auto px-5 overflow-x-auto">
                 <table>
                     <thead>
                         <tr>
                             <th style="width: 30px;">#</th>
                             <th>Название</th>
-                            <th style="width: 120px;">Город</th>
-                            <th style="width: 180px;">Домен</th>
-                            <th style="width: 140px;">Телефон</th>
-                            <th style="width: 160px;">Email</th>
+                            <th style="width: 110px;">Город</th>
+                            <th style="width: 170px;">Домен</th>
+                            <th style="width: 130px;">Телефон</th>
+                            <th style="width: 150px;">Email</th>
                         </tr>
                     </thead>
                     <tbody id="results-table"></tbody>
                 </table>
             </div>
 
-            <div class="pagination">
-                <span id="pagination-info">0 из 0</span>
-                <div class="pagination-buttons" id="pagination-buttons"></div>
+            <!-- Pagination -->
+            <div class="max-w-[1000px] mx-auto px-5 flex flex-wrap items-center justify-between gap-3 mt-5 text-sm text-gray-500">
+                <span id="pagination-info"></span>
+                <div class="flex gap-1.5" id="pagination-buttons"></div>
             </div>
         </section>
     </main>
 
     <!-- Footer -->
-    <footer class="footer">
+    <footer class="text-center py-5 text-xs text-gray-400 mt-10 border-t border-gray-100">
         <p>LeadExtractor v2.0 — Поиск компаний и контактов</p>
     </footer>
 
     <script>
-        // Глобальные переменные
-        let allCompaniesData = [];
+        // ===== Состояние =====
         let currentPage = 1;
-        const ITEMS_PER_PAGE = 100;
+        let totalResults = 0;
         let detailsCache = {};
+        let searchDepth = 3;
+        let isLoading = false;
+        const LIMIT = 100;
 
-        // Toggle Filters
+        // Последние параметры поиска (для пагинации)
+        let lastSearchParams = null;
+
+        // ===== Depth Toggle =====
+        function setDepth(d) {
+            searchDepth = d;
+            document.querySelectorAll('.depth-option').forEach(btn => {
+                btn.classList.toggle('active', parseInt(btn.dataset.depth) === d);
+            });
+        }
+
+        // ===== Filters =====
         function toggleFilters() {
             const section = document.getElementById('filters-section');
             const toggle = document.querySelector('.filters-toggle');
@@ -687,182 +488,127 @@
             toggle.classList.toggle('active');
         }
 
-        // Set Suggestion
+        // ===== Search Button State =====
+        function updateSearchButton() {
+            const input = document.getElementById('search-input').value.trim();
+            const btn = document.getElementById('search-btn');
+            btn.disabled = input.length === 0 && !isLoading;
+        }
+
+        function setLoadingState(loading) {
+            isLoading = loading;
+            const btn = document.getElementById('search-btn');
+            const btnText = document.getElementById('search-btn-text');
+            if (loading) {
+                btn.disabled = true;
+                btnText.innerHTML = '<span class="spinner"></span> Загрузка...';
+            } else {
+                btnText.textContent = 'Найти лиды';
+                updateSearchButton();
+            }
+        }
+
+        // ===== Suggestions =====
         function setSuggestion(text) {
             document.getElementById('search-input').value = text;
-            document.getElementById('search-input').focus();
+            updateSearchButton();
             handleSearch();
         }
 
-        // Parse Search Query
-        function parseSearch(query) {
-            const filters = {
-                category: null,
-                city: null,
-                has_phone: false,
-                has_email: false,
-                has_website: false
-            };
+        // ===== Build Search Params =====
+        function buildSearchParams(page) {
+            const params = new URLSearchParams();
+            const searchQuery = document.getElementById('search-input').value.trim();
 
-            const lower = query.toLowerCase();
-
-            if (lower.includes(' в ')) {
-                const parts = lower.split(' в ');
-                filters.category = parts[0].trim();
-                const remaining = parts.slice(1).join(' в ').trim();
-                const match = remaining.match(/^([а-яё\s-]+?)(?:\s+(?:с|с\s+))?/);
-                if (match) filters.city = match[1].trim();
-            } else if (lower.includes(' с ')) {
-                filters.category = lower.split(' с ')[0].trim();
-            } else {
-                filters.category = query.trim();
+            if (searchQuery) {
+                params.append('query', searchQuery);
+                params.append('depth', searchDepth);
             }
 
-            if (lower.includes('с телефон')) filters.has_phone = true;
-            if (lower.includes('с email') || lower.includes('с mail')) filters.has_email = true;
-            if (lower.includes('с сайт')) filters.has_website = true;
+            // Явные фильтры — всегда добавляем (backend объединит с FAISS)
+            const city = document.getElementById('city').value.trim();
+            const category = document.getElementById('category').value.trim();
+            if (city) params.append('city', city);
+            if (category) params.append('category', category);
+            if (document.getElementById('has_email').checked) params.append('has_email', 'true');
+            if (document.getElementById('has_phone').checked) params.append('has_phone', 'true');
+            if (document.getElementById('has_website').checked) params.append('has_website', 'true');
 
-            return filters;
-        }
-
-        // Get Filters
-        function getFilters() {
-            return {
-                city: document.getElementById('city').value || null,
-                category: document.getElementById('category').value || null,
-                has_email: document.getElementById('has_email').checked ? true : null,
-                has_phone: document.getElementById('has_phone').checked ? true : null,
-                has_website: document.getElementById('has_website').checked ? true : null,
-                limit: parseInt(document.getElementById('limit').value) || 50
-            };
-        }
-
-        // Build Query Params
-        function buildParams(filters) {
-            const params = new URLSearchParams();
-            if (filters.city) params.append('city', filters.city);
-            if (filters.category) params.append('category', filters.category);
-            if (filters.has_email) params.append('has_email', 'true');
-            if (filters.has_phone) params.append('has_phone', 'true');
-            if (filters.has_website) params.append('has_website', 'true');
-            params.append('limit', filters.limit);
+            params.append('limit', LIMIT);
+            params.append('offset', (page - 1) * LIMIT);
             return params;
         }
 
-        // Show/Hide Loading
-        function showLoading() {
-            document.getElementById('loading-spinner').classList.add('active');
-        }
+        // ===== Main Search =====
+        async function handleSearch(page) {
+            page = page || 1;
+            currentPage = page;
+            setLoadingState(true);
 
-        function hideLoading() {
-            document.getElementById('loading-spinner').classList.remove('active');
-        }
-
-        // Main Search Function
-        async function handleSearch() {
-            showLoading();
-
-            const searchQuery = document.getElementById('search-input').value;
-            const filters = getFilters();
-
-            // Строим параметры запроса
-            const params = new URLSearchParams();
-
-            // Если есть текстовый поиск — отправляем query на backend (AI-парсинг)
-            if (searchQuery && searchQuery.trim()) {
-                params.append('query', searchQuery.trim());
-            } else {
-                // Иначе используем явные фильтры
-                if (filters.city) params.append('city', filters.city);
-                if (filters.category) params.append('category', filters.category);
-                if (filters.has_email) params.append('has_email', 'true');
-                if (filters.has_phone) params.append('has_phone', 'true');
-                if (filters.has_website) params.append('has_website', 'true');
-            }
-
-            params.append('limit', filters.limit);
+            const params = buildSearchParams(page);
+            lastSearchParams = params;
 
             try {
                 const response = await fetch(`/api/companies?${params.toString()}`);
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
                 const data = await response.json();
+                const companies = data.data || [];
+                totalResults = data.total || 0;
 
-                // Проверяем данные (может быть data.data или просто data)
-                const companies = data.data || data.companies || data;
-
-                if (!companies || companies.length === 0) {
-                    document.getElementById('empty-state').innerHTML = `
-                        <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                        </svg>
-                        <h2>Ничего не найдено</h2>
-                        <p>Попробуйте изменить запрос или фильтры</p>
-                    `;
-                    document.getElementById('empty-state').classList.remove('hidden');
-                    document.getElementById('results-section').classList.remove('active');
-                    hideLoading();
+                if (totalResults === 0) {
+                    showEmptyState('Ничего не найдено', 'Попробуйте изменить запрос или расширить ширину поиска');
+                    document.getElementById('results-section').style.display = 'none';
                     return;
                 }
 
-                allCompaniesData = companies;
-                currentPage = 1;
-                renderTable();
+                document.getElementById('empty-state').style.display = 'none';
+                document.getElementById('results-section').style.display = 'block';
+                document.getElementById('result-count').textContent = `Найдено: ${totalResults.toLocaleString('ru-RU')} компаний`;
 
-                document.getElementById('result-count').textContent = `Найдено: ${data.total || companies.length}`;
-                document.getElementById('empty-state').classList.add('hidden');
-                document.getElementById('results-section').classList.add('active');
-
+                renderTable(companies);
+                renderPagination();
             } catch (error) {
                 console.error('Ошибка при загрузке:', error);
-                document.getElementById('empty-state').innerHTML = `
-                    <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4v2m0 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    <h2>Ошибка при загрузке</h2>
-                    <p>${error.message}</p>
-                `;
-                document.getElementById('empty-state').classList.remove('hidden');
-                document.getElementById('results-section').classList.remove('active');
+                showEmptyState('Ошибка при загрузке', error.message);
+                document.getElementById('results-section').style.display = 'none';
             } finally {
-                hideLoading();
+                setLoadingState(false);
             }
         }
 
-        // Render Table
-        function renderTable() {
+        // ===== Empty State =====
+        function showEmptyState(title, subtitle) {
+            const el = document.getElementById('empty-state');
+            el.style.display = 'block';
+            el.innerHTML = `
+                <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                <h2 class="text-lg font-bold text-gray-700 mb-2">${escapeHtml(title)}</h2>
+                <p class="text-sm text-gray-400">${escapeHtml(subtitle)}</p>
+            `;
+        }
+
+        // ===== Render Table =====
+        function renderTable(companies) {
             const tbody = document.getElementById('results-table');
-
-            const openedIds = new Set();
-            tbody.querySelectorAll('.company-row.expanded').forEach(row => {
-                const id = row.id.replace('row-', '');
-                openedIds.add(parseInt(id));
-            });
-
             tbody.innerHTML = '';
 
-            const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
-            const endIdx = Math.min(startIdx + ITEMS_PER_PAGE, allCompaniesData.length);
-            const pageData = allCompaniesData.slice(startIdx, endIdx);
-
-            pageData.forEach((company, idx) => {
-                const rowNum = startIdx + idx + 1;
+            companies.forEach((company, idx) => {
+                const rowNum = (currentPage - 1) * LIMIT + idx + 1;
                 const phone = company.phones ? company.phones.split(',')[0].trim() : '—';
                 const email = company.emails ? company.emails.split(',')[0].trim() : '—';
 
                 const row = document.createElement('tr');
                 row.id = `row-${company.id}`;
                 row.className = 'company-row';
-                if (openedIds.has(company.id)) row.classList.add('expanded');
                 row.onclick = () => toggleRow(company.id);
-
                 row.innerHTML = `
                     <td style="color: #9ca3af; text-align: center;">${rowNum}</td>
                     <td>
                         <span class="company-name">
-                            <svg class="expand-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                                <polyline points="9 18 15 12 9 6"></polyline>
-                            </svg>
+                            <svg class="expand-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
                             ${escapeHtml(company.name)}
                         </span>
                     </td>
@@ -876,73 +622,67 @@
                 const detailsRow = document.createElement('tr');
                 detailsRow.id = `details-${company.id}`;
                 detailsRow.className = 'details-row';
-                if (openedIds.has(company.id)) detailsRow.classList.add('open');
-                detailsRow.innerHTML = `<td colspan="6"><div class="details-content"><span>Загрузка деталей...</span></div></td>`;
+                detailsRow.innerHTML = `<td colspan="6"><div class="details-content"><span class="text-gray-400">Загрузка деталей...</span></div></td>`;
                 tbody.appendChild(detailsRow);
-
-                if (openedIds.has(company.id)) {
-                    if (detailsCache[company.id]) {
-                        renderDetails(company.id, detailsCache[company.id]);
-                    } else {
-                        loadDetails(company.id);
-                    }
-                }
             });
-
-            updatePagination();
         }
 
-        // Update Pagination
-        function updatePagination() {
-            const total = allCompaniesData.length;
-            const pages = Math.ceil(total / ITEMS_PER_PAGE);
-            const startIdx = (currentPage - 1) * ITEMS_PER_PAGE + 1;
-            const endIdx = Math.min(currentPage * ITEMS_PER_PAGE, total);
+        // ===== Pagination =====
+        function renderPagination() {
+            const totalPages = Math.ceil(totalResults / LIMIT);
+            const startIdx = (currentPage - 1) * LIMIT + 1;
+            const endIdx = Math.min(currentPage * LIMIT, totalResults);
 
-            document.getElementById('pagination-info').textContent = `${startIdx} – ${endIdx} из ${total}`;
+            document.getElementById('pagination-info').textContent = `${startIdx} – ${endIdx} из ${totalResults.toLocaleString('ru-RU')}`;
 
             const container = document.getElementById('pagination-buttons');
             container.innerHTML = '';
 
-            if (currentPage > 1) {
-                const btn = document.createElement('button');
-                btn.className = 'pagination-btn';
-                btn.textContent = 'Пред';
-                btn.onclick = () => goToPage(currentPage - 1);
-                container.appendChild(btn);
-            }
+            if (totalPages <= 1) return;
 
-            for (let i = 1; i <= pages; i++) {
-                if (i <= 3 || i > pages - 3 || (i >= currentPage - 1 && i <= currentPage + 1)) {
-                    const btn = document.createElement('button');
-                    btn.className = 'pagination-btn';
-                    if (i === currentPage) btn.classList.add('active');
-                    btn.textContent = i;
-                    btn.onclick = () => goToPage(i);
-                    container.appendChild(btn);
+            // Назад
+            addPaginationBtn(container, '←', currentPage > 1, () => handleSearch(currentPage - 1));
+
+            // Номера страниц
+            const pages = getPageNumbers(currentPage, totalPages);
+            pages.forEach(p => {
+                if (p === '...') {
+                    const span = document.createElement('span');
+                    span.className = 'px-1 text-gray-400';
+                    span.textContent = '…';
+                    container.appendChild(span);
+                } else {
+                    addPaginationBtn(container, p, true, () => handleSearch(p), p === currentPage);
                 }
-            }
+            });
 
-            if (currentPage < pages) {
-                const btn = document.createElement('button');
-                btn.className = 'pagination-btn';
-                btn.textContent = 'След';
-                btn.onclick = () => goToPage(currentPage + 1);
-                container.appendChild(btn);
-            }
+            // Вперёд
+            addPaginationBtn(container, '→', currentPage < totalPages, () => handleSearch(currentPage + 1));
         }
 
-        // Go To Page
-        function goToPage(page) {
-            const pages = Math.ceil(allCompaniesData.length / ITEMS_PER_PAGE);
-            if (page >= 1 && page <= pages) {
-                currentPage = page;
-                renderTable();
-                document.getElementById('results-table').scrollIntoView({ behavior: 'smooth' });
-            }
+        function addPaginationBtn(container, text, enabled, onClick, isActive) {
+            const btn = document.createElement('button');
+            btn.className = 'pagination-btn' + (isActive ? ' active' : '');
+            btn.textContent = text;
+            btn.disabled = !enabled;
+            if (enabled) btn.onclick = onClick;
+            container.appendChild(btn);
         }
 
-        // Toggle Row
+        function getPageNumbers(current, total) {
+            if (total <= 7) return Array.from({length: total}, (_, i) => i + 1);
+            const pages = [];
+            pages.push(1);
+            if (current > 3) pages.push('...');
+            for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
+                pages.push(i);
+            }
+            if (current < total - 2) pages.push('...');
+            pages.push(total);
+            return pages;
+        }
+
+        // ===== Row Details =====
         async function toggleRow(id) {
             const row = document.getElementById(`row-${id}`);
             const detailsRow = document.getElementById(`details-${id}`);
@@ -964,11 +704,7 @@
             }
         }
 
-        // Load Details
         async function loadDetails(id) {
-            const detailsRow = document.getElementById(`details-${id}`);
-            if (!detailsRow) return;
-
             try {
                 const resp = await fetch(`/api/companies/${id}`);
                 if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -976,12 +712,11 @@
                 detailsCache[id] = data;
                 renderDetails(id, data);
             } catch (e) {
-                const container = detailsRow.querySelector('.details-content');
-                if (container) container.innerHTML = `<span style="color:#ef4444">Ошибка: ${e.message}</span>`;
+                const row = document.getElementById(`details-${id}`);
+                if (row) row.querySelector('.details-content').innerHTML = `<span style="color:#ef4444">Ошибка: ${e.message}</span>`;
             }
         }
 
-        // Render Details
         function renderDetails(id, data) {
             const row = document.getElementById(`details-${id}`);
             if (!row) return;
@@ -1010,25 +745,19 @@
             }
             if (phones.length > 0) {
                 html += '<h4>Телефоны</h4><ul>';
-                phones.forEach(p => {
-                    html += `<li><a href="tel:${escapeHtml(p)}">${escapeHtml(p)}</a></li>`;
-                });
+                phones.forEach(p => html += `<li><a href="tel:${escapeHtml(p)}">${escapeHtml(p)}</a></li>`);
                 html += '</ul>';
             }
 
             if (data.emails && data.emails.length > 0) {
                 html += '<h4>Email</h4><ul>';
-                data.emails.forEach(e => {
-                    html += `<li><a href="mailto:${escapeHtml(e)}">${escapeHtml(e)}</a></li>`;
-                });
+                data.emails.forEach(e => html += `<li><a href="mailto:${escapeHtml(e)}">${escapeHtml(e)}</a></li>`);
                 html += '</ul>';
             }
 
             if (data.categories && data.categories.length > 0) {
                 html += '<h4>Категории</h4><ul>';
-                data.categories.forEach(c => {
-                    html += `<li>${escapeHtml(c.name)}</li>`;
-                });
+                data.categories.forEach(c => html += `<li>${escapeHtml(c.name)}</li>`);
                 html += '</ul>';
             }
 
@@ -1047,16 +776,33 @@
                 html += `<h4>Сайт</h4><ul><li><a href="${escapeHtml(data.company.website)}" target="_blank">${escapeHtml(data.company.website)}</a></li></ul>`;
             }
 
-            if (!html) html = '<span style="color:#9ca3af">Нет дополнительных данных</span>';
+            if (!html) html = '<span class="text-gray-400">Нет дополнительных данных</span>';
             container.innerHTML = html;
         }
 
-        // Export CSV
+        // ===== CSV Export (ВСЕ результаты) =====
         async function exportCSV() {
-            showLoading();
-            const filters = getFilters();
-            const params = buildParams(filters);
-            params.set('limit', Math.min(filters.limit, 5000));
+            const btn = document.getElementById('export-btn');
+            const origHTML = btn.innerHTML;
+            btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border:2px solid #e5e7eb;border-top-color:#3b82f6;border-radius:50%;animation:spin .8s linear infinite;display:inline-block;"></span> Экспорт...';
+            btn.disabled = true;
+
+            // Собираем те же параметры, что и при поиске, но без limit/offset
+            const params = new URLSearchParams();
+            const searchQuery = document.getElementById('search-input').value.trim();
+            if (searchQuery) {
+                params.append('query', searchQuery);
+                params.append('depth', searchDepth);
+            }
+
+            const city = document.getElementById('city').value.trim();
+            const category = document.getElementById('category').value.trim();
+            if (city) params.append('city', city);
+            if (category) params.append('category', category);
+            if (document.getElementById('has_email').checked) params.append('has_email', 'true');
+            if (document.getElementById('has_phone').checked) params.append('has_phone', 'true');
+            if (document.getElementById('has_website').checked) params.append('has_website', 'true');
+            params.append('limit', '50000');
 
             try {
                 const response = await fetch(`/api/export?${params}`);
@@ -1074,68 +820,69 @@
             } catch (error) {
                 alert('Ошибка при экспорте: ' + error.message);
             } finally {
-                hideLoading();
+                btn.innerHTML = origHTML;
+                btn.disabled = false;
             }
         }
 
-        // Reset Filters
+        // ===== Reset =====
         function resetFilters() {
             document.getElementById('search-input').value = '';
             document.getElementById('city').value = '';
             document.getElementById('category').value = '';
-            document.getElementById('limit').value = '50';
             document.getElementById('has_email').checked = false;
             document.getElementById('has_phone').checked = false;
             document.getElementById('has_website').checked = false;
-            document.getElementById('results-section').classList.remove('active');
-            document.getElementById('empty-state').classList.remove('hidden');
+            document.getElementById('results-section').style.display = 'none';
+            document.getElementById('empty-state').style.display = 'block';
             document.getElementById('empty-state').innerHTML = `
                 <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                 </svg>
-                <h2>Начните поиск</h2>
-                <p>Введите ваш запрос выше, чтобы найти компании</p>
+                <h2 class="text-lg font-bold text-gray-700 mb-2">Начните поиск</h2>
+                <p class="text-sm text-gray-400">Введите ваш запрос выше, чтобы найти компании</p>
             `;
             detailsCache = {};
-            allCompaniesData = [];
+            totalResults = 0;
+            setDepth(3);
+            updateSearchButton();
         }
 
-        // Escape HTML
+        // ===== Utilities =====
         function escapeHtml(text) {
             if (!text) return '';
             const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
             return String(text).replace(/[&<>"']/g, m => map[m]);
         }
 
-        // Fix Social URL
         function fixSocialUrl(type, url) {
             if (!url) return '#';
             if (url.startsWith('http://') || url.startsWith('https://')) return url;
             const typeNorm = (type || '').toLowerCase().trim();
             const socials = {
-                'instagram': `https://instagram.com/`,
-                'facebook': `https://facebook.com/`,
-                'fb': `https://facebook.com/`,
-                'twitter': `https://twitter.com/`,
-                'x': `https://twitter.com/`,
-                'telegram': `https://t.me/`,
-                'tg': `https://t.me/`,
-                'vk': `https://vk.com/`,
-                'vkontakte': `https://vk.com/`,
-                'youtube': `https://youtube.com/`,
-                'tiktok': `https://tiktok.com/@`,
-                'linkedin': `https://linkedin.com/in/`
+                'instagram': 'https://instagram.com/',
+                'facebook': 'https://facebook.com/',
+                'fb': 'https://facebook.com/',
+                'twitter': 'https://twitter.com/',
+                'x': 'https://twitter.com/',
+                'telegram': 'https://t.me/',
+                'tg': 'https://t.me/',
+                'vk': 'https://vk.com/',
+                'vkontakte': 'https://vk.com/',
+                'youtube': 'https://youtube.com/',
+                'tiktok': 'https://tiktok.com/@',
+                'linkedin': 'https://linkedin.com/in/'
             };
             const base = socials[typeNorm] || 'https://';
             return url.includes('/') ? `https://${url}` : base + url;
         }
 
-        // Init
+        // ===== Init =====
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('search-input').addEventListener('keypress', e => {
-                if (e.key === 'Enter') handleSearch();
+                if (e.key === 'Enter' && !document.getElementById('search-btn').disabled) handleSearch();
             });
-            hideLoading();
+            updateSearchButton();
         });
     </script>
 </body>

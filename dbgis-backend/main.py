@@ -330,7 +330,8 @@ async def get_companies(
     has_email: Optional[bool] = Query(None, description="Только с email"),
     has_phone: Optional[bool] = Query(None, description="Только с телефоном"),
     has_website: Optional[bool] = Query(None, description="Только с сайтом"),
-    limit: int = Query(50, ge=1, le=1000, description="Лимит результатов"),
+    depth: int = Query(3, ge=1, le=10, description="Кол-во FAISS-категорий (1=узкий, 3=средний, 5+=широкий)"),
+    limit: int = Query(100, ge=1, le=1000, description="Лимит результатов"),
     offset: int = Query(0, ge=0, description="Смещение")
 ):
     """Получить список компаний с фильтрами или AI-парсингом запроса."""
@@ -340,20 +341,20 @@ async def get_companies(
     normalized_query = None
     search_method = None
 
-    # FAISS семантический поиск категорий (top-3)
+    # FAISS семантический поиск категорий (top-k по depth)
     if query and FAISS_AVAILABLE:
         try:
-            top_categories = find_top_categories(query, k=3)
-            # Объединяем ids из всех top-3 категорий (без дубликатов)
+            top_categories = find_top_categories(query, k=depth)
+            # Объединяем ids из всех top-k категорий (без дубликатов)
             all_ids = set()
             for cat in top_categories:
                 all_ids.update(cat["ids"])
             category_ids = list(all_ids)
             normalized_query = top_categories[0]["name"] if top_categories else None
             search_method = "faiss"
-            print("FAISS TOP CATEGORIES:", [c["name"] for c in top_categories])
+            print(f"FAISS TOP CATEGORIES (depth={depth}):", [c["name"] for c in top_categories])
             print("TOTAL IDS:", len(category_ids))
-            log.info(f"[SEARCH] FAISS top-3: {[c['name'] for c in top_categories]}, total ids={len(category_ids)}")
+            log.info(f"[SEARCH] FAISS top-{depth}: {[c['name'] for c in top_categories]}, total ids={len(category_ids)}")
         except Exception as e:
             log.error(f"[SEARCH] Ошибка FAISS: {e}")
             search_method = "fallback"
@@ -620,14 +621,38 @@ async def get_company_detail(company_id: int):
 
 @app.get("/api/export")
 async def export_csv(
+    query: Optional[str] = Query(None),
     city: Optional[str] = Query(None),
     category: Optional[str] = Query(None),
     has_email: Optional[bool] = Query(None),
     has_phone: Optional[bool] = Query(None),
     has_website: Optional[bool] = Query(None),
-    limit: int = Query(5000, ge=1, le=50000)
+    depth: int = Query(3, ge=1, le=10),
+    limit: int = Query(50000, ge=1, le=50000)
 ):
-    """Экспорт результатов в CSV."""
+    """Экспорт результатов в CSV (все найденные записи)."""
+
+    # FAISS-поиск для экспорта (аналогично /api/companies)
+    category_ids = None
+    if query and FAISS_AVAILABLE:
+        try:
+            top_categories = find_top_categories(query, k=depth)
+            all_ids = set()
+            for cat in top_categories:
+                all_ids.update(cat["ids"])
+            category_ids = list(all_ids)
+        except Exception as e:
+            log.error(f"[EXPORT] Ошибка FAISS: {e}")
+
+        # Извлекаем город из запроса
+        if FALLBACK_PARSER_AVAILABLE:
+            filters = parse_query_fallback(query)
+            if filters:
+                city = filters.get("city") or city
+                has_phone = filters.get("has_phone") or has_phone
+                has_email = filters.get("has_email") or has_email
+                has_website = filters.get("has_website") or has_website
+
     conn = get_db_connection()
     if conn is None:
         raise HTTPException(status_code=503, detail="Database unavailable")
@@ -635,7 +660,8 @@ async def export_csv(
     try:
         cur = conn.cursor()
         where, params = build_filter_clause(
-            city, category, has_email, has_phone, has_website
+            city, category, has_email, has_phone, has_website,
+            category_ids=category_ids
         )
 
         query = (
