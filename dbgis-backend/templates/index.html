@@ -484,15 +484,238 @@
             margin: 0 auto 16px;
             color: #d1d5db;
         }
+
+        /* --- Auth: Header Layout --- */
+        .header-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* --- Auth: Login Button --- */
+        .auth-login-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 14px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #374151;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .auth-login-btn:hover {
+            background: #f9fafb;
+            border-color: #d1d5db;
+        }
+
+        /* --- Auth: Avatar --- */
+        .auth-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+            color: white;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: box-shadow 0.15s ease;
+            user-select: none;
+        }
+        .auth-avatar:hover {
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+        }
+
+        /* --- Auth: Dropdown Menu (shadcn-стиль) --- */
+        .auth-dropdown {
+            position: absolute;
+            right: 0;
+            top: calc(100% + 6px);
+            min-width: 220px;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
+            padding: 4px;
+            z-index: 100;
+            animation: slideDown 0.15s ease-out;
+            display: none;
+        }
+        .auth-dropdown.open { display: block; }
+        .auth-dropdown-label {
+            padding: 8px 10px 4px;
+            font-size: 11px;
+            font-weight: 500;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .auth-dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            font-size: 13px;
+            color: #374151;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.1s ease;
+        }
+        .auth-dropdown-item:hover { background: #f3f4f6; }
+        .auth-dropdown-item svg { width: 15px; height: 15px; color: #6b7280; }
+        .auth-dropdown-separator {
+            height: 1px;
+            background: #f3f4f6;
+            margin: 4px 0;
+        }
+        .auth-dropdown-value {
+            margin-left: auto;
+            font-size: 12px;
+            font-weight: 500;
+            color: #6b7280;
+        }
+        .auth-dropdown-badge {
+            margin-left: auto;
+            font-size: 11px;
+            font-weight: 500;
+            padding: 1px 6px;
+            border-radius: 4px;
+            background: #eff6ff;
+            color: #3b82f6;
+        }
+
+        /* --- Auth: API Key Modal (card-стиль) --- */
+        .auth-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.15s ease-out;
+        }
+        .auth-modal-card {
+            background: white;
+            border-radius: 14px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            width: 100%;
+            max-width: 440px;
+            margin: 16px;
+            animation: slideDown 0.2s ease-out;
+        }
+        .auth-modal-header {
+            padding: 20px 24px 0;
+        }
+        .auth-modal-header h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #111827;
+            margin: 0 0 4px;
+        }
+        .auth-modal-header p {
+            font-size: 13px;
+            color: #6b7280;
+            margin: 0;
+        }
+        .auth-modal-body {
+            padding: 20px 24px;
+        }
+        .auth-modal-footer {
+            padding: 0 24px 20px;
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+        .auth-key-display {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 12px;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px;
+            word-break: break-all;
+            color: #111827;
+            position: relative;
+        }
+        .auth-key-warning {
+            margin-top: 12px;
+            padding: 10px 12px;
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #92400e;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .auth-btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            color: white;
+            background: #111827;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        .auth-btn-primary:hover { background: #1f2937; }
+        .auth-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .auth-btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #374151;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .auth-btn-secondary:hover { background: #f9fafb; }
+        .auth-btn-copy {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            padding: 4px 8px;
+            font-size: 11px;
+            font-weight: 500;
+            color: #6b7280;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .auth-btn-copy:hover { background: #f3f4f6; }
     </style>
 </head>
 <body>
     <!-- Header -->
     <header class="header">
-        <div class="max-w-7xl mx-auto px-4 py-3">
+        <div class="max-w-7xl mx-auto px-4 py-3 header-inner">
             <div class="logo">LeadExtractor</div>
+            <div id="auth-container" style="position:relative;"></div>
         </div>
     </header>
+
+    <!-- API Keys Modal (скрыт по умолчанию) -->
+    <div id="api-keys-modal"></div>
 
     <!-- Main -->
     <main>
@@ -1355,6 +1578,222 @@
             tick();
         }
 
+        // ===== Auth Manager =====
+        const Auth = {
+            user: null,
+            loading: true,
+            apiKey: null,  // хранится только в памяти текущей сессии
+
+            async init() {
+                try {
+                    const resp = await fetch('/auth/me', {
+                        headers: this._headers()
+                    });
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        this.user = data.user || null;
+                    }
+                } catch (e) {
+                    // Shadow mode: при ошибке — анонимный пользователь
+                }
+                this.loading = false;
+                this.render();
+            },
+
+            _headers() {
+                const h = {};
+                const key = localStorage.getItem('le_api_key');
+                if (key) h['X-API-Key'] = key;
+                return h;
+            },
+
+            _getInitials(user) {
+                if (user.email) {
+                    return user.email[0].toUpperCase();
+                }
+                return 'U';
+            },
+
+            render() {
+                const container = document.getElementById('auth-container');
+                if (!container) return;
+
+                if (this.loading) {
+                    container.innerHTML = '';
+                    return;
+                }
+
+                if (!this.user) {
+                    container.innerHTML = `
+                        <button class="auth-login-btn" onclick="Auth.login()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                            Войти
+                        </button>
+                    `;
+                    return;
+                }
+
+                const initials = this._getInitials(this.user);
+                container.innerHTML = `
+                    <div class="auth-avatar" onclick="Auth.toggleDropdown()" id="auth-avatar">${escapeHtml(initials)}</div>
+                    <div class="auth-dropdown" id="auth-dropdown">
+                        <div class="auth-dropdown-label">Аккаунт</div>
+                        <div class="auth-dropdown-item" style="cursor:default;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            ${escapeHtml(this.user.email || 'Пользователь')}
+                        </div>
+                        <div class="auth-dropdown-item" style="cursor:default;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                            Тариф
+                            <span class="auth-dropdown-badge">${escapeHtml(this.user.plan || 'free')}</span>
+                        </div>
+                        <div class="auth-dropdown-item" style="cursor:default;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/></svg>
+                            Кредиты
+                            <span class="auth-dropdown-value">${this.user.credits ?? '—'}</span>
+                        </div>
+                        <div class="auth-dropdown-separator"></div>
+                        <div class="auth-dropdown-item" onclick="Auth.showApiKeysModal()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+                            API ключи
+                        </div>
+                        <div class="auth-dropdown-separator"></div>
+                        <div class="auth-dropdown-item" onclick="Auth.logout()" style="color:#ef4444;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#ef4444;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                            Выйти
+                        </div>
+                    </div>
+                `;
+            },
+
+            login() {
+                window.location.href = '/auth/yandex/login';
+            },
+
+            logout() {
+                localStorage.removeItem('le_api_key');
+                this.user = null;
+                this.apiKey = null;
+                this.closeDropdown();
+                this.render();
+            },
+
+            toggleDropdown() {
+                const dd = document.getElementById('auth-dropdown');
+                if (dd) dd.classList.toggle('open');
+            },
+
+            closeDropdown() {
+                const dd = document.getElementById('auth-dropdown');
+                if (dd) dd.classList.remove('open');
+            },
+
+            showApiKeysModal() {
+                this.closeDropdown();
+                const modal = document.getElementById('api-keys-modal');
+                const storedKey = localStorage.getItem('le_api_key');
+
+                modal.innerHTML = `
+                    <div class="auth-modal-overlay" onclick="if(event.target===this)Auth.closeApiKeysModal()">
+                        <div class="auth-modal-card">
+                            <div class="auth-modal-header">
+                                <h3>API ключ</h3>
+                                <p>Используйте ключ в заголовке X-API-Key для авторизации запросов.</p>
+                            </div>
+                            <div class="auth-modal-body">
+                                ${storedKey ? `
+                                    <div class="auth-key-display">
+                                        <span id="stored-key-display">${escapeHtml(storedKey.substring(0, 12))}${'•'.repeat(20)}</span>
+                                        <button class="auth-btn-copy" onclick="Auth.copyKey('${escapeHtml(storedKey)}')">Копировать</button>
+                                    </div>
+                                ` : `
+                                    <p style="font-size:13px;color:#6b7280;margin:0;">Ключ не сохранён в браузере. Сгенерируйте новый.</p>
+                                `}
+                                <div id="api-key-result"></div>
+                            </div>
+                            <div class="auth-modal-footer">
+                                <button class="auth-btn-secondary" onclick="Auth.closeApiKeysModal()">Закрыть</button>
+                                <button class="auth-btn-primary" id="regen-btn" onclick="Auth.regenerateApiKey()">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                                    Сгенерировать новый
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            },
+
+            closeApiKeysModal() {
+                document.getElementById('api-keys-modal').innerHTML = '';
+            },
+
+            async regenerateApiKey() {
+                const btn = document.getElementById('regen-btn');
+                if (btn) { btn.disabled = true; btn.textContent = 'Генерация...'; }
+
+                try {
+                    const resp = await fetch('/auth/api-key/regenerate', {
+                        method: 'POST',
+                        headers: this._headers()
+                    });
+
+                    if (!resp.ok) {
+                        const err = await resp.json().catch(() => ({}));
+                        throw new Error(err.detail || 'Ошибка генерации ключа');
+                    }
+
+                    const data = await resp.json();
+                    const newKey = data.api_key;
+
+                    // Сохраняем в localStorage
+                    localStorage.setItem('le_api_key', newKey);
+                    this.apiKey = newKey;
+
+                    const resultDiv = document.getElementById('api-key-result');
+                    if (resultDiv) {
+                        resultDiv.innerHTML = `
+                            <div class="auth-key-display" style="margin-top:16px;">
+                                ${escapeHtml(newKey)}
+                                <button class="auth-btn-copy" onclick="Auth.copyKey('${escapeHtml(newKey)}')">Копировать</button>
+                            </div>
+                            <div class="auth-key-warning">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:#d97706;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                <span>Сохраните ключ прямо сейчас. Он больше не будет показан.</span>
+                            </div>
+                        `;
+                    }
+                } catch (e) {
+                    const resultDiv = document.getElementById('api-key-result');
+                    if (resultDiv) {
+                        resultDiv.innerHTML = `<p style="color:#ef4444;font-size:13px;margin-top:12px;">${escapeHtml(e.message)}</p>`;
+                    }
+                } finally {
+                    if (btn) { btn.disabled = false; btn.innerHTML = `
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        Сгенерировать новый
+                    `; }
+                }
+            },
+
+            copyKey(key) {
+                navigator.clipboard.writeText(key).then(() => {
+                    const btns = document.querySelectorAll('.auth-btn-copy');
+                    btns.forEach(b => { b.textContent = 'Скопировано!'; setTimeout(() => b.textContent = 'Копировать', 1500); });
+                });
+            }
+        };
+
+        // Обработка OAuth callback — сохранение API key из URL
+        (function handleOAuthReturn() {
+            const params = new URLSearchParams(window.location.search);
+            const apiKey = params.get('api_key');
+            if (apiKey) {
+                localStorage.setItem('le_api_key', apiKey);
+                // Убираем ключ из URL
+                window.history.replaceState({}, '', window.location.pathname);
+            }
+        })();
+
         // ===== Init =====
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('search-input').addEventListener('keypress', e => {
@@ -1373,8 +1812,20 @@
                 }
             });
 
+            // Auth: закрыть dropdown при клике вне
+            document.addEventListener('click', e => {
+                const avatar = document.getElementById('auth-avatar');
+                const dropdown = document.getElementById('auth-dropdown');
+                if (dropdown && avatar && !avatar.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.remove('open');
+                }
+            });
+
             updateSearchButton();
             animatePlaceholder();
+
+            // Auth: инициализация (shadow mode — не блокирует основной UI)
+            Auth.init();
         });
     </script>
 </body>
