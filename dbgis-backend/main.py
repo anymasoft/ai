@@ -14,12 +14,15 @@ PostgreSQL + HTML5 + Vanilla JS.
 
 import os
 import csv
+import hmac
 import io
+import secrets
 import sys
 import hashlib
 import logging
 import subprocess
 import time
+from collections import defaultdict
 from typing import Optional
 from datetime import datetime
 from pathlib import Path
@@ -29,7 +32,7 @@ log = logging.getLogger(__name__)
 import psycopg2
 import psycopg2.pool
 from psycopg2.extras import RealDictCursor
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query, Request, HTTPException
 from fastapi.responses import HTMLResponse, Response, StreamingResponse
 from jinja2 import Environment, FileSystemLoader
 from dotenv import load_dotenv
@@ -143,6 +146,59 @@ POOL_MIN = int(os.getenv("DB_POOL_MIN", 2))
 POOL_MAX = int(os.getenv("DB_POOL_MAX", 10))
 
 app = FastAPI(title="dbgis API", debug=DEBUG)
+
+# ============================================================
+# БЕЗОПАСНОСТЬ: лимиты, rate limiting, HMAC-токены
+# ============================================================
+
+# Секрет для HMAC-токенов доступа к /api/companies/{id}
+# Генерируется при старте → токены инвалидируются при рестарте
+DETAIL_TOKEN_SECRET = os.getenv("DETAIL_TOKEN_SECRET", secrets.token_hex(32))
+
+# Максимальные лимиты
+MAX_EXPORT_LIMIT = 5000      # Макс. записей в одном CSV-экспорте
+MAX_OFFSET = 10000            # Макс. смещение для пагинации
+MIN_QUERY_LENGTH = 3          # Мин. длина текстового запроса
+
+# Rate limiting: простой in-memory счётчик по IP
+RATE_LIMIT_WINDOW = 60        # Окно в секундах
+RATE_LIMIT_MAX = 30           # Макс. запросов на IP в окне
+
+_rate_limit_store: dict[str, list[float]] = defaultdict(list)
+
+
+def _check_rate_limit(client_ip: str) -> bool:
+    """Проверяет rate limit для IP. Возвращает True если лимит превышен."""
+    now = time.time()
+    window_start = now - RATE_LIMIT_WINDOW
+    # Очистка старых записей
+    timestamps = _rate_limit_store[client_ip]
+    _rate_limit_store[client_ip] = [t for t in timestamps if t > window_start]
+    if len(_rate_limit_store[client_ip]) >= RATE_LIMIT_MAX:
+        return True
+    _rate_limit_store[client_ip].append(now)
+    return False
+
+
+def _generate_detail_token(company_id: int) -> str:
+    """Генерирует HMAC-токен для доступа к деталям компании."""
+    msg = f"detail:{company_id}".encode()
+    return hmac.new(DETAIL_TOKEN_SECRET.encode(), msg, hashlib.sha256).hexdigest()[:16]
+
+
+def _verify_detail_token(company_id: int, token: str) -> bool:
+    """Проверяет HMAC-токен для доступа к деталям компании."""
+    expected = _generate_detail_token(company_id)
+    return hmac.compare_digest(expected, token)
+
+
+def _sanitize_csv_value(value: str) -> str:
+    """Экранирует CSV-значения для защиты от CSV injection в Excel.
+    Если строка начинается с =, +, -, @ → добавляет апостроф-префикс."""
+    if value and value[0] in ('=', '+', '-', '@'):
+        return "'" + value
+    return value
+
 
 # Jinja2 для шаблонов
 templates_dir = os.path.join(os.path.dirname(__file__), "templates")
@@ -552,6 +608,7 @@ async def health():
 
 @app.get("/api/companies")
 async def get_companies(
+    request: Request,
     query: Optional[str] = Query(None, description="Текстовый поиск (AI-парсинг)"),
     city: Optional[str] = Query(None, description="Фильтр по городу (ILIKE)"),
     category: Optional[str] = Query(None, description="Фильтр по категории (ILIKE)"),
@@ -566,6 +623,15 @@ async def get_companies(
 ):
     """Получить список компаний с фильтрами или AI-парсингом запроса."""
 
+    # RATE LIMIT
+    client_ip = request.client.host if request.client else "unknown"
+    if _check_rate_limit(client_ip):
+        raise HTTPException(status_code=429, detail="Слишком много запросов. Попробуйте через минуту.")
+
+    # GUARD: ограничение offset (защита от enumeration через пагинацию)
+    if offset > MAX_OFFSET:
+        return {"total": 0, "limit": limit, "offset": offset, "data": [], "search_method": None}
+
     # GUARD: пустой запрос без фильтров → пустой результат (защита от выгрузки всей БД)
     has_any_filter = (
         query or city or category or
@@ -573,6 +639,10 @@ async def get_companies(
         category_filter_ids or city_ids
     )
     if not has_any_filter:
+        return {"total": 0, "limit": limit, "offset": offset, "data": [], "search_method": None}
+
+    # GUARD: слишком короткий query (защита от "а", "1" → вся база)
+    if query and len(query.strip()) < MIN_QUERY_LENGTH:
         return {"total": 0, "limit": limit, "offset": offset, "data": [], "search_method": None}
 
     # Парсинг category_filter_ids из строки "19,25,42" в список int
@@ -783,11 +853,17 @@ async def get_companies(
         print(f"RESULT COUNT: {total}, METHOD: {search_method}, MODE: {mode}")
         log.info(f"[SEARCH] RESULT COUNT: {total}, METHOD: {search_method}, MODE: {mode}")
 
+        decoded_data = decode_rows(rows)
+
+        # Генерируем HMAC-токены для доступа к деталям каждой компании
+        for item in decoded_data:
+            item["_detail_token"] = _generate_detail_token(item["id"])
+
         result = {
             "total": total,
             "limit": limit,
             "offset": offset,
-            "data": decode_rows(rows)
+            "data": decoded_data
         }
 
         # Подсказка города (только если город НЕ был автоматически определён из текста)
@@ -801,8 +877,23 @@ async def get_companies(
 
 
 @app.get("/api/companies/{company_id}")
-async def get_company_detail(company_id: int):
-    """Получить полную информацию о компании."""
+async def get_company_detail(
+    company_id: int,
+    request: Request,
+    token: str = Query(..., description="HMAC-токен доступа (из результатов поиска)")
+):
+    """Получить полную информацию о компании.
+    Требует HMAC-токен, выданный при поиске через /api/companies."""
+
+    # RATE LIMIT
+    client_ip = request.client.host if request.client else "unknown"
+    if _check_rate_limit(client_ip):
+        raise HTTPException(status_code=429, detail="Слишком много запросов. Попробуйте через минуту.")
+
+    # Проверка HMAC-токена (защита от перебора ID)
+    if not _verify_detail_token(company_id, token):
+        raise HTTPException(status_code=403, detail="Недействительный токен доступа")
+
     conn = get_db_connection()
     if conn is None:
         raise HTTPException(status_code=503, detail="Database unavailable")
@@ -896,6 +987,7 @@ async def get_company_detail(company_id: int):
 
 @app.get("/api/export")
 async def export_csv(
+    request: Request,
     query: Optional[str] = Query(None),
     city: Optional[str] = Query(None),
     category: Optional[str] = Query(None),
@@ -904,9 +996,17 @@ async def export_csv(
     has_website: Optional[bool] = Query(None),
     city_ids: Optional[str] = Query(None, description="Фильтр по ID городов"),
     mode: str = Query("precision", description="Режим: precision | coverage"),
-    limit: int = Query(50000, ge=1, le=50000)
+    limit: int = Query(MAX_EXPORT_LIMIT, ge=1, le=MAX_EXPORT_LIMIT)
 ):
-    """Экспорт результатов в CSV (все найденные записи)."""
+    """Экспорт результатов в CSV (макс. MAX_EXPORT_LIMIT записей)."""
+
+    # RATE LIMIT
+    client_ip = request.client.host if request.client else "unknown"
+    if _check_rate_limit(client_ip):
+        raise HTTPException(status_code=429, detail="Слишком много запросов. Попробуйте через минуту.")
+
+    # Принудительное ограничение лимита (на случай обхода валидации FastAPI)
+    limit = min(limit, MAX_EXPORT_LIMIT)
 
     # GUARD: пустой запрос без фильтров → пустой CSV (защита от выгрузки всей БД)
     has_any_filter = (
@@ -916,7 +1016,15 @@ async def export_csv(
     )
     if not has_any_filter:
         return Response(
-            content="ID,Название,Город,Домен,Сайт,Телефоны,Email,Адрес,Соцсети,Категории\n",
+            content="Название,Город,Домен,Сайт,Телефоны,Email,Адрес,Соцсети,Категории\n",
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=empty_export.csv"}
+        )
+
+    # GUARD: слишком короткий query (защита от "а", "1" → вся база)
+    if query and len(query.strip()) < MIN_QUERY_LENGTH:
+        return Response(
+            content="Название,Город,Домен,Сайт,Телефоны,Email,Адрес,Соцсети,Категории\n",
             media_type="text/csv",
             headers={"Content-Disposition": "attachment; filename=empty_export.csv"}
         )
@@ -1044,16 +1152,17 @@ async def export_csv(
             website = row["website"] or ""
             if website:
                 website = decode_punycode_domain(website)
+            # Санитизация CSV (защита от CSV injection в Excel: =, +, -, @)
             writer.writerow([
-                row["name"],
-                row["city"] or "",
-                domain,
-                website,
-                row["phones"] or "",
-                row["emails"] or "",
-                row["address"] or "",
-                row["socials"] or "",
-                row["categories"] or ""
+                _sanitize_csv_value(row["name"]),
+                _sanitize_csv_value(row["city"] or ""),
+                _sanitize_csv_value(domain),
+                _sanitize_csv_value(website),
+                _sanitize_csv_value(row["phones"] or ""),
+                _sanitize_csv_value(row["emails"] or ""),
+                _sanitize_csv_value(row["address"] or ""),
+                _sanitize_csv_value(row["socials"] or ""),
+                _sanitize_csv_value(row["categories"] or "")
             ])
 
         output.seek(0)
@@ -1067,7 +1176,8 @@ async def export_csv(
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"❌ ОШИБКА в /api/export: {str(e)}", file=sys.stderr)
+        raise HTTPException(status_code=500, detail="Ошибка при экспорте данных")
     finally:
         release_db_connection(conn)
 
