@@ -260,8 +260,27 @@ def get_or_create_category(cur: sqlite3.Cursor, name: str, parent_id: int | None
     return cur.lastrowid
 
 
+def _resolve_name(cur: sqlite3.Cursor, name: str, parent_id: int | None) -> int | None:
+    """Разбивает имя по '/' и создаёт цепочку категорий. Возвращает id последнего узла."""
+    if not name:
+        return parent_id
+    parts = [p.strip() for p in name.split("/") if p.strip()]
+    if not parts:
+        return parent_id
+    pid = parent_id
+    cat_id = pid
+    for part in parts:
+        cat_id = get_or_create_category(cur, part, pid)
+        pid = cat_id
+    return cat_id
+
+
 def process_categories(cur: sqlite3.Cursor, company_id: int, section: str, subsection: str, rubric: str):
-    """Разбирает иерархию категорий и связывает с компанией."""
+    """Разбирает иерархию категорий и связывает с компанией.
+
+    Построчная обработка: строка N в section, subsection, rubric
+    образует одну цепочку. Никакого декартова произведения.
+    """
     leaf_ids = set()
 
     # Каждое из трёх полей может содержать несколько значений через \n
@@ -269,41 +288,22 @@ def process_categories(cur: sqlite3.Cursor, company_id: int, section: str, subse
     subsections = split_values(subsection) if subsection else []
     rubrics = split_values(rubric) if rubric else []
 
-    # Строим дерево: Раздел → Подраздел → Рубрика
-    # Каждое значение может содержать "/" для вложенности
-    def resolve_chain(names: list[str], parent_id: int | None) -> list[int]:
-        """Разбивает каждое имя по '/' и создаёт цепочку."""
-        result = []
-        for raw in names:
-            parts = [p.strip() for p in raw.split("/") if p.strip()]
-            pid = parent_id
-            cat_id = pid
-            for part in parts:
-                cat_id = get_or_create_category(cur, part, pid)
-                pid = cat_id
-            if cat_id is not None:
-                result.append(cat_id)
-        return result
+    # Количество цепочек = максимум из длин трёх списков
+    n = max(len(sections), len(subsections), len(rubrics), 1) if (sections or subsections or rubrics) else 0
 
-    section_ids = resolve_chain(sections, None)
+    for i in range(n):
+        sec = sections[i] if i < len(sections) else ""
+        sub = subsections[i] if i < len(subsections) else ""
+        rub = rubrics[i] if i < len(rubrics) else ""
 
-    if subsections:
-        sub_ids = []
-        parents = section_ids if section_ids else [None]
-        for parent in parents:
-            sub_ids.extend(resolve_chain(subsections, parent))
-        if rubrics:
-            rub_parents = sub_ids if sub_ids else parents
-            for parent in rub_parents:
-                leaf_ids.update(resolve_chain(rubrics, parent))
-        else:
-            leaf_ids.update(sub_ids)
-    elif rubrics:
-        parents = section_ids if section_ids else [None]
-        for parent in parents:
-            leaf_ids.update(resolve_chain(rubrics, parent))
-    else:
-        leaf_ids.update(section_ids)
+        # Строим одну цепочку: section → subsection → rubric
+        sec_id = _resolve_name(cur, sec, None)
+        sub_id = _resolve_name(cur, sub, sec_id) if sub else sec_id
+        rub_id = _resolve_name(cur, rub, sub_id) if rub else sub_id
+
+        # Связываем компанию с листовой категорией
+        if rub_id is not None:
+            leaf_ids.add(rub_id)
 
     for cat_id in leaf_ids:
         cur.execute(
