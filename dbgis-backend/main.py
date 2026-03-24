@@ -223,7 +223,11 @@ COMPANIES_FILTER_SQL = """
 """
 
 # --- Фаза 2: подгрузка данных для отобранных id (LATERAL только здесь) ---
-COMPANIES_ENRICH_SQL = """
+# Разделена на FROM (до WHERE) и GROUP BY (после WHERE).
+# Между ними вставляется {enrich_where} — фильтр по cc.category_id,
+# чтобы STRING_AGG(cat.name) показывал ТОЛЬКО совпавшие категории
+# (идентично старому запросу, где WHERE фильтровал и компании, и категории).
+COMPANIES_ENRICH_FROM = """
     SELECT
         c.id,
         c.name,
@@ -263,6 +267,9 @@ COMPANIES_ENRICH_SQL = """
     ) soc ON TRUE
     LEFT JOIN company_categories cc ON c.id = cc.company_id
     LEFT JOIN categories cat ON cc.category_id = cat.id
+"""
+
+COMPANIES_ENRICH_GROUP = """
     GROUP BY c.id, c.name, c.city, c.domain, c.website, c.created_at,
              ph.phones, em.emails, addr.address, soc.socials,
              f.has_phones, f.has_emails, f.has_domain
@@ -399,6 +406,23 @@ def build_filter_clause(city, category, has_email, has_phone, has_website,
 
     where = " WHERE " + " AND ".join(clauses) if clauses else ""
     return where, params, having, having_params
+
+
+def _build_enrich_category_filter(category_ids, category_filter_ids, category):
+    """Строит WHERE-фильтр для фазы 2 (ENRICH), чтобы STRING_AGG(cat.name)
+    показывал только совпавшие категории (идентично старому запросу).
+
+    В старом монолитном запросе WHERE cc.category_id = ANY(...) фильтровал
+    и компании, и видимые категории одновременно. В двухфазном запросе
+    CTE фильтрует компании, а этот WHERE — видимые категории.
+    """
+    if category_filter_ids:
+        return " WHERE cc.category_id = ANY(%s)", [list(category_filter_ids)]
+    elif category_ids:
+        return " WHERE cc.category_id = ANY(%s)", [list(category_ids)]
+    elif category:
+        return " WHERE cat.name ILIKE %s", [f"%{category}%"]
+    return "", []
 
 
 def decode_rows(rows):
@@ -685,6 +709,14 @@ async def get_companies(
         #   STRING_AGG по пустому набору → NULL → COALESCE(NULL, '') → '' → ('' != '') = false
         #   EXISTS по пустому набору → false
         # Результат идентичен.
+        #
+        # CRITICAL: enrich_where фильтрует категории в фазе 2, чтобы STRING_AGG(cat.name)
+        # показывал ТОЛЬКО совпавшие категории (как в старом запросе, где WHERE фильтровал
+        # и компании, и видимые категории одновременно).
+        enrich_where, enrich_params = _build_enrich_category_filter(
+            category_ids, parsed_filter_ids, category
+        )
+
         sql_query = (
             "WITH filtered AS ("
             + COMPANIES_FILTER_SQL + where
@@ -692,10 +724,12 @@ async def get_companies(
             + " ORDER BY has_phones DESC, has_emails DESC, has_domain DESC, c.name ASC"
             + " LIMIT %s OFFSET %s"
             + ")"
-            + COMPANIES_ENRICH_SQL
+            + COMPANIES_ENRICH_FROM
+            + enrich_where
+            + COMPANIES_ENRICH_GROUP
             + " ORDER BY f.has_phones DESC, f.has_emails DESC, f.has_domain DESC, c.name ASC"
         )
-        cur.execute(sql_query, params + having_params + [limit, offset])
+        cur.execute(sql_query, params + having_params + [limit, offset] + enrich_params)
         rows = cur.fetchall()
 
         # --- Старый монолитный запрос (закомментирован для сравнения) ---
@@ -943,6 +977,10 @@ async def export_csv(
 
         # Двухфазный запрос (аналогично /api/companies)
         # Export сортирует по c.name, не по has_phones/has_emails
+        enrich_where, enrich_params = _build_enrich_category_filter(
+            category_ids, None, category  # export не имеет category_filter_ids
+        )
+
         export_query = (
             "WITH filtered AS ("
             + COMPANIES_FILTER_SQL + where
@@ -950,10 +988,12 @@ async def export_csv(
             + " ORDER BY c.name ASC"
             + " LIMIT %s"
             + ")"
-            + COMPANIES_ENRICH_SQL
+            + COMPANIES_ENRICH_FROM
+            + enrich_where
+            + COMPANIES_ENRICH_GROUP
             + " ORDER BY c.name ASC"
         )
-        cur.execute(export_query, params + having_params + [limit])
+        cur.execute(export_query, params + having_params + [limit] + enrich_params)
         rows = cur.fetchall()
 
         # --- Старый монолитный запрос (закомментирован для сравнения) ---
