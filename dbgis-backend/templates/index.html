@@ -756,7 +756,11 @@
             }
 
             if (data.categories && data.categories.length > 0) {
-                html += '<h4>Категории</h4><ul>';
+                const catId = `cat-${id}`;
+                html += `<h4 style="cursor:pointer;user-select:none;" onclick="(function(el,arrow){var ul=document.getElementById('${catId}');var open=ul.style.display!=='none';ul.style.display=open?'none':'flex';arrow.style.transform=open?'':'rotate(90deg)'})(this,document.querySelector('.cat-arrow-${id}'))">` +
+                    `<svg style="display:inline-block;width:12px;height:12px;margin-right:4px;transition:transform .2s;vertical-align:middle;" class="cat-arrow-${id}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>` +
+                    `Категории <span style="color:#9ca3af;font-weight:400;">(${data.categories.length})</span></h4>` +
+                    `<ul id="${catId}" style="display:none;flex-direction:column;gap:3px;">`;
                 data.categories.forEach(c => html += `<li>${escapeHtml(c.name)}</li>`);
                 html += '</ul>';
             }
