@@ -364,7 +364,7 @@
 
             <!-- Search -->
             <div class="max-w-[650px] mx-auto mb-4 relative">
-                <input type="text" id="search-input" class="search-input" placeholder="Например: стоматологии в Москве с телефоном" oninput="updateSearchButton()">
+                <input type="text" id="search-input" class="search-input" placeholder="" oninput="updateSearchButton()">
                 <button id="search-btn" class="search-button" onclick="handleSearch()" disabled>
                     <span id="search-btn-text">Найти лиды</span>
                 </button>
@@ -880,12 +880,95 @@
             return url.includes('/') ? `https://${url}` : base + url;
         }
 
+        // ===== Animated Placeholder =====
+        const placeholders = [
+            'стоматологии в Москве с телефоном',
+            'автосервисы в Новосибирске с сайтом',
+            'кафе и рестораны в Казани',
+            'юридические услуги в Екатеринбурге с email',
+            'салоны красоты в Краснодаре с телефоном',
+            'ветеринарные клиники в Санкт-Петербурге',
+            'фитнес-клубы в Самаре с сайтом',
+            'доставка еды в Ростове-на-Дону',
+            'автомойки в Уфе с телефоном',
+            'детские сады в Воронеже',
+            'ремонт квартир в Тюмени с сайтом',
+            'цветочные магазины в Омске с email',
+            'шиномонтаж в Челябинске с телефоном',
+            'языковые школы в Нижнем Новгороде',
+            'пекарни и кондитерские в Перми',
+            'типографии в Волгограде с email',
+            'клининговые компании в Красноярске',
+            'фотостудии в Калининграде с сайтом',
+            'аптеки в Иркутске с телефоном',
+            'строительные магазины в Барнауле',
+            'массажные салоны в Сочи',
+            'автошколы в Саратове с сайтом',
+            'турагентства в Владивостоке с email',
+            'мебельные магазины в Хабаровске',
+            'компьютерный ремонт в Томске с телефоном',
+            'квесты и развлечения в Тюмени',
+            'нотариусы в Оренбурге с телефоном',
+            'спортивные магазины в Пензе с сайтом',
+            'химчистки в Рязани с email',
+            'пиццерии в Астрахани с телефоном',
+        ];
+
+        function animatePlaceholder() {
+            const input = document.getElementById('search-input');
+            let idx = Math.floor(Math.random() * placeholders.length);
+            let charPos = 0;
+            let deleting = false;
+            let pauseTimer = null;
+
+            function tick() {
+                // Не анимировать, если пользователь что-то ввёл
+                if (input.value.length > 0) {
+                    input.placeholder = '';
+                    setTimeout(tick, 300);
+                    return;
+                }
+
+                const text = placeholders[idx];
+
+                if (!deleting) {
+                    charPos++;
+                    input.placeholder = text.slice(0, charPos);
+                    if (charPos >= text.length) {
+                        deleting = true;
+                        setTimeout(tick, 2500); // пауза перед стиранием
+                        return;
+                    }
+                    setTimeout(tick, 45);
+                } else {
+                    charPos--;
+                    input.placeholder = text.slice(0, charPos);
+                    if (charPos <= 0) {
+                        deleting = false;
+                        idx = (idx + 1) % placeholders.length;
+                        setTimeout(tick, 400); // пауза перед новым текстом
+                        return;
+                    }
+                    setTimeout(tick, 25);
+                }
+            }
+
+            // Перемешать массив при старте
+            for (let i = placeholders.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [placeholders[i], placeholders[j]] = [placeholders[j], placeholders[i]];
+            }
+
+            tick();
+        }
+
         // ===== Init =====
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('search-input').addEventListener('keypress', e => {
                 if (e.key === 'Enter' && !document.getElementById('search-btn').disabled) handleSearch();
             });
             updateSearchButton();
+            animatePlaceholder();
         });
     </script>
 </body>
