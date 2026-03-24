@@ -624,6 +624,7 @@
         let currentPage = 1;
         let totalResults = 0;
         let detailsCache = {};
+        let detailTokens = {};  // company_id → HMAC-токен для /api/companies/{id}
         let searchMode = 'precision';
         let isLoading = false;
         let currentSearchController = null; // AbortController для отмены предыдущего запроса
@@ -656,7 +657,7 @@
         function updateSearchButton() {
             const input = document.getElementById('search-input').value.trim();
             const btn = document.getElementById('search-btn');
-            btn.disabled = input.length === 0 && !isLoading;
+            btn.disabled = input.length < 3 && !isLoading;
         }
 
         function setLoadingState(loading) {
@@ -709,6 +710,13 @@
             page = page || 1;
             currentPage = page;
 
+            // GUARD: слишком короткий запрос → не отправлять (защита от утечки всей БД)
+            const searchInput = document.getElementById('search-input').value.trim();
+            if (searchInput.length < 3) {
+                console.log('[search] Запрос слишком короткий — поиск заблокирован');
+                return;
+            }
+
             // Отменяем предыдущий запрос, если он ещё в полёте
             if (currentSearchController) {
                 currentSearchController.abort();
@@ -741,6 +749,11 @@
                     return;
                 }
 
+                // Сохраняем HMAC-токены для доступа к деталям компаний
+                companies.forEach(c => {
+                    if (c._detail_token) detailTokens[c.id] = c._detail_token;
+                });
+
                 // Бейджи обновляются независимо от результата
                 updateCategoryFilterBadge();
                 updateCityFilterBadge();
@@ -769,7 +782,11 @@
                     return;
                 }
                 console.error('[search] Ошибка при загрузке:', error);
-                showEmptyState('Ошибка при загрузке', error.message);
+                if (error.message && error.message.includes('429')) {
+                    showEmptyState('Слишком много запросов', 'Подождите минуту и попробуйте снова');
+                } else {
+                    showEmptyState('Ошибка при загрузке', error.message);
+                }
                 document.getElementById('results-section').style.display = 'none';
             } finally {
                 // Сбрасываем loading ТОЛЬКО если это текущий (последний) контроллер
@@ -910,7 +927,9 @@
 
         async function loadDetails(id) {
             try {
-                const resp = await fetch(`/api/companies/${id}`);
+                const token = detailTokens[id];
+                if (!token) throw new Error('Нет токена доступа. Выполните поиск заново.');
+                const resp = await fetch(`/api/companies/${id}?token=${encodeURIComponent(token)}`);
                 if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
                 const data = await resp.json();
                 detailsCache[id] = data;
@@ -991,6 +1010,13 @@
 
         // ===== CSV Export (ВСЕ результаты) =====
         async function exportCSV() {
+            // GUARD: слишком короткий запрос → не экспортировать (защита от выгрузки всей БД)
+            const searchQuery = document.getElementById('search-input').value.trim();
+            if (searchQuery.length < 3) {
+                console.log('[export] Запрос слишком короткий — экспорт заблокирован');
+                return;
+            }
+
             const btn = document.getElementById('export-btn');
             const origHTML = btn.innerHTML;
             btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border:2px solid #e5e7eb;border-top-color:#3b82f6;border-radius:50%;animation:spin .8s linear infinite;display:inline-block;"></div>';
@@ -998,7 +1024,6 @@
 
             // Собираем те же параметры, что и при поиске, но без limit/offset
             const params = new URLSearchParams();
-            const searchQuery = document.getElementById('search-input').value.trim();
             if (searchQuery) {
                 params.append('query', searchQuery);
             }
@@ -1012,7 +1037,7 @@
             if (categoryFilterIds.length > 0) {
                 params.append('category_filter_ids', categoryFilterIds.map(c => c.id).join(','));
             }
-            params.append('limit', '50000');
+            params.append('limit', '5000');
 
             try {
                 const response = await fetch(`/api/export?${params}`);
@@ -1078,13 +1103,11 @@
             document.getElementById('city-input').value = '';
             document.getElementById('city-dropdown').classList.remove('open');
             updateCityFilterBadge();
-            handleSearch(1);
         }
 
         function removeCityFilter(id) {
             cityFilterIds = cityFilterIds.filter(c => c.id !== id);
             updateCityFilterBadge();
-            handleSearch(1);
         }
 
         function updateCityFilterBadge() {
@@ -1140,13 +1163,12 @@
             } else {
                 categoryFilterIds.push({id, name});
             }
-            handleSearch(1);
+            updateCategoryFilterBadge();
         }
 
         function removeCategoryFilter(id) {
             categoryFilterIds = categoryFilterIds.filter(c => c.id !== id);
             updateCategoryFilterBadge();
-            handleSearch(1);
         }
 
         function updateCategoryFilterBadge() {
@@ -1185,6 +1207,7 @@
                 <p class="text-sm text-gray-400">Введите ваш запрос выше, чтобы найти компании</p>
             `;
             detailsCache = {};
+            detailTokens = {};
             totalResults = 0;
             setMode('precision');
             updateSearchButton();
