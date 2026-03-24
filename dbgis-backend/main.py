@@ -247,9 +247,11 @@ COMPANIES_COUNT_SQL = """
 
 
 def build_filter_clause(city, category, has_email, has_phone, has_website,
-                        category_ids=None, category_filter_ids=None):
+                        category_ids=None, category_filter_ids=None,
+                        city_ids=None):
     """Строит WHERE-условия и параметры для фильтрации компаний.
 
+    city_ids — жёсткий гео-фильтр (приоритет над city).
     category_filter_ids — AND-пересечение (HAVING COUNT(DISTINCT) = len).
     category_ids — OR по любой из категорий (FAISS).
     category — ILIKE поиск.
@@ -259,7 +261,11 @@ def build_filter_clause(city, category, has_email, has_phone, has_website,
     having = ""
     having_params = []
 
-    if city:
+    # Гео-фильтр: city_ids (из UI) имеет приоритет над city (из текста)
+    if city_ids:
+        clauses.append("c.city_id = ANY(%s)")
+        params.append(list(city_ids))
+    elif city:
         clauses.append("c.city ILIKE %s")
         params.append(f"%{city}%")
 
@@ -314,6 +320,99 @@ def decode_rows(rows):
 # API ENDPOINTS
 # ============================================================
 
+# ============================================================
+# ГОРОДА: кеш для детекции в запросе
+# ============================================================
+
+_cities_cache: list[dict] | None = None
+_cities_cache_ts: float = 0
+
+
+def _load_cities_cache() -> list[dict]:
+    """Загружает список городов из БД (кешируется на 5 минут)."""
+    global _cities_cache, _cities_cache_ts
+    if _cities_cache is not None and time.time() - _cities_cache_ts < 300:
+        return _cities_cache
+
+    conn = get_db_connection()
+    if conn is None:
+        return _cities_cache or []
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id, name, normalized_name FROM cities ORDER BY name")
+        _cities_cache = [dict(r) for r in cur.fetchall()]
+        _cities_cache_ts = time.time()
+        cur.close()
+        return _cities_cache
+    except Exception:
+        return _cities_cache or []
+    finally:
+        release_db_connection(conn)
+
+
+def detect_city_in_query(query: str) -> dict | None:
+    """Ищет название города в тексте запроса (case-insensitive).
+
+    Возвращает {"id": int, "name": str} или None.
+    Приоритет — самое длинное совпадение (чтобы "Нижний Новгород" > "Новгород").
+    """
+    cities = _load_cities_cache()
+    if not cities:
+        return None
+
+    q_lower = query.lower()
+    best = None
+    best_len = 0
+    for city in cities:
+        # Ищем по normalized_name (lowercase) в lowercase запросе
+        cname = city["normalized_name"]
+        if cname in q_lower and len(cname) > best_len:
+            best = {"id": city["id"], "name": city["name"]}
+            best_len = len(cname)
+    return best
+
+
+@app.get("/api/cities")
+async def get_cities(
+    q: Optional[str] = Query(None, description="Поиск по названию города"),
+    limit: int = Query(20, ge=1, le=100)
+):
+    """Список городов для autocomplete."""
+    conn = get_db_connection()
+    if conn is None:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+
+    try:
+        cur = conn.cursor()
+        if q and q.strip():
+            # ILIKE поиск по названию
+            cur.execute("""
+                SELECT ci.id, ci.name,
+                       (SELECT COUNT(*) FROM companies c WHERE c.city_id = ci.id) as company_count
+                FROM cities ci
+                WHERE ci.normalized_name ILIKE %s
+                ORDER BY
+                    CASE WHEN ci.normalized_name = %s THEN 0 ELSE 1 END,
+                    ci.name
+                LIMIT %s
+            """, (f"%{q.strip().lower()}%", q.strip().lower(), limit))
+        else:
+            # Топ городов по количеству компаний
+            cur.execute("""
+                SELECT ci.id, ci.name,
+                       (SELECT COUNT(*) FROM companies c WHERE c.city_id = ci.id) as company_count
+                FROM cities ci
+                ORDER BY company_count DESC, ci.name
+                LIMIT %s
+            """, (limit,))
+
+        cities = [dict(r) for r in cur.fetchall()]
+        cur.close()
+        return {"cities": cities}
+    finally:
+        release_db_connection(conn)
+
+
 @app.get("/health")
 async def health():
     """Проверка здоровья сервера и БД."""
@@ -338,6 +437,7 @@ async def get_companies(
     has_phone: Optional[bool] = Query(None, description="Только с телефоном"),
     has_website: Optional[bool] = Query(None, description="Только с сайтом"),
     category_filter_ids: Optional[str] = Query(None, description="Фильтр по ID категорий (через запятую, AND-пересечение)"),
+    city_ids: Optional[str] = Query(None, description="Фильтр по ID городов (через запятую)"),
     mode: str = Query("precision", description="Режим: precision | coverage"),
     limit: int = Query(100, ge=1, le=1000, description="Лимит результатов"),
     offset: int = Query(0, ge=0, description="Смещение")
@@ -349,6 +449,14 @@ async def get_companies(
     if category_filter_ids:
         try:
             parsed_filter_ids = [int(x.strip()) for x in category_filter_ids.split(",") if x.strip()]
+        except ValueError:
+            pass
+
+    # Парсинг city_ids из строки "1,5,12" в список int
+    parsed_city_ids = []
+    if city_ids:
+        try:
+            parsed_city_ids = [int(x.strip()) for x in city_ids.split(",") if x.strip()]
         except ValueError:
             pass
 
@@ -429,6 +537,19 @@ async def get_companies(
         category_ids = parsed_filter_ids
         print(f"CATEGORY FILTER OVERRIDE (no query): {parsed_filter_ids}")
 
+    # Детекция города в запросе → suggested_city (НЕ применяется автоматически)
+    suggested_city = None
+    if query and not parsed_city_ids:
+        detected = detect_city_in_query(query)
+        if detected:
+            suggested_city = detected
+            print(f"DETECTED CITY: {detected['name']} (id={detected['id']})")
+
+    # Если city_ids выбраны в UI — НЕ использовать город из текста
+    if parsed_city_ids:
+        city = None  # UI-фильтр имеет приоритет
+        print(f"CITY_IDS FILTER: {parsed_city_ids}")
+
     # ORDER BY — relevance сортировка всегда (контакты наверх)
     order_clause = (
         " ORDER BY"
@@ -443,6 +564,7 @@ async def get_companies(
         "city": city, "category": category,
         "category_ids": tuple(category_ids) if category_ids else None,
         "category_filter_ids": tuple(parsed_filter_ids) if parsed_filter_ids else None,
+        "city_ids": tuple(parsed_city_ids) if parsed_city_ids else None,
         "has_email": has_email, "has_phone": has_phone,
         "has_website": has_website, "mode": mode,
         "limit": limit, "offset": offset
@@ -460,7 +582,8 @@ async def get_companies(
         where, params, having, having_params = build_filter_clause(
             city, category, has_email, has_phone, has_website,
             category_ids=category_ids,
-            category_filter_ids=parsed_filter_ids
+            category_filter_ids=parsed_filter_ids,
+            city_ids=parsed_city_ids
         )
 
         # Основной запрос
@@ -501,6 +624,10 @@ async def get_companies(
             "offset": offset,
             "data": decode_rows(rows)
         }
+
+        # Подсказка города (не применяется автоматически)
+        if suggested_city:
+            result["suggested_city"] = suggested_city
 
         cache.set("companies", cache_params, result)
         return result
@@ -610,10 +737,23 @@ async def export_csv(
     has_email: Optional[bool] = Query(None),
     has_phone: Optional[bool] = Query(None),
     has_website: Optional[bool] = Query(None),
+    city_ids: Optional[str] = Query(None, description="Фильтр по ID городов"),
     mode: str = Query("precision", description="Режим: precision | coverage"),
     limit: int = Query(50000, ge=1, le=50000)
 ):
     """Экспорт результатов в CSV (все найденные записи)."""
+
+    # Парсинг city_ids
+    parsed_city_ids = []
+    if city_ids:
+        try:
+            parsed_city_ids = [int(x.strip()) for x in city_ids.split(",") if x.strip()]
+        except ValueError:
+            pass
+
+    # Если city_ids — не использовать город из текста
+    if parsed_city_ids:
+        city = None
 
     # FAISS-поиск для экспорта (аналогично /api/companies)
     category_ids = None
@@ -668,7 +808,8 @@ async def export_csv(
         cur = conn.cursor()
         where, params, having, having_params = build_filter_clause(
             city, category, has_email, has_phone, has_website,
-            category_ids=category_ids
+            category_ids=category_ids,
+            city_ids=parsed_city_ids
         )
 
         query = (

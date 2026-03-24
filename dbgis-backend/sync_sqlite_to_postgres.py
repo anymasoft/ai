@@ -387,6 +387,85 @@ def sync_company_categories(sqlite_conn, pg_cur):
     return upserted, deleted
 
 # ============================================================
+# ГОРОДА (нормализация)
+# ============================================================
+
+def sync_cities(pg_cur):
+    """Заполняет таблицу cities из уникальных значений companies.city.
+
+    Вызывается ПОСЛЕ sync_companies, чтобы данные уже были в PostgreSQL.
+    Затем обновляет city_id в companies.
+    """
+    print("--- SYNC cities START ---")
+
+    # 1. Убеждаемся, что таблица cities существует
+    pg_cur.execute("""
+        CREATE TABLE IF NOT EXISTS cities (
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL UNIQUE,
+            normalized_name TEXT NOT NULL
+        )
+    """)
+
+    # 2. Убеждаемся, что колонка city_id существует
+    pg_cur.execute("""
+        DO $$ BEGIN
+            ALTER TABLE companies ADD COLUMN city_id INTEGER REFERENCES cities(id);
+        EXCEPTION
+            WHEN duplicate_column THEN NULL;
+        END $$
+    """)
+
+    # 3. Вставляем уникальные города из companies (UPSERT)
+    pg_cur.execute("""
+        INSERT INTO cities (name, normalized_name)
+        SELECT DISTINCT city, LOWER(city)
+        FROM companies
+        WHERE city IS NOT NULL AND city != ''
+        ON CONFLICT (name) DO NOTHING
+    """)
+    inserted = pg_cur.rowcount
+    print(f"    [cities] новых городов: {inserted}")
+
+    # 4. Обновляем city_id в companies
+    pg_cur.execute("""
+        UPDATE companies
+        SET city_id = ci.id
+        FROM cities ci
+        WHERE companies.city = ci.name
+          AND (companies.city_id IS NULL OR companies.city_id IS DISTINCT FROM ci.id)
+    """)
+    updated = pg_cur.rowcount
+    print(f"    [cities] обновлено city_id: {updated}")
+
+    # 5. Удаляем города, которых больше нет в companies
+    pg_cur.execute("""
+        DELETE FROM cities
+        WHERE NOT EXISTS (
+            SELECT 1 FROM companies WHERE companies.city = cities.name
+        )
+    """)
+    deleted = pg_cur.rowcount
+    if deleted:
+        print(f"    [cities] удалено городов без компаний: {deleted}")
+
+    # 6. Индекс на city_id (если ещё нет)
+    pg_cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_companies_city_id ON companies(city_id)
+    """)
+    pg_cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_cities_normalized_name_trgm
+        ON cities USING GIN (normalized_name gin_trgm_ops)
+    """)
+
+    # Статистика
+    pg_cur.execute("SELECT COUNT(*) FROM cities")
+    total = pg_cur.fetchone()[0]
+    print(f"    [cities] итого городов: {total}")
+    return total
+
+
+# ============================================================
 # ОРКЕСТРАЦИЯ
 # ============================================================
 
@@ -429,6 +508,10 @@ def sync_data():
             total_deleted += deleted
             print(f"  [{table_name}] UPSERT: {upserted}, DELETE: {deleted}")
 
+        # Нормализация городов (после sync_companies)
+        print(f"  [cities] нормализация городов...")
+        sync_cities(pg_cur)
+
         pg_conn.commit()
         print("=" * 60)
         print(f"UPSERT всего: {total_upserted}")
@@ -443,7 +526,7 @@ def sync_data():
         print("=" * 60)
         print("=== VACUUM START ===")
         vacuum_tables = [
-            "companies", "company_aliases", "categories", "branches",
+            "cities", "companies", "company_aliases", "categories", "branches",
             "phones", "emails", "socials", "company_categories"
         ]
         for table in vacuum_tables:

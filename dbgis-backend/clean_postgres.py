@@ -37,6 +37,7 @@ TRUNCATE_ORDER = [
     "branches",
     "categories",
     "companies",
+    "cities",
 ]
 
 VACUUM_TABLES = TRUNCATE_ORDER
@@ -78,8 +79,12 @@ def get_table_counts(conn):
     cur = conn.cursor()
     counts = {}
     for table in TRUNCATE_ORDER:
-        cur.execute(f"SELECT COUNT(*) as cnt FROM {table}")
-        counts[table] = cur.fetchone()[0]
+        try:
+            cur.execute(f"SELECT COUNT(*) as cnt FROM {table}")
+            counts[table] = cur.fetchone()[0]
+        except Exception:
+            conn.rollback()
+            counts[table] = 0  # Таблица может не существовать
     cur.close()
     return counts
 
@@ -125,6 +130,7 @@ def step3_reset_sequences(conn):
         ("emails", "id"),
         ("socials", "id"),
         ("categories", "id"),
+        ("cities", "id"),
     ]
 
     for table, col in tables_with_serial:
