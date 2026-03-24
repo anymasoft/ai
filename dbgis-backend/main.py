@@ -345,16 +345,48 @@ async def get_companies(
     if query and FAISS_AVAILABLE:
         try:
             top_categories = find_top_categories(query, k=depth)
-            # Объединяем ids из всех top-k категорий (без дубликатов)
-            all_ids = set()
-            for cat in top_categories:
-                all_ids.update(cat["ids"])
-            category_ids = list(all_ids)
+            # Имена FAISS-категорий — для расширения через подкатегории
+            faiss_names = [c["name"] for c in top_categories]
             normalized_query = top_categories[0]["name"] if top_categories else None
             search_method = "faiss"
-            print(f"FAISS TOP CATEGORIES (depth={depth}):", [c["name"] for c in top_categories])
-            print("TOTAL IDS:", len(category_ids))
-            log.info(f"[SEARCH] FAISS top-{depth}: {[c['name'] for c in top_categories]}, total ids={len(category_ids)}")
+
+            # Расширяем category_ids: берём ВСЕ categories.id, чьё имя
+            # содержит любое из FAISS-имён (захватываем подкатегории).
+            # Пример: "Автосервис" → также "Легковой автосервис", "Грузовой автосервис"
+            expand_conn = get_db_connection()
+            if expand_conn:
+                try:
+                    expand_cur = expand_conn.cursor()
+                    ilike_clauses = " OR ".join(["name ILIKE %s"] * len(faiss_names))
+                    ilike_params = [f"%{n}%" for n in faiss_names]
+                    expand_cur.execute(
+                        f"SELECT id FROM categories WHERE {ilike_clauses}",
+                        ilike_params
+                    )
+                    expanded_ids = [row["id"] for row in expand_cur.fetchall()]
+                    expand_cur.close()
+
+                    # Объединяем FAISS IDs + расширенные из БД
+                    all_ids = set()
+                    for cat in top_categories:
+                        all_ids.update(cat["ids"])
+                    all_ids.update(expanded_ids)
+                    category_ids = list(all_ids)
+
+                    print(f"FAISS TOP CATEGORIES (depth={depth}):", faiss_names)
+                    print(f"FAISS IDS: {sum(len(c['ids']) for c in top_categories)}, "
+                          f"EXPANDED IDS: {len(expanded_ids)}, TOTAL: {len(category_ids)}")
+                    log.info(f"[SEARCH] FAISS top-{depth}: {faiss_names}, "
+                             f"expanded ids={len(category_ids)}")
+                finally:
+                    release_db_connection(expand_conn)
+            else:
+                # Нет свободного соединения — используем только FAISS IDs
+                all_ids = set()
+                for cat in top_categories:
+                    all_ids.update(cat["ids"])
+                category_ids = list(all_ids)
+                log.warning("[SEARCH] Не удалось расширить category_ids (нет свободного соединения)")
         except Exception as e:
             log.error(f"[SEARCH] Ошибка FAISS: {e}")
             search_method = "fallback"
@@ -637,10 +669,34 @@ async def export_csv(
     if query and FAISS_AVAILABLE:
         try:
             top_categories = find_top_categories(query, k=depth)
-            all_ids = set()
-            for cat in top_categories:
-                all_ids.update(cat["ids"])
-            category_ids = list(all_ids)
+            faiss_names = [c["name"] for c in top_categories]
+
+            # Расширяем через подкатегории (аналогично /api/companies)
+            expand_conn = get_db_connection()
+            if expand_conn:
+                try:
+                    expand_cur = expand_conn.cursor()
+                    ilike_clauses = " OR ".join(["name ILIKE %s"] * len(faiss_names))
+                    ilike_params = [f"%{n}%" for n in faiss_names]
+                    expand_cur.execute(
+                        f"SELECT id FROM categories WHERE {ilike_clauses}",
+                        ilike_params
+                    )
+                    expanded_ids = [row["id"] for row in expand_cur.fetchall()]
+                    expand_cur.close()
+
+                    all_ids = set()
+                    for cat in top_categories:
+                        all_ids.update(cat["ids"])
+                    all_ids.update(expanded_ids)
+                    category_ids = list(all_ids)
+                finally:
+                    release_db_connection(expand_conn)
+            else:
+                all_ids = set()
+                for cat in top_categories:
+                    all_ids.update(cat["ids"])
+                category_ids = list(all_ids)
         except Exception as e:
             log.error(f"[EXPORT] Ошибка FAISS: {e}")
 
