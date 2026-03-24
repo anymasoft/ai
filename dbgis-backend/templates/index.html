@@ -527,6 +527,8 @@
             cursor: pointer;
             transition: box-shadow 0.15s ease;
             user-select: none;
+            overflow: hidden;
+            padding: 0;
         }
         .auth-avatar:hover {
             box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
@@ -1634,8 +1636,11 @@
                 }
 
                 const initials = this._getInitials(this.user);
+                const avatarInner = this.user.avatar_url
+                    ? `<img src="${escapeHtml(this.user.avatar_url)}" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">`
+                    : escapeHtml(initials);
                 container.innerHTML = `
-                    <div class="auth-avatar" onclick="Auth.toggleDropdown()" id="auth-avatar">${escapeHtml(initials)}</div>
+                    <div class="auth-avatar" onclick="Auth.toggleDropdown()" id="auth-avatar">${avatarInner}</div>
                     <div class="auth-dropdown" id="auth-dropdown">
                         <div class="auth-dropdown-label">Аккаунт</div>
                         <div class="auth-dropdown-item" style="cursor:default;">
