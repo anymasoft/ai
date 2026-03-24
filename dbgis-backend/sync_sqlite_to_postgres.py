@@ -66,10 +66,13 @@ def batch_execute(pg_cur, query, rows, table_name):
         if len(batch) >= BATCH_SIZE:
             pg_cur.executemany(query, batch)
             count += len(batch)
+            if count % 10000 == 0:
+                print(f"    [{table_name}] обработано: {count}")
             batch = []
     if batch:
         pg_cur.executemany(query, batch)
         count += len(batch)
+    print(f"    [{table_name}] итого: {count}")
     return count
 
 
@@ -154,6 +157,7 @@ def reset_serial_sequence(pg_cur, table_name, column="id"):
 # ============================================================
 
 def sync_companies(sqlite_conn, pg_cur):
+    print("--- SYNC companies START ---")
     rows = sqlite_conn.execute(
         "SELECT id, name, city, website, domain, created_at, updated_at FROM companies"
     ).fetchall()
@@ -165,9 +169,7 @@ def sync_companies(sqlite_conn, pg_cur):
         ids.append(r["id"])
         data.append((
             r["id"], r["name"], r["city"], r["website"], r["domain"],
-            r["created_at"] or now, r["updated_at"] or now,
-            # DO UPDATE SET:
-            r["name"], r["city"], r["website"], r["domain"], r["updated_at"] or now
+            r["created_at"] or now, r["updated_at"] or now
         ))
 
     upserted = batch_execute(pg_cur, """
@@ -192,6 +194,7 @@ def sync_companies(sqlite_conn, pg_cur):
 
 
 def sync_company_aliases(sqlite_conn, pg_cur):
+    print("--- SYNC company_aliases START ---")
     rows = sqlite_conn.execute(
         "SELECT id, company_id, name FROM company_aliases"
     ).fetchall()
@@ -200,13 +203,13 @@ def sync_company_aliases(sqlite_conn, pg_cur):
     ids = []
     for r in rows:
         ids.append(r["id"])
-        data.append((r["id"], r["company_id"], r["name"], r["name"]))
+        data.append((r["id"], r["company_id"], r["name"]))
 
     upserted = batch_execute(pg_cur, """
         INSERT INTO company_aliases (id, company_id, name)
         VALUES (%s, %s, %s)
         ON CONFLICT (company_id, name) DO UPDATE SET
-            name = %s
+            name = EXCLUDED.name
         WHERE
             company_aliases.name IS DISTINCT FROM EXCLUDED.name
     """, data, "company_aliases")
@@ -217,6 +220,7 @@ def sync_company_aliases(sqlite_conn, pg_cur):
 
 
 def sync_branches(sqlite_conn, pg_cur):
+    print("--- SYNC branches START ---")
     rows = sqlite_conn.execute("""
         SELECT id, company_id, address, postal_code, working_hours,
                building_name, building_type, branch_hash FROM branches
@@ -228,10 +232,7 @@ def sync_branches(sqlite_conn, pg_cur):
         ids.append(r["id"])
         data.append((
             r["id"], r["company_id"], r["address"], r["postal_code"],
-            r["working_hours"], r["building_name"], r["building_type"], r["branch_hash"],
-            # DO UPDATE SET:
-            r["company_id"], r["address"], r["postal_code"],
-            r["working_hours"], r["building_name"], r["building_type"]
+            r["working_hours"], r["building_name"], r["building_type"], r["branch_hash"]
         ))
 
     upserted = batch_execute(pg_cur, """
@@ -239,12 +240,12 @@ def sync_branches(sqlite_conn, pg_cur):
                               building_name, building_type, branch_hash)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (branch_hash) DO UPDATE SET
-            company_id = %s,
-            address = %s,
-            postal_code = %s,
-            working_hours = %s,
-            building_name = %s,
-            building_type = %s
+            company_id = EXCLUDED.company_id,
+            address = EXCLUDED.address,
+            postal_code = EXCLUDED.postal_code,
+            working_hours = EXCLUDED.working_hours,
+            building_name = EXCLUDED.building_name,
+            building_type = EXCLUDED.building_type
         WHERE
             branches.company_id IS DISTINCT FROM EXCLUDED.company_id OR
             branches.address IS DISTINCT FROM EXCLUDED.address OR
@@ -260,19 +261,20 @@ def sync_branches(sqlite_conn, pg_cur):
 
 
 def sync_phones(sqlite_conn, pg_cur):
+    print("--- SYNC phones START ---")
     rows = sqlite_conn.execute("SELECT id, branch_id, phone FROM phones").fetchall()
 
     data = []
     ids = []
     for r in rows:
         ids.append(r["id"])
-        data.append((r["id"], r["branch_id"], r["phone"], "2gis", r["phone"]))
+        data.append((r["id"], r["branch_id"], r["phone"], "2gis"))
 
     upserted = batch_execute(pg_cur, """
         INSERT INTO phones (id, branch_id, phone, source)
         VALUES (%s, %s, %s, %s)
         ON CONFLICT (branch_id, phone) DO UPDATE SET
-            phone = %s
+            phone = EXCLUDED.phone
         WHERE
             phones.phone IS DISTINCT FROM EXCLUDED.phone
     """, data, "phones")
@@ -283,6 +285,7 @@ def sync_phones(sqlite_conn, pg_cur):
 
 
 def sync_emails(sqlite_conn, pg_cur):
+    print("--- SYNC emails START ---")
     rows = sqlite_conn.execute("SELECT id, company_id, email FROM emails").fetchall()
 
     data = []
@@ -290,13 +293,13 @@ def sync_emails(sqlite_conn, pg_cur):
     for r in rows:
         ids.append(r["id"])
         email = r["email"].lower()
-        data.append((r["id"], r["company_id"], email, "2gis", email))
+        data.append((r["id"], r["company_id"], email, "2gis"))
 
     upserted = batch_execute(pg_cur, """
         INSERT INTO emails (id, company_id, email, source)
         VALUES (%s, %s, %s, %s)
         ON CONFLICT (company_id, email) DO UPDATE SET
-            email = %s
+            email = EXCLUDED.email
         WHERE
             emails.email IS DISTINCT FROM EXCLUDED.email
     """, data, "emails")
@@ -307,6 +310,7 @@ def sync_emails(sqlite_conn, pg_cur):
 
 
 def sync_socials(sqlite_conn, pg_cur):
+    print("--- SYNC socials START ---")
     rows = sqlite_conn.execute(
         "SELECT id, company_id, type, url FROM socials"
     ).fetchall()
@@ -315,13 +319,13 @@ def sync_socials(sqlite_conn, pg_cur):
     ids = []
     for r in rows:
         ids.append(r["id"])
-        data.append((r["id"], r["company_id"], r["type"], r["url"], r["url"]))
+        data.append((r["id"], r["company_id"], r["type"], r["url"]))
 
     upserted = batch_execute(pg_cur, """
         INSERT INTO socials (id, company_id, type, url)
         VALUES (%s, %s, %s, %s)
         ON CONFLICT (company_id, type, url) DO UPDATE SET
-            url = %s
+            url = EXCLUDED.url
         WHERE
             socials.url IS DISTINCT FROM EXCLUDED.url
     """, data, "socials")
@@ -332,6 +336,7 @@ def sync_socials(sqlite_conn, pg_cur):
 
 
 def sync_categories(sqlite_conn, pg_cur):
+    print("--- SYNC categories START ---")
     rows = sqlite_conn.execute(
         "SELECT id, name, parent_id FROM categories ORDER BY id"
     ).fetchall()
@@ -340,14 +345,14 @@ def sync_categories(sqlite_conn, pg_cur):
     ids = []
     for r in rows:
         ids.append(r["id"])
-        data.append((r["id"], r["name"], r["parent_id"], r["name"], r["parent_id"]))
+        data.append((r["id"], r["name"], r["parent_id"]))
 
     upserted = batch_execute(pg_cur, """
         INSERT INTO categories (id, name, parent_id)
         VALUES (%s, %s, %s)
         ON CONFLICT (id) DO UPDATE SET
-            name = %s,
-            parent_id = %s
+            name = EXCLUDED.name,
+            parent_id = EXCLUDED.parent_id
         WHERE
             categories.name IS DISTINCT FROM EXCLUDED.name OR
             categories.parent_id IS DISTINCT FROM EXCLUDED.parent_id
@@ -359,6 +364,7 @@ def sync_categories(sqlite_conn, pg_cur):
 
 
 def sync_company_categories(sqlite_conn, pg_cur):
+    print("--- SYNC company_categories START ---")
     rows = sqlite_conn.execute(
         "SELECT company_id, category_id FROM company_categories"
     ).fetchall()
