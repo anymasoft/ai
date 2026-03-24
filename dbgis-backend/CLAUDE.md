@@ -19,7 +19,7 @@ pip install -r requirements.txt
 # 2. Создать и настроить БД
 psql -U postgres -f schema.sql
 # или для существующей БД:
-python migrate_sqlite_to_postgres.py
+python sync_sqlite_to_postgres.py
 
 # 3. Создать .env (на основе примера)
 cp .env.example .env
@@ -120,7 +120,10 @@ dbgis-backend/
 │   └── index.html                 # SaaS UI (LeadExtractor)
 │
 ├── schema.sql                     # DDL (таблицы + индексы)
-├── migrate_sqlite_to_postgres.py  # Миграция из SQLite
+├── sync_sqlite_to_postgres.py     # Инкрементальный UPSERT SQLite → PostgreSQL
+├── rebuild_faiss.py               # Пересборка FAISS индекса из PostgreSQL
+├── debug_search.py                # 5-шаговая диагностика поиска
+├── clean_postgres.py              # TRUNCATE + VACUUM FULL всей БД
 ├── requirements.txt               # Зависимости (15 пакетов)
 │
 ├── README.md                      # Полная документация
@@ -150,9 +153,10 @@ companies ──< branches ──< phones
 ```
 2GIS .dgdat → dgdat2xlsx/convert.py → XLSX
   → dgdat2xlsx/import_db.py → SQLite
-    → dbgis-backend/migrate_sqlite_to_postgres.py → PostgreSQL
-      → main.py (Web + API)
-        → enrich.py (обогащение контактов)
+    → dbgis-backend/sync_sqlite_to_postgres.py → PostgreSQL
+      → dbgis-backend/rebuild_faiss.py → FAISS индекс
+        → main.py (Web + API)
+          → enrich.py (обогащение контактов)
 ```
 
 ---
@@ -223,7 +227,19 @@ LEFT JOIN LATERAL (
 ### 5. Фильтры в `build_filter_clause()`
 **Принцип**: Один источник правды для WHERE-условий
 **Используется в**: `/api/companies` и `/api/export`
+**Возвращает 4 значения**: `(where, params, having, having_params)`
 **⚠️ Не дублировать фильтры!**
+
+### 6. FAISS mapping: ids = category_id (НЕ company_id!)
+**Контракт**: `rebuild_faiss.py` → `SELECT ARRAY_AGG(DISTINCT cat.id)` → mapping хранит category_id
+**SQL**: `WHERE cc.category_id = ANY(%s)` — ожидает category_id
+**⚠️ Нарушение контракта (company_id вместо category_id) → RESULT COUNT = 0**
+
+### 7. Мульти-выбор категорий (AND-пересечение)
+**Параметр**: `category_filter_ids` (comma-separated string, например "42,105")
+**1 категория**: `WHERE cc.category_id = %s` (простой фильтр)
+**2+ категорий**: `WHERE cc.category_id = ANY(%s) HAVING COUNT(DISTINCT cc.category_id) = %s`
+**UI**: массив `categoryFilterIds = [{id, name}, ...]`, бейджи с удалением
 
 ---
 
