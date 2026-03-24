@@ -184,8 +184,8 @@ def release_db_connection(conn):
     """Возвращает соединение в пул."""
     try:
         get_pool().putconn(conn)
-    except Exception:
-        pass
+    except Exception as e:
+        log.error(f"[DB] Ошибка при возврате соединения в пул: {e}")
 
 
 # ============================================================
@@ -247,13 +247,12 @@ COMPANIES_COUNT_SQL = """
 
 
 def build_filter_clause(city, category, has_email, has_phone, has_website,
-                        category_ids=None, category_exact=None):
+                        category_ids=None):
     """Строит WHERE-условия и параметры для фильтрации компаний.
 
     Приоритет фильтрации по категории:
-    1. category_ids — список ID категорий из FAISS (наивысший приоритет)
-    2. category_exact — точное совпадение имени (cat.name = ...)
-    3. category — ILIKE поиск (fallback)
+    1. category_ids — список ID категорий из FAISS + recursive потомки
+    2. category — ILIKE поиск (ручной фильтр пользователя)
     """
     clauses = []
     params = []
@@ -263,12 +262,8 @@ def build_filter_clause(city, category, has_email, has_phone, has_website,
         params.append(f"%{city}%")
 
     if category_ids:
-        # Поиск по списку ID категорий напрямую через company_categories
         clauses.append("cc.category_id = ANY(%s)")
         params.append(list(category_ids))
-    elif category_exact:
-        clauses.append("cat.name = %s")
-        params.append(category_exact)
     elif category:
         clauses.append("cat.name ILIKE %s")
         params.append(f"%{category}%")
@@ -337,59 +332,51 @@ async def get_companies(
     """Получить список компаний с фильтрами или AI-парсингом запроса."""
 
     category_ids = None
-    category_exact = None
-    normalized_query = None
     search_method = None
 
     # FAISS семантический поиск категорий (top-k по depth)
     if query and FAISS_AVAILABLE:
+        top_categories = find_top_categories(query, k=depth)
+        faiss_ids = set()
+        for cat in top_categories:
+            faiss_ids.update(cat["ids"])
+        search_method = "faiss"
+
+        print(f"FAISS TOP CATEGORIES (depth={depth}):",
+              [c["name"] for c in top_categories])
+        print(f"FAISS IDS: {len(faiss_ids)}")
+
+        # Расширяем через parent_id (recursive CTE — все потомки)
+        expand_conn = get_db_connection()
+        if expand_conn is None:
+            raise HTTPException(status_code=503, detail="Database unavailable (expand)")
         try:
-            top_categories = find_top_categories(query, k=depth)
-            # Имена FAISS-категорий — для расширения через подкатегории
-            faiss_names = [c["name"] for c in top_categories]
-            normalized_query = top_categories[0]["name"] if top_categories else None
-            search_method = "faiss"
+            expand_cur = expand_conn.cursor()
+            expand_cur.execute("""
+                WITH RECURSIVE subcategories AS (
+                    SELECT id FROM categories WHERE id = ANY(%s)
+                    UNION ALL
+                    SELECT c.id FROM categories c
+                    JOIN subcategories s ON c.parent_id = s.id
+                )
+                SELECT id FROM subcategories
+            """, (list(faiss_ids),))
+            expanded_ids = [row["id"] for row in expand_cur.fetchall()]
+            expand_cur.close()
+        finally:
+            release_db_connection(expand_conn)
 
-            # Расширяем category_ids: берём ВСЕ categories.id, чьё имя
-            # содержит любое из FAISS-имён (захватываем подкатегории).
-            # Пример: "Автосервис" → также "Легковой автосервис", "Грузовой автосервис"
-            expand_conn = get_db_connection()
-            if expand_conn:
-                try:
-                    expand_cur = expand_conn.cursor()
-                    ilike_clauses = " OR ".join(["name ILIKE %s"] * len(faiss_names))
-                    ilike_params = [f"%{n}%" for n in faiss_names]
-                    expand_cur.execute(
-                        f"SELECT id FROM categories WHERE {ilike_clauses}",
-                        ilike_params
-                    )
-                    expanded_ids = [row["id"] for row in expand_cur.fetchall()]
-                    expand_cur.close()
+        all_ids = set(faiss_ids)
+        all_ids.update(expanded_ids)
+        category_ids = list(all_ids)
 
-                    # Объединяем FAISS IDs + расширенные из БД
-                    all_ids = set()
-                    for cat in top_categories:
-                        all_ids.update(cat["ids"])
-                    all_ids.update(expanded_ids)
-                    category_ids = list(all_ids)
+        assert isinstance(category_ids, list)
+        assert len(category_ids) > 0, f"FAISS вернул категории, но recursive expansion дал 0 IDs"
 
-                    print(f"FAISS TOP CATEGORIES (depth={depth}):", faiss_names)
-                    print(f"FAISS IDS: {sum(len(c['ids']) for c in top_categories)}, "
-                          f"EXPANDED IDS: {len(expanded_ids)}, TOTAL: {len(category_ids)}")
-                    log.info(f"[SEARCH] FAISS top-{depth}: {faiss_names}, "
-                             f"expanded ids={len(category_ids)}")
-                finally:
-                    release_db_connection(expand_conn)
-            else:
-                # Нет свободного соединения — используем только FAISS IDs
-                all_ids = set()
-                for cat in top_categories:
-                    all_ids.update(cat["ids"])
-                category_ids = list(all_ids)
-                log.warning("[SEARCH] Не удалось расширить category_ids (нет свободного соединения)")
-        except Exception as e:
-            log.error(f"[SEARCH] Ошибка FAISS: {e}")
-            search_method = "fallback"
+        print(f"EXPANDED IDS: {len(expanded_ids)}")
+        print(f"TOTAL IDS: {len(category_ids)}")
+        log.info(f"[SEARCH] FAISS top-{depth}: {[c['name'] for c in top_categories]}, "
+                 f"faiss_ids={len(faiss_ids)}, expanded={len(expanded_ids)}, total={len(category_ids)}")
 
         # Извлекаем город и фильтры контактов из запроса (простой парсер)
         if FALLBACK_PARSER_AVAILABLE:
@@ -399,8 +386,9 @@ async def get_companies(
                 has_phone = filters.get("has_phone") or has_phone
                 has_email = filters.get("has_email") or has_email
                 has_website = filters.get("has_website") or has_website
+
     elif query and FALLBACK_PARSER_AVAILABLE:
-        # FAISS недоступен — fallback парсер
+        # FAISS недоступен — regex парсер (только город/фильтры, без fallback SQL)
         filters = parse_query_fallback(query)
         if filters:
             city = filters.get("city") or city
@@ -429,10 +417,10 @@ async def get_companies(
         cur = conn.cursor()
         where, params = build_filter_clause(
             city, category, has_email, has_phone, has_website,
-            category_ids=category_ids, category_exact=category_exact
+            category_ids=category_ids
         )
 
-        # Основной запрос
+        # Основной запрос — ОДИН, без fallback
         sql_query = (
             COMPANIES_LIST_SQL + where +
             " GROUP BY c.id, c.name, c.city, c.domain, c.website, c.created_at,"
@@ -442,99 +430,14 @@ async def get_companies(
         cur.execute(sql_query, params + [limit, offset])
         rows = cur.fetchall()
 
-        # COUNT (тот же WHERE, но без LATERAL)
+        # COUNT (тот же WHERE, без LATERAL)
         count_query = COMPANIES_COUNT_SQL + where
         cur.execute(count_query, params)
         total = cur.fetchone()["total"]
 
-        # Если FAISS/exact дал 0 результатов — fallback на ILIKE по категории
-        if total == 0 and search_method in ("faiss", "exact") and normalized_query:
-            log.warning(f"[SEARCH] {search_method} дал 0 результатов, fallback ILIKE категория: '{normalized_query}'")
-            where, params = build_filter_clause(
-                city, None, has_email, has_phone, has_website,
-                category_ids=None, category_exact=None
-            )
-            if where:
-                where += " AND cat.name ILIKE %s"
-            else:
-                where = " WHERE cat.name ILIKE %s"
-            params.append(f"%{normalized_query}%")
-
-            sql_query = (
-                COMPANIES_LIST_SQL + where +
-                " GROUP BY c.id, c.name, c.city, c.domain, c.website, c.created_at,"
-                " ph.phones, em.emails, addr.address, soc.socials"
-                " ORDER BY c.name LIMIT %s OFFSET %s"
-            )
-            cur.execute(sql_query, params + [limit, offset])
-            rows = cur.fetchall()
-
-            count_query = COMPANIES_COUNT_SQL + where
-            cur.execute(count_query, params)
-            total = cur.fetchone()["total"]
-            search_method = "fallback_ilike_cat"
-            log.info(f"[SEARCH] Fallback ILIKE категория: {total} компаний")
-
-        # Если ILIKE по категории тоже дал 0 — fallback по имени компании
-        if total == 0 and normalized_query:
-            log.warning(f"[SEARCH] ILIKE категория дал 0, fallback по имени компании: '{normalized_query}'")
-            where, params = build_filter_clause(
-                city, None, has_email, has_phone, has_website,
-                category_ids=None, category_exact=None
-            )
-            if where:
-                where += " AND c.name ILIKE %s"
-            else:
-                where = " WHERE c.name ILIKE %s"
-            params.append(f"%{normalized_query}%")
-
-            sql_query = (
-                COMPANIES_LIST_SQL + where +
-                " GROUP BY c.id, c.name, c.city, c.domain, c.website, c.created_at,"
-                " ph.phones, em.emails, addr.address, soc.socials"
-                " ORDER BY c.name LIMIT %s OFFSET %s"
-            )
-            cur.execute(sql_query, params + [limit, offset])
-            rows = cur.fetchall()
-
-            count_query = COMPANIES_COUNT_SQL + where
-            cur.execute(count_query, params)
-            total = cur.fetchone()["total"]
-            search_method = "fallback_name"
-            log.info(f"[SEARCH] Fallback имя компании: {total} компаний")
-
-        # Последний рубеж — поиск по исходному query (без нормализации)
-        if total == 0 and query:
-            original_query = query.strip()
-            log.warning(f"[SEARCH] Все fallback дали 0, поиск по оригинальному запросу: '{original_query}'")
-            where, params = build_filter_clause(
-                city, None, has_email, has_phone, has_website,
-                category_ids=None, category_exact=None
-            )
-            # Ищем по имени компании ИЛИ по категории
-            if where:
-                where += " AND (c.name ILIKE %s OR cat.name ILIKE %s)"
-            else:
-                where = " WHERE (c.name ILIKE %s OR cat.name ILIKE %s)"
-            params.extend([f"%{original_query}%", f"%{original_query}%"])
-
-            sql_query = (
-                COMPANIES_LIST_SQL + where +
-                " GROUP BY c.id, c.name, c.city, c.domain, c.website, c.created_at,"
-                " ph.phones, em.emails, addr.address, soc.socials"
-                " ORDER BY c.name LIMIT %s OFFSET %s"
-            )
-            cur.execute(sql_query, params + [limit, offset])
-            rows = cur.fetchall()
-
-            count_query = COMPANIES_COUNT_SQL + where
-            cur.execute(count_query, params)
-            total = cur.fetchone()["total"]
-            search_method = "fallback_original"
-            log.info(f"[SEARCH] Fallback оригинальный запрос: {total} компаний")
-
         cur.close()
 
+        print(f"RESULT COUNT: {total}, METHOD: {search_method}")
         log.info(f"[SEARCH] RESULT COUNT: {total}, METHOD: {search_method}")
 
         result = {
@@ -546,13 +449,6 @@ async def get_companies(
 
         cache.set("companies", cache_params, result)
         return result
-
-    except Exception as e:
-        # Логируем ошибку
-        import traceback
-        error_msg = f"{str(e)}\n{traceback.format_exc()}"
-        print(f"❌ ОШИБКА в /api/companies: {error_msg}", file=sys.stderr)
-        raise HTTPException(status_code=500, detail=f"Ошибка при получении компаний: {str(e)[:200]}")
     finally:
         release_db_connection(conn)
 
@@ -667,40 +563,38 @@ async def export_csv(
     # FAISS-поиск для экспорта (аналогично /api/companies)
     category_ids = None
     if query and FAISS_AVAILABLE:
+        top_categories = find_top_categories(query, k=depth)
+        faiss_ids = set()
+        for cat in top_categories:
+            faiss_ids.update(cat["ids"])
+
+        # Расширяем через parent_id (recursive CTE)
+        expand_conn = get_db_connection()
+        if expand_conn is None:
+            raise HTTPException(status_code=503, detail="Database unavailable (expand)")
         try:
-            top_categories = find_top_categories(query, k=depth)
-            faiss_names = [c["name"] for c in top_categories]
+            expand_cur = expand_conn.cursor()
+            expand_cur.execute("""
+                WITH RECURSIVE subcategories AS (
+                    SELECT id FROM categories WHERE id = ANY(%s)
+                    UNION ALL
+                    SELECT c.id FROM categories c
+                    JOIN subcategories s ON c.parent_id = s.id
+                )
+                SELECT id FROM subcategories
+            """, (list(faiss_ids),))
+            expanded_ids = [row["id"] for row in expand_cur.fetchall()]
+            expand_cur.close()
+        finally:
+            release_db_connection(expand_conn)
 
-            # Расширяем через подкатегории (аналогично /api/companies)
-            expand_conn = get_db_connection()
-            if expand_conn:
-                try:
-                    expand_cur = expand_conn.cursor()
-                    ilike_clauses = " OR ".join(["name ILIKE %s"] * len(faiss_names))
-                    ilike_params = [f"%{n}%" for n in faiss_names]
-                    expand_cur.execute(
-                        f"SELECT id FROM categories WHERE {ilike_clauses}",
-                        ilike_params
-                    )
-                    expanded_ids = [row["id"] for row in expand_cur.fetchall()]
-                    expand_cur.close()
+        all_ids = set(faiss_ids)
+        all_ids.update(expanded_ids)
+        category_ids = list(all_ids)
 
-                    all_ids = set()
-                    for cat in top_categories:
-                        all_ids.update(cat["ids"])
-                    all_ids.update(expanded_ids)
-                    category_ids = list(all_ids)
-                finally:
-                    release_db_connection(expand_conn)
-            else:
-                all_ids = set()
-                for cat in top_categories:
-                    all_ids.update(cat["ids"])
-                category_ids = list(all_ids)
-        except Exception as e:
-            log.error(f"[EXPORT] Ошибка FAISS: {e}")
+        log.info(f"[EXPORT] FAISS top-{depth}: faiss={len(faiss_ids)}, expanded={len(expanded_ids)}, total={len(category_ids)}")
 
-        # Извлекаем город из запроса
+        # Извлекаем город и фильтры из запроса
         if FALLBACK_PARSER_AVAILABLE:
             filters = parse_query_fallback(query)
             if filters:
