@@ -106,8 +106,8 @@
             animation: spin 0.8s linear infinite;
         }
 
-        /* --- Depth Toggle --- */
-        .depth-toggle {
+        /* --- Sort Toggle --- */
+        .sort-toggle {
             display: inline-flex;
             border: 1px solid #e5e7eb;
             border-radius: 10px;
@@ -116,9 +116,9 @@
             padding: 3px;
             gap: 2px;
         }
-        .depth-option {
+        .sort-option {
             padding: 6px 0;
-            width: 120px;
+            width: 130px;
             text-align: center;
             font-size: 12px;
             font-weight: 500;
@@ -129,8 +129,8 @@
             border-radius: 7px;
             transition: all 0.15s ease;
         }
-        .depth-option:hover { background: rgba(255,255,255,0.6); color: #3f3f46; }
-        .depth-option.active {
+        .sort-option:hover { background: rgba(255,255,255,0.6); color: #3f3f46; }
+        .sort-option.active {
             background: white;
             color: #18181b;
             box-shadow: 0 1px 3px rgba(0,0,0,0.08);
@@ -365,23 +365,20 @@
                 </button>
             </div>
 
-            <!-- Depth Toggle + Filters Toggle row -->
-            <div class="flex items-center justify-center gap-3 mb-1.5">
-                <div class="depth-toggle">
-                    <button class="depth-option" data-depth="1" onclick="setDepth(1)">Точный</button>
-                    <button class="depth-option active" data-depth="3" onclick="setDepth(3)">Сбалансированный</button>
-                    <button class="depth-option" data-depth="5" onclick="setDepth(5)">Широкий</button>
+            <!-- Sort Toggle + Filters Toggle row -->
+            <div class="flex items-center justify-center gap-3 mb-4">
+                <div class="sort-toggle">
+                    <button class="sort-option active" data-sort="relevance" onclick="setSort('relevance')">По релевантности</button>
+                    <button class="sort-option" data-sort="alphabet" onclick="setSort('alphabet')">По алфавиту</button>
                 </div>
                 <button class="filters-toggle" onclick="toggleFilters()">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M3 12h18"></path></svg>
                     Фильтры
                 </button>
             </div>
-            <p class="text-[11px] text-gray-400 mb-4 text-center">Больше режим → больше компаний, но ниже точность</p>
 
             <!-- Suggestions -->
             <div class="flex flex-wrap gap-2 justify-center mb-6 max-w-[650px] mx-auto">
-                <span class="text-xs text-gray-400 uppercase tracking-wide font-semibold self-center mr-1">Попробуйте:</span>
                 <a href="#" class="suggestion-item" onclick="setSuggestion('кафе в Москве'); return false;">кафе в Москве</a>
                 <a href="#" class="suggestion-item" onclick="setSuggestion('стоматологии в Казани с email'); return false;">стоматологии в Казани с email</a>
                 <a href="#" class="suggestion-item" onclick="setSuggestion('автосервисы с сайтом'); return false;">автосервисы с сайтом</a>
@@ -399,7 +396,7 @@
                         <input type="text" id="category" class="filter-input" placeholder="Например: Кафе">
                     </div>
                 </div>
-                <div class="grid grid-cols-3 gap-3">
+                <div class="flex justify-center gap-6">
                     <label class="filter-checkbox"><input type="checkbox" id="has_email"><span>С Email</span></label>
                     <label class="filter-checkbox"><input type="checkbox" id="has_phone"><span>С телефоном</span></label>
                     <label class="filter-checkbox"><input type="checkbox" id="has_website"><span>С сайтом</span></label>
@@ -420,16 +417,14 @@
         <section id="results-section" class="mb-10 fade-in" style="display:none;">
             <!-- Results Header -->
             <div class="max-w-[1000px] mx-auto px-5 mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div class="flex items-center gap-3">
-                    <h2 class="text-base font-bold text-gray-900">Результаты</h2>
-                    <span class="text-sm text-gray-500" id="result-count"></span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <button class="btn btn-secondary" onclick="exportCSV()" id="export-btn">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                        Скачать CSV
+                <span class="text-sm text-gray-500" id="result-count"></span>
+                <div class="flex items-center gap-1.5">
+                    <button class="btn btn-secondary" onclick="exportCSV()" id="export-btn" title="Скачать CSV">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     </button>
-                    <button class="btn btn-ghost" onclick="resetFilters()">Очистить</button>
+                    <button class="btn btn-ghost" onclick="resetFilters()" title="Очистить">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+                    </button>
                 </div>
             </div>
 
@@ -468,19 +463,21 @@
         let currentPage = 1;
         let totalResults = 0;
         let detailsCache = {};
-        let searchDepth = 3;
+        let searchSort = 'relevance';
         let isLoading = false;
         const LIMIT = 100;
 
         // Последние параметры поиска (для пагинации)
         let lastSearchParams = null;
 
-        // ===== Depth Toggle =====
-        function setDepth(d) {
-            searchDepth = d;
-            document.querySelectorAll('.depth-option').forEach(btn => {
-                btn.classList.toggle('active', parseInt(btn.dataset.depth) === d);
+        // ===== Sort Toggle =====
+        function setSort(s) {
+            searchSort = s;
+            document.querySelectorAll('.sort-option').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.sort === s);
             });
+            // Если есть результаты — перезапросить с новой сортировкой
+            if (totalResults > 0) handleSearch(1);
         }
 
         // ===== Filters =====
@@ -504,7 +501,7 @@
             const btnText = document.getElementById('search-btn-text');
             if (loading) {
                 btn.disabled = true;
-                btnText.innerHTML = '<span class="spinner"></span> Загрузка...';
+                btnText.innerHTML = '<div class="spinner"></div> Загрузка...';
             } else {
                 btnText.textContent = 'Найти лиды';
                 updateSearchButton();
@@ -523,12 +520,8 @@
             const params = new URLSearchParams();
             const searchQuery = document.getElementById('search-input').value.trim();
 
-            if (searchQuery) {
-                params.append('query', searchQuery);
-                params.append('depth', searchDepth);
-            }
+            if (searchQuery) params.append('query', searchQuery);
 
-            // Явные фильтры — всегда добавляем (backend объединит с FAISS)
             const city = document.getElementById('city').value.trim();
             const category = document.getElementById('category').value.trim();
             if (city) params.append('city', city);
@@ -537,6 +530,7 @@
             if (document.getElementById('has_phone').checked) params.append('has_phone', 'true');
             if (document.getElementById('has_website').checked) params.append('has_website', 'true');
 
+            params.append('sort', searchSort);
             params.append('limit', LIMIT);
             params.append('offset', (page - 1) * LIMIT);
             return params;
@@ -560,7 +554,7 @@
                 totalResults = data.total || 0;
 
                 if (totalResults === 0) {
-                    showEmptyState('Ничего не найдено', 'Попробуйте изменить запрос или расширить ширину поиска');
+                    showEmptyState('Ничего не найдено', 'Попробуйте изменить запрос или фильтры');
                     document.getElementById('results-section').style.display = 'none';
                     return;
                 }
@@ -787,7 +781,7 @@
         async function exportCSV() {
             const btn = document.getElementById('export-btn');
             const origHTML = btn.innerHTML;
-            btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border:2px solid #e5e7eb;border-top-color:#3b82f6;border-radius:50%;animation:spin .8s linear infinite;display:inline-block;"></span> Экспорт...';
+            btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border:2px solid #e5e7eb;border-top-color:#3b82f6;border-radius:50%;animation:spin .8s linear infinite;display:inline-block;"></div>';
             btn.disabled = true;
 
             // Собираем те же параметры, что и при поиске, но без limit/offset
@@ -795,7 +789,6 @@
             const searchQuery = document.getElementById('search-input').value.trim();
             if (searchQuery) {
                 params.append('query', searchQuery);
-                params.append('depth', searchDepth);
             }
 
             const city = document.getElementById('city').value.trim();
@@ -847,7 +840,7 @@
             `;
             detailsCache = {};
             totalResults = 0;
-            setDepth(3);
+            setSort('relevance');
             updateSearchButton();
         }
 
