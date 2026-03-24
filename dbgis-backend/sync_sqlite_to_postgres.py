@@ -179,6 +179,12 @@ def sync_companies(sqlite_conn, pg_cur):
             website = EXCLUDED.website,
             domain = EXCLUDED.domain,
             updated_at = EXCLUDED.updated_at
+        WHERE
+            companies.name IS DISTINCT FROM EXCLUDED.name OR
+            companies.city IS DISTINCT FROM EXCLUDED.city OR
+            companies.website IS DISTINCT FROM EXCLUDED.website OR
+            companies.domain IS DISTINCT FROM EXCLUDED.domain OR
+            companies.updated_at IS DISTINCT FROM EXCLUDED.updated_at
     """, data, "companies")
 
     deleted = delete_removed(pg_cur, "companies", ids)
@@ -201,6 +207,8 @@ def sync_company_aliases(sqlite_conn, pg_cur):
         VALUES (%s, %s, %s)
         ON CONFLICT (company_id, name) DO UPDATE SET
             name = %s
+        WHERE
+            company_aliases.name IS DISTINCT FROM EXCLUDED.name
     """, data, "company_aliases")
 
     deleted = delete_removed(pg_cur, "company_aliases", ids)
@@ -237,6 +245,13 @@ def sync_branches(sqlite_conn, pg_cur):
             working_hours = %s,
             building_name = %s,
             building_type = %s
+        WHERE
+            branches.company_id IS DISTINCT FROM EXCLUDED.company_id OR
+            branches.address IS DISTINCT FROM EXCLUDED.address OR
+            branches.postal_code IS DISTINCT FROM EXCLUDED.postal_code OR
+            branches.working_hours IS DISTINCT FROM EXCLUDED.working_hours OR
+            branches.building_name IS DISTINCT FROM EXCLUDED.building_name OR
+            branches.building_type IS DISTINCT FROM EXCLUDED.building_type
     """, data, "branches")
 
     deleted = delete_removed(pg_cur, "branches", ids)
@@ -258,6 +273,8 @@ def sync_phones(sqlite_conn, pg_cur):
         VALUES (%s, %s, %s, %s)
         ON CONFLICT (branch_id, phone) DO UPDATE SET
             phone = %s
+        WHERE
+            phones.phone IS DISTINCT FROM EXCLUDED.phone
     """, data, "phones")
 
     deleted = delete_removed(pg_cur, "phones", ids)
@@ -280,6 +297,8 @@ def sync_emails(sqlite_conn, pg_cur):
         VALUES (%s, %s, %s, %s)
         ON CONFLICT (company_id, email) DO UPDATE SET
             email = %s
+        WHERE
+            emails.email IS DISTINCT FROM EXCLUDED.email
     """, data, "emails")
 
     deleted = delete_removed(pg_cur, "emails", ids)
@@ -303,6 +322,8 @@ def sync_socials(sqlite_conn, pg_cur):
         VALUES (%s, %s, %s, %s)
         ON CONFLICT (company_id, type, url) DO UPDATE SET
             url = %s
+        WHERE
+            socials.url IS DISTINCT FROM EXCLUDED.url
     """, data, "socials")
 
     deleted = delete_removed(pg_cur, "socials", ids)
@@ -327,6 +348,9 @@ def sync_categories(sqlite_conn, pg_cur):
         ON CONFLICT (id) DO UPDATE SET
             name = %s,
             parent_id = %s
+        WHERE
+            categories.name IS DISTINCT FROM EXCLUDED.name OR
+            categories.parent_id IS DISTINCT FROM EXCLUDED.parent_id
     """, data, "categories")
 
     deleted = delete_removed(pg_cur, "categories", ids)
@@ -393,16 +417,35 @@ def sync_data():
         total_deleted = 0
 
         for table_name, sync_fn in SYNC_STEPS:
+            print(f"  [{table_name}] синхронизация...")
             upserted, deleted = sync_fn(sqlite_conn, pg_cur)
             total_upserted += upserted
             total_deleted += deleted
             print(f"  [{table_name}] UPSERT: {upserted}, DELETE: {deleted}")
 
         pg_conn.commit()
-
         print("=" * 60)
         print(f"UPSERT всего: {total_upserted}")
         print(f"DELETE всего: {total_deleted}")
+
+        # VACUUM ANALYZE — очистка мёртвых строк и обновление статистики
+        # Выполняется вне транзакции (требует autocommit)
+        pg_cur.close()
+        pg_conn.set_session(autocommit=True)
+        pg_cur = pg_conn.cursor()
+
+        print("=" * 60)
+        print("=== VACUUM START ===")
+        vacuum_tables = [
+            "companies", "company_aliases", "categories", "branches",
+            "phones", "emails", "socials", "company_categories"
+        ]
+        for table in vacuum_tables:
+            print(f"  VACUUM ANALYZE {table}...")
+            pg_cur.execute(f"VACUUM ANALYZE {table}")
+        print("=== VACUUM DONE ===")
+
+        print("=" * 60)
         print(f"Синхронизация завершена: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
     except Exception as e:
