@@ -460,10 +460,8 @@
         <section id="results-section" class="mb-10 fade-in" style="display:none;">
             <!-- Category Filter Badge -->
             <div id="category-filter-bar" class="max-w-[1000px] mx-auto px-5 mb-3" style="display:none;">
-                <span class="category-filter-badge">
-                    <span id="category-filter-name"></span>
-                    <button onclick="clearCategoryFilter()" title="Сбросить фильтр">✕</button>
-                </span>
+                <div id="category-filter-badges" style="display:inline-flex;flex-wrap:wrap;gap:6px;"></div>
+                <button onclick="clearCategoryFilter()" style="margin-left:8px;font-size:12px;color:#6b7280;cursor:pointer;background:none;border:none;text-decoration:underline;" title="Сбросить все">сбросить все</button>
             </div>
 
             <!-- Results Header -->
@@ -516,8 +514,7 @@
         let detailsCache = {};
         let searchMode = 'precision';
         let isLoading = false;
-        let categoryFilterId = null;
-        let categoryFilterName = null;
+        let categoryFilterIds = [];   // [{id, name}, ...]
         const LIMIT = 100;
 
         // Последние параметры поиска (для пагинации)
@@ -581,7 +578,9 @@
             if (document.getElementById('has_phone').checked) params.append('has_phone', 'true');
             if (document.getElementById('has_website').checked) params.append('has_website', 'true');
 
-            if (categoryFilterId) params.append('category_filter_id', categoryFilterId);
+            if (categoryFilterIds.length > 0) {
+                params.append('category_filter_ids', categoryFilterIds.map(c => c.id).join(','));
+            }
 
             params.append('mode', searchMode);
             params.append('limit', LIMIT);
@@ -881,24 +880,36 @@
             }
         }
 
-        // ===== Category Filter =====
+        // ===== Category Filter (мульти-выбор, AND) =====
         function applyCategoryFilter(id, name) {
-            categoryFilterId = id;
-            categoryFilterName = name;
+            const idx = categoryFilterIds.findIndex(c => c.id === id);
+            if (idx !== -1) {
+                categoryFilterIds.splice(idx, 1);
+            } else {
+                categoryFilterIds.push({id, name});
+            }
+            handleSearch(1);
+        }
+
+        function removeCategoryFilter(id) {
+            categoryFilterIds = categoryFilterIds.filter(c => c.id !== id);
+            updateCategoryFilterBadge();
             handleSearch(1);
         }
 
         function clearCategoryFilter() {
-            categoryFilterId = null;
-            categoryFilterName = null;
+            categoryFilterIds = [];
             updateCategoryFilterBadge();
             handleSearch(1);
         }
 
         function updateCategoryFilterBadge() {
             const bar = document.getElementById('category-filter-bar');
-            if (categoryFilterId && categoryFilterName) {
-                document.getElementById('category-filter-name').textContent = categoryFilterName;
+            if (categoryFilterIds.length > 0) {
+                const container = document.getElementById('category-filter-badges');
+                container.innerHTML = categoryFilterIds.map(c =>
+                    `<span class="category-filter-badge">${escapeHtml(c.name)}<button onclick="removeCategoryFilter(${c.id})" title="Убрать фильтр">✕</button></span>`
+                ).join(' ');
                 bar.style.display = 'block';
             } else {
                 bar.style.display = 'none';
@@ -913,8 +924,7 @@
             document.getElementById('has_email').checked = false;
             document.getElementById('has_phone').checked = false;
             document.getElementById('has_website').checked = false;
-            categoryFilterId = null;
-            categoryFilterName = null;
+            categoryFilterIds = [];
             updateCategoryFilterBadge();
             document.getElementById('results-section').style.display = 'none';
             document.getElementById('empty-state').style.display = 'block';
