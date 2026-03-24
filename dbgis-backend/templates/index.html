@@ -110,28 +110,31 @@
         .depth-toggle {
             display: inline-flex;
             border: 1px solid #e5e7eb;
-            border-radius: 8px;
+            border-radius: 10px;
             overflow: hidden;
-            background: white;
+            background: #f4f4f5;
+            padding: 3px;
+            gap: 2px;
         }
         .depth-option {
-            padding: 5px 0;
-            width: 110px;
+            padding: 6px 0;
+            width: 120px;
             text-align: center;
             font-size: 12px;
             font-weight: 500;
-            color: #6b7280;
+            color: #71717a;
             cursor: pointer;
             border: none;
             background: transparent;
+            border-radius: 7px;
             transition: all 0.15s ease;
-            border-right: 1px solid #e5e7eb;
         }
-        .depth-option:last-child { border-right: none; }
-        .depth-option:hover { background: #f9fafb; color: #374151; }
+        .depth-option:hover { background: rgba(255,255,255,0.6); color: #3f3f46; }
         .depth-option.active {
-            background: #18181b;
-            color: white;
+            background: white;
+            color: #18181b;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            font-weight: 600;
         }
 
         /* --- Suggestions --- */
@@ -396,10 +399,10 @@
                         <input type="text" id="category" class="filter-input" placeholder="Например: Кафе">
                     </div>
                 </div>
-                <div class="flex flex-wrap items-center gap-x-5 gap-y-2">
-                    <label class="filter-checkbox"><input type="checkbox" id="has_email"><span>Только с Email</span></label>
-                    <label class="filter-checkbox"><input type="checkbox" id="has_phone"><span>Только с телефоном</span></label>
-                    <label class="filter-checkbox"><input type="checkbox" id="has_website"><span>Только с сайтом</span></label>
+                <div class="grid grid-cols-3 gap-3">
+                    <label class="filter-checkbox"><input type="checkbox" id="has_email"><span>С Email</span></label>
+                    <label class="filter-checkbox"><input type="checkbox" id="has_phone"><span>С телефоном</span></label>
+                    <label class="filter-checkbox"><input type="checkbox" id="has_website"><span>С сайтом</span></label>
                 </div>
             </div>
         </section>
