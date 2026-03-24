@@ -115,7 +115,9 @@
             background: white;
         }
         .depth-option {
-            padding: 5px 12px;
+            padding: 5px 0;
+            width: 110px;
+            text-align: center;
             font-size: 12px;
             font-weight: 500;
             color: #6b7280;
@@ -128,7 +130,7 @@
         .depth-option:last-child { border-right: none; }
         .depth-option:hover { background: #f9fafb; color: #374151; }
         .depth-option.active {
-            background: #3b82f6;
+            background: #18181b;
             color: white;
         }
 
@@ -361,10 +363,10 @@
             </div>
 
             <!-- Depth Toggle + Filters Toggle row -->
-            <div class="flex items-center justify-center gap-3 mb-4">
+            <div class="flex items-center justify-center gap-3 mb-1.5">
                 <div class="depth-toggle">
-                    <button class="depth-option" data-depth="1" onclick="setDepth(1)">Узкий</button>
-                    <button class="depth-option active" data-depth="3" onclick="setDepth(3)">Средний</button>
+                    <button class="depth-option" data-depth="1" onclick="setDepth(1)">Точный</button>
+                    <button class="depth-option active" data-depth="3" onclick="setDepth(3)">Сбалансированный</button>
                     <button class="depth-option" data-depth="5" onclick="setDepth(5)">Широкий</button>
                 </div>
                 <button class="filters-toggle" onclick="toggleFilters()">
@@ -372,6 +374,7 @@
                     Фильтры
                 </button>
             </div>
+            <p class="text-[11px] text-gray-400 mb-4 text-center">Больше режим → больше компаний, но ниже точность</p>
 
             <!-- Suggestions -->
             <div class="flex flex-wrap gap-2 justify-center mb-6 max-w-[650px] mx-auto">
