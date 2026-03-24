@@ -6,6 +6,9 @@
 Все данные хранятся в схеме `auth` (PostgreSQL), изолированно от бизнес-данных.
 Shadow mode: если X-API-Key не передан — запрос пропускается без авторизации.
 
+ЗАПРЕТ: никаких FK между auth.* и public.* — иначе CASCADE из clean_postgres.py
+может зацепить auth-данные. Схемы полностью изолированы.
+
 Использование:
     from auth import auth_router, AuthMiddleware, get_current_user
 
@@ -22,6 +25,8 @@ import hashlib
 import logging
 import os
 import secrets
+import time
+from collections import defaultdict
 from typing import Optional
 
 import httpx
@@ -49,7 +54,19 @@ YANDEX_USERINFO_URL = "https://login.yandex.ru/info"
 # Длина raw API key (32 байта = 64 hex символа)
 API_KEY_BYTES = 32
 
+# Rate limiting per API key (в дополнение к IP-based rate limit из main.py)
+AUTH_RATE_LIMIT_WINDOW = 60   # секунд
+AUTH_RATE_LIMIT_MAX = 60      # запросов в минуту на ключ
+
 auth_router = APIRouter(prefix="/auth", tags=["auth"])
+
+# In-memory хранилище OAuth state (CSRF protection)
+# state → timestamp. Очищается при проверке.
+_oauth_states: dict[str, float] = {}
+OAUTH_STATE_TTL = 300  # 5 минут на завершение OAuth flow
+
+# In-memory rate limit per API key (user_id → [timestamps])
+_auth_rate_limit_store: dict[str, list[float]] = defaultdict(list)
 
 
 # ============================================================
@@ -84,45 +101,60 @@ def _get_auth_connection():
     )
 
 
-def _ensure_auth_schema(conn):
-    """Создаёт схему auth и таблицы, если они не существуют.
+def _check_auth_rate_limit(user_id: str) -> bool:
+    """Проверяет rate limit для конкретного API ключа (user_id).
 
-    Идемпотентно — безопасно вызывать при каждом старте.
+    Returns:
+        True если лимит превышен, False если OK.
+    """
+    now = time.time()
+    window_start = now - AUTH_RATE_LIMIT_WINDOW
+    _auth_rate_limit_store[user_id] = [
+        t for t in _auth_rate_limit_store[user_id] if t > window_start
+    ]
+    if len(_auth_rate_limit_store[user_id]) >= AUTH_RATE_LIMIT_MAX:
+        return True
+    _auth_rate_limit_store[user_id].append(now)
+    return False
+
+
+def _generate_oauth_state() -> str:
+    """Генерирует и сохраняет OAuth state для CSRF protection."""
+    # Очищаем старые state (старше TTL)
+    now = time.time()
+    expired = [s for s, t in _oauth_states.items() if now - t > OAUTH_STATE_TTL]
+    for s in expired:
+        del _oauth_states[s]
+
+    state = secrets.token_urlsafe(32)
+    _oauth_states[state] = now
+    return state
+
+
+def _verify_oauth_state(state: str) -> bool:
+    """Проверяет и потребляет OAuth state (одноразовый)."""
+    if state not in _oauth_states:
+        return False
+    created_at = _oauth_states.pop(state)
+    return (time.time() - created_at) < OAUTH_STATE_TTL
+
+
+def _check_auth_schema(conn) -> bool:
+    """Проверяет наличие схемы auth и таблиц. Без CREATE — только проверка.
+
+    Схема и таблицы создаются ТОЛЬКО через миграцию (003_auth_schema.sql).
+    Runtime-код не должен менять структуру БД.
     """
     cur = conn.cursor()
     try:
-        cur.execute("CREATE SCHEMA IF NOT EXISTS auth")
-        cur.execute("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"")
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS auth.users (
-                id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-                external_id VARCHAR(255) NOT NULL UNIQUE,
-                email       VARCHAR(255),
-                plan        VARCHAR(50)  NOT NULL DEFAULT 'free',
-                credits     INTEGER      NOT NULL DEFAULT 100,
-                created_at  TIMESTAMP    NOT NULL DEFAULT NOW()
-            )
-        """)
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS auth.api_keys (
-                id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-                user_id    UUID         NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-                key_hash   VARCHAR(64)  NOT NULL UNIQUE,
-                name       VARCHAR(255) NOT NULL DEFAULT 'default',
-                created_at TIMESTAMP    NOT NULL DEFAULT NOW(),
-                is_active  BOOLEAN      NOT NULL DEFAULT TRUE
-            )
-        """)
-        cur.execute("""
-            CREATE INDEX IF NOT EXISTS idx_auth_api_keys_hash
-                ON auth.api_keys (key_hash) WHERE is_active = TRUE
-        """)
-        conn.commit()
-        log.info("[AUTH] Схема auth проверена/создана")
-    except Exception as e:
-        conn.rollback()
-        log.error(f"[AUTH] Ошибка создания схемы auth: {e}")
-        raise
+        cur.execute(
+            "SELECT COUNT(*) FROM information_schema.tables "
+            "WHERE table_schema = 'auth' AND table_name IN ('users', 'api_keys')"
+        )
+        count = cur.fetchone()[0]
+        return count == 2
+    except Exception:
+        return False
     finally:
         cur.close()
 
@@ -229,21 +261,6 @@ def _find_user_by_api_key(conn, raw_key: str) -> Optional[dict]:
         cur.close()
 
 
-def _deactivate_api_key(conn, user_id: str, key_hash: str) -> bool:
-    """Деактивирует API ключ."""
-    cur = conn.cursor()
-    try:
-        cur.execute(
-            "UPDATE auth.api_keys SET is_active = FALSE "
-            "WHERE user_id = %s AND key_hash = %s AND is_active = TRUE",
-            (user_id, key_hash)
-        )
-        conn.commit()
-        return cur.rowcount > 0
-    finally:
-        cur.close()
-
-
 # ============================================================
 # MIDDLEWARE: Shadow Mode
 # ============================================================
@@ -251,11 +268,15 @@ def _deactivate_api_key(conn, user_id: str, key_hash: str) -> bool:
 class AuthMiddleware(BaseHTTPMiddleware):
     """Middleware для авторизации через X-API-Key.
 
-    Shadow mode: если заголовок X-API-Key отсутствует — запрос пропускается
-    без авторизации (request.state.user = None). Существующие эндпоинты
-    продолжают работать как раньше.
+    Shadow mode:
+    - Нет X-API-Key → пропускаем (request.state.user = None)
+    - Невалидный ключ → пропускаем + логируем (shadow mode, не ломаем UI)
+    - Валидный ключ → request.state.user = dict с данными пользователя
+    - Ошибка БД → пропускаем (не блокируем сервис)
 
-    Если X-API-Key передан, но невалиден — возвращаем 401.
+    В shadow mode НЕТ 401 на невалидный ключ — иначе UI начнёт падать
+    при случайном мусорном заголовке. 401 только на защищённых эндпоинтах
+    (/auth/me, /auth/api-key/regenerate) через явную проверку get_current_user().
     """
 
     async def dispatch(self, request: Request, call_next):
@@ -269,11 +290,16 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 conn = _get_auth_connection()
                 user = _find_user_by_api_key(conn, api_key)
                 if user is None:
-                    return JSONResponse(
-                        status_code=401,
-                        content={"detail": "Невалидный API ключ"}
-                    )
-                request.state.user = user
+                    # Shadow mode: логируем, но НЕ блокируем запрос
+                    log.warning("[AUTH] Невалидный API ключ (shadow mode — пропускаем)")
+                else:
+                    # Проверяем rate limit per API key
+                    if _check_auth_rate_limit(user["id"]):
+                        return JSONResponse(
+                            status_code=429,
+                            content={"detail": "Превышен лимит запросов для API ключа"}
+                        )
+                    request.state.user = user
             except Exception as e:
                 log.error(f"[AUTH] Ошибка проверки API ключа: {e}")
                 # При ошибке БД — пропускаем (shadow mode, не блокируем сервис)
@@ -312,19 +338,23 @@ def get_current_user(request: Request) -> Optional[dict]:
 
 @auth_router.get("/yandex/login")
 async def yandex_login():
-    """Редирект на страницу авторизации Yandex OAuth."""
+    """Редирект на страницу авторизации Yandex OAuth.
+
+    Генерирует state параметр для CSRF protection.
+    """
     if not YANDEX_CLIENT_ID:
         raise HTTPException(
             status_code=503,
             detail="Yandex OAuth не настроен. Укажите YANDEX_CLIENT_ID в .env"
         )
 
+    state = _generate_oauth_state()
     params = {
         "response_type": "code",
         "client_id": YANDEX_CLIENT_ID,
         "redirect_uri": AUTH_CALLBACK_URL,
+        "state": state,
     }
-    # Формируем URL вручную (без лишних зависимостей)
     query = "&".join(f"{k}={v}" for k, v in params.items())
     return RedirectResponse(url=f"{YANDEX_AUTH_URL}?{query}")
 
@@ -332,14 +362,23 @@ async def yandex_login():
 @auth_router.get("/yandex/callback")
 async def yandex_callback(
     code: str = Query(..., description="Код авторизации от Yandex"),
+    state: str = Query(..., description="CSRF state параметр"),
 ):
     """Callback после авторизации через Yandex.
 
-    1. Обменивает code на access_token
-    2. Получает профиль пользователя (yandex_id, email)
-    3. Создаёт/находит пользователя в auth.users
-    4. Для нового пользователя — генерирует API ключ (возвращается ОДИН раз)
+    1. Проверяет state (CSRF protection)
+    2. Обменивает code на access_token
+    3. Получает профиль пользователя (yandex_id, email)
+    4. Создаёт/находит пользователя в auth.users
+    5. Для нового пользователя — генерирует API ключ (возвращается ОДИН раз)
     """
+    # Шаг 0: CSRF проверка
+    if not _verify_oauth_state(state):
+        raise HTTPException(
+            status_code=400,
+            detail="Невалидный или истёкший state параметр (возможна CSRF-атака)"
+        )
+
     if not YANDEX_CLIENT_ID or not YANDEX_CLIENT_SECRET:
         raise HTTPException(
             status_code=503,
@@ -397,7 +436,6 @@ async def yandex_callback(
     conn = None
     try:
         conn = _get_auth_connection()
-        _ensure_auth_schema(conn)
 
         user = _find_or_create_user(conn, yandex_id=str(yandex_id), email=email)
 
@@ -438,6 +476,7 @@ async def yandex_callback(
 async def regenerate_api_key(request: Request):
     """Генерирует новый API ключ (деактивирует все предыдущие).
 
+    Атомарная операция: деактивация старых + создание нового в одной транзакции.
     Требует авторизацию через текущий X-API-Key.
     """
     user = get_current_user(request)
@@ -452,16 +491,21 @@ async def regenerate_api_key(request: Request):
         conn = _get_auth_connection()
         cur = conn.cursor()
 
-        # Деактивируем все текущие ключи
+        # Атомарно: деактивируем все текущие + создаём новый в одной транзакции
         cur.execute(
-            "UPDATE auth.api_keys SET is_active = FALSE WHERE user_id = %s",
+            "UPDATE auth.api_keys SET is_active = FALSE WHERE user_id = %s AND is_active = TRUE",
             (user["id"],)
         )
-        cur.close()
-        conn.commit()
 
-        # Создаём новый
-        raw_key = _create_api_key(conn, user["id"])
+        raw_key = _generate_raw_api_key()
+        key_hash = _hash_api_key(raw_key)
+        cur.execute(
+            "INSERT INTO auth.api_keys (user_id, key_hash, name) VALUES (%s, %s, %s)",
+            (user["id"], key_hash, "default")
+        )
+
+        conn.commit()
+        cur.close()
 
         return JSONResponse(content={
             "api_key": raw_key,
@@ -470,6 +514,8 @@ async def regenerate_api_key(request: Request):
     except HTTPException:
         raise
     except Exception as e:
+        if conn:
+            conn.rollback()
         log.error(f"[AUTH] Ошибка регенерации ключа: {e}")
         raise HTTPException(status_code=500, detail="Ошибка генерации ключа")
     finally:
@@ -498,17 +544,26 @@ async def auth_me(request: Request):
 # ============================================================
 
 def init_auth_schema():
-    """Проверяет/создаёт схему auth при старте приложения.
+    """Проверяет наличие схемы auth при старте приложения.
 
-    Вызывается из main.py. Идемпотентно, безопасно при каждом рестарте.
+    НЕ создаёт таблицы — только проверка. Структура БД управляется
+    ТОЛЬКО через миграции (migrations/003_auth_schema.sql).
+
+    Если схема не найдена — auth-эндпоинты вернут 503, но основной
+    сервис продолжит работать.
     """
     conn = None
     try:
         conn = _get_auth_connection()
-        _ensure_auth_schema(conn)
-        log.info("[AUTH] Модуль авторизации инициализирован")
+        if _check_auth_schema(conn):
+            log.info("[AUTH] Схема auth найдена, модуль авторизации активен")
+        else:
+            log.warning(
+                "[AUTH] Схема auth не найдена. Выполните миграцию: "
+                "python migrations/run_migration.py 003_auth_schema.sql"
+            )
     except Exception as e:
-        log.warning(f"[AUTH] Не удалось инициализировать схему auth: {e}")
+        log.warning(f"[AUTH] Не удалось проверить схему auth: {e}")
         log.warning("[AUTH] Авторизация будет недоступна до создания схемы")
     finally:
         if conn:

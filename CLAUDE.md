@@ -248,14 +248,18 @@ LobeChat — форк AI-чата. Монорепо с pnpm workspaces.
 - `sync_sqlite_to_postgres.py` — все INSERT/UPSERT по неквалифицированным именам → default `public`
 - `VACUUM FULL` и `ANALYZE` на конкретных таблицах из `TRUNCATE_ORDER` — все в `public`
 - **Ни одна операция не касается схемы `auth`**
+- **ЗАПРЕТ: НИКАКИХ FK между auth.* и public.*** — иначе `TRUNCATE TABLE xxx CASCADE` из clean_postgres.py может удалить auth-данные через FK-цепочку
 
 **Архитектура:**
 - `auth.py` — отдельный модуль (не в монолите `main.py`): OAuth flow, API key CRUD, middleware
 - Таблицы: `auth.users` (UUID PK, external_id, plan, credits), `auth.api_keys` (key_hash SHA-256, is_active)
-- **Shadow mode**: middleware `AuthMiddleware` читает `X-API-Key` из заголовка. Если ключ отсутствует — запрос пропускается (request.state.user = None). Если ключ невалиден — 401
+- **Shadow mode**: middleware `AuthMiddleware` читает `X-API-Key` из заголовка. Если ключ отсутствует — запрос пропускается (request.state.user = None). Если ключ невалиден — тоже пропускается (логируем, не ломаем UI)
 - `get_current_user(request)` — helper для чтения пользователя из request.state
 - API key возвращается raw ОДИН раз (при создании), хранится только SHA-256 хэш
-- `init_auth_schema()` — идемпотентное создание таблиц при старте (CREATE IF NOT EXISTS)
+- `init_auth_schema()` — проверка наличия схемы при старте (БЕЗ CREATE — структура только через миграции)
+- **Rate limit per API key**: 60 req/min на ключ (in-memory, в дополнение к IP-based из main.py)
+- **OAuth state**: CSRF protection через одноразовый state параметр (TTL 5 минут)
+- **Regenerate**: деактивация старых + создание нового ключа атомарно в одной транзакции
 
 **Env vars для auth:**
 

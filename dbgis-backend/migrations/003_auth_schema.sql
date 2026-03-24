@@ -4,6 +4,10 @@
 -- clean_postgres.py и sync_sqlite_to_postgres.py работают ТОЛЬКО с public —
 -- данные пользователей НЕ затрагиваются при очистке/синхронизации бизнес-данных.
 --
+-- ЗАПРЕТ: НИКАКИХ FK между auth.* и public.* — CASCADE из TRUNCATE TABLE xxx
+-- в clean_postgres.py может зацепить auth через FK-цепочку.
+-- Схемы должны быть полностью изолированы.
+--
 -- Запуск:
 --   python migrations/run_migration.py 003_auth_schema.sql
 
