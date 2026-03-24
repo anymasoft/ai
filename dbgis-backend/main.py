@@ -247,21 +247,33 @@ COMPANIES_COUNT_SQL = """
 
 
 def build_filter_clause(city, category, has_email, has_phone, has_website,
-                        category_ids=None):
+                        category_ids=None, category_filter_ids=None):
     """Строит WHERE-условия и параметры для фильтрации компаний.
 
-    Приоритет фильтрации по категории:
-    1. category_ids — список ID категорий из FAISS + recursive потомки
-    2. category — ILIKE поиск (ручной фильтр пользователя)
+    category_filter_ids — AND-пересечение (HAVING COUNT(DISTINCT) = len).
+    category_ids — OR по любой из категорий (FAISS).
+    category — ILIKE поиск.
     """
     clauses = []
     params = []
+    having = ""
+    having_params = []
 
     if city:
         clauses.append("c.city ILIKE %s")
         params.append(f"%{city}%")
 
-    if category_ids:
+    if category_filter_ids and len(category_filter_ids) >= 2:
+        # AND-пересечение: компания должна иметь ВСЕ указанные категории
+        clauses.append("cc.category_id = ANY(%s)")
+        params.append(list(category_filter_ids))
+        having = " HAVING COUNT(DISTINCT cc.category_id) = %s"
+        having_params.append(len(category_filter_ids))
+    elif category_filter_ids and len(category_filter_ids) == 1:
+        # Одна категория — простой фильтр без HAVING
+        clauses.append("cc.category_id = %s")
+        params.append(category_filter_ids[0])
+    elif category_ids:
         clauses.append("cc.category_id = ANY(%s)")
         params.append(list(category_ids))
     elif category:
@@ -282,7 +294,7 @@ def build_filter_clause(city, category, has_email, has_phone, has_website,
         clauses.append("c.domain IS NOT NULL AND c.domain != ''")
 
     where = " WHERE " + " AND ".join(clauses) if clauses else ""
-    return where, params
+    return where, params, having, having_params
 
 
 def decode_rows(rows):
@@ -325,12 +337,20 @@ async def get_companies(
     has_email: Optional[bool] = Query(None, description="Только с email"),
     has_phone: Optional[bool] = Query(None, description="Только с телефоном"),
     has_website: Optional[bool] = Query(None, description="Только с сайтом"),
-    category_filter_id: Optional[int] = Query(None, description="Фильтр по ID конкретной категории (клик в UI)"),
+    category_filter_ids: Optional[str] = Query(None, description="Фильтр по ID категорий (через запятую, AND-пересечение)"),
     mode: str = Query("precision", description="Режим: precision | coverage"),
     limit: int = Query(100, ge=1, le=1000, description="Лимит результатов"),
     offset: int = Query(0, ge=0, description="Смещение")
 ):
     """Получить список компаний с фильтрами или AI-парсингом запроса."""
+
+    # Парсинг category_filter_ids из строки "19,25,42" в список int
+    parsed_filter_ids = []
+    if category_filter_ids:
+        try:
+            parsed_filter_ids = [int(x.strip()) for x in category_filter_ids.split(",") if x.strip()]
+        except ValueError:
+            pass
 
     category_ids = None
     search_method = None
@@ -379,10 +399,10 @@ async def get_companies(
         print(f"IDS COUNT: {len(category_ids)}")
         log.info(f"[SEARCH] mode={mode}, FAISS: {[c['name'] for c in top_categories]}, ids={len(category_ids)}")
 
-        # category_filter_id OVERRIDE: клик по категории заменяет FAISS-результат
-        if category_filter_id:
-            category_ids = [category_filter_id]
-            print(f"CATEGORY FILTER OVERRIDE: {category_filter_id}")
+        # category_filter_ids OVERRIDE: клик по категориям заменяет FAISS-результат
+        if parsed_filter_ids:
+            category_ids = parsed_filter_ids
+            print(f"CATEGORY FILTER OVERRIDE: {parsed_filter_ids}")
 
         # Извлекаем город и фильтры контактов из запроса (простой парсер)
         if FALLBACK_PARSER_AVAILABLE:
@@ -404,10 +424,10 @@ async def get_companies(
             has_website = filters.get("has_website") or has_website
         search_method = "regex"
 
-    # category_filter_id OVERRIDE без query (клик по категории без текстового поиска)
-    if category_filter_id and not category_ids:
-        category_ids = [category_filter_id]
-        print(f"CATEGORY FILTER OVERRIDE (no query): {category_filter_id}")
+    # category_filter_ids OVERRIDE без query (клик по категориям без текстового поиска)
+    if parsed_filter_ids and not category_ids:
+        category_ids = parsed_filter_ids
+        print(f"CATEGORY FILTER OVERRIDE (no query): {parsed_filter_ids}")
 
     # ORDER BY — relevance сортировка всегда (контакты наверх)
     order_clause = (
@@ -422,7 +442,7 @@ async def get_companies(
     cache_params = {
         "city": city, "category": category,
         "category_ids": tuple(category_ids) if category_ids else None,
-        "category_filter_id": category_filter_id,
+        "category_filter_ids": tuple(parsed_filter_ids) if parsed_filter_ids else None,
         "has_email": has_email, "has_phone": has_phone,
         "has_website": has_website, "mode": mode,
         "limit": limit, "offset": offset
@@ -437,9 +457,10 @@ async def get_companies(
 
     try:
         cur = conn.cursor()
-        where, params = build_filter_clause(
+        where, params, having, having_params = build_filter_clause(
             city, category, has_email, has_phone, has_website,
-            category_ids=category_ids
+            category_ids=category_ids,
+            category_filter_ids=parsed_filter_ids
         )
 
         # Основной запрос
@@ -447,14 +468,26 @@ async def get_companies(
             COMPANIES_LIST_SQL + where +
             " GROUP BY c.id, c.name, c.city, c.domain, c.website, c.created_at,"
             " ph.phones, em.emails, addr.address, soc.socials"
-            + order_clause + " LIMIT %s OFFSET %s"
+            + having + order_clause + " LIMIT %s OFFSET %s"
         )
-        cur.execute(sql_query, params + [limit, offset])
+        cur.execute(sql_query, params + having_params + [limit, offset])
         rows = cur.fetchall()
 
-        # COUNT
-        count_query = COMPANIES_COUNT_SQL + where
-        cur.execute(count_query, params)
+        # COUNT (с HAVING для AND-пересечения)
+        if having:
+            count_query = (
+                "SELECT COUNT(*) as total FROM ("
+                "  SELECT c.id FROM companies c"
+                "  LEFT JOIN company_categories cc ON c.id = cc.company_id"
+                "  LEFT JOIN categories cat ON cc.category_id = cat.id"
+                + where +
+                "  GROUP BY c.id" + having +
+                ") sub"
+            )
+            cur.execute(count_query, params + having_params)
+        else:
+            count_query = COMPANIES_COUNT_SQL + where
+            cur.execute(count_query, params)
         total = cur.fetchone()["total"]
 
         cur.close()
@@ -633,7 +666,7 @@ async def export_csv(
 
     try:
         cur = conn.cursor()
-        where, params = build_filter_clause(
+        where, params, having, having_params = build_filter_clause(
             city, category, has_email, has_phone, has_website,
             category_ids=category_ids
         )
@@ -642,9 +675,9 @@ async def export_csv(
             COMPANIES_LIST_SQL + where +
             " GROUP BY c.id, c.name, c.city, c.domain, c.website, c.created_at,"
             " ph.phones, em.emails, addr.address, soc.socials"
-            " ORDER BY c.name LIMIT %s"
+            + having + " ORDER BY c.name LIMIT %s"
         )
-        cur.execute(query, params + [limit])
+        cur.execute(query, params + having_params + [limit])
         rows = cur.fetchall()
         cur.close()
 
@@ -715,7 +748,7 @@ async def explain_query(
 
     try:
         cur = conn.cursor()
-        where, params = build_filter_clause(
+        where, params, having, having_params = build_filter_clause(
             city, category, has_email, has_phone, has_website
         )
 
@@ -724,9 +757,9 @@ async def explain_query(
             COMPANIES_LIST_SQL + where +
             " GROUP BY c.id, c.name, c.city, c.domain, c.website, c.created_at,"
             " ph.phones, em.emails, addr.address, soc.socials"
-            " ORDER BY c.name LIMIT %s OFFSET %s"
+            + having + " ORDER BY c.name LIMIT %s OFFSET %s"
         )
-        cur.execute(query, params + [limit, offset])
+        cur.execute(query, params + having_params + [limit, offset])
         plan = [row["QUERY PLAN"] for row in cur.fetchall()]
 
         cur.close()
