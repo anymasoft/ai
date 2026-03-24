@@ -10,12 +10,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```
 2GIS (.dgdat) → dgdat2xlsx/convert.py → XLSX (24 колонки)
-  → dgdat2xlsx/import_db.py → SQLite (data/local.db)
-    → dbgis-backend/sync_sqlite_to_postgres.py → PostgreSQL (8 таблиц)
+  → dgdat2xlsx/import_db.py → SQLite (data/local.db, 9 таблиц)
+    → dbgis-backend/sync_sqlite_to_postgres.py → PostgreSQL (идентичная структура)
       → dbgis-backend/rebuild_faiss.py → FAISS индекс (category_ids)
         → dbgis-backend/main.py (FastAPI API + Web UI "LeadExtractor")
           → dbgis-backend/enrich.py (обогащение контактов с сайтов)
 ```
+
+Подробная пошаговая инструкция rebuild: `dbgis-backend/PIPELINE.md`
 
 Каждый подпроект имеет свой `CLAUDE.md` с детальными правилами — **обязательно читай перед работой**.
 
@@ -124,14 +126,16 @@ pnpm db:migrate                 # Миграции БД (Drizzle)
 
 Монолит `main.py` (~780 строк). Синхронный код, psycopg2 (не asyncpg).
 
-**Схема БД (8 таблиц):**
+**Схема БД (9 таблиц, идентична в SQLite и PostgreSQL):**
 ```
-companies ──< branches ──< phones
-    ├──< emails
-    ├──< socials
-    ├──< company_aliases
-    └──< company_categories >── categories (иерархия: parent_id)
+cities ──< companies ──< branches ──< phones
+               ├──< emails
+               ├──< socials
+               ├──< company_aliases
+               └──< company_categories >── categories (иерархия: parent_id)
 ```
+
+**Контракт SQLite ↔ PostgreSQL:** структура таблиц идентична. `sync_sqlite_to_postgres.py` делает простой UPSERT из аналогичных таблиц (cities → cities, companies → companies, и т.д.). Не генерировать данные на стороне PostgreSQL — всё приходит из SQLite.
 
 **Критические архитектурные решения (НЕ МЕНЯТЬ без причины):**
 - LATERAL JOIN в `COMPANIES_LIST_SQL` вместо коррелированных подзапросов (10-50x быстрее)
@@ -139,6 +143,9 @@ companies ──< branches ──< phones
 - Connection pool через `psycopg2.SimpleConnectionPool` (всегда возвращать через `release_db_connection`)
 - In-memory кеш `SimpleCache` с 60с TTL
 - `build_filter_clause()` — единственный источник WHERE-условий (используется в `/api/companies` и `/api/export`)
+  - Города: OR логика (`city_id = ANY(%s)`)
+  - Категории (UI мульти-выбор, `category_filter_ids`): AND логика (`ANY + HAVING COUNT(DISTINCT) = N`)
+  - Категории (FAISS поиск, `category_ids`): OR логика (`ANY` без HAVING)
 
 **Поиск категорий — FAISS (faiss_service.py):**
 - Семантический поиск через FAISS + E5 embeddings (`intfloat/multilingual-e5-base`)
@@ -172,7 +179,7 @@ companies ──< branches ──< phones
 **Бизнес-правило #1: НЕ ТЕРЯТЬ контактную информацию** (сайты, email, телефоны, соцсети).
 
 - `convert.py` (~1200 строк): бинарный парсинг dgdat, нормализация URL, экспорт XLSX (24 фиксированных колонки)
-- `import_db.py` (~550 строк): идемпотентный импорт XLSX → SQLite (INSERT OR IGNORE / ON CONFLICT)
+- `import_db.py` (~550 строк): идемпотентный импорт XLSX → SQLite (INSERT OR IGNORE / ON CONFLICT), создаёт таблицу `cities` и проставляет `city_id` в companies
 - PostgreSQL использует оригинальные ID из SQLite (не автогенерация)
 - **Категории хранятся как полные цепи (section→subsection→rubric)**, обрабатываются row-by-row через zip. НЕ через вложенные циклы — иначе Декартово произведение (3×5×10=150 вместо 10 категорий)
 
@@ -215,7 +222,7 @@ LobeChat — форк AI-чата. Монорепо с pnpm workspaces.
 
 | Скрипт | Назначение |
 |--------|-----------|
-| `sync_sqlite_to_postgres.py` | Инкрементальный UPSERT из SQLite → PostgreSQL. IS DISTINCT FROM для skip-update, VACUUM ANALYZE |
+| `sync_sqlite_to_postgres.py` | Инкрементальный UPSERT из SQLite → PostgreSQL. Порядок: cities → companies → branches → phones → emails → socials → categories → company_categories → company_aliases. IS DISTINCT FROM для skip-update |
 | `rebuild_faiss.py` | Пересборка FAISS индекса из PostgreSQL. Хранит **category_id** (не company_id!) |
 | `debug_search.py` | 5-шаговая диагностика: FAISS → PostgreSQL categories → companies → реальные категории → детальная проверка |
 | `clean_postgres.py` | TRUNCATE всех таблиц (в порядке FK), сброс sequences, VACUUM FULL + ANALYZE |

@@ -626,6 +626,7 @@
         let detailsCache = {};
         let searchMode = 'precision';
         let isLoading = false;
+        let currentSearchController = null; // AbortController для отмены предыдущего запроса
         let categoryFilterIds = [];   // [{id, name}, ...]
         let cityFilterIds = [];       // [{id, name}, ...]
         let suggestedCity = null;     // {id, name} или null
@@ -707,18 +708,38 @@
         async function handleSearch(page) {
             page = page || 1;
             currentPage = page;
+
+            // Отменяем предыдущий запрос, если он ещё в полёте
+            if (currentSearchController) {
+                currentSearchController.abort();
+                console.log('[search] Предыдущий запрос отменён');
+            }
+            const controller = new AbortController();
+            currentSearchController = controller;
+
             setLoadingState(true);
+            console.log('[search] Начат поиск, page:', page);
 
             const params = buildSearchParams(page);
             lastSearchParams = params;
 
             try {
-                const response = await fetch(`/api/companies?${params.toString()}`);
+                const response = await fetch(`/api/companies?${params.toString()}`, {
+                    signal: controller.signal
+                });
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
                 const data = await response.json();
                 const companies = data.data || [];
                 totalResults = data.total || 0;
+
+                console.log('[search] Ответ получен, результатов:', totalResults);
+
+                // Если этот запрос уже отменён (пришёл новый) — игнорируем ответ
+                if (controller.signal.aborted) {
+                    console.log('[search] Ответ проигнорирован (запрос отменён)');
+                    return;
+                }
 
                 // Бейджи обновляются независимо от результата
                 updateCategoryFilterBadge();
@@ -734,21 +755,29 @@
                 if (totalResults === 0) {
                     showEmptyState('Ничего не найдено', 'Попробуйте изменить запрос или фильтры');
                     document.getElementById('results-section').style.display = 'none';
+                } else {
+                    document.getElementById('empty-state').style.display = 'none';
+                    document.getElementById('results-section').style.display = 'block';
+                    document.getElementById('result-count').textContent = `Найдено: ${totalResults.toLocaleString('ru-RU')} компаний`;
+                    renderTable(companies);
+                    renderPagination();
+                }
+            } catch (error) {
+                // AbortError — нормальная ситуация при отмене, не показываем ошибку
+                if (error.name === 'AbortError') {
+                    console.log('[search] Запрос отменён (AbortError)');
                     return;
                 }
-
-                document.getElementById('empty-state').style.display = 'none';
-                document.getElementById('results-section').style.display = 'block';
-                document.getElementById('result-count').textContent = `Найдено: ${totalResults.toLocaleString('ru-RU')} компаний`;
-
-                renderTable(companies);
-                renderPagination();
-            } catch (error) {
-                console.error('Ошибка при загрузке:', error);
+                console.error('[search] Ошибка при загрузке:', error);
                 showEmptyState('Ошибка при загрузке', error.message);
                 document.getElementById('results-section').style.display = 'none';
             } finally {
-                setLoadingState(false);
+                // Сбрасываем loading ТОЛЬКО если это текущий (последний) контроллер
+                if (currentSearchController === controller) {
+                    currentSearchController = null;
+                    setLoadingState(false);
+                    console.log('[search] Loading сброшен');
+                }
             }
         }
 
