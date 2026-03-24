@@ -325,7 +325,7 @@ async def get_companies(
     has_email: Optional[bool] = Query(None, description="Только с email"),
     has_phone: Optional[bool] = Query(None, description="Только с телефоном"),
     has_website: Optional[bool] = Query(None, description="Только с сайтом"),
-    sort: str = Query("relevance", description="Сортировка: relevance | alphabet"),
+    mode: str = Query("precision", description="Режим: precision | coverage"),
     limit: int = Query(100, ge=1, le=1000, description="Лимит результатов"),
     offset: int = Query(0, ge=0, description="Смещение")
 ):
@@ -340,12 +340,43 @@ async def get_companies(
         faiss_ids = set()
         for cat in top_categories:
             faiss_ids.update(cat["ids"])
-        category_ids = list(faiss_ids)
         search_method = "faiss"
 
+        print(f"MODE: {mode}")
         print(f"FAISS CATEGORIES: {[c['name'] for c in top_categories]}")
-        print(f"FAISS IDS: {len(category_ids)}")
-        log.info(f"[SEARCH] FAISS: {[c['name'] for c in top_categories]}, ids={len(category_ids)}")
+        print(f"FAISS IDS: {len(faiss_ids)}")
+
+        if mode == "coverage":
+            # Recursive CTE — все дочерние категории через parent_id
+            expand_conn = get_db_connection()
+            if expand_conn is None:
+                raise HTTPException(status_code=503, detail="Database unavailable (expand)")
+            try:
+                expand_cur = expand_conn.cursor()
+                expand_cur.execute("""
+                    WITH RECURSIVE subcategories AS (
+                        SELECT id FROM categories WHERE id = ANY(%s)
+                        UNION ALL
+                        SELECT c.id FROM categories c
+                        JOIN subcategories s ON c.parent_id = s.id
+                    )
+                    SELECT id FROM subcategories
+                """, (list(faiss_ids),))
+                expanded_ids = [row["id"] for row in expand_cur.fetchall()]
+                expand_cur.close()
+            finally:
+                release_db_connection(expand_conn)
+
+            all_ids = set(faiss_ids)
+            all_ids.update(expanded_ids)
+            category_ids = list(all_ids)
+            print(f"EXPANDED IDS: {len(expanded_ids)}")
+        else:
+            # precision — только faiss_ids
+            category_ids = list(faiss_ids)
+
+        print(f"IDS COUNT: {len(category_ids)}")
+        log.info(f"[SEARCH] mode={mode}, FAISS: {[c['name'] for c in top_categories]}, ids={len(category_ids)}")
 
         # Извлекаем город и фильтры контактов из запроса (простой парсер)
         if FALLBACK_PARSER_AVAILABLE:
@@ -367,24 +398,21 @@ async def get_companies(
             has_website = filters.get("has_website") or has_website
         search_method = "regex"
 
-    # ORDER BY
-    if sort == "relevance":
-        order_clause = (
-            " ORDER BY"
-            " (COALESCE(ph.phones, '') != '') DESC,"
-            " (COALESCE(em.emails, '') != '') DESC,"
-            " (c.domain IS NOT NULL AND c.domain != '') DESC,"
-            " c.name ASC"
-        )
-    else:
-        order_clause = " ORDER BY c.name ASC"
+    # ORDER BY — relevance сортировка всегда (контакты наверх)
+    order_clause = (
+        " ORDER BY"
+        " (COALESCE(ph.phones, '') != '') DESC,"
+        " (COALESCE(em.emails, '') != '') DESC,"
+        " (c.domain IS NOT NULL AND c.domain != '') DESC,"
+        " c.name ASC"
+    )
 
     # Проверяем кеш
     cache_params = {
         "city": city, "category": category,
         "category_ids": tuple(category_ids) if category_ids else None,
         "has_email": has_email, "has_phone": has_phone,
-        "has_website": has_website, "sort": sort,
+        "has_website": has_website, "mode": mode,
         "limit": limit, "offset": offset
     }
     cached = cache.get("companies", cache_params)
@@ -419,8 +447,8 @@ async def get_companies(
 
         cur.close()
 
-        print(f"RESULT COUNT: {total}, METHOD: {search_method}, SORT: {sort}")
-        log.info(f"[SEARCH] RESULT COUNT: {total}, METHOD: {search_method}, SORT: {sort}")
+        print(f"RESULT COUNT: {total}, METHOD: {search_method}, MODE: {mode}")
+        log.info(f"[SEARCH] RESULT COUNT: {total}, METHOD: {search_method}, MODE: {mode}")
 
         result = {
             "total": total,
@@ -537,6 +565,7 @@ async def export_csv(
     has_email: Optional[bool] = Query(None),
     has_phone: Optional[bool] = Query(None),
     has_website: Optional[bool] = Query(None),
+    mode: str = Query("precision", description="Режим: precision | coverage"),
     limit: int = Query(50000, ge=1, le=50000)
 ):
     """Экспорт результатов в CSV (все найденные записи)."""
@@ -548,8 +577,34 @@ async def export_csv(
         faiss_ids = set()
         for cat in top_categories:
             faiss_ids.update(cat["ids"])
-        category_ids = list(faiss_ids)
-        log.info(f"[EXPORT] FAISS: {[c['name'] for c in top_categories]}, ids={len(category_ids)}")
+
+        if mode == "coverage":
+            expand_conn = get_db_connection()
+            if expand_conn is None:
+                raise HTTPException(status_code=503, detail="Database unavailable (expand)")
+            try:
+                expand_cur = expand_conn.cursor()
+                expand_cur.execute("""
+                    WITH RECURSIVE subcategories AS (
+                        SELECT id FROM categories WHERE id = ANY(%s)
+                        UNION ALL
+                        SELECT c.id FROM categories c
+                        JOIN subcategories s ON c.parent_id = s.id
+                    )
+                    SELECT id FROM subcategories
+                """, (list(faiss_ids),))
+                expanded_ids = [row["id"] for row in expand_cur.fetchall()]
+                expand_cur.close()
+            finally:
+                release_db_connection(expand_conn)
+
+            all_ids = set(faiss_ids)
+            all_ids.update(expanded_ids)
+            category_ids = list(all_ids)
+        else:
+            category_ids = list(faiss_ids)
+
+        log.info(f"[EXPORT] mode={mode}, FAISS: {[c['name'] for c in top_categories]}, ids={len(category_ids)}")
 
         # Извлекаем город и фильтры из запроса
         if FALLBACK_PARSER_AVAILABLE:

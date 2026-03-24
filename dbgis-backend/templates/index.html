@@ -76,7 +76,9 @@
             right: 6px;
             top: 50%;
             transform: translateY(-50%);
-            padding: 8px 18px;
+            min-width: 110px;
+            height: 36px;
+            padding: 0 18px;
             background: #3b82f6;
             color: white;
             border: none;
@@ -87,6 +89,7 @@
             transition: all 0.2s ease;
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 6px;
         }
         .search-button:hover:not(:disabled) {
@@ -106,8 +109,8 @@
             animation: spin 0.8s linear infinite;
         }
 
-        /* --- Sort Toggle --- */
-        .sort-toggle {
+        /* --- Mode Toggle --- */
+        .mode-toggle {
             display: inline-flex;
             border: 1px solid #e5e7eb;
             border-radius: 10px;
@@ -116,9 +119,9 @@
             padding: 3px;
             gap: 2px;
         }
-        .sort-option {
+        .mode-option {
             padding: 6px 0;
-            width: 130px;
+            width: 100px;
             text-align: center;
             font-size: 12px;
             font-weight: 500;
@@ -129,8 +132,8 @@
             border-radius: 7px;
             transition: all 0.15s ease;
         }
-        .sort-option:hover { background: rgba(255,255,255,0.6); color: #3f3f46; }
-        .sort-option.active {
+        .mode-option:hover { background: rgba(255,255,255,0.6); color: #3f3f46; }
+        .mode-option.active {
             background: white;
             color: #18181b;
             box-shadow: 0 1px 3px rgba(0,0,0,0.08);
@@ -365,11 +368,11 @@
                 </button>
             </div>
 
-            <!-- Sort Toggle + Filters Toggle row -->
+            <!-- Mode Toggle + Filters Toggle row -->
             <div class="flex items-center justify-center gap-3 mb-4">
-                <div class="sort-toggle">
-                    <button class="sort-option active" data-sort="relevance" onclick="setSort('relevance')">По релевантности</button>
-                    <button class="sort-option" data-sort="alphabet" onclick="setSort('alphabet')">По алфавиту</button>
+                <div class="mode-toggle">
+                    <button class="mode-option active" data-mode="precision" onclick="setMode('precision')">Точность</button>
+                    <button class="mode-option" data-mode="coverage" onclick="setMode('coverage')">Охват</button>
                 </div>
                 <button class="filters-toggle" onclick="toggleFilters()">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M3 12h18"></path></svg>
@@ -463,20 +466,20 @@
         let currentPage = 1;
         let totalResults = 0;
         let detailsCache = {};
-        let searchSort = 'relevance';
+        let searchMode = 'precision';
         let isLoading = false;
         const LIMIT = 100;
 
         // Последние параметры поиска (для пагинации)
         let lastSearchParams = null;
 
-        // ===== Sort Toggle =====
-        function setSort(s) {
-            searchSort = s;
-            document.querySelectorAll('.sort-option').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.sort === s);
+        // ===== Mode Toggle =====
+        function setMode(m) {
+            searchMode = m;
+            document.querySelectorAll('.mode-option').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === m);
             });
-            // Если есть результаты — перезапросить с новой сортировкой
+            // Если есть результаты — перезапросить с новым режимом
             if (totalResults > 0) handleSearch(1);
         }
 
@@ -501,7 +504,7 @@
             const btnText = document.getElementById('search-btn-text');
             if (loading) {
                 btn.disabled = true;
-                btnText.innerHTML = '<div class="spinner"></div> Загрузка...';
+                btnText.innerHTML = '<div class="spinner"></div>';
             } else {
                 btnText.textContent = 'Найти лиды';
                 updateSearchButton();
@@ -530,7 +533,7 @@
             if (document.getElementById('has_phone').checked) params.append('has_phone', 'true');
             if (document.getElementById('has_website').checked) params.append('has_website', 'true');
 
-            params.append('sort', searchSort);
+            params.append('mode', searchMode);
             params.append('limit', LIMIT);
             params.append('offset', (page - 1) * LIMIT);
             return params;
@@ -840,7 +843,7 @@
             `;
             detailsCache = {};
             totalResults = 0;
-            setSort('relevance');
+            setMode('precision');
             updateSearchButton();
         }
 
