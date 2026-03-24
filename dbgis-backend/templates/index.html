@@ -456,13 +456,13 @@
             <p class="text-sm text-gray-400">Введите ваш запрос выше, чтобы найти компании</p>
         </div>
 
+        <!-- Category Filter Badges (вне results-section, видны всегда) -->
+        <div id="category-filter-bar" class="max-w-[1000px] mx-auto px-5 mb-3" style="display:none;">
+            <div id="category-filter-badges" style="display:inline-flex;flex-wrap:wrap;gap:6px;"></div>
+        </div>
+
         <!-- Results -->
         <section id="results-section" class="mb-10 fade-in" style="display:none;">
-            <!-- Category Filter Badge -->
-            <div id="category-filter-bar" class="max-w-[1000px] mx-auto px-5 mb-3" style="display:none;">
-                <div id="category-filter-badges" style="display:inline-flex;flex-wrap:wrap;gap:6px;"></div>
-                <button onclick="clearCategoryFilter()" style="margin-left:8px;font-size:12px;color:#6b7280;cursor:pointer;background:none;border:none;text-decoration:underline;" title="Сбросить все">сбросить все</button>
-            </div>
 
             <!-- Results Header -->
             <div class="max-w-[1000px] mx-auto px-5 mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -605,6 +605,9 @@
                 const companies = data.data || [];
                 totalResults = data.total || 0;
 
+                // Бейджи категорий обновляются независимо от результата
+                updateCategoryFilterBadge();
+
                 if (totalResults === 0) {
                     showEmptyState('Ничего не найдено', 'Попробуйте изменить запрос или фильтры');
                     document.getElementById('results-section').style.display = 'none';
@@ -614,9 +617,6 @@
                 document.getElementById('empty-state').style.display = 'none';
                 document.getElementById('results-section').style.display = 'block';
                 document.getElementById('result-count').textContent = `Найдено: ${totalResults.toLocaleString('ru-RU')} компаний`;
-
-                // Бейдж фильтра по категории
-                updateCategoryFilterBadge();
 
                 renderTable(companies);
                 renderPagination();
@@ -893,12 +893,6 @@
 
         function removeCategoryFilter(id) {
             categoryFilterIds = categoryFilterIds.filter(c => c.id !== id);
-            updateCategoryFilterBadge();
-            handleSearch(1);
-        }
-
-        function clearCategoryFilter() {
-            categoryFilterIds = [];
             updateCategoryFilterBadge();
             handleSearch(1);
         }
