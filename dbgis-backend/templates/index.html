@@ -709,6 +709,13 @@
             page = page || 1;
             currentPage = page;
 
+            // GUARD: пустой запрос → не отправлять (защита от утечки всей БД)
+            const searchInput = document.getElementById('search-input').value.trim();
+            if (!searchInput) {
+                console.log('[search] Пустой запрос — поиск заблокирован');
+                return;
+            }
+
             // Отменяем предыдущий запрос, если он ещё в полёте
             if (currentSearchController) {
                 currentSearchController.abort();
@@ -991,6 +998,13 @@
 
         // ===== CSV Export (ВСЕ результаты) =====
         async function exportCSV() {
+            // GUARD: пустой запрос → не экспортировать (защита от выгрузки всей БД)
+            const searchQuery = document.getElementById('search-input').value.trim();
+            if (!searchQuery) {
+                console.log('[export] Пустой запрос — экспорт заблокирован');
+                return;
+            }
+
             const btn = document.getElementById('export-btn');
             const origHTML = btn.innerHTML;
             btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border:2px solid #e5e7eb;border-top-color:#3b82f6;border-radius:50%;animation:spin .8s linear infinite;display:inline-block;"></div>';
@@ -998,7 +1012,6 @@
 
             // Собираем те же параметры, что и при поиске, но без limit/offset
             const params = new URLSearchParams();
-            const searchQuery = document.getElementById('search-input').value.trim();
             if (searchQuery) {
                 params.append('query', searchQuery);
             }
@@ -1078,13 +1091,11 @@
             document.getElementById('city-input').value = '';
             document.getElementById('city-dropdown').classList.remove('open');
             updateCityFilterBadge();
-            handleSearch(1);
         }
 
         function removeCityFilter(id) {
             cityFilterIds = cityFilterIds.filter(c => c.id !== id);
             updateCityFilterBadge();
-            handleSearch(1);
         }
 
         function updateCityFilterBadge() {
@@ -1140,13 +1151,12 @@
             } else {
                 categoryFilterIds.push({id, name});
             }
-            handleSearch(1);
+            updateCategoryFilterBadge();
         }
 
         function removeCategoryFilter(id) {
             categoryFilterIds = categoryFilterIds.filter(c => c.id !== id);
             updateCategoryFilterBadge();
-            handleSearch(1);
         }
 
         function updateCategoryFilterBadge() {

@@ -30,7 +30,7 @@ import psycopg2
 import psycopg2.pool
 from psycopg2.extras import RealDictCursor
 from fastapi import FastAPI, Query, HTTPException
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, Response, StreamingResponse
 from jinja2 import Environment, FileSystemLoader
 from dotenv import load_dotenv
 
@@ -566,6 +566,15 @@ async def get_companies(
 ):
     """Получить список компаний с фильтрами или AI-парсингом запроса."""
 
+    # GUARD: пустой запрос без фильтров → пустой результат (защита от выгрузки всей БД)
+    has_any_filter = (
+        query or city or category or
+        has_email or has_phone or has_website or
+        category_filter_ids or city_ids
+    )
+    if not has_any_filter:
+        return {"total": 0, "limit": limit, "offset": offset, "data": [], "search_method": None}
+
     # Парсинг category_filter_ids из строки "19,25,42" в список int
     parsed_filter_ids = []
     if category_filter_ids:
@@ -898,6 +907,19 @@ async def export_csv(
     limit: int = Query(50000, ge=1, le=50000)
 ):
     """Экспорт результатов в CSV (все найденные записи)."""
+
+    # GUARD: пустой запрос без фильтров → пустой CSV (защита от выгрузки всей БД)
+    has_any_filter = (
+        query or city or category or
+        has_email or has_phone or has_website or
+        city_ids
+    )
+    if not has_any_filter:
+        return Response(
+            content="ID,Название,Город,Домен,Сайт,Телефоны,Email,Адрес,Соцсети,Категории\n",
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=empty_export.csv"}
+        )
 
     # Парсинг city_ids
     parsed_city_ids = []
