@@ -654,7 +654,7 @@ async def export_csv(
         output = io.StringIO()
         writer = csv.writer(output)
 
-        writer.writerow(["ID", "Название", "Город", "Домен", "Сайт",
+        writer.writerow(["Название", "Город", "Домен", "Сайт",
                          "Телефоны", "Email", "Адрес", "Соцсети", "Категории"])
 
         for row in rows:
@@ -665,7 +665,6 @@ async def export_csv(
             if website:
                 website = decode_punycode_domain(website)
             writer.writerow([
-                row["id"],
                 row["name"],
                 row["city"] or "",
                 domain,
