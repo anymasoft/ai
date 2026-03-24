@@ -215,10 +215,16 @@ def main():
             # ШАГ 3
             step3_reset_sequences(conn)
 
+        # Закрываем основное соединение ДО VACUUM,
+        # иначе его открытая транзакция блокирует AccessExclusiveLock
+        conn.close()
+        conn = None
+
         # ШАГ 4 (отдельное соединение с autocommit)
         step4_vacuum_analyze()
 
-        # ШАГ 5
+        # ШАГ 5 (новое соединение для проверки)
+        conn = get_pg()
         success = step5_final_check(conn)
 
         # ИТОГ
@@ -237,10 +243,12 @@ def main():
 
     except Exception as e:
         print(f"\n✗ Ошибка: {e}")
-        conn.rollback()
+        if conn:
+            conn.rollback()
         sys.exit(1)
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
 
 if __name__ == "__main__":
