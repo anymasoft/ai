@@ -3,6 +3,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
+*.index
+*.json
 .Python
 env/
 venv/

@@ -45,7 +45,7 @@ CATEGORIES_JSON = SCRIPT_DIR / "categories.json"  # НЕ удалять
 
 MODEL_NAME = "intfloat/multilingual-e5-base"
 MIN_CATEGORIES_WARNING = 100
-DEFAULT_TEST_QUERY = "автосервис"
+DEFAULT_TEST_QUERY = "автосервис братск"
 
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = int(os.getenv("DB_PORT", 5432))
