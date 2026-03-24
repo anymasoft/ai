@@ -365,7 +365,7 @@ async def get_companies(
 
         print(f"MODE: {mode}")
         print(f"FAISS CATEGORIES: {[c['name'] for c in top_categories]}")
-        print(f"FAISS IDS: {len(faiss_ids)}")
+        print(f"FAISS CATEGORY_IDS: {len(faiss_ids)} (тип: category_id)")
 
         if mode == "coverage":
             # Recursive CTE — все дочерние категории через parent_id

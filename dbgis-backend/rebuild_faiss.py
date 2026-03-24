@@ -125,11 +125,12 @@ def step2_load_categories():
     try:
         cur = conn.cursor()
 
-        # Уникальные имена категорий + массив company_id для каждой
+        # Уникальные имена категорий + массив category_id для каждой
+        # ВАЖНО: ids = category_id (НЕ company_id!)
+        # SQL в main.py использует: WHERE cc.category_id = ANY(%s)
         cur.execute("""
-            SELECT cat.name, ARRAY_AGG(DISTINCT cc.company_id ORDER BY cc.company_id) as company_ids
+            SELECT cat.name, ARRAY_AGG(DISTINCT cat.id ORDER BY cat.id) as category_ids
             FROM categories cat
-            JOIN company_categories cc ON cat.id = cc.category_id
             GROUP BY cat.name
             ORDER BY cat.name
         """)
@@ -139,7 +140,7 @@ def step2_load_categories():
         for r in rows:
             categories.append({
                 "name": r["name"],
-                "ids": r["company_ids"]
+                "ids": r["category_ids"]
             })
 
         cur.close()
@@ -249,34 +250,42 @@ def step6_verify(model, index, mapping, test_query):
     D, I = index.search(emb, 5)
 
     log.info("Top-5 результатов FAISS:")
-    top_ids_for_db = []
+    top_category_ids = []
     for rank, (idx, score) in enumerate(zip(I[0], D[0])):
         cat = mapping[str(idx)]
-        log.info("  [%d] score=%.4f  \"%s\"  (%d компаний, первые ids: %s)",
-                 rank + 1, score, cat["name"], len(cat["ids"]), cat["ids"][:5])
-        top_ids_for_db.extend(cat["ids"][:5])
+        log.info("  [%d] score=%.4f  \"%s\"  (category_ids: %s)",
+                 rank + 1, score, cat["name"], cat["ids"])
+        top_category_ids.extend(cat["ids"])
 
-    # Проверка через PostgreSQL
-    if top_ids_for_db:
+    # Проверка через PostgreSQL: category_ids → компании
+    if top_category_ids:
         log.info("")
-        log.info("Проверка ids через PostgreSQL:")
+        log.info("Проверка category_ids через PostgreSQL:")
         conn = get_pg()
         try:
             cur = conn.cursor()
 
-            # Проверяем category_ids → реальные имена категорий
-            sample_company_ids = top_ids_for_db[:10]
+            # Сколько компаний найдётся по этим category_ids
+            cur.execute("""
+                SELECT COUNT(DISTINCT cc.company_id) as cnt
+                FROM company_categories cc
+                WHERE cc.category_id = ANY(%s)
+            """, (top_category_ids,))
+            cnt = cur.fetchone()["cnt"]
+            log.info("  Компаний по category_ids %s: %d", top_category_ids, cnt)
+
+            # Показать первые 10 компаний
             cur.execute("""
                 SELECT c.id, c.name,
                        STRING_AGG(DISTINCT cat.name, ', ' ORDER BY cat.name) as categories
                 FROM companies c
                 JOIN company_categories cc ON c.id = cc.company_id
                 JOIN categories cat ON cc.category_id = cat.id
-                WHERE c.id = ANY(%s)
+                WHERE cc.category_id = ANY(%s)
                 GROUP BY c.id, c.name
                 ORDER BY c.name
                 LIMIT 10
-            """, (sample_company_ids,))
+            """, (top_category_ids,))
             rows = cur.fetchall()
 
             for r in rows:

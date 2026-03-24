@@ -7,10 +7,11 @@ faiss_service.py — Семантический поиск категорий ч
 Latency: < 50 мс на запрос.
 
 Формат mapping:
-  {"0": {"name": "Кафе", "ids": [127, 4821, 9932]}, ...}
+  {"0": {"name": "Кафе", "ids": [42, 105]}, ...}
+  ids — это category_id (НЕ company_id!)
 
 find_category() возвращает:
-  {"name": "Кафе", "ids": [127, 4821, 9932]}
+  {"name": "Кафе", "ids": [42, 105]}  # category_ids
 """
 
 import json
