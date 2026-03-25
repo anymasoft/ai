@@ -1708,7 +1708,7 @@
                             <div class="auth-modal-body">
                                 ${storedKey ? `
                                     <div class="auth-key-display">
-                                        <span id="stored-key-display">${escapeHtml(storedKey.substring(0, 12))}${'•'.repeat(20)}</span>
+                                        <span id="stored-key-display">${escapeHtml(storedKey)}</span>
                                         <button class="auth-btn-copy" onclick="Auth.copyKey('${escapeHtml(storedKey)}')">Копировать</button>
                                     </div>
                                 ` : `

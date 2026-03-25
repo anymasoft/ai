@@ -356,197 +356,16 @@ def get_current_user(request: Request) -> Optional[dict]:
 # HTML: Callback page
 # ============================================================
 
-def _build_callback_html(
-    email: str | None,
-    avatar_url: str | None,
-    api_key: str,
-    is_new: bool,
-) -> str:
-    """Красивая HTML-страница после OAuth callback.
-
-    Сохраняет API ключ в localStorage и редиректит на главную.
-    """
+def _build_callback_html(api_key: str) -> str:
+    """Минимальная страница: сохраняет API ключ в localStorage и редиректит на главную."""
     import html as html_mod
-
-    safe_email = html_mod.escape(email or "Пользователь")
     safe_key = html_mod.escape(api_key)
-    title = "Добро пожаловать!" if is_new else "С возвращением!"
-    subtitle = (
-        "Аккаунт создан. Ваш API ключ сгенерирован."
-        if is_new
-        else "Вы успешно авторизованы. Новый API ключ сгенерирован."
-    )
-
-    avatar_html = ""
-    if avatar_url:
-        safe_avatar = html_mod.escape(avatar_url)
-        avatar_html = (
-            f'<img src="{safe_avatar}" alt="avatar" '
-            f'style="width:80px;height:80px;border-radius:50%;margin-bottom:16px;'
-            f'box-shadow:0 2px 8px rgba(0,0,0,0.1);">'
-        )
-    else:
-        initial = safe_email[0].upper() if email else "U"
-        avatar_html = (
-            f'<div style="width:80px;height:80px;border-radius:50%;'
-            f'background:linear-gradient(135deg,#3b82f6,#6366f1);color:white;'
-            f'font-size:32px;font-weight:600;display:flex;align-items:center;'
-            f'justify-content:center;margin-bottom:16px;">{initial}</div>'
-        )
-
     return f"""<!DOCTYPE html>
-<html lang="ru">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{title} — LeadExtractor</title>
-<style>
-*{{margin:0;padding:0;box-sizing:border-box}}
-body{{
-    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-    background:linear-gradient(135deg,#f0f4ff 0%,#e8ecf8 50%,#f5f0ff 100%);
-    min-height:100vh;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:20px;
-}}
-.card{{
-    background:white;
-    border-radius:20px;
-    box-shadow:0 8px 32px rgba(0,0,0,0.08),0 2px 8px rgba(0,0,0,0.04);
-    padding:40px;
-    max-width:480px;
-    width:100%;
-    text-align:center;
-    animation:slideUp 0.4s ease-out;
-}}
-@keyframes slideUp{{
-    from{{opacity:0;transform:translateY(20px)}}
-    to{{opacity:1;transform:translateY(0)}}
-}}
-h1{{font-size:24px;font-weight:700;color:#111827;margin-bottom:6px}}
-.subtitle{{font-size:14px;color:#6b7280;margin-bottom:24px}}
-.email{{font-size:14px;color:#374151;font-weight:500;margin-bottom:20px}}
-.key-section{{
-    background:#f8fafc;
-    border:1px solid #e2e8f0;
-    border-radius:12px;
-    padding:16px;
-    margin-bottom:20px;
-    text-align:left;
-}}
-.key-label{{font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px}}
-.key-value{{
-    font-family:'SF Mono',Monaco,Consolas,monospace;
-    font-size:12px;
-    color:#334155;
-    word-break:break-all;
-    line-height:1.5;
-    background:white;
-    border:1px solid #e2e8f0;
-    border-radius:8px;
-    padding:10px 12px;
-    position:relative;
-}}
-.key-warning{{
-    display:flex;
-    align-items:flex-start;
-    gap:8px;
-    margin-top:12px;
-    padding:10px 12px;
-    background:#fffbeb;
-    border:1px solid #fde68a;
-    border-radius:8px;
-    font-size:12px;
-    color:#92400e;
-    line-height:1.4;
-}}
-.btn-row{{display:flex;gap:10px;margin-top:8px}}
-.btn{{
-    flex:1;
-    padding:10px 16px;
-    font-size:13px;
-    font-weight:600;
-    border-radius:10px;
-    border:none;
-    cursor:pointer;
-    transition:all 0.15s ease;
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    gap:6px;
-}}
-.btn-primary{{
-    background:linear-gradient(135deg,#3b82f6,#6366f1);
-    color:white;
-}}
-.btn-primary:hover{{box-shadow:0 4px 12px rgba(99,102,241,0.4)}}
-.btn-secondary{{
-    background:white;
-    color:#374151;
-    border:1px solid #e5e7eb;
-}}
-.btn-secondary:hover{{background:#f9fafb}}
-.countdown{{font-size:12px;color:#9ca3af;margin-top:16px}}
-.check-icon{{
-    width:48px;height:48px;margin:0 auto 12px;
-    background:linear-gradient(135deg,#10b981,#059669);
-    border-radius:50%;
-    display:flex;align-items:center;justify-content:center;
-}}
-</style>
-</head>
-<body>
-<div class="card">
-    <div class="check-icon">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-    </div>
-    {avatar_html}
-    <h1>{title}</h1>
-    <p class="subtitle">{subtitle}</p>
-    <p class="email">{safe_email}</p>
-
-    <div class="key-section">
-        <div class="key-label">API ключ</div>
-        <div class="key-value" id="key-display">{safe_key}</div>
-        <div class="key-warning">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:1px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            <span>Ключ сохранён в браузере автоматически. При необходимости скопируйте его — после перехода он не будет показан.</span>
-        </div>
-    </div>
-
-    <div class="btn-row">
-        <button class="btn btn-secondary" onclick="copyKey()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-            <span id="copy-text">Копировать</span>
-        </button>
-        <button class="btn btn-primary" onclick="goHome()">
-            Перейти к поиску
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-        </button>
-    </div>
-
-    <p class="countdown">API ключ сохранён в браузере автоматически</p>
-</div>
-
-<script>
-// Сохраняем API ключ в localStorage
-localStorage.setItem('le_api_key', '{safe_key}');
-
-function copyKey() {{
-    navigator.clipboard.writeText('{safe_key}').then(function() {{
-        document.getElementById('copy-text').textContent = 'Скопировано!';
-        setTimeout(function() {{ document.getElementById('copy-text').textContent = 'Копировать'; }}, 2000);
-    }});
-}}
-
-function goHome() {{
-    window.location.href = '/';
-}}
-</script>
-</body>
-</html>"""
+<html><head><meta charset="UTF-8"></head>
+<body><script>
+localStorage.setItem('le_api_key','{safe_key}');
+window.location.replace('/');
+</script></body></html>"""
 
 
 # ============================================================
@@ -681,12 +500,7 @@ async def yandex_callback(
 
         is_new = user["is_new"]
 
-        return HTMLResponse(content=_build_callback_html(
-            email=email,
-            avatar_url=avatar_url,
-            api_key=raw_key,
-            is_new=is_new,
-        ))
+        return HTMLResponse(content=_build_callback_html(api_key=raw_key))
 
     except HTTPException:
         raise
