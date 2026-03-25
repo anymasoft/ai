@@ -362,20 +362,28 @@ def _build_callback_html(
     api_key: str,
     is_new: bool,
 ) -> str:
-    """Красивая HTML-страница после OAuth callback.
+    """HTML-страница после OAuth callback.
 
-    Сохраняет API ключ в localStorage и редиректит на главную.
+    Новый пользователь: красивая страница с API ключом, кнопка перехода.
+    Существующий пользователь: мгновенный редирект на главную (ключ сохраняется тихо).
     """
     import html as html_mod
 
-    safe_email = html_mod.escape(email or "Пользователь")
     safe_key = html_mod.escape(api_key)
-    title = "Добро пожаловать!" if is_new else "С возвращением!"
-    subtitle = (
-        "Аккаунт создан. Ваш API ключ сгенерирован."
-        if is_new
-        else "Вы успешно авторизованы. Новый API ключ сгенерирован."
-    )
+
+    # Существующий пользователь — тихо сохраняем ключ и редиректим
+    if not is_new:
+        return f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Авторизация...</title></head>
+<body>
+<script>
+localStorage.setItem('le_api_key', '{safe_key}');
+window.location.replace('/');
+</script>
+</body></html>"""
+
+    # Новый пользователь — красивая страница с ключом
+    safe_email = html_mod.escape(email or "Пользователь")
 
     avatar_html = ""
     if avatar_url:
@@ -399,7 +407,7 @@ def _build_callback_html(
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{title} — LeadExtractor</title>
+<title>Добро пожаловать! — LeadExtractor</title>
 <style>
 *{{margin:0;padding:0;box-sizing:border-box}}
 body{{
@@ -447,7 +455,6 @@ h1{{font-size:24px;font-weight:700;color:#111827;margin-bottom:6px}}
     border:1px solid #e2e8f0;
     border-radius:8px;
     padding:10px 12px;
-    position:relative;
 }}
 .key-warning{{
     display:flex;
@@ -488,7 +495,7 @@ h1{{font-size:24px;font-weight:700;color:#111827;margin-bottom:6px}}
     border:1px solid #e5e7eb;
 }}
 .btn-secondary:hover{{background:#f9fafb}}
-.countdown{{font-size:12px;color:#9ca3af;margin-top:16px}}
+.hint{{font-size:12px;color:#9ca3af;margin-top:16px}}
 .check-icon{{
     width:48px;height:48px;margin:0 auto 12px;
     background:linear-gradient(135deg,#10b981,#059669);
@@ -503,13 +510,13 @@ h1{{font-size:24px;font-weight:700;color:#111827;margin-bottom:6px}}
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
     </div>
     {avatar_html}
-    <h1>{title}</h1>
-    <p class="subtitle">{subtitle}</p>
+    <h1>Добро пожаловать!</h1>
+    <p class="subtitle">Аккаунт создан. Ваш API ключ сгенерирован.</p>
     <p class="email">{safe_email}</p>
 
     <div class="key-section">
         <div class="key-label">API ключ</div>
-        <div class="key-value" id="key-display">{safe_key}</div>
+        <div class="key-value">{safe_key}</div>
         <div class="key-warning">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:1px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
             <span>Ключ сохранён в браузере автоматически. При необходимости скопируйте его — после перехода он не будет показан.</span>
@@ -527,11 +534,10 @@ h1{{font-size:24px;font-weight:700;color:#111827;margin-bottom:6px}}
         </button>
     </div>
 
-    <p class="countdown">API ключ сохранён в браузере автоматически</p>
+    <p class="hint">API ключ сохранён в браузере автоматически</p>
 </div>
 
 <script>
-// Сохраняем API ключ в localStorage
 localStorage.setItem('le_api_key', '{safe_key}');
 
 function copyKey() {{
