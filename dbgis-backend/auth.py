@@ -527,7 +527,7 @@ h1{{font-size:24px;font-weight:700;color:#111827;margin-bottom:6px}}
         </button>
     </div>
 
-    <p class="countdown" id="countdown">Автоматический переход через <b>5</b> сек...</p>
+    <p class="countdown">API ключ сохранён в браузере автоматически</p>
 </div>
 
 <script>
@@ -544,19 +544,6 @@ function copyKey() {{
 function goHome() {{
     window.location.href = '/';
 }}
-
-// Обратный отсчёт
-var seconds = 5;
-var timer = setInterval(function() {{
-    seconds--;
-    if (seconds <= 0) {{
-        clearInterval(timer);
-        goHome();
-    }} else {{
-        document.getElementById('countdown').innerHTML =
-            'Автоматический переход через <b>' + seconds + '</b> сек...';
-    }}
-}}, 1000);
 </script>
 </body>
 </html>"""
