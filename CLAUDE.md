@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
-## Обзор репозитория
+## Обзор
 
-Монорепозиторий (~40 проектов). Основной бизнес-пайплайн — извлечение и поиск бизнес-лидов из 2ГИС:
+Два проекта для извлечения и поиска бизнес-лидов из 2ГИС:
 
 ```
 2GIS (.dgdat) → dgdat2xlsx/convert.py → XLSX (24 колонки)
@@ -21,15 +21,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Каждый подпроект имеет свой `CLAUDE.md` с детальными правилами — **обязательно читай перед работой**.
 
-## Ключевые проекты
-
-| Проект | Назначение | Стек |
-|--------|-----------|------|
-| `dbgis-backend/` | FastAPI backend + Web UI для поиска компаний | FastAPI, PostgreSQL, psycopg2, FAISS, Jinja2, Vanilla JS |
-| `dgdat2xlsx/` | Парсинг бинарных 2GIS файлов → XLSX → SQLite | Python stdlib + openpyxl |
-| `EXTRACTOR/` | Мульти-источниковый поиск лидов (DuckDuckGo, 2GIS, SearXNG) | Python, pymorphy2 |
-| `LeadExtractor/` | Извлечение контактов с сайтов (Crawl4AI) | Python, FastAPI, React |
-| `lobehub/` | LobeChat — AI-чат (форк) | Next.js 16, React 19, TypeScript |
+**Остальные папки в репозитории — посторонние проекты, не трогать.**
 
 ## Команды для разработки
 
@@ -79,18 +71,6 @@ python clean_postgres.py
 python clean_postgres.py --force  # без подтверждения
 ```
 
-### Полный rebuild данных (после исправлений в pipeline)
-
-```bash
-cd dgdat2xlsx && python convert.py           # 1. XLSX из 2GIS
-rm -f data/local.db && python import_db.py   # 2. SQLite из XLSX
-cd ../dbgis-backend
-python clean_postgres.py --force             # 3. Очистить PostgreSQL
-python sync_sqlite_to_postgres.py            # 4. Синхронизировать данные
-python rebuild_faiss.py                      # 5. Пересобрать FAISS
-python debug_search.py "автосервис"          # 6. Проверить результат
-```
-
 ### dgdat2xlsx (конвертер данных)
 
 ```bash
@@ -108,18 +88,16 @@ python import_db.py
 python debug_contacts.py
 ```
 
-### lobehub
+### Полный rebuild данных (после исправлений в pipeline)
 
 ```bash
-cd lobehub
-
-pnpm install
-pnpm dev                        # Запуск dev-сервера (порт 3010)
-bunx vitest run 'path/to/test'  # Запуск одного теста
-pnpm lint                       # Линтинг
-pnpm type-check                 # Проверка типов
-pnpm db:migrate                 # Миграции БД (Drizzle)
-# НЕ запускать pnpm test (10+ мин). НЕ запускать pnpm i18n (CI делает это).
+cd dgdat2xlsx && python convert.py           # 1. XLSX из 2GIS
+rm -f data/local.db && python import_db.py   # 2. SQLite из XLSX
+cd ../dbgis-backend
+python clean_postgres.py --force             # 3. Очистить PostgreSQL
+python sync_sqlite_to_postgres.py            # 4. Синхронизировать данные
+python rebuild_faiss.py                      # 5. Пересобрать FAISS
+python debug_search.py "автосервис"          # 6. Проверить результат
 ```
 
 ## Архитектура: dbgis-backend
@@ -205,39 +183,6 @@ cities ──< companies ──< branches ──< phones
 - **Категории хранятся как полные цепи (section→subsection→rubric)**, обрабатываются row-by-row через zip. НЕ через вложенные циклы — иначе Декартово произведение (3×5×10=150 вместо 10 категорий)
 
 **Нормализация URL:** развёртывание обёрток 2GIS, удаление UTM, дедупликация по домену. `.lower()` только для доменов и email, НЕ для полных URL.
-
-## Архитектура: EXTRACTOR
-
-Поиск лидов из внешних источников. Используется как библиотека из `dbgis-backend/enrich.py`.
-
-```
-query.txt ("ниша в город")
-  → search_duckduckgo.py (DuckDuckGo/Google/SearXNG)
-  → PARSER/search_2gis.py (2GIS native через parser-2gis)
-    → crawler_filter.py (фильтрация агрегаторов: zoon, flamp, yandex и т.д.)
-      → extractor_final.py (извлечение email/phone из HTML)
-```
-
-**Не рефакторить** `extractor_final.py` и `crawler_filter.py` — они импортируются из `enrich.py` как есть.
-
-## Архитектура: LeadExtractor
-
-Извлечение контактов с сайтов через BFS-краулинг (Crawl4AI).
-
-- `backend/crawl4ai_client.py` (~2000 строк) — основной движок: 6 проходов извлечения (structured → heuristic → aggressive)
-- `backend/phone_normalizer.py` — валидация и нормализация телефонов
-- `backend/main.py` — FastAPI: `POST /api/extract`, `GET /api/health`
-- `frontend/` — React 18 + Vite + Tailwind
-
-## Архитектура: lobehub
-
-LobeChat — форк AI-чата. Монорепо с pnpm workspaces.
-
-- **Framework:** Next.js 16 + React 19 + TypeScript
-- **State:** Zustand, **Data:** SWR + tRPC, **DB:** Drizzle ORM + PostgreSQL
-- **UI:** Ant Design + @lobehub/ui + antd-style (CSS-in-JS)
-- **Тесты:** Vitest (unit), Playwright (E2E). Предпочитать `vi.spyOn` вместо `vi.mock`
-- **Ветки:** `canary` (dev) → `main` (release). Git pull через rebase
 
 ## Авторизация: Yandex OAuth + API keys (auth.py)
 
