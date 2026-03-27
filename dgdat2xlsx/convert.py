@@ -25,8 +25,8 @@ from openpyxl.styles import Font, Alignment, PatternFill, Protection
 # ============================================================
 
 # Папка с входными .dgdat файлами
-DGDAT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'download')
-# DGDAT_DIR = 'C:\\Program Files (x86)\\2gis\\3.0'
+# DGDAT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'download')
+DGDAT_DIR = 'C:\\Program Files (x86)\\2gis\\3.0'
 
 # Папка для выходных .xlsx файлов
 XLSX_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'output')
